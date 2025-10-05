@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- De1984 Color Palette -->
+    <!-- Primary Colors -->
+    <color name="lineage_teal">#167C80</color>
+    <color name="light_blue">#B3E5FC</color>
+    <color name="dark_teal">#001F24</color>
+    
+    <!-- Secondary Colors -->
+    <color name="blue_grey">#455A64</color>
+    <color name="light_blue_grey">#CFD8DC</color>
+    <color name="dark_blue_grey">#0F1419</color>
+    
+    <!-- Status Colors -->
+    <color name="success_green">#4CAF50</color>
+    <color name="warning_orange">#FF9800</color>
+    <color name="error_red">#F44336</color>
+    
+    <!-- Surface Colors -->
+    <color name="background_light">#F5F5F5</color>
+    <color name="surface_light">#FAFAFA</color>
+    <color name="surface_variant_light">#ECEFF1</color>
+    
+    <!-- Dark Theme Colors -->
+    <color name="primary_dark">#4DB6AC</color>
+    <color name="background_dark">#1E1E1E</color>
+    <color name="surface_dark">#2C2C2C</color>
+    <color name="surface_variant_dark">#424242</color>
+    
+    <!-- Common Colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="outline">#90A4AE</color>
+    <color name="outline_dark">#616161</color>
+</resources>

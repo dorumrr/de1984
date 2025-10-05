@@ -1,0 +1,57 @@
+package io.github.dorumrr.de1984.domain.model
+
+data class NetworkPackage(
+    val packageName: String,
+    val name: String,
+    val icon: String,
+    val type: PackageType,
+    val isNetworkBlocked: Boolean = false,
+    val wifiBlocked: Boolean = false,
+    val mobileBlocked: Boolean = false,
+    val roamingBlocked: Boolean = false,
+    val networkPermissions: List<String> = emptyList(),
+    val versionName: String? = null,
+    val versionCode: Long? = null,
+    val installTime: Long? = null,
+    val updateTime: Long? = null
+) {
+    val isNetworkAllowed: Boolean
+        get() = !isNetworkBlocked
+
+    val isFullyBlocked: Boolean
+        get() = wifiBlocked && mobileBlocked
+
+    val isFullyAllowed: Boolean
+        get() = !wifiBlocked && !mobileBlocked
+
+    val isPartiallyBlocked: Boolean
+        get() = (wifiBlocked || mobileBlocked) && !isFullyBlocked
+
+    val networkState: String
+        get() = when {
+            isFullyBlocked -> "Blocked"
+            isFullyAllowed -> "Allowed"
+            wifiBlocked && !mobileBlocked -> "WiFi Blocked"
+            !wifiBlocked && mobileBlocked -> "Mobile Blocked"
+            else -> "Partial"
+        }
+
+    val hasInternetPermission: Boolean
+        get() = networkPermissions.contains("android.permission.INTERNET")
+
+    val hasNetworkPermissions: Boolean
+        get() = networkPermissions.any { permission ->
+            io.github.dorumrr.de1984.utils.Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
+        }
+}
+
+enum class NetworkAccessState {
+    ALLOWED,
+    BLOCKED,
+    PARTIAL
+}
+
+data class FirewallFilterState(
+    val packageType: String = "User",
+    val networkState: String? = null
+)

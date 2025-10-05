@@ -1,0 +1,12 @@
+De1984 Firewall release v1.0.0
+
+Features:
+• VPN-based firewall with per-app network control
+• WiFi, Mobile Data, and Roaming blocking
+• Allow/Block All modes
+• Package management (with root)
+• Enable/disable/uninstall any package, system included
+• Force stop apps, user or system
+• Zero tracking or analytics
+• 100% open source (MIT License)
+

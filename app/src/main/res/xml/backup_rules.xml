@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Backup rules for De1984
+   Privacy-focused: No automatic backups to protect user data
+-->
+<full-backup-content>
+    <!-- Exclude all data from backup for privacy -->
+    <exclude domain="root" />
+    <exclude domain="database" />
+    <exclude domain="sharedpref" />
+    <exclude domain="external" />
+</full-backup-content>

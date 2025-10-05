@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:opacity="opaque">
+    
+    <!-- Background color - will be overridden by theme -->
+    <item android:drawable="@color/white" />
+    
+    <!-- Centered logo -->
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/de1984_logo" />
+    </item>
+</layer-list>
+

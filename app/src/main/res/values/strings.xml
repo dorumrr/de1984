@@ -1,0 +1,64 @@
+<resources>
+    <!-- App Identity -->
+    <string name="app_name">De1984 Firewall</string>
+    <string name="app_tagline">Privacy isn’t default. Take it back with De1984 Firewall and package control.</string>
+    
+    <!-- Navigation -->
+    <string name="nav_packages">Packages</string>
+    <string name="nav_settings">Settings</string>
+    
+    <!-- Package Management -->
+    <string name="packages_title">Package Management</string>
+    <string name="packages_search_hint">Search packages…</string>
+    <string name="packages_filter_all">All</string>
+    <string name="packages_filter_system">System</string>
+    <string name="packages_filter_user">User</string>
+    <string name="packages_filter_enabled">Enabled</string>
+    <string name="packages_filter_disabled">Disabled</string>
+    <string name="packages_filter_threats">Threats</string>
+    
+    <!-- Package Status -->
+    <string name="status_enabled">Enabled</string>
+    <string name="status_disabled">Disabled</string>
+    <string name="status_uninstalled">Uninstalled</string>
+    <string name="status_system">System</string>
+    <string name="status_user">User</string>
+    <string name="status_threat">Threat</string>
+    
+    <!-- Package Actions -->
+    <string name="action_enable">Enable</string>
+    <string name="action_disable">Disable</string>
+    <string name="action_uninstall">Uninstall</string>
+    <string name="action_reinstall">Reinstall</string>
+    
+
+    
+    <!-- About -->
+    <string name="about_title">About De1984</string>
+    <string name="about_version">Version %1$s (%2$d)</string>
+    <string name="about_description">Privacy isn’t default. Take it back with De1984 Firewall and package control.</string>
+    
+    <!-- Theme -->
+    <string name="theme_light">Light Theme</string>
+    <string name="theme_dark">Dark Theme</string>
+    <string name="theme_toggle">Toggle Theme</string>
+    
+    <!-- Common -->
+    <string name="search">Search</string>
+    <string name="filter">Filter</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="loading">Loading…</string>
+    <string name="error">Error</string>
+    <string name="retry">Retry</string>
+    
+    <!-- Content Descriptions -->
+    <string name="cd_app_icon">App icon</string>
+    <string name="cd_theme_toggle">Theme toggle button</string>
+    <string name="cd_search_icon">Search icon</string>
+    <string name="cd_filter_icon">Filter icon</string>
+    <string name="cd_status_indicator">Status indicator</string>
+    <string name="cd_navigation_icon">Navigation icon</string>
+</resources>

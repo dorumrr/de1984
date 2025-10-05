@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Data extraction rules for De1984
+   Privacy-focused: No data extraction allowed
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Exclude all data from cloud backup for privacy -->
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    
+    <device-transfer>
+        <!-- Exclude all data from device transfer for privacy -->
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

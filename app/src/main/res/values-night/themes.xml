@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme for De1984 - Dark Mode -->
+    <style name="Theme.De1984" parent="android:Theme.Material.NoActionBar">
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/lineage_teal</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Navigation bar -->
+        <item name="android:navigationBarColor">@color/background_dark</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <!-- Window background for splash/loading screen with logo - dark background -->
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
+</resources>
+

@@ -9,8 +9,8 @@ set -euo pipefail
 APP_ID="io.github.dorumrr.de1984"
 APP_ID_DEBUG="${APP_ID}.debug"
 
-# Extract version from build.gradle.kts
-APP_VERSION=$(grep 'val appVersionName = ' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+# Extract version from build.gradle.kts (now using hardcoded versionName)
+APP_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
 VERSION_UNDERSCORE=$(echo "$APP_VERSION" | tr '.' '_')
 
 APK_PATH_DEBUG="app/build/outputs/apk/debug/de1984-debug-v${VERSION_UNDERSCORE}.apk"

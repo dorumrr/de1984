@@ -5,15 +5,6 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val appVersionName = "1.0.0"
-
-val appVersionCode = appVersionName
-    .split(".")
-    .map { it.toInt() }
-    .let { (major, minor, patch) ->
-        major * 10000 + minor * 100 + patch
-    }
-
 android {
     namespace = "io.github.dorumrr.de1984"
     compileSdk = 34
@@ -23,8 +14,8 @@ android {
         minSdk = 26
         targetSdk = 34
 
-        versionCode = appVersionCode  // Auto-calculated from appVersionName
-        versionName = appVersionName  // "1.0.0" → versionCode: 10000
+        versionCode = 1
+        versionName = 1.0.0
 
         vectorDrawables {
             useSupportLibrary = true
@@ -89,7 +80,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val versionName = appVersionName.replace(".", "_")
+            val versionName = defaultConfig.versionName?.replace(".", "_") ?: "unknown"
             output.outputFileName = if (name.contains("release")) {
                 "de1984-release-v${versionName}.apk"
             } else {

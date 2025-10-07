@@ -38,9 +38,9 @@ android {
             )
 
             val isSelfDistributed = project.findProperty("IS_SELF_DISTRIBUTED")
-                ?.toString()?.toBoolean() ?: true
+                ?.toString()?.toBoolean() ?: false
 
-            buildConfigField("Boolean", "IS_SELF_DISTRIBUTED", "$isSelfDistributed")
+            buildConfigField("boolean", "IS_SELF_DISTRIBUTED", if (isSelfDistributed) "true" else "false")
             buildConfigField("String", "GITHUB_REPO", "\"dorumrr/de1984\"")
             buildConfigField("String", "UPDATE_CHECK_URL",
                 "\"https://api.github.com/repos/dorumrr/de1984/releases/latest\"")

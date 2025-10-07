@@ -80,14 +80,12 @@ If you find De1984 useful, consider supporting development:
 ### GitHub Releases (Latest)
 - ✅ Get updates faster (before F-Droid)
 - ✅ Signed by developer
-- ✅ In-app update checker (checks GitHub API)
+- ✅ In-app update checker (can be enabled in Settings)
 - ⚠️ Manual installation required
 
 **Note:** You cannot switch between F-Droid and GitHub versions (different signatures). Choose one and stick with it.
 
 ### Privacy Note
-- **GitHub builds**: Optional in-app update checker (can be disabled in Settings)
-- **F-Droid builds**: No update checker (F-Droid handles updates)
 - **No tracking**: Update checker only queries GitHub's public API (no personal data sent)
 
 ## 🤝 Contributing

@@ -4,9 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.dorumrr.de1984.BuildConfig
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.common.RootManager
@@ -19,11 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class SettingsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class SettingsViewModel(
+    private val context: Context,
     private val permissionManager: PermissionManager,
     private val rootManager: RootManager
 ) : ViewModel() {
@@ -204,6 +201,24 @@ class SettingsViewModel @Inject constructor(
             .remove("last_update_error")
             .apply()
     }
+
+    class Factory(
+        private val context: Context,
+        private val permissionManager: PermissionManager,
+        private val rootManager: RootManager
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(SettingsViewModel::class.java)) {
+                return SettingsViewModel(
+                    context,
+                    permissionManager,
+                    rootManager
+                ) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
 }
 
 data class SettingsUiState(
@@ -233,8 +248,6 @@ data class SettingsUiState(
     val hasBasicPermissions: Boolean = true,
     val hasEnhancedPermissions: Boolean = false,
     val hasAdvancedPermissions: Boolean = false
-
-
 )
 
 data class SystemInfo(

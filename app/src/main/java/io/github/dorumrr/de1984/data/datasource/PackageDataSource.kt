@@ -2,7 +2,6 @@ package io.github.dorumrr.de1984.data.datasource
 
 import io.github.dorumrr.de1984.data.model.PackageEntity
 import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
 
 interface PackageDataSource {
     fun getPackages(): Flow<List<PackageEntity>>

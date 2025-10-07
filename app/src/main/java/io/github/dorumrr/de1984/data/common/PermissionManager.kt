@@ -7,10 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
 import androidx.core.content.ContextCompat
-import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.dorumrr.de1984.utils.Constants
-import javax.inject.Inject
-import javax.inject.Singleton
 
 data class PermissionInfo(
     val permission: String,
@@ -21,9 +18,8 @@ data class PermissionInfo(
     val settingsAction: String? = null
 )
 
-@Singleton
-class PermissionManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+class PermissionManager(
+    private val context: Context,
     private val rootManager: RootManager
 ) {
 

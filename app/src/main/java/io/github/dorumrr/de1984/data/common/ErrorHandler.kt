@@ -3,11 +3,8 @@ package io.github.dorumrr.de1984.data.common
 import android.content.pm.PackageManager
 import android.util.Log
 import java.io.IOException
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class ErrorHandler @Inject constructor() {
+class ErrorHandler {
     
     companion object {
         private const val TAG = "De1984Error"

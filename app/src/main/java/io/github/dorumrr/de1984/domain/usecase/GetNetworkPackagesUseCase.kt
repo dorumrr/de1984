@@ -7,9 +7,8 @@ import io.github.dorumrr.de1984.domain.model.FirewallFilterState
 import io.github.dorumrr.de1984.domain.repository.NetworkPackageRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
 
-class GetNetworkPackagesUseCase @Inject constructor(
+class GetNetworkPackagesUseCase constructor(
     private val networkPackageRepository: NetworkPackageRepository
 ) {
 

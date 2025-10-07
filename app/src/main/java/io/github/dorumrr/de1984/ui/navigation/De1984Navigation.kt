@@ -52,8 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -61,6 +62,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
+import io.github.dorumrr.de1984.presentation.viewmodel.PackagesViewModel
+import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.acknowledgements.AcknowledgementsScreen
 import io.github.dorumrr.de1984.ui.firewall.FirewallScreen
 import io.github.dorumrr.de1984.ui.packages.PackagesScreen
@@ -73,8 +78,18 @@ fun De1984Navigation(
     onFirewallStartDialogDismiss: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val dependencies = (context.applicationContext as De1984Application).dependencies
 
-    val sharedFirewallViewModel: io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel = hiltViewModel()
+    val sharedFirewallViewModel: FirewallViewModel = viewModel(
+        factory = FirewallViewModel.Factory(
+            application = context.applicationContext as android.app.Application,
+            getNetworkPackagesUseCase = dependencies.provideGetNetworkPackagesUseCase(),
+            manageNetworkAccessUseCase = dependencies.provideManageNetworkAccessUseCase(),
+            superuserBannerState = dependencies.superuserBannerState,
+            permissionManager = dependencies.permissionManager
+        )
+    )
 
     val batteryOptimizationLauncher = rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
@@ -290,9 +305,24 @@ private fun FirewallStartDialog(
 @Composable
 private fun NavigationHost(
     navController: NavHostController,
-    sharedFirewallViewModel: io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
+    sharedFirewallViewModel: FirewallViewModel
 ) {
-    val sharedSettingsViewModel: io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel = hiltViewModel()
+    val context = LocalContext.current
+    val dependencies = (context.applicationContext as De1984Application).dependencies
+
+    val sharedSettingsViewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.Factory(
+            context = context.applicationContext,
+            permissionManager = dependencies.permissionManager,
+            rootManager = dependencies.rootManager
+        )
+    )
+
+    val permissionSetupViewModel: io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel = viewModel(
+        factory = io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel.Factory(
+            permissionManager = dependencies.permissionManager
+        )
+    )
 
     NavHost(
         navController = navController,
@@ -306,14 +336,23 @@ private fun NavigationHost(
         }
 
         composable(Screen.Apps.route) {
+            val packagesViewModel: PackagesViewModel = viewModel(
+                factory = PackagesViewModel.Factory(
+                    getPackagesUseCase = dependencies.provideGetPackagesUseCase(),
+                    managePackageUseCase = dependencies.provideManagePackageUseCase(),
+                    superuserBannerState = dependencies.superuserBannerState,
+                    rootManager = dependencies.rootManager
+                )
+            )
             PackagesScreen(
-                viewModel = hiltViewModel(),
+                viewModel = packagesViewModel,
                 settingsViewModel = sharedSettingsViewModel
             )
         }
         composable(Screen.Settings.route) {
             SettingsScreen(
                 settingsViewModel = sharedSettingsViewModel,
+                permissionViewModel = permissionSetupViewModel,
                 onNavigateToAcknowledgements = {
                     navController.navigate("acknowledgements")
                 }

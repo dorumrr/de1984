@@ -14,20 +14,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.dorumrr.de1984.ui.common.*
 import io.github.dorumrr.de1984.presentation.viewmodel.PackagesViewModel
 import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.utils.Constants
-import javax.inject.Inject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PackagesScreen(
-    viewModel: PackagesViewModel = hiltViewModel(),
-    settingsViewModel: io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel = hiltViewModel()
+    viewModel: PackagesViewModel,
+    settingsViewModel: io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val settingsUiState by settingsViewModel.uiState.collectAsState()

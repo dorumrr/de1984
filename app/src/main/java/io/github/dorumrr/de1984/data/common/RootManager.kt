@@ -5,21 +5,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
 enum class RootStatus {
     NOT_ROOTED,
-    
+
     ROOTED_NO_PERMISSION,
-    
+
     ROOTED_WITH_PERMISSION,
-    
+
     CHECKING
 }
 
-@Singleton
-class RootManager @Inject constructor() {
+class RootManager {
 
     private val _rootStatus = MutableStateFlow<RootStatus>(RootStatus.CHECKING)
     val rootStatus: StateFlow<RootStatus> = _rootStatus.asStateFlow()

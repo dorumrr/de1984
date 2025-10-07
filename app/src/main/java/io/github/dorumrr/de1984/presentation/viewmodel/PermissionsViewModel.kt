@@ -2,7 +2,6 @@ package io.github.dorumrr.de1984.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.common.SystemCapabilities
 import io.github.dorumrr.de1984.ui.permissions.PermissionItem
@@ -11,10 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class PermissionsViewModel @Inject constructor(
+
+class PermissionsViewModel constructor(
     private val permissionManager: PermissionManager
 ) : ViewModel() {
     

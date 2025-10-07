@@ -7,9 +7,8 @@ import io.github.dorumrr.de1984.presentation.viewmodel.PackageFilterState
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
 
-class GetPackagesUseCase @Inject constructor(
+class GetPackagesUseCase constructor(
     private val packageRepository: PackageRepository
 ) {
 

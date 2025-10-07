@@ -1,9 +1,8 @@
 package io.github.dorumrr.de1984.domain.usecase
 
 import io.github.dorumrr.de1984.domain.repository.NetworkPackageRepository
-import javax.inject.Inject
 
-class ManageNetworkAccessUseCase @Inject constructor(
+class ManageNetworkAccessUseCase constructor(
     private val networkPackageRepository: NetworkPackageRepository
 ) {
 

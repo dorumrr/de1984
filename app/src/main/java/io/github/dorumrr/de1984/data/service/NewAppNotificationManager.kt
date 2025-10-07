@@ -14,17 +14,13 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.receiver.NewAppNotificationReceiver
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class NewAppNotificationManager @Inject constructor(
-    @ApplicationContext private val context: Context
+class NewAppNotificationManager(
+    private val context: Context
 ) {
     
     companion object {

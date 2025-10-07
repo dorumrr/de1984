@@ -6,19 +6,17 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
-import dagger.hilt.android.AndroidEntryPoint
 import io.github.dorumrr.de1984.domain.usecase.HandleNewAppInstallUseCase
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.*
-import javax.inject.Inject
 
-@AndroidEntryPoint
+
 class PackageMonitoringService : Service() {
     
-    @Inject
+    
     lateinit var handleNewAppInstallUseCase: HandleNewAppInstallUseCase
     
-    @Inject
+    
     lateinit var newAppNotificationManager: NewAppNotificationManager
     
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

@@ -12,7 +12,6 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import dagger.hilt.android.AndroidEntryPoint
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
@@ -29,21 +28,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@AndroidEntryPoint
+
 class FirewallVpnService : VpnService() {
 
-    @Inject
+    
     lateinit var firewallRepository: FirewallRepository
 
-    @Inject
+    
     lateinit var networkStateMonitor: NetworkStateMonitor
 
-    @Inject
+    
     lateinit var screenStateMonitor: ScreenStateMonitor
 
-    @Inject
+    
     lateinit var packageDataSource: PackageDataSource
 
     private var vpnInterface: ParcelFileDescriptor? = null

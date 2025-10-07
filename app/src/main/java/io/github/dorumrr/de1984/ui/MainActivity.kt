@@ -18,10 +18,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
-import dagger.hilt.android.AndroidEntryPoint
-
+import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.service.PackageMonitoringService
@@ -31,13 +29,12 @@ import io.github.dorumrr.de1984.ui.permissions.StartupPermissionFlow
 import io.github.dorumrr.de1984.ui.theme.De1984Theme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    @Inject
-    lateinit var permissionManager: PermissionManager
+    private val permissionManager: PermissionManager by lazy {
+        (application as De1984Application).dependencies.permissionManager
+    }
 
 
 

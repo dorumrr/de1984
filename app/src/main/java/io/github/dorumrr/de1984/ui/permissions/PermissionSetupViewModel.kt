@@ -1,18 +1,17 @@
 package io.github.dorumrr.de1984.ui.permissions
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.dorumrr.de1984.data.common.PermissionInfo
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class PermissionSetupViewModel @Inject constructor(
+
+class PermissionSetupViewModel constructor(
     private val permissionManager: PermissionManager
 ) : ViewModel() {
 
@@ -112,6 +111,18 @@ class PermissionSetupViewModel @Inject constructor(
                 isGranted = isExempt
             )
         )
+    }
+
+    class Factory(
+        private val permissionManager: PermissionManager
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(PermissionSetupViewModel::class.java)) {
+                return PermissionSetupViewModel(permissionManager) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
     }
 }
 

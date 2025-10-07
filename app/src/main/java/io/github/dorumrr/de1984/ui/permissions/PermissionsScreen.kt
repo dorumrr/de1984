@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.dorumrr.de1984.data.common.CapabilityLevel
 import io.github.dorumrr.de1984.presentation.viewmodel.PermissionsViewModel
 import io.github.dorumrr.de1984.utils.Constants
@@ -24,7 +23,7 @@ import io.github.dorumrr.de1984.utils.Constants
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PermissionsScreen(
-    viewModel: PermissionsViewModel = hiltViewModel()
+    viewModel: PermissionsViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current

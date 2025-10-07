@@ -8,11 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class SuperuserBannerState @Inject constructor() {
+class SuperuserBannerState {
 
     private var _showBanner by mutableStateOf(false)
     val showBanner: Boolean get() = _showBanner

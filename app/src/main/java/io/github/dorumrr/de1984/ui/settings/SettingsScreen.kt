@@ -31,7 +31,6 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
@@ -47,8 +46,8 @@ import io.github.dorumrr.de1984.ui.common.De1984TopBar
 
 @Composable
 fun SettingsScreen(
-    settingsViewModel: SettingsViewModel = hiltViewModel(),
-    permissionViewModel: PermissionSetupViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel,
+    permissionViewModel: PermissionSetupViewModel,
     onNavigateToAcknowledgements: (() -> Unit)? = null
 ) {
     val context = LocalContext.current

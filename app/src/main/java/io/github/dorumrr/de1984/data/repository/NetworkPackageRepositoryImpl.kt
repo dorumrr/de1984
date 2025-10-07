@@ -8,11 +8,8 @@ import io.github.dorumrr.de1984.domain.repository.NetworkPackageRepository
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class NetworkPackageRepositoryImpl @Inject constructor(
+class NetworkPackageRepositoryImpl(
     private val packageDataSource: PackageDataSource
 ) : NetworkPackageRepository {
     

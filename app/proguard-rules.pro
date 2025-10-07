@@ -43,20 +43,10 @@
 }
 
 # ================================================================================================
-# HILT DEPENDENCY INJECTION
+# VIEWMODELS
 # ================================================================================================
 
-# Keep Hilt generated classes (critical for DI)
--keep class dagger.hilt.** { *; }
--keep class javax.inject.** { *; }
--keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
-
-# Keep classes with @Inject constructors
--keepclassmembers class * {
-    @javax.inject.Inject <init>(...);
-}
-
-# Keep Hilt ViewModels and their factories
+# Keep ViewModels and their factories
 -keep class * extends androidx.lifecycle.ViewModel {
     <init>(...);
 }
@@ -64,20 +54,10 @@
     <init>(...);
 }
 
-# Keep @HiltViewModel annotated classes
--keep @dagger.hilt.android.lifecycle.HiltViewModel class * {
+# Keep ViewModel Factory classes
+-keep class **$Factory {
     <init>(...);
 }
-
-# Keep Hilt generated modules
--keep class **_HiltModules { *; }
--keep class **_HiltModules$* { *; }
--keep class **_Factory { *; }
--keep class **_MembersInjector { *; }
--keep class **Hilt* { *; }
-
-# Keep Hilt entry points
--keep @dagger.hilt.InstallIn class * { *; }
 -keep @dagger.hilt.android.AndroidEntryPoint class * {
     <init>(...);
     public <fields>;

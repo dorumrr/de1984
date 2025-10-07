@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.core.graphics.drawable.toBitmap
-import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.dorumrr.de1984.data.model.PackageEntity
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
@@ -18,7 +17,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 private data class BlockingState(
     val isNetworkBlocked: Boolean,
@@ -27,8 +25,8 @@ private data class BlockingState(
     val roamingBlocked: Boolean
 )
 
-class AndroidPackageDataSource @Inject constructor(
-    @ApplicationContext private val context: Context,
+class AndroidPackageDataSource(
+    private val context: Context,
     private val firewallRepository: FirewallRepository
 ) : PackageDataSource {
 

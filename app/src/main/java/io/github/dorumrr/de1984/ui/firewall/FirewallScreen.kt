@@ -34,7 +34,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
@@ -45,7 +44,7 @@ import io.github.dorumrr.de1984.utils.Constants
 @Composable
 fun FirewallScreen(
     viewModel: FirewallViewModel,
-    settingsViewModel: io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel = hiltViewModel()
+    settingsViewModel: io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val settingsUiState by settingsViewModel.uiState.collectAsState()

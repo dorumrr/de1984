@@ -9,11 +9,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class ScreenStateMonitor @Inject constructor(
+class ScreenStateMonitor(
     private val context: Context
 ) {
     

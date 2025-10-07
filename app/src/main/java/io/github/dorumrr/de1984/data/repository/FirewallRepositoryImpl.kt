@@ -1,7 +1,6 @@
 package io.github.dorumrr.de1984.data.repository
 
 import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.dorumrr.de1984.data.database.dao.FirewallRuleDao
 import io.github.dorumrr.de1984.data.mapper.toDomain
 import io.github.dorumrr.de1984.data.mapper.toEntity
@@ -9,13 +8,10 @@ import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class FirewallRepositoryImpl @Inject constructor(
+class FirewallRepositoryImpl(
     private val firewallRuleDao: FirewallRuleDao,
-    @ApplicationContext private val context: Context
+    private val context: Context
 ) : FirewallRepository {
 
     private fun notifyRulesChanged() {

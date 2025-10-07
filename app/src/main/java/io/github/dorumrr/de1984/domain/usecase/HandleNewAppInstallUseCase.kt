@@ -3,16 +3,14 @@ package io.github.dorumrr.de1984.domain.usecase
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
-import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.first
-import javax.inject.Inject
 
-class HandleNewAppInstallUseCase @Inject constructor(
-    @ApplicationContext private val context: Context,
+class HandleNewAppInstallUseCase constructor(
+    private val context: Context,
     private val firewallRepository: FirewallRepository,
     private val errorHandler: ErrorHandler
 ) {

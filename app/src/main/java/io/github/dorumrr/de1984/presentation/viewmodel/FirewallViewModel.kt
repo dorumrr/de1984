@@ -5,8 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.FirewallFilterState
@@ -21,10 +22,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class FirewallViewModel @Inject constructor(
+class FirewallViewModel(
     application: Application,
     private val getNetworkPackagesUseCase: GetNetworkPackagesUseCase,
     private val manageNetworkAccessUseCase: ManageNetworkAccessUseCase,
@@ -224,6 +223,28 @@ class FirewallViewModel @Inject constructor(
     fun onVpnPermissionDenied() {
         _uiState.value = _uiState.value.copy(isFirewallEnabled = false)
         saveFirewallState(false)
+    }
+
+    class Factory(
+        private val application: Application,
+        private val getNetworkPackagesUseCase: GetNetworkPackagesUseCase,
+        private val manageNetworkAccessUseCase: ManageNetworkAccessUseCase,
+        private val superuserBannerState: SuperuserBannerState,
+        private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(FirewallViewModel::class.java)) {
+                return FirewallViewModel(
+                    application,
+                    getNetworkPackagesUseCase,
+                    manageNetworkAccessUseCase,
+                    superuserBannerState,
+                    permissionManager
+                ) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
     }
 }
 

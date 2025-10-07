@@ -1,8 +1,8 @@
 package io.github.dorumrr.de1984.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.usecase.GetPackagesUseCase
@@ -15,10 +15,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class PackagesViewModel @Inject constructor(
+class PackagesViewModel(
     private val getPackagesUseCase: GetPackagesUseCase,
     private val managePackageUseCase: ManagePackageUseCase,
     private val superuserBannerState: SuperuserBannerState,
@@ -172,6 +170,26 @@ class PackagesViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    class Factory(
+        private val getPackagesUseCase: GetPackagesUseCase,
+        private val managePackageUseCase: ManagePackageUseCase,
+        private val superuserBannerState: SuperuserBannerState,
+        private val rootManager: RootManager
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(PackagesViewModel::class.java)) {
+                return PackagesViewModel(
+                    getPackagesUseCase,
+                    managePackageUseCase,
+                    superuserBannerState,
+                    rootManager
+                ) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
     }
 }
 

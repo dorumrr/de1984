@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import dagger.hilt.android.AndroidEntryPoint
 import io.github.dorumrr.de1984.data.service.NewAppNotificationManager
 import io.github.dorumrr.de1984.domain.usecase.HandleNewAppInstallUseCase
 import io.github.dorumrr.de1984.utils.Constants
@@ -12,15 +11,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@AndroidEntryPoint
+
 class PackageAddedReceiver : BroadcastReceiver() {
     
-    @Inject
+    
     lateinit var handleNewAppInstallUseCase: HandleNewAppInstallUseCase
     
-    @Inject
+    
     lateinit var newAppNotificationManager: NewAppNotificationManager
     
     companion object {

@@ -37,6 +37,8 @@ android {
                 "proguard-rules.pro"
             )
             isProfileable = false
+            // Use debug signing for reproducible builds
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             isDebuggable = true
@@ -77,9 +79,9 @@ android {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName ?: "unknown"
             output.outputFileName = if (name.contains("release")) {
-                "de1984-release-v${versionName}.apk"
+                "de1984-v${versionName}-release.apk"
             } else {
-                "de1984-debug-v${versionName}.apk"
+                "de1984-v${versionName}-debug.apk"
             }
         }
     }

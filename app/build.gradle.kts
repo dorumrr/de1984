@@ -80,7 +80,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val versionName = defaultConfig.versionName?.replace(".", "_") ?: "unknown"
+            val versionName = defaultConfig.versionName ?: "unknown"
             output.outputFileName = if (name.contains("release")) {
                 "de1984-release-v${versionName}.apk"
             } else {

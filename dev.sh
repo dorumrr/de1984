@@ -11,12 +11,12 @@ APP_ID_DEBUG="${APP_ID}.debug"
 
 # Extract version from build.gradle.kts (now using hardcoded versionName)
 APP_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
-VERSION_UNDERSCORE=$(echo "$APP_VERSION" | tr '.' '_')
 
-APK_PATH_DEBUG="app/build/outputs/apk/debug/de1984-debug-v${VERSION_UNDERSCORE}.apk"
-APK_PATH_RELEASE="app/build/outputs/apk/release/de1984-release-v${VERSION_UNDERSCORE}.apk"
-APK_PATH_RELEASE_ALIGNED="app/build/outputs/apk/release/de1984-release-v${VERSION_UNDERSCORE}-aligned.apk"
-APK_PATH_RELEASE_SIGNED="app/build/outputs/apk/release/de1984-release-v${VERSION_UNDERSCORE}-signed.apk"
+
+APK_PATH_DEBUG="app/build/outputs/apk/debug/de1984-debug-v${APP_VERSION}.apk"
+APK_PATH_RELEASE="app/build/outputs/apk/release/de1984-release-v${APP_VERSION}.apk"
+APK_PATH_RELEASE_ALIGNED="app/build/outputs/apk/release/de1984-release-v${APP_VERSION}-aligned.apk"
+APK_PATH_RELEASE_SIGNED="app/build/outputs/apk/release/de1984-release-v${APP_VERSION}-signed.apk"
 SCREENSHOT_DIR="screenshots"
 KEYSTORE_PATH="release-keystore.jks"
 

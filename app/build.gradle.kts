@@ -19,18 +19,19 @@ android {
 
         vectorDrawables {
             useSupportLibrary = true
-            generatedDensities = []
+            generatedDensities?.clear()
         }
     }
 
-    aaptOptions {
-        cruncherEnabled = false
+    androidResources {
+        noCompress += listOf()
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            isCrunchPngs = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

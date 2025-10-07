@@ -19,7 +19,12 @@ android {
 
         vectorDrawables {
             useSupportLibrary = true
+            generatedDensities = []
         }
+    }
+
+    aaptOptions {
+        cruncherEnabled = false
     }
 
     buildTypes {

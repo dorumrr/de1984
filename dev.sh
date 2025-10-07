@@ -48,6 +48,25 @@ log_header() {
     echo -e "\n${BLUE}🔷 $1${NC}"
 }
 
+log_big_red() {
+    echo -e "\n${RED}🚨🚨🚨 $1 🚨🚨🚨${NC}\n"
+}
+
+log_github_reminder() {
+    local apk_file="$1"
+    echo ""
+    echo -e "${GREEN}✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅${NC}"
+    echo -e "${GREEN}    ✅✅✅               UPLOAD TO GITHUB RELEASES               ✅✅✅${NC}"
+    echo -e "${GREEN}✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅${NC}"
+    echo ""
+    echo -e "${GREEN}📦 File: ${NC}\033[1m${RED}$(basename "$apk_file")\033[0m"
+    echo -e "${BLUE}🔗 Upload to: ${NC}\033[1m${RED}https://github.com/dorumrr/de1984/releases\033[0m"
+    echo -e "${NC}⚠️  F-Droid will verify against this signed APK${NC}"
+    echo ""
+    echo -e "${GREEN}✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅${NC}"
+    echo ""
+}
+
 # Check if ADB is available
 check_adb() {
     if ! command -v adb &> /dev/null; then
@@ -307,18 +326,16 @@ build_release_apk() {
     log_info "Use './dev.sh release' to build and sign a release APK"
 }
 
-# Build both debug and unsigned release APKs
+# Build debug APK only
 build_all_apks() {
-    log_header "Building Debug and Release APKs"
+    log_header "Building Debug APK"
 
     build_debug_apk
-    echo ""
-    build_release_apk
 
     echo ""
-    log_success "Build complete!"
+    log_success "Debug build complete!"
     log_info "Debug APK: $APK_PATH_DEBUG"
-    log_info "Release APK (unsigned): $APK_PATH_RELEASE"
+    log_info "This APK is signed with debug key and ready for development/testing"
 }
 
 # Uninstall existing app
@@ -739,10 +756,16 @@ build_and_sign_release() {
     # Sign it
     sign_release_apk
 
+    # Clean up intermediate files (keep only the final signed APK)
+    rm -f "$APK_PATH_RELEASE"
+
     echo ""
     log_success "Release build complete!"
     log_info "Signed APK: $APK_PATH_RELEASE_SIGNED"
-    log_info "This APK can be distributed to users"
+    log_info "This APK is ready for distribution"
+
+    # Show prominent GitHub upload reminder
+    log_github_reminder "$APK_PATH_RELEASE_SIGNED"
 }
 
 # Show help
@@ -761,8 +784,8 @@ show_help() {
     echo "  uninstall                  - Uninstall app only"
     echo ""
     echo "Build Commands:"
-    echo "  build                      - Build debug and unsigned release APKs"
-    echo "  release                    - Build and sign release APK (ready for distribution)"
+    echo "  build                      - Build debug APK (for development/testing)"
+    echo "  release                    - Build and sign release APK (for GitHub releases)"
     echo "  create-keystore            - Create keystore for signing releases"
     echo ""
     echo "Emulator Commands:"
@@ -775,16 +798,16 @@ show_help() {
     echo "Examples:"
     echo "  ./dev.sh install device      - Install debug APK on physical device"
     echo "  ./dev.sh install emulator    - Install debug APK on emulator"
-    echo "  ./dev.sh build               - Build debug + unsigned release APKs"
+    echo "  ./dev.sh build               - Build debug APK for development"
     echo "  ./dev.sh create-keystore     - Create keystore (first time only)"
-    echo "  ./dev.sh release             - Build and sign release APK"
+    echo "  ./dev.sh release             - Build and sign release APK for GitHub"
     echo "  ./dev.sh emulator            - Start default emulator"
     echo "  ./dev.sh screenshot          - Take screenshot"
     echo ""
     echo "Release Workflow:"
     echo "  1. ./dev.sh create-keystore  - Create keystore (once)"
     echo "  2. ./dev.sh release          - Build and sign release APK"
-    echo "  3. Distribute app-release.apk to users"
+    echo "  3. Upload signed APK to GitHub releases (F-Droid will verify against it)"
     echo ""
 }
 

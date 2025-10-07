@@ -36,14 +36,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-
-
+            isProfileable = false
         }
         debug {
             isDebuggable = true
             applicationIdSuffix = ".debug"
-
-
         }
     }
 

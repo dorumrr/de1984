@@ -34,14 +34,13 @@ import kotlinx.coroutines.withContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import io.github.dorumrr.de1984.BuildConfig
+
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.PermissionInfo
 import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsUiState
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
-import io.github.dorumrr.de1984.presentation.viewmodel.UpdateCheckState
-import io.github.dorumrr.de1984.ui.components.UpdateAvailableDialog
+
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
 import io.github.dorumrr.de1984.ui.common.De1984TopBar
@@ -55,13 +54,13 @@ fun SettingsScreen(
     val context = LocalContext.current
     val settingsUiState by settingsViewModel.uiState.collectAsState()
     val permissionUiState by permissionViewModel.uiState.collectAsState()
-    val updateCheckState by settingsViewModel.updateCheckState.collectAsState()
+
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     var lastClickTime by remember { mutableLongStateOf(0L) }
     var showRootTestDialog by remember { mutableStateOf(false) }
     var rootTestResult by remember { mutableStateOf<String?>(null) }
-    var showUpdateDialog by remember { mutableStateOf(false) }
+
     val listState = rememberLazyListState()
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -93,7 +92,7 @@ fun SettingsScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 permissionViewModel.refreshPermissions()
                 settingsViewModel.requestRootPermission()
-                settingsViewModel.refreshUpdateCheckState()
+
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -268,23 +267,7 @@ fun SettingsScreen(
                 )
             }
 
-            if (BuildConfig.IS_SELF_DISTRIBUTED) {
-                item {
-                    UpdateCard(
-                        settingsUiState = settingsUiState,
-                        updateCheckState = updateCheckState,
-                        onAutoCheckUpdatesChanged = { enabled ->
-                            settingsViewModel.setAutoCheckUpdates(enabled)
-                        },
-                        onCheckForUpdates = {
-                            settingsViewModel.checkForUpdates()
-                        },
-                        onShowUpdateDialog = {
-                            showUpdateDialog = true
-                        }
-                    )
-                }
-            }
+
 
             item {
                 Card(
@@ -343,19 +326,7 @@ fun SettingsScreen(
             }
         }
 
-        if (showUpdateDialog && updateCheckState is UpdateCheckState.Available) {
-            val availableState = updateCheckState as UpdateCheckState.Available
-            UpdateAvailableDialog(
-                currentVersion = BuildConfig.VERSION_NAME,
-                newVersion = availableState.version,
-                releaseNotes = availableState.releaseNotes,
-                downloadUrl = availableState.downloadUrl,
-                onDismiss = {
-                    showUpdateDialog = false
-                    settingsViewModel.resetUpdateCheckState()
-                }
-            )
-        }
+
 
         if (showRootTestDialog && rootTestResult != null) {
             AlertDialog(
@@ -1009,142 +980,5 @@ private suspend fun testRootAccess(): String = withContext(Dispatchers.IO) {
     }
 }
 
-@Composable
-private fun UpdateCard(
-    settingsUiState: SettingsUiState,
-    updateCheckState: UpdateCheckState,
-    onAutoCheckUpdatesChanged: (Boolean) -> Unit,
-    onCheckForUpdates: () -> Unit,
-    onShowUpdateDialog: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Constants.UI.PADDING_CARD_LARGE)
-        ) {
-            Text(
-                text = "Updates",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
 
-            Spacer(modifier = Modifier.height(Constants.UI.SPACING_STANDARD))
-
-            // Update source info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Update Source",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "GitHub (${BuildConfig.GITHUB_REPO})",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(Constants.UI.SPACING_STANDARD))
-
-            HorizontalDivider()
-
-            Spacer(modifier = Modifier.height(Constants.UI.SPACING_STANDARD))
-
-            // Auto-check toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Auto-check for updates",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "Check for updates on app launch",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = settingsUiState.autoCheckUpdates,
-                    onCheckedChange = onAutoCheckUpdatesChanged
-                )
-            }
-
-            Spacer(modifier = Modifier.height(Constants.UI.SPACING_STANDARD))
-
-            HorizontalDivider()
-
-            Spacer(modifier = Modifier.height(Constants.UI.SPACING_STANDARD))
-
-            // Manual check button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = updateCheckState !is UpdateCheckState.Checking) {
-                        onCheckForUpdates()
-                    }
-                    .padding(vertical = Constants.UI.SPACING_SMALL),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Check for updates",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = when (updateCheckState) {
-                            is UpdateCheckState.Checking -> "Checking..."
-                            is UpdateCheckState.Available -> "Update available: ${updateCheckState.version}"
-                            is UpdateCheckState.UpToDate -> "Up to date"
-                            is UpdateCheckState.Error -> "Check failed: ${updateCheckState.message}"
-                            else -> "Tap to check"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = when (updateCheckState) {
-                            is UpdateCheckState.Available -> MaterialTheme.colorScheme.primary
-                            is UpdateCheckState.Error -> MaterialTheme.colorScheme.error
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-
-                when (updateCheckState) {
-                    is UpdateCheckState.Checking -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                    is UpdateCheckState.Available -> {
-                        IconButton(onClick = onShowUpdateDialog) {
-                            Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = "Download update",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                    else -> {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Check for updates"
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 

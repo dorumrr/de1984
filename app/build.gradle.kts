@@ -37,21 +37,13 @@ android {
                 "proguard-rules.pro"
             )
 
-            val isSelfDistributed = project.findProperty("IS_SELF_DISTRIBUTED")
-                ?.toString()?.toBoolean() ?: false
 
-            buildConfigField("boolean", "IS_SELF_DISTRIBUTED", if (isSelfDistributed) "true" else "false")
-            buildConfigField("String", "GITHUB_REPO", "\"dorumrr/de1984\"")
-            buildConfigField("String", "UPDATE_CHECK_URL",
-                "\"https://api.github.com/repos/dorumrr/de1984/releases/latest\"")
         }
         debug {
             isDebuggable = true
             applicationIdSuffix = ".debug"
 
-            buildConfigField("Boolean", "IS_SELF_DISTRIBUTED", "false")
-            buildConfigField("String", "GITHUB_REPO", "\"dorumrr/de1984\"")
-            buildConfigField("String", "UPDATE_CHECK_URL", "\"\"")
+
         }
     }
 
@@ -121,7 +113,7 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     ksp("com.google.dagger:hilt-compiler:2.48.1")
 
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

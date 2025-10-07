@@ -12,8 +12,7 @@ import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
-import io.github.dorumrr.de1984.data.updater.UpdateChecker
-import io.github.dorumrr.de1984.data.updater.UpdateResult
+
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,8 +25,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val permissionManager: PermissionManager,
-    private val rootManager: RootManager,
-    private val updateChecker: UpdateChecker
+    private val rootManager: RootManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -35,33 +33,14 @@ class SettingsViewModel @Inject constructor(
 
     val rootStatus: StateFlow<RootStatus> = rootManager.rootStatus
 
-    private val _updateCheckState = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
-    val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
+
     
     init {
         loadSettings()
         loadSystemInfo()
-        loadCachedUpdateResult()
+        cleanupOrphanedPreferences()
     }
-    
-    private fun loadCachedUpdateResult() {
-        viewModelScope.launch {
-            updateChecker.getLastCheckResult()?.let { result ->
-                when (result) {
-                    is UpdateResult.Available -> {
-                        _updateCheckState.value = UpdateCheckState.Available(
-                            version = result.version,
-                            downloadUrl = result.downloadUrl,
-                            releaseNotes = result.releaseNotes
-                        )
-                    }
-                    else -> {
-                        // Don't show cached error or up-to-date states
-                    }
-                }
-            }
-        }
-    }
+
 
     fun requestRootPermission() {
         viewModelScope.launch {
@@ -83,8 +62,8 @@ class SettingsViewModel @Inject constructor(
                     Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                     Constants.Settings.DEFAULT_FIREWALL_POLICY
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY,
-                newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS),
-                autoCheckUpdates = prefs.getBoolean("auto_check_updates", true)
+                newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS)
+
             )
         }
     }
@@ -209,67 +188,21 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(message = null)
     }
 
-    fun checkForUpdates() {
-        viewModelScope.launch {
-            _updateCheckState.value = UpdateCheckState.Checking
-
-            when (val result = updateChecker.checkForUpdate()) {
-                is UpdateResult.Available -> {
-                    _updateCheckState.value = UpdateCheckState.Available(
-                        version = result.version,
-                        downloadUrl = result.downloadUrl,
-                        releaseNotes = result.releaseNotes
-                    )
-                }
-                is UpdateResult.UpToDate -> {
-                    _updateCheckState.value = UpdateCheckState.UpToDate
-                }
-                is UpdateResult.Error -> {
-                    _updateCheckState.value = UpdateCheckState.Error(result.message)
-                }
-                is UpdateResult.NotApplicable -> {
-                    // Should not happen in self-distributed builds
-                    _updateCheckState.value = UpdateCheckState.Idle
-                }
-            }
-        }
-    }
-
-    fun resetUpdateCheckState() {
-        _updateCheckState.value = UpdateCheckState.Idle
-    }
-
-    fun refreshUpdateCheckState() {
-        viewModelScope.launch {
-            updateChecker.getLastCheckResult()?.let { result ->
-                when (result) {
-                    is UpdateResult.Available -> {
-                        _updateCheckState.value = UpdateCheckState.Available(
-                            version = result.version,
-                            downloadUrl = result.downloadUrl,
-                            releaseNotes = result.releaseNotes
-                        )
-                    }
-                    is UpdateResult.UpToDate -> {
-                        _updateCheckState.value = UpdateCheckState.UpToDate
-                    }
-                    is UpdateResult.Error -> {
-                        _updateCheckState.value = UpdateCheckState.Error(result.message)
-                    }
-                    else -> {
-                        // Keep current state for NotApplicable
-                    }
-                }
-            }
-        }
-    }
-
-    fun setAutoCheckUpdates(enabled: Boolean) {
-        viewModelScope.launch {
-            val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("auto_check_updates", enabled).apply()
-            _uiState.value = _uiState.value.copy(autoCheckUpdates = enabled)
-        }
+    /**
+     * One-time cleanup of orphaned update-related preferences.
+     * This method removes preferences that are no longer used after update system removal.
+     */
+    private fun cleanupOrphanedPreferences() {
+        val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
+        prefs.edit()
+            .remove("auto_check_updates")
+            .remove("last_update_check")
+            .remove("last_update_check_result")
+            .remove("last_update_version")
+            .remove("last_update_url")
+            .remove("last_update_notes")
+            .remove("last_update_error")
+            .apply()
     }
 }
 
@@ -299,9 +232,9 @@ data class SettingsUiState(
 
     val hasBasicPermissions: Boolean = true,
     val hasEnhancedPermissions: Boolean = false,
-    val hasAdvancedPermissions: Boolean = false,
+    val hasAdvancedPermissions: Boolean = false
 
-    val autoCheckUpdates: Boolean = true
+
 )
 
 data class SystemInfo(
@@ -312,14 +245,4 @@ data class SystemInfo(
     val architecture: String
 )
 
-sealed class UpdateCheckState {
-    object Idle : UpdateCheckState()
-    object Checking : UpdateCheckState()
-    object UpToDate : UpdateCheckState()
-    data class Available(
-        val version: String,
-        val downloadUrl: String,
-        val releaseNotes: String
-    ) : UpdateCheckState()
-    data class Error(val message: String) : UpdateCheckState()
-}
+

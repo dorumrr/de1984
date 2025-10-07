@@ -56,7 +56,7 @@ A privacy-focused Firewall and Package Manager for Android devices.
 
 ## 🔐 Permissions
 
-- **INTERNET**: For firewall functionality (VPN-based) and update checking (GitHub releases only)
+- **INTERNET**: For firewall functionality (VPN-based)
 - **ACCESS_NETWORK_STATE**: Monitor network connectivity
 - **BIND_VPN_SERVICE**: Create local VPN for firewall
 - **QUERY_ALL_PACKAGES**: View installed apps (optional)
@@ -70,23 +70,19 @@ If you find De1984 useful, consider supporting development:
 
 *Your support helps maintain and improve De1984 app.*
 
-## 📥 Installation & Updates
+## 📥 Installation
 
 ### F-Droid (Recommended)
-- ✅ Automatic update notifications via F-Droid app
+- ✅ Automatic updates via F-Droid app
 - ✅ Signed by F-Droid
 - ✅ Reproducible builds
 
 ### GitHub Releases (Latest)
-- ✅ Get updates faster (before F-Droid)
+- ✅ Get latest releases faster (before F-Droid)
 - ✅ Signed by developer
-- ✅ In-app update checker (can be enabled in Settings)
 - ⚠️ Manual installation required
 
 **Note:** You cannot switch between F-Droid and GitHub versions (different signatures). Choose one and stick with it.
-
-### Privacy Note
-- **No tracking**: Update checker only queries GitHub's public API (no personal data sent)
 
 ## 🤝 Contributing
 

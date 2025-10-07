@@ -3,7 +3,7 @@
 # ================================================================================================
 # Purpose: Enable minification (~30-40% APK reduction) while preserving all functionality
 # F-Droid Compliant: Yes (strips analytics, telemetry, debug logging)
-# Covers: Hilt DI, Room, Compose, Kotlin, OkHttp, Coroutines
+# Covers: Hilt DI, Room, Compose, Kotlin, Coroutines
 # Last Updated: 2025-10-05
 # ================================================================================================
 
@@ -198,28 +198,7 @@
 # Don't warn about coroutines debug mode
 -dontwarn kotlinx.coroutines.debug.**
 
-# ================================================================================================
-# OKHTTP (FOR UPDATE CHECKER)
-# ================================================================================================
 
-# Keep OkHttp classes
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
--keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
-
-# Keep Okio
--keep class okio.** { *; }
--keepnames class okio.**
-
-# Platform-specific implementations (SSL/TLS)
--keep class okhttp3.internal.platform.** { *; }
--keepclassmembers class okhttp3.internal.platform.Platform {
-    public <methods>;
-}
-
-# Don't warn about OkHttp internal
--dontwarn okhttp3.internal.**
--dontwarn okio.**
 
 # ================================================================================================
 # ANDROID ARCHITECTURE COMPONENTS

@@ -68,7 +68,11 @@ android {
     kotlinOptions {
         jvmTarget = "17"
         freeCompilerArgs += listOf(
-            "-Xsuppress-version-warnings"
+            "-Xsuppress-version-warnings",
+            // Add reproducible build flags to fix classes.dex differences
+            "-Xno-param-assertions",
+            "-Xno-call-assertions",
+            "-Xno-receiver-assertions"
         )
     }
 

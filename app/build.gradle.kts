@@ -5,6 +5,15 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// Disable baseline profiles for reproducible builds (F-Droid compatibility)
+tasks.whenTaskAdded {
+    if (name.contains("compileReleaseArtProfile") ||
+        name.contains("mergeReleaseArtProfile") ||
+        name.contains("ArtProfile")) {
+        enabled = false
+    }
+}
+
 android {
     namespace = "io.github.dorumrr.de1984"
     compileSdk = 34
@@ -27,10 +36,15 @@ android {
         noCompress += listOf()
     }
 
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false  // Disabled due to R8 base.jar issue
+            isShrinkResources = false
             isCrunchPngs = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

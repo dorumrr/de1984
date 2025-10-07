@@ -53,6 +53,10 @@ android {
             isProfileable = false
             // Use debug signing for reproducible builds
             signingConfig = signingConfigs.getByName("debug")
+
+            // Add deterministic BuildConfig fields for reproducible builds
+            buildConfigField("String", "BUILD_TIME", "\"1970-01-01T00:00:00Z\"")
+            buildConfigField("boolean", "REPRODUCIBLE_BUILD", "true")
         }
         debug {
             isDebuggable = true
@@ -76,6 +80,15 @@ android {
         )
     }
 
+    // KSP configuration for reproducible builds
+    ksp {
+        // Ensure deterministic processing order for Room
+        arg("room.incremental", "true")
+        arg("room.expandProjection", "true")
+        // Create schemas directory for deterministic Room schema generation
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -88,6 +101,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Additional excludes for reproducible builds
+            excludes += "/META-INF/versions/**"
+            excludes += "**/kotlin_builtins"
             pickFirsts += listOf("META-INF/INDEX.LIST", "META-INF/io.netty.versions.properties")
         }
     }

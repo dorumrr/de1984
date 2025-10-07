@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
+import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.domain.usecase.HandleNewAppInstallUseCase
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.*
@@ -47,6 +48,12 @@ class PackageMonitoringService : Service() {
     
     override fun onCreate() {
         super.onCreate()
+
+        // Initialize dependencies manually
+        val app = application as De1984Application
+        val deps = app.dependencies
+        handleNewAppInstallUseCase = deps.provideHandleNewAppInstallUseCase()
+        newAppNotificationManager = deps.newAppNotificationManager
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

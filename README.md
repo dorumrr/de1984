@@ -173,13 +173,13 @@ See [RELEASE_SIGNING_GUIDE.md](RELEASE_SIGNING_GUIDE.md) for detailed instructio
 - **UI Framework**: Jetpack Compose + Material 3
 - **Architecture**: MVVM + Repository pattern
 - **Database**: Room for local storage
-- **DI**: Hilt
+- **DI**: Manual Dependency Injection (ServiceLocator pattern)
 - **Root Operations**: LibSU
 
 ### Code Quality
 - **DRY, KISS, Clean Code** principles
 - **MVVM + Repository** architecture
-- **Hilt Dependency Injection**
+- **Manual Dependency Injection**
 - **Material Design 3** compliance
 
 ## 📄 License

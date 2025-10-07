@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
@@ -83,6 +84,15 @@ class FirewallVpnService : VpnService() {
     
     override fun onCreate() {
         super.onCreate()
+
+        // Initialize dependencies manually
+        val app = application as De1984Application
+        val deps = app.dependencies
+        firewallRepository = deps.firewallRepository
+        networkStateMonitor = deps.networkStateMonitor
+        screenStateMonitor = deps.screenStateMonitor
+        packageDataSource = deps.packageDataSource
+
         createNotificationChannel()
         startMonitoring()
 

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.data.service.NewAppNotificationManager
 import io.github.dorumrr.de1984.domain.usecase.HandleNewAppInstallUseCase
 import io.github.dorumrr.de1984.utils.Constants
@@ -14,28 +15,27 @@ import kotlinx.coroutines.launch
 
 
 class PackageAddedReceiver : BroadcastReceiver() {
-    
-    
-    lateinit var handleNewAppInstallUseCase: HandleNewAppInstallUseCase
-    
-    
-    lateinit var newAppNotificationManager: NewAppNotificationManager
-    
+
     companion object {
         private const val TAG = "PackageAddedReceiver"
     }
-    
+
     override fun onReceive(context: Context, intent: Intent?) {
         try {
+            // Initialize dependencies
+            val app = context.applicationContext as De1984Application
+            val handleNewAppInstallUseCase = app.dependencies.provideHandleNewAppInstallUseCase()
+            val newAppNotificationManager = app.dependencies.newAppNotificationManager
+
             val packageName = validateAndExtractPackageName(context, intent)
             if (packageName == null) {
                 return
             }
-            
+
             if (!areNewAppNotificationsEnabled(context)) {
                 return
             }
-            
+
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             scope.launch {
                 try {

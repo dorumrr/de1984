@@ -9,6 +9,7 @@ import io.github.dorumrr.de1984.data.database.De1984Database
 import io.github.dorumrr.de1984.data.database.dao.FirewallRuleDao
 import io.github.dorumrr.de1984.data.datasource.AndroidPackageDataSource
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
+import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
 import io.github.dorumrr.de1984.data.monitor.ScreenStateMonitor
 import io.github.dorumrr.de1984.data.repository.FirewallRepositoryImpl
 import io.github.dorumrr.de1984.data.repository.NetworkPackageRepositoryImpl
@@ -74,7 +75,7 @@ class De1984Dependencies(private val context: Context) {
 
     // Note: PackageDataSource depends on FirewallRepository (circular dependency)
     // We use lazy initialization to break the cycle
-    private val packageDataSource: PackageDataSource by lazy {
+    val packageDataSource: PackageDataSource by lazy {
         AndroidPackageDataSource(context, firewallRepository)
     }
 
@@ -96,6 +97,10 @@ class De1984Dependencies(private val context: Context) {
 
     val screenStateMonitor: ScreenStateMonitor by lazy {
         ScreenStateMonitor(context)
+    }
+
+    val networkStateMonitor: NetworkStateMonitor by lazy {
+        NetworkStateMonitor(context)
     }
 
     // =============================================================================================

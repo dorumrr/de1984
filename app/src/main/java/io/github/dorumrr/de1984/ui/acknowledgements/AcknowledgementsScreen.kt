@@ -20,7 +20,6 @@ fun AcknowledgementsScreen(
         Library("Material Design 3", "Latest"),
         Library("AndroidX Navigation", "2.7.6"),
         Library("Room Database", "2.6.1"),
-        Library("Dagger Hilt", "2.48.1"),
         Library("Kotlin", "1.9.x"),
         Library("Kotlin Coroutines", "1.7.3")
     )

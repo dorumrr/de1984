@@ -3,8 +3,8 @@
 # ================================================================================================
 # Purpose: Enable minification (~30-40% APK reduction) while preserving all functionality
 # F-Droid Compliant: Yes (strips analytics, telemetry, debug logging)
-# Covers: Hilt DI, Room, Compose, Kotlin, Coroutines
-# Last Updated: 2025-10-05
+# Covers: Manual DI, Room, Compose, Kotlin, Coroutines
+# Last Updated: 2025-10-07
 # ================================================================================================
 
 # ================================================================================================
@@ -57,11 +57,6 @@
 # Keep ViewModel Factory classes
 -keep class **$Factory {
     <init>(...);
-}
--keep @dagger.hilt.android.AndroidEntryPoint class * {
-    <init>(...);
-    public <fields>;
-    public <methods>;
 }
 
 # ================================================================================================
@@ -233,10 +228,10 @@
 # Keep data models
 -keep class io.github.dorumrr.de1984.data.model.** { *; }
 
-# Keep use cases (injected via Hilt)
+# Keep use cases (injected via manual DI)
 -keep class io.github.dorumrr.de1984.domain.usecase.** { *; }
 
-# Keep repositories (injected via Hilt)
+# Keep repositories (injected via manual DI)
 -keep class io.github.dorumrr.de1984.domain.repository.** { *; }
 -keep class io.github.dorumrr.de1984.data.repository.** { *; }
 

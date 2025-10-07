@@ -13,10 +13,10 @@ APP_ID_DEBUG="${APP_ID}.debug"
 APP_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
 
 
-APK_PATH_DEBUG="app/build/outputs/apk/debug/de1984-debug-v${APP_VERSION}.apk"
-APK_PATH_RELEASE="app/build/outputs/apk/release/de1984-release-v${APP_VERSION}.apk"
-APK_PATH_RELEASE_ALIGNED="app/build/outputs/apk/release/de1984-release-v${APP_VERSION}-aligned.apk"
-APK_PATH_RELEASE_SIGNED="app/build/outputs/apk/release/de1984-release-v${APP_VERSION}-signed.apk"
+APK_PATH_DEBUG="app/build/outputs/apk/debug/de1984-v${APP_VERSION}-debug.apk"
+APK_PATH_RELEASE="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release.apk"
+APK_PATH_RELEASE_ALIGNED="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release-aligned.apk"
+APK_PATH_RELEASE_SIGNED="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release-signed.apk"
 SCREENSHOT_DIR="screenshots"
 KEYSTORE_PATH="release-keystore.jks"
 

@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.data.service.NewAppNotificationManager
 import io.github.dorumrr.de1984.domain.usecase.ManageNetworkAccessUseCase
 import io.github.dorumrr.de1984.utils.Constants
@@ -15,17 +16,18 @@ import kotlinx.coroutines.launch
 
 
 class NewAppNotificationReceiver : BroadcastReceiver() {
-    
-    
-    lateinit var manageNetworkAccessUseCase: ManageNetworkAccessUseCase
-    
+
     companion object {
         private const val TAG = "NewAppNotificationReceiver"
         private const val NOTIFICATION_ID_BASE = 2000 // Must match NewAppNotificationManager
     }
-    
+
     override fun onReceive(context: Context, intent: Intent?) {
         try {
+            // Initialize dependencies
+            val app = context.applicationContext as De1984Application
+            val manageNetworkAccessUseCase = app.dependencies.provideManageNetworkAccessUseCase()
+
             val action = intent?.action
             val packageName = intent?.getStringExtra(NewAppNotificationManager.EXTRA_PACKAGE_NAME)
             
@@ -39,22 +41,22 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
             scope.launch {
                 when (action) {
                     NewAppNotificationManager.ACTION_BLOCK_ALL -> {
-                        handleBlockAll(context, packageName)
+                        handleBlockAll(context, packageName, manageNetworkAccessUseCase)
                     }
                     NewAppNotificationManager.ACTION_BLOCK_WIFI -> {
-                        handleBlockWifi(context, packageName)
+                        handleBlockWifi(context, packageName, manageNetworkAccessUseCase)
                     }
                     NewAppNotificationManager.ACTION_BLOCK_MOBILE -> {
-                        handleBlockMobile(context, packageName)
+                        handleBlockMobile(context, packageName, manageNetworkAccessUseCase)
                     }
                     NewAppNotificationManager.ACTION_ALLOW_ALL -> {
-                        handleAllowAll(context, packageName)
+                        handleAllowAll(context, packageName, manageNetworkAccessUseCase)
                     }
                     NewAppNotificationManager.ACTION_ALLOW_WIFI -> {
-                        handleAllowWifi(context, packageName)
+                        handleAllowWifi(context, packageName, manageNetworkAccessUseCase)
                     }
                     NewAppNotificationManager.ACTION_ALLOW_MOBILE -> {
-                        handleAllowMobile(context, packageName)
+                        handleAllowMobile(context, packageName, manageNetworkAccessUseCase)
                     }
                     else -> {
                         Log.w(TAG, "   ⚠️ Unknown action: $action")
@@ -69,7 +71,7 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
         }
     }
     
-    private suspend fun handleBlockAll(context: Context, packageName: String) {
+    private suspend fun handleBlockAll(context: Context, packageName: String, manageNetworkAccessUseCase: ManageNetworkAccessUseCase) {
         try {
             val wifiResult = manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked = true)
             val mobileResult = manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked = true)
@@ -86,7 +88,7 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
         }
     }
 
-    private suspend fun handleBlockWifi(context: Context, packageName: String) {
+    private suspend fun handleBlockWifi(context: Context, packageName: String, manageNetworkAccessUseCase: ManageNetworkAccessUseCase) {
         try {
             manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked = true)
                 .onSuccess {
@@ -95,13 +97,13 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
                 .onFailure { error ->
                     Log.e(TAG, "❌ Failed to block WiFi for $packageName: ${error.message}")
                 }
-                
+
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error blocking WiFi for $packageName", e)
         }
     }
 
-    private suspend fun handleBlockMobile(context: Context, packageName: String) {
+    private suspend fun handleBlockMobile(context: Context, packageName: String, manageNetworkAccessUseCase: ManageNetworkAccessUseCase) {
         try {
             manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked = true)
                 .onSuccess {
@@ -110,28 +112,28 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
                 .onFailure { error ->
                     Log.e(TAG, "❌ Failed to block Mobile for $packageName: ${error.message}")
                 }
-                
+
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error blocking Mobile for $packageName", e)
         }
     }
     
-    private suspend fun handleAllowAll(context: Context, packageName: String) {
+    private suspend fun handleAllowAll(context: Context, packageName: String, manageNetworkAccessUseCase: ManageNetworkAccessUseCase) {
         try {
             val wifiResult = manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked = false)
             val mobileResult = manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked = false)
             val roamingResult = manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked = false)
-            
+
             if (wifiResult.isSuccess && mobileResult.isSuccess && roamingResult.isSuccess) {
                 checkFirewallAndRedirect(context)
             }
-            
+
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error allowing all networks for $packageName", e)
         }
     }
-    
-    private suspend fun handleAllowWifi(context: Context, packageName: String) {
+
+    private suspend fun handleAllowWifi(context: Context, packageName: String, manageNetworkAccessUseCase: ManageNetworkAccessUseCase) {
         try {
             manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked = false)
                 .onSuccess {
@@ -146,7 +148,7 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
         }
     }
 
-    private suspend fun handleAllowMobile(context: Context, packageName: String) {
+    private suspend fun handleAllowMobile(context: Context, packageName: String, manageNetworkAccessUseCase: ManageNetworkAccessUseCase) {
         try {
             manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked = false)
                 .onSuccess {

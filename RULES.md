@@ -181,7 +181,7 @@ io.github.dorumrr.de1984/
 │   └── common/                 // Common data utilities
 ├── presentation/               // Presentation Layer
 │   └── viewmodel/              // ViewModels
-├── di/                         // Dependency Injection
+├── De1984Dependencies.kt       // Manual Dependency Injection (ServiceLocator)
 └── utils/                      // Utility classes
     ├── Constants.kt            // All constants centralized
     ├── Extensions.kt           // Kotlin extensions
@@ -206,12 +206,12 @@ io.github.dorumrr.de1984/
 // Current Single Module Structure (Recommended for small projects)
 :app
 └── src/main/java/io/github/dorumrr/de1984/
-    ├── ui/           // All UI components
-    ├── domain/       // All business logic
-    ├── data/         // All data handling
-    ├── presentation/ // All ViewModels
-    ├── di/           // Dependency injection
-    └── utils/        // Shared utilities
+    ├── ui/                      // All UI components
+    ├── domain/                  // All business logic
+    ├── data/                    // All data handling
+    ├── presentation/            // All ViewModels
+    ├── De1984Dependencies.kt    // Manual DI (ServiceLocator)
+    └── utils/                   // Shared utilities
 
 // Future Multi-Module Structure (When project grows)
 :app
@@ -229,20 +229,20 @@ io.github.dorumrr.de1984/
 **Implementation Rules**:
 - **MVVM Pattern**: Model-View-ViewModel for UI components
 - **Repository Pattern**: Abstract data access layer
-- **Dependency Injection**: Use Hilt/Dagger for dependency management
+- **Dependency Injection**: Manual DI using ServiceLocator pattern (De1984Dependencies)
 - **Use Cases**: Encapsulate business logic in use cases
 - **State Management**: Consistent state management across the app
 
 ```kotlin
 // MVVM Implementation Example
-class PackageListViewModel @Inject constructor(
+class PackageListViewModel constructor(
     private val packageRepository: PackageRepository,
     private val packageUseCase: GetPackagesUseCase
 ) : ViewModel() {
-    
-    private val _packages = MutableLiveData<List<PackageInfo>>()
-    val packages: LiveData<List<PackageInfo>> = _packages
-    
+
+    private val _packages = MutableStateFlow<List<PackageInfo>>(emptyList())
+    val packages: StateFlow<List<PackageInfo>> = _packages.asStateFlow()
+
     fun loadPackages() {
         viewModelScope.launch {
             try {
@@ -494,7 +494,7 @@ object Constants {
 
 ### What's Covered
 The ProGuard configuration properly handles:
-- ✅ Hilt DI (ViewModels, factories, modules)
+- ✅ Manual DI (ViewModels, factories, ServiceLocator)
 - ✅ Room Database (entities, DAOs, generated classes)
 - ✅ Jetpack Compose (@Composable, lambdas, state)
 - ✅ Kotlin features (sealed classes, data classes, enums)
@@ -508,7 +508,7 @@ The ProGuard configuration properly handles:
 
 ### Adding New Features
 **No ProGuard changes needed for**:
-- New ViewModels (auto-handled by Hilt rules)
+- New ViewModels (auto-handled by ViewModel rules)
 - New data classes ending in `*UiState` (auto-handled)
 - New sealed classes ending in `*State`, `*Result`, `*Error` (auto-handled)
 - New enums (auto-handled)

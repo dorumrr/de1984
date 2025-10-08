@@ -22,17 +22,18 @@ data class NetworkPackage(
         get() = wifiBlocked && mobileBlocked
 
     val isFullyAllowed: Boolean
-        get() = !wifiBlocked && !mobileBlocked
+        get() = !wifiBlocked && !mobileBlocked && !roamingBlocked
 
     val isPartiallyBlocked: Boolean
-        get() = (wifiBlocked || mobileBlocked) && !isFullyBlocked
+        get() = !isFullyBlocked && !isFullyAllowed
 
     val networkState: String
         get() = when {
             isFullyBlocked -> "Blocked"
             isFullyAllowed -> "Allowed"
-            wifiBlocked && !mobileBlocked -> "WiFi Blocked"
-            !wifiBlocked && mobileBlocked -> "Mobile Blocked"
+            wifiBlocked && !mobileBlocked && !roamingBlocked -> "WiFi Blocked"
+            !wifiBlocked && mobileBlocked && !roamingBlocked -> "Mobile Blocked"
+            !wifiBlocked && !mobileBlocked && roamingBlocked -> "Roaming Blocked"
             else -> "Partial"
         }
 

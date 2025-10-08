@@ -300,36 +300,25 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         binding.allowChip.isEnabled = enabled
         binding.blockChip.isEnabled = enabled
 
-        // Track current state
-        var currentlyBlocked = isBlocked
-
-        // Use setOnCheckedChangeListener for checkable chips
-        binding.allowChip.setOnCheckedChangeListener { _, isChecked ->
-            Log.d(TAG, "Allow chip checked changed: isChecked=$isChecked, currentlyBlocked=$currentlyBlocked")
-            if (isChecked && enabled && currentlyBlocked) {
-                // User clicked Allow when it was Blocked
+        // Simple click listeners - only fire on actual user clicks
+        binding.allowChip.setOnClickListener {
+            if (enabled && !binding.allowChip.isChecked) {
+                // User clicked unchecked Allow chip - switch to Allow
+                binding.allowChip.isChecked = true
                 binding.blockChip.isChecked = false
-                currentlyBlocked = false
-                Log.d(TAG, "Toggling to allow")
                 onToggle(false)
-            } else if (isChecked && enabled) {
-                // Ensure Block is unchecked
-                binding.blockChip.isChecked = false
             }
+            // If already checked, do nothing
         }
 
-        binding.blockChip.setOnCheckedChangeListener { _, isChecked ->
-            Log.d(TAG, "Block chip checked changed: isChecked=$isChecked, currentlyBlocked=$currentlyBlocked")
-            if (isChecked && enabled && !currentlyBlocked) {
-                // User clicked Block when it was Allowed
+        binding.blockChip.setOnClickListener {
+            if (enabled && !binding.blockChip.isChecked) {
+                // User clicked unchecked Block chip - switch to Block
+                binding.blockChip.isChecked = true
                 binding.allowChip.isChecked = false
-                currentlyBlocked = true
-                Log.d(TAG, "Toggling to block")
                 onToggle(true)
-            } else if (isChecked && enabled) {
-                // Ensure Allow is unchecked
-                binding.allowChip.isChecked = false
             }
+            // If already checked, do nothing
         }
     }
 

@@ -230,7 +230,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             onToggle = { blocked ->
                 binding.loadingIndicator.visibility = View.VISIBLE
                 viewModel.setWifiBlocking(pkg.packageName, blocked)
-                // Dialog will auto-update when state changes
+                // Close dialog after a short delay to show loading
+                binding.root.postDelayed({
+                    dialog.dismiss()
+                }, 300)
             }
         )
 
@@ -243,6 +246,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             onToggle = { blocked ->
                 binding.loadingIndicator.visibility = View.VISIBLE
                 viewModel.setMobileBlocking(pkg.packageName, blocked)
+                binding.root.postDelayed({
+                    dialog.dismiss()
+                }, 300)
             }
         )
 
@@ -259,6 +265,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 onToggle = { blocked ->
                     binding.loadingIndicator.visibility = View.VISIBLE
                     viewModel.setRoamingBlocking(pkg.packageName, blocked)
+                    binding.root.postDelayed({
+                        dialog.dismiss()
+                    }, 300)
                 }
             )
         }
@@ -286,18 +295,26 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         // Setup click listeners
         binding.allowChip.setOnClickListener {
-            if (enabled && isBlocked) {
+            Log.d(TAG, "Allow chip clicked: enabled=$enabled, isChecked=${binding.allowChip.isChecked}")
+            if (enabled) {
                 binding.allowChip.isChecked = true
                 binding.blockChip.isChecked = false
-                onToggle(false)
+                if (isBlocked) {
+                    Log.d(TAG, "Toggling to allow")
+                    onToggle(false)
+                }
             }
         }
 
         binding.blockChip.setOnClickListener {
-            if (enabled && !isBlocked) {
+            Log.d(TAG, "Block chip clicked: enabled=$enabled, isChecked=${binding.blockChip.isChecked}")
+            if (enabled) {
                 binding.allowChip.isChecked = false
                 binding.blockChip.isChecked = true
-                onToggle(true)
+                if (!isBlocked) {
+                    Log.d(TAG, "Toggling to block")
+                    onToggle(true)
+                }
             }
         }
     }

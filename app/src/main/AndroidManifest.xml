@@ -61,6 +61,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Temporary test activity for Views migration -->
+        <activity
+            android:name=".ui.TestViewsActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.De1984.Views">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- VPN Service for firewall functionality -->
         <service
             android:name=".data.service.FirewallVpnService"

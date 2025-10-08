@@ -221,6 +221,22 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
 
+        // Track current mobile blocked state
+        var currentMobileBlocked = pkg.mobileBlocked
+
+        // Function to update roaming visibility
+        fun updateRoamingVisibility(mobileBlocked: Boolean) {
+            if (hasCellular && !mobileBlocked) {
+                // Show roaming when mobile is allowed
+                binding.roamingDivider.visibility = View.VISIBLE
+                binding.roamingToggle.root.visibility = View.VISIBLE
+            } else {
+                // Hide roaming when mobile is blocked or no cellular
+                binding.roamingDivider.visibility = View.GONE
+                binding.roamingToggle.root.visibility = View.GONE
+            }
+        }
+
         // Setup WiFi toggle
         setupNetworkToggle(
             binding = binding.wifiToggle,
@@ -239,25 +255,29 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             isBlocked = pkg.mobileBlocked,
             enabled = true,
             onToggle = { blocked ->
+                currentMobileBlocked = blocked
                 viewModel.setMobileBlocking(pkg.packageName, blocked)
+                // Update roaming visibility when mobile state changes
+                updateRoamingVisibility(blocked)
             }
         )
 
-        // Setup Roaming toggle (only if device has cellular)
+        // Setup Roaming toggle (only if device has cellular and mobile is allowed)
         if (hasCellular) {
-            binding.roamingDivider.visibility = View.VISIBLE
-            binding.roamingToggle.root.visibility = View.VISIBLE
             val roamingBinding = binding.roamingToggle
             setupNetworkToggle(
                 binding = roamingBinding,
                 label = "Roaming",
                 isBlocked = pkg.roamingBlocked,
-                enabled = !pkg.mobileBlocked, // Disable if mobile is blocked
+                enabled = true,
                 onToggle = { blocked ->
                     viewModel.setRoamingBlocking(pkg.packageName, blocked)
                 }
             )
         }
+
+        // Set initial roaming visibility
+        updateRoamingVisibility(currentMobileBlocked)
 
         dialog.setContentView(binding.root)
         dialog.show()

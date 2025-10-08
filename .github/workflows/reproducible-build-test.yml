@@ -11,29 +11,34 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: v1.0.0
-      
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      
+
       - name: Build APK (first time)
         run: |
           ./gradlew clean assembleRelease
-          cp app/build/outputs/apk/release/app-release-unsigned.apk build1.apk
-      
+          cp app/build/outputs/apk/release/de1984-v1.0.0-release.apk build1.apk
+
       - name: Clean build directory
         run: ./gradlew clean
-      
+
       - name: Build APK (second time)
         run: |
           ./gradlew assembleRelease
-          cp app/build/outputs/apk/release/app-release-unsigned.apk build2.apk
-      
+          cp app/build/outputs/apk/release/de1984-v1.0.0-release.apk build2.apk
+
       - name: Compare builds
         run: |
-          sha256sum build1.apk build2.apk
+          echo "Build 1 SHA-256:"
+          sha256sum build1.apk
+          echo ""
+          echo "Build 2 SHA-256:"
+          sha256sum build2.apk
+          echo ""
           if diff build1.apk build2.apk; then
             echo "✅ Builds are identical!"
           else

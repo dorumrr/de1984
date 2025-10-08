@@ -131,11 +131,19 @@ class FirewallViewModel(
     
     fun setWifiBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
+            // Optimistically update UI first
+            updatePackageInList(packageName) { pkg ->
+                pkg.copy(wifiBlocked = blocked)
+            }
+
+            // Then persist to database
             manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked)
                 .onSuccess {
-                    loadNetworkPackages()
+                    // Success - UI already updated
                 }
                 .onFailure { error ->
+                    // Revert on failure
+                    loadNetworkPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -146,11 +154,19 @@ class FirewallViewModel(
 
     fun setMobileBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
+            // Optimistically update UI first
+            updatePackageInList(packageName) { pkg ->
+                pkg.copy(mobileBlocked = blocked)
+            }
+
+            // Then persist to database
             manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
                 .onSuccess {
-                    loadNetworkPackages()
+                    // Success - UI already updated
                 }
                 .onFailure { error ->
+                    // Revert on failure
+                    loadNetworkPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -161,17 +177,37 @@ class FirewallViewModel(
 
     fun setRoamingBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
+            // Optimistically update UI first
+            updatePackageInList(packageName) { pkg ->
+                pkg.copy(roamingBlocked = blocked)
+            }
+
+            // Then persist to database
             manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
                 .onSuccess {
-                    loadNetworkPackages()
+                    // Success - UI already updated
                 }
                 .onFailure { error ->
+                    // Revert on failure
+                    loadNetworkPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
                     _uiState.value = _uiState.value.copy(error = error.message)
                 }
         }
+    }
+
+    private fun updatePackageInList(packageName: String, transform: (NetworkPackage) -> NetworkPackage) {
+        val currentPackages = _uiState.value.packages
+        val updatedPackages = currentPackages.map { pkg ->
+            if (pkg.packageName == packageName) {
+                transform(pkg)
+            } else {
+                pkg
+            }
+        }
+        _uiState.value = _uiState.value.copy(packages = updatedPackages)
     }
     
     fun clearError() {

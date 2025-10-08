@@ -67,21 +67,41 @@ class NetworkPackageAdapter(
                 appIcon.visibility = View.GONE
             }
 
-            // Set network status badge and icon
-            if (pkg.isNetworkAllowed) {
-                networkStatusBadge.text = "Allowed"
-                networkStatusBadge.setBackgroundResource(R.drawable.status_badge_complete)
-                networkStatusIcon.setImageResource(android.R.drawable.checkbox_on_background)
-                networkStatusIcon.setColorFilter(
-                    ContextCompat.getColor(itemView.context, android.R.color.holo_green_dark)
-                )
-            } else {
-                networkStatusBadge.text = "Blocked"
-                networkStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
-                networkStatusIcon.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                networkStatusIcon.setColorFilter(
-                    ContextCompat.getColor(itemView.context, android.R.color.holo_red_dark)
-                )
+            // Set network status badge and icon based on granular state
+            when {
+                pkg.isFullyAllowed -> {
+                    networkStatusBadge.text = "Allowed"
+                    networkStatusBadge.setBackgroundResource(R.drawable.status_badge_complete)
+                    networkStatusIcon.setImageResource(android.R.drawable.checkbox_on_background)
+                    networkStatusIcon.setColorFilter(
+                        ContextCompat.getColor(itemView.context, android.R.color.holo_green_dark)
+                    )
+                }
+                pkg.isFullyBlocked -> {
+                    networkStatusBadge.text = "Blocked"
+                    networkStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
+                    networkStatusIcon.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+                    networkStatusIcon.setColorFilter(
+                        ContextCompat.getColor(itemView.context, android.R.color.holo_red_dark)
+                    )
+                }
+                pkg.isPartiallyBlocked -> {
+                    // Show specific state for partial blocking
+                    networkStatusBadge.text = pkg.networkState
+                    networkStatusBadge.setBackgroundResource(R.drawable.status_badge_partial)
+                    networkStatusIcon.setImageResource(android.R.drawable.ic_dialog_alert)
+                    networkStatusIcon.setColorFilter(
+                        ContextCompat.getColor(itemView.context, android.R.color.holo_orange_dark)
+                    )
+                }
+                else -> {
+                    networkStatusBadge.text = "Unknown"
+                    networkStatusBadge.setBackgroundResource(R.drawable.root_status_background)
+                    networkStatusIcon.setImageResource(android.R.drawable.ic_dialog_info)
+                    networkStatusIcon.setColorFilter(
+                        ContextCompat.getColor(itemView.context, android.R.color.darker_gray)
+                    )
+                }
             }
 
             // Set package type badge

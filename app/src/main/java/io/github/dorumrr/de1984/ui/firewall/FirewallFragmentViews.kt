@@ -1,6 +1,8 @@
 package io.github.dorumrr.de1984.ui.firewall
 
+import android.content.Context
 import android.os.Bundle
+import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -11,9 +13,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.chip.Chip
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
+import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionBinding
 import io.github.dorumrr.de1984.databinding.FragmentFirewallBinding
+import io.github.dorumrr.de1984.databinding.NetworkTypeToggleBinding
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
@@ -198,16 +203,103 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
     private fun showPackageActionSheet(pkg: NetworkPackage) {
         val dialog = BottomSheetDialog(requireContext())
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_package_action, null)
+        val binding = BottomSheetPackageActionBinding.inflate(layoutInflater)
 
-        // TODO: Setup bottom sheet content
-        // For now, just toggle WiFi and Mobile blocking
-        val shouldBlock = pkg.isNetworkAllowed
-        viewModel.setWifiBlocking(pkg.packageName, shouldBlock)
-        viewModel.setMobileBlocking(pkg.packageName, shouldBlock)
+        // Check if device has cellular capability
+        val telephonyManager = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+        val hasCellular = telephonyManager?.phoneType != TelephonyManager.PHONE_TYPE_NONE
 
-        dialog.setContentView(view)
+        // Setup header
+        try {
+            val pm = requireContext().packageManager
+            val appInfo = pm.getApplicationInfo(pkg.packageName, 0)
+            val icon = pm.getApplicationIcon(appInfo)
+            binding.actionSheetAppIcon.setImageDrawable(icon)
+        } catch (e: Exception) {
+            binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
+        }
+        binding.actionSheetAppName.text = pkg.name
+        binding.actionSheetPackageName.text = pkg.packageName
+
+        // Setup WiFi toggle
+        setupNetworkToggle(
+            binding = binding.wifiToggle,
+            label = "WiFi",
+            isBlocked = pkg.wifiBlocked,
+            enabled = true,
+            onToggle = { blocked ->
+                binding.loadingIndicator.visibility = View.VISIBLE
+                viewModel.setWifiBlocking(pkg.packageName, blocked)
+                // Dialog will auto-update when state changes
+            }
+        )
+
+        // Setup Mobile Data toggle
+        setupNetworkToggle(
+            binding = binding.mobileToggle,
+            label = "Mobile Data",
+            isBlocked = pkg.mobileBlocked,
+            enabled = true,
+            onToggle = { blocked ->
+                binding.loadingIndicator.visibility = View.VISIBLE
+                viewModel.setMobileBlocking(pkg.packageName, blocked)
+            }
+        )
+
+        // Setup Roaming toggle (only if device has cellular)
+        if (hasCellular) {
+            binding.roamingDivider.visibility = View.VISIBLE
+            binding.roamingToggle.root.visibility = View.VISIBLE
+            val roamingBinding = binding.roamingToggle
+            setupNetworkToggle(
+                binding = roamingBinding,
+                label = "Roaming",
+                isBlocked = pkg.roamingBlocked,
+                enabled = !pkg.mobileBlocked, // Disable if mobile is blocked
+                onToggle = { blocked ->
+                    binding.loadingIndicator.visibility = View.VISIBLE
+                    viewModel.setRoamingBlocking(pkg.packageName, blocked)
+                }
+            )
+        }
+
+        dialog.setContentView(binding.root)
         dialog.show()
+    }
+
+    private fun setupNetworkToggle(
+        binding: NetworkTypeToggleBinding,
+        label: String,
+        isBlocked: Boolean,
+        enabled: Boolean,
+        onToggle: (Boolean) -> Unit
+    ) {
+        binding.networkTypeLabel.text = label
+
+        // Set initial state
+        binding.allowChip.isChecked = !isBlocked
+        binding.blockChip.isChecked = isBlocked
+
+        // Enable/disable chips
+        binding.allowChip.isEnabled = enabled
+        binding.blockChip.isEnabled = enabled
+
+        // Setup click listeners
+        binding.allowChip.setOnClickListener {
+            if (enabled && isBlocked) {
+                binding.allowChip.isChecked = true
+                binding.blockChip.isChecked = false
+                onToggle(false)
+            }
+        }
+
+        binding.blockChip.setOnClickListener {
+            if (enabled && !isBlocked) {
+                binding.allowChip.isChecked = false
+                binding.blockChip.isChecked = true
+                onToggle(true)
+            }
+        }
     }
 
     companion object {

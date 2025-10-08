@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Network Type Label -->
+        <TextView
+            android:id="@+id/network_type_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="WiFi"
+            android:textSize="16sp"
+            android:textColor="?android:attr/textColorPrimary" />
+
+        <!-- Toggle Chips -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/toggle_chip_group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true"
+            app:chipSpacing="8dp">
+
+            <!-- Allow Chip -->
+            <com.google.android.material.chip.Chip
+                android:id="@+id/allow_chip"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Allow"
+                android:textSize="12sp"
+                app:chipBackgroundColor="@color/chip_allow_background_selector"
+                app:chipStrokeColor="@color/chip_allow_stroke_selector"
+                app:chipStrokeWidth="1dp" />
+
+            <!-- Block Chip -->
+            <com.google.android.material.chip.Chip
+                android:id="@+id/block_chip"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Block"
+                android:textSize="12sp"
+                app:chipBackgroundColor="@color/chip_block_background_selector"
+                app:chipStrokeColor="@color/chip_block_stroke_selector"
+                app:chipStrokeWidth="1dp" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </LinearLayout>
+
+</LinearLayout>
+

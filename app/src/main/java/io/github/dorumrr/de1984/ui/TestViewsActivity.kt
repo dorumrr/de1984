@@ -7,6 +7,7 @@ import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.ui.firewall.FirewallFragmentViews
+import io.github.dorumrr.de1984.ui.packages.PackagesFragmentViews
 import io.github.dorumrr.de1984.ui.settings.SettingsFragmentViews
 
 /**
@@ -47,6 +48,19 @@ class TestViewsActivity : AppCompatActivity() {
                 menuLayout.visibility = View.GONE
                 supportFragmentManager.beginTransaction()
                     .replace(android.R.id.content, FirewallFragmentViews())
+                    .addToBackStack(null)
+                    .commit()
+            }
+            menuLayout.addView(this)
+        }
+
+        // Packages button
+        Button(this).apply {
+            text = "Test Packages Screen"
+            setOnClickListener {
+                menuLayout.visibility = View.GONE
+                supportFragmentManager.beginTransaction()
+                    .replace(android.R.id.content, PackagesFragmentViews())
                     .addToBackStack(null)
                     .commit()
             }

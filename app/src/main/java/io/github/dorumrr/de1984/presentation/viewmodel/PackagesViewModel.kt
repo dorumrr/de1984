@@ -91,25 +91,23 @@ class PackagesViewModel(
 
     fun setPackageEnabled(packageName: String, enabled: Boolean) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                isLoadingData = true,
-                isRenderingUI = false
-            )
+            // Optimistically update UI first
+            updatePackageInList(packageName) { pkg ->
+                pkg.copy(isEnabled = enabled)
+            }
 
+            // Then persist to system
             managePackageUseCase.setPackageEnabled(packageName, enabled)
                 .onSuccess {
-                    loadPackages()
+                    // Success - UI already updated
                 }
                 .onFailure { error ->
+                    // Revert on failure
+                    loadPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
-
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingData = false,
-                        isRenderingUI = false,
-                        error = error.message
-                    )
+                    _uiState.value = _uiState.value.copy(error = error.message)
                 }
         }
     }
@@ -141,25 +139,17 @@ class PackagesViewModel(
 
     fun forceStopPackage(packageName: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                isLoadingData = true,
-                isRenderingUI = false
-            )
-
+            // Force stop doesn't change package state, so no optimistic update needed
+            // Just execute the action
             managePackageUseCase.forceStopPackage(packageName)
                 .onSuccess {
-                    loadPackages()
+                    // Success - no UI update needed (package state unchanged)
                 }
                 .onFailure { error ->
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
-
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingData = false,
-                        isRenderingUI = false,
-                        error = error.message
-                    )
+                    _uiState.value = _uiState.value.copy(error = error.message)
                 }
         }
     }
@@ -170,6 +160,18 @@ class PackagesViewModel(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    private fun updatePackageInList(packageName: String, transform: (Package) -> Package) {
+        val currentPackages = _uiState.value.packages
+        val updatedPackages = currentPackages.map { pkg ->
+            if (pkg.packageName == packageName) {
+                transform(pkg)
+            } else {
+                pkg
+            }
+        }
+        _uiState.value = _uiState.value.copy(packages = updatedPackages)
     }
 
     class Factory(

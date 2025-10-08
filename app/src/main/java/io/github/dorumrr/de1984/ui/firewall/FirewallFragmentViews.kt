@@ -1,12 +1,14 @@
 package io.github.dorumrr.de1984.ui.firewall
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -14,6 +16,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
+import com.google.android.material.switchmaterial.SwitchMaterial
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionBinding
@@ -292,34 +295,52 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     ) {
         binding.networkTypeLabel.text = label
 
-        // Set initial state
-        binding.allowChip.isChecked = !isBlocked
-        binding.blockChip.isChecked = isBlocked
+        // Set initial state: switch ON = blocked, switch OFF = allowed
+        binding.toggleSwitch.isChecked = isBlocked
+        binding.toggleSwitch.isEnabled = enabled
 
-        // Enable/disable chips
-        binding.allowChip.isEnabled = enabled
-        binding.blockChip.isEnabled = enabled
+        // Update colors based on state
+        updateSwitchColors(binding.toggleSwitch, isBlocked)
 
-        // Simple click listeners - only fire on actual user clicks
-        binding.allowChip.setOnClickListener {
-            if (enabled && !binding.allowChip.isChecked) {
-                // User clicked unchecked Allow chip - switch to Allow
-                binding.allowChip.isChecked = true
-                binding.blockChip.isChecked = false
-                onToggle(false)
-            }
-            // If already checked, do nothing
+        Log.d(TAG, "[$label] Initial state: isBlocked=$isBlocked, switchChecked=${binding.toggleSwitch.isChecked}")
+
+        // Simple switch listener - only fires on user interaction
+        binding.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
+            Log.d(TAG, "[$label] Switch changed: isChecked=$isChecked")
+            updateSwitchColors(binding.toggleSwitch, isChecked)
+            onToggle(isChecked)
         }
+    }
 
-        binding.blockChip.setOnClickListener {
-            if (enabled && !binding.blockChip.isChecked) {
-                // User clicked unchecked Block chip - switch to Block
-                binding.blockChip.isChecked = true
-                binding.allowChip.isChecked = false
-                onToggle(true)
-            }
-            // If already checked, do nothing
-        }
+    private fun updateSwitchColors(switch: SwitchMaterial, isBlocked: Boolean) {
+        val context = switch.context
+
+        // Create color state lists for checked (blocked/ON) and unchecked (allowed/OFF) states
+        val thumbColorStateList = ColorStateList(
+            arrayOf(
+                intArrayOf(android.R.attr.state_checked),  // When switch is ON (blocked)
+                intArrayOf(-android.R.attr.state_checked)  // When switch is OFF (allowed)
+            ),
+            intArrayOf(
+                ContextCompat.getColor(context, R.color.error_red),      // RED when blocked (ON)
+                ContextCompat.getColor(context, R.color.success_green)   // GREEN when allowed (OFF)
+            )
+        )
+
+        val trackColorStateList = ColorStateList(
+            arrayOf(
+                intArrayOf(android.R.attr.state_checked),  // When switch is ON (blocked)
+                intArrayOf(-android.R.attr.state_checked)  // When switch is OFF (allowed)
+            ),
+            intArrayOf(
+                ContextCompat.getColor(context, R.color.error_red) and 0x80FFFFFF.toInt(),      // RED with 50% opacity when blocked (ON)
+                ContextCompat.getColor(context, R.color.success_green) and 0x80FFFFFF.toInt()   // GREEN with 50% opacity when allowed (OFF)
+            )
+        )
+
+        // Set thumb (the circle) and track (the background) colors
+        switch.thumbTintList = thumbColorStateList
+        switch.trackTintList = trackColorStateList
     }
 
     companion object {

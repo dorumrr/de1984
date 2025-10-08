@@ -3,64 +3,43 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="8dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <!-- Network Type Label -->
+    <TextView
+        android:id="@+id/network_type_label"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_weight="1"
+        android:text="WiFi"
+        android:textSize="16sp"
+        android:textColor="?android:attr/textColorPrimary" />
 
-        <!-- Network Type Label -->
-        <TextView
-            android:id="@+id/network_type_label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="WiFi"
-            android:textSize="16sp"
-            android:textColor="?android:attr/textColorPrimary" />
+    <!-- Allow Label -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Allow"
+        android:textSize="14sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginEnd="8dp" />
 
-        <!-- Toggle Chips -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+    <!-- Toggle Switch -->
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/toggle_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp" />
 
-            <!-- Allow Chip -->
-            <com.google.android.material.chip.Chip
-                android:id="@+id/allow_chip"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="Allow"
-                android:textSize="12sp"
-                android:clickable="true"
-                android:focusable="true"
-                android:checkable="true"
-                app:chipBackgroundColor="@color/chip_allow_background_selector"
-                app:chipStrokeColor="@color/chip_allow_stroke_selector"
-                app:chipStrokeWidth="1dp" />
-
-            <!-- Block Chip -->
-            <com.google.android.material.chip.Chip
-                android:id="@+id/block_chip"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Block"
-                android:textSize="12sp"
-                android:clickable="true"
-                android:focusable="true"
-                android:checkable="true"
-                app:chipBackgroundColor="@color/chip_block_background_selector"
-                app:chipStrokeColor="@color/chip_block_stroke_selector"
-                app:chipStrokeWidth="1dp" />
-
-        </LinearLayout>
-
-    </LinearLayout>
+    <!-- Block Label -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Block"
+        android:textSize="14sp"
+        android:textColor="?android:attr/textColorSecondary" />
 
 </LinearLayout>
 

@@ -109,6 +109,7 @@ class FirewallViewModel(
         )
         _uiState.value = _uiState.value.copy(
             filterState = newFilterState,
+            packages = emptyList(), // Clear packages to avoid showing old list
             isLoadingData = true,
             isRenderingUI = false
         )
@@ -121,6 +122,7 @@ class FirewallViewModel(
         val newFilterState = currentFilterState.copy(networkState = networkState)
         _uiState.value = _uiState.value.copy(
             filterState = newFilterState,
+            packages = emptyList(), // Clear packages to avoid showing old list
             isLoadingData = true,
             isRenderingUI = false
         )

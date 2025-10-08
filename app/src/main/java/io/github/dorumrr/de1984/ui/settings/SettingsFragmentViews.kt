@@ -19,6 +19,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -30,6 +31,7 @@ import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.databinding.FragmentSettingsBinding
 import io.github.dorumrr.de1984.databinding.PermissionTierSectionBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
+import io.github.dorumrr.de1984.ui.acknowledgements.AcknowledgementsFragmentViews
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
 import io.github.dorumrr.de1984.utils.Constants
@@ -115,8 +117,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         // Acknowledgements card
         binding.acknowledgementsCard.setOnClickListener {
-            // TODO: Navigate to acknowledgements
-            Log.d(TAG, "Acknowledgements clicked - navigation not yet implemented")
+            Log.d(TAG, "Acknowledgements clicked")
+            navigateToAcknowledgements()
         }
 
         // Footer (author link)
@@ -312,10 +314,15 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         when (rootStatus) {
             RootStatus.ROOTED_WITH_PERMISSION -> {
+                // Update status badge to show root is granted
+                tierBinding.tierStatusBadge.text = "Completed"
+                tierBinding.tierStatusBadge.setBackgroundResource(R.drawable.status_badge_complete)
                 tierBinding.rootStatusContainer.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.ROOTED_NO_PERMISSION -> {
+                tierBinding.tierStatusBadge.text = "Root Required"
+                tierBinding.tierStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_DENIED
                 tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_DENIED
@@ -323,6 +330,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.NOT_ROOTED -> {
+                tierBinding.tierStatusBadge.text = "Root Required"
+                tierBinding.tierStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_NOT_AVAILABLE
                 tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_NOT_AVAILABLE
@@ -330,6 +339,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.CHECKING -> {
+                tierBinding.tierStatusBadge.text = "Checking..."
+                tierBinding.tierStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_CHECKING
                 tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_CHECKING
@@ -447,6 +458,13 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             data = Uri.fromParts("package", requireContext().packageName, null)
         }
         startActivity(intent)
+    }
+
+    private fun navigateToAcknowledgements() {
+        parentFragmentManager.commit {
+            replace(R.id.fragment_container, AcknowledgementsFragmentViews())
+            addToBackStack("acknowledgements")
+        }
     }
 
     companion object {

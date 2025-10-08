@@ -52,6 +52,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private lateinit var adapter: PackageAdapter
+    private var currentTypeFilter: String? = null
+    private var currentStateFilter: String? = null
 
     override fun getViewBinding(
         inflater: LayoutInflater,
@@ -89,29 +91,55 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun setupFilterChips() {
-        // Initial setup
-        updateFilterChips(
-            packageTypeFilter = "User",
-            packageStateFilter = null
-        )
-    }
-
-    private fun updateFilterChips(packageTypeFilter: String, packageStateFilter: String?) {
         val packageTypeFilters = Constants.Packages.PACKAGE_TYPE_FILTERS
         val packageStateFilters = Constants.Packages.PACKAGE_STATE_FILTERS
+
+        // Initial setup - only called once
+        currentTypeFilter = "User"
+        currentStateFilter = null
 
         FilterChipsHelper.setupMultiSelectFilterChips(
             chipGroup = binding.filterChips,
             typeFilters = packageTypeFilters,
             stateFilters = packageStateFilters,
-            selectedTypeFilter = packageTypeFilter,
-            selectedStateFilter = packageStateFilter,
+            selectedTypeFilter = currentTypeFilter,
+            selectedStateFilter = currentStateFilter,
             onTypeFilterSelected = { filter ->
-                viewModel.setPackageTypeFilter(filter)
+                Log.d(TAG, "Type filter clicked: $filter, current: $currentTypeFilter")
+                // Only trigger if different from current
+                if (filter != currentTypeFilter) {
+                    currentTypeFilter = filter
+                    viewModel.setPackageTypeFilter(filter)
+                }
             },
             onStateFilterSelected = { filter ->
-                viewModel.setPackageStateFilter(filter)
+                Log.d(TAG, "State filter clicked: $filter, current: $currentStateFilter")
+                // Only trigger if different from current
+                if (filter != currentStateFilter) {
+                    currentStateFilter = filter
+                    viewModel.setPackageStateFilter(filter)
+                }
             }
+        )
+    }
+
+    private fun updateFilterChips(packageTypeFilter: String, packageStateFilter: String?) {
+        Log.d(TAG, "updateFilterChips: type=$packageTypeFilter, state=$packageStateFilter, current type=$currentTypeFilter, current state=$currentStateFilter")
+
+        // Only update if filters have changed
+        if (packageTypeFilter == currentTypeFilter && packageStateFilter == currentStateFilter) {
+            Log.d(TAG, "Filters unchanged, skipping update")
+            return
+        }
+
+        currentTypeFilter = packageTypeFilter
+        currentStateFilter = packageStateFilter
+
+        // Update chip selection without recreating or triggering listeners
+        FilterChipsHelper.updateMultiSelectFilterChips(
+            chipGroup = binding.filterChips,
+            selectedTypeFilter = packageTypeFilter,
+            selectedStateFilter = packageStateFilter
         )
     }
 

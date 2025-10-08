@@ -41,6 +41,8 @@ import kotlinx.coroutines.launch
  */
 class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
+    private val TAG = "FirewallFragmentViews"
+
     private val viewModel: FirewallViewModel by viewModels {
         val app = requireActivity().application as De1984Application
         FirewallViewModel.Factory(
@@ -62,6 +64,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private lateinit var adapter: NetworkPackageAdapter
+    private var currentTypeFilter: String? = null
+    private var currentStateFilter: String? = null
 
     override fun getViewBinding(
         inflater: LayoutInflater,
@@ -97,10 +101,32 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private fun setupFilterChips() {
-        // Initial setup - will be updated when state changes
-        updateFilterChips(
-            packageTypeFilter = "User",
-            networkStateFilter = null
+        // Initial setup - only called once
+        currentTypeFilter = "User"
+        currentStateFilter = null
+
+        FilterChipsHelper.setupMultiSelectFilterChips(
+            chipGroup = binding.filterChips,
+            typeFilters = Constants.Firewall.PACKAGE_TYPE_FILTERS,
+            stateFilters = Constants.Firewall.NETWORK_STATE_FILTERS,
+            selectedTypeFilter = currentTypeFilter,
+            selectedStateFilter = currentStateFilter,
+            onTypeFilterSelected = { filter ->
+                // Only trigger if different from current
+                if (filter != currentTypeFilter) {
+                    Log.d(TAG, "Type filter selected: $filter")
+                    currentTypeFilter = filter
+                    viewModel.setPackageTypeFilter(filter)
+                }
+            },
+            onStateFilterSelected = { filter ->
+                // Only trigger if different from current
+                if (filter != currentStateFilter) {
+                    Log.d(TAG, "State filter selected: $filter")
+                    currentStateFilter = filter
+                    viewModel.setNetworkStateFilter(filter)
+                }
+            }
         )
     }
 
@@ -108,20 +134,22 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         packageTypeFilter: String,
         networkStateFilter: String?
     ) {
-        FilterChipsHelper.setupMultiSelectFilterChips(
+        Log.d(TAG, "updateFilterChips: type=$packageTypeFilter, state=$networkStateFilter, current type=$currentTypeFilter, current state=$currentStateFilter")
+
+        // Only update if filters have changed
+        if (packageTypeFilter == currentTypeFilter && networkStateFilter == currentStateFilter) {
+            Log.d(TAG, "Filters unchanged, skipping update")
+            return
+        }
+
+        currentTypeFilter = packageTypeFilter
+        currentStateFilter = networkStateFilter
+
+        // Update chip selection without recreating or triggering listeners
+        FilterChipsHelper.updateMultiSelectFilterChips(
             chipGroup = binding.filterChips,
-            typeFilters = Constants.Firewall.PACKAGE_TYPE_FILTERS,
-            stateFilters = Constants.Firewall.NETWORK_STATE_FILTERS,
             selectedTypeFilter = packageTypeFilter,
-            selectedStateFilter = networkStateFilter,
-            onTypeFilterSelected = { filter ->
-                Log.d(TAG, "Type filter selected: $filter")
-                viewModel.setPackageTypeFilter(filter)
-            },
-            onStateFilterSelected = { filter ->
-                Log.d(TAG, "State filter selected: $filter")
-                viewModel.setNetworkStateFilter(filter)
-            }
+            selectedStateFilter = networkStateFilter
         )
     }
 

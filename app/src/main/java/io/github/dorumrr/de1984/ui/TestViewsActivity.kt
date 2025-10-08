@@ -1,6 +1,7 @@
 package io.github.dorumrr.de1984.ui
 
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
@@ -14,11 +15,14 @@ import io.github.dorumrr.de1984.ui.settings.SettingsFragmentViews
  */
 class TestViewsActivity : AppCompatActivity() {
 
+    private lateinit var menuLayout: LinearLayout
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Create a simple menu to switch between screens
-        val layout = LinearLayout(this).apply {
+        menuLayout = LinearLayout(this).apply {
+            id = View.generateViewId()
             orientation = LinearLayout.VERTICAL
             setPadding(32, 32, 32, 32)
         }
@@ -27,27 +31,36 @@ class TestViewsActivity : AppCompatActivity() {
         Button(this).apply {
             text = "Test Settings Screen"
             setOnClickListener {
+                menuLayout.visibility = View.GONE
                 supportFragmentManager.beginTransaction()
                     .replace(android.R.id.content, SettingsFragmentViews())
                     .addToBackStack(null)
                     .commit()
             }
-            layout.addView(this)
+            menuLayout.addView(this)
         }
 
         // Firewall button
         Button(this).apply {
             text = "Test Firewall Screen"
             setOnClickListener {
+                menuLayout.visibility = View.GONE
                 supportFragmentManager.beginTransaction()
                     .replace(android.R.id.content, FirewallFragmentViews())
                     .addToBackStack(null)
                     .commit()
             }
-            layout.addView(this)
+            menuLayout.addView(this)
         }
 
-        setContentView(layout)
+        setContentView(menuLayout)
+
+        // Show menu when back stack is empty
+        supportFragmentManager.addOnBackStackChangedListener {
+            if (supportFragmentManager.backStackEntryCount == 0) {
+                menuLayout.visibility = View.VISIBLE
+            }
+        }
     }
 }
 

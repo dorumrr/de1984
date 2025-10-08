@@ -151,6 +151,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private fun updateUI(state: io.github.dorumrr.de1984.presentation.viewmodel.FirewallUiState) {
         Log.d(TAG, "updateUI: ${state.packages.size} packages, " +
                 "loading=${state.isLoading}, " +
+                "isLoadingData=${state.isLoadingData}, " +
+                "isRenderingUI=${state.isRenderingUI}, " +
                 "typeFilter=${state.filterState.packageType}, " +
                 "stateFilter=${state.filterState.networkState}")
 
@@ -164,7 +166,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         binding.packageCount.text = "${state.packages.size} packages"
 
         // Update RecyclerView
-        adapter.submitList(state.packages)
+        adapter.submitList(state.packages) {
+            // Called when list is submitted and rendered
+            if (state.isRenderingUI) {
+                // Mark UI as ready after RecyclerView has rendered
+                binding.packagesRecyclerView.post {
+                    viewModel.setUIReady()
+                }
+            }
+        }
 
         // Show/hide states
         when {

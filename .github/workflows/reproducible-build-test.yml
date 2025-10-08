@@ -45,3 +45,13 @@ jobs:
             echo "❌ Builds differ"
             exit 1
           fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reproducible-build-test-apks
+          path: |
+            build1.apk
+            build2.apk
+          retention-days: 30

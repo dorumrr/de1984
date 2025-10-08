@@ -36,6 +36,9 @@
                 android:layout_marginEnd="8dp"
                 android:text="Allow"
                 android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                android:checkable="true"
                 app:chipBackgroundColor="@color/chip_allow_background_selector"
                 app:chipStrokeColor="@color/chip_allow_stroke_selector"
                 app:chipStrokeWidth="1dp" />
@@ -48,6 +51,9 @@
                 android:layout_height="wrap_content"
                 android:text="Block"
                 android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                android:checkable="true"
                 app:chipBackgroundColor="@color/chip_block_background_selector"
                 app:chipStrokeColor="@color/chip_block_stroke_selector"
                 app:chipStrokeWidth="1dp" />

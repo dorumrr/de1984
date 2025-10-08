@@ -1,0 +1,42 @@
+# .github/workflows/reproducible-build-test.yml
+name: Reproducible Build Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-twice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v1.0.0
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Build APK (first time)
+        run: |
+          ./gradlew clean assembleRelease
+          cp app/build/outputs/apk/release/app-release-unsigned.apk build1.apk
+      
+      - name: Clean build directory
+        run: ./gradlew clean
+      
+      - name: Build APK (second time)
+        run: |
+          ./gradlew assembleRelease
+          cp app/build/outputs/apk/release/app-release-unsigned.apk build2.apk
+      
+      - name: Compare builds
+        run: |
+          sha256sum build1.apk build2.apk
+          if diff build1.apk build2.apk; then
+            echo "✅ Builds are identical!"
+          else
+            echo "❌ Builds differ"
+            exit 1
+          fi

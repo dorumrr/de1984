@@ -271,7 +271,7 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Permissions Card - Placeholder for now -->
+        <!-- Permissions Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -279,13 +279,93 @@
             app:cardElevation="2dp"
             app:cardCornerRadius="12dp">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="20dp"
-                android:text="🔐 Permissions\n\n(Complex section - will be implemented next)"
-                android:textSize="16sp"
-                android:textColor="?android:attr/textColorPrimary" />
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <!-- Permissions Header -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔐"
+                        android:textSize="40sp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Permissions"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="?android:attr/textColorPrimary" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Status and advanced configuration"
+                            android:textSize="14sp"
+                            android:textColor="?android:attr/textColorSecondary" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Tier 1: Basic Functionality -->
+                <include
+                    android:id="@+id/permission_tier_basic"
+                    layout="@layout/permission_tier_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp" />
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="?android:attr/listDivider"
+                    android:alpha="0.3" />
+
+                <!-- Tier 2: Background Process -->
+                <include
+                    android:id="@+id/permission_tier_battery"
+                    layout="@layout/permission_tier_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="?android:attr/listDivider"
+                    android:alpha="0.3" />
+
+                <!-- Tier 3: Advanced Operations -->
+                <include
+                    android:id="@+id/permission_tier_advanced"
+                    layout="@layout/permission_tier_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 

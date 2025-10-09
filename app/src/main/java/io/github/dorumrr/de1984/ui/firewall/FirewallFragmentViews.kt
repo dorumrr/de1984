@@ -116,6 +116,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 // Only trigger if different from current
                 if (filter != currentTypeFilter) {
                     Log.d(TAG, "Type filter selected: $filter")
+                    // Clear the list IMMEDIATELY to prevent showing stale data
+                    Log.d(TAG, "Clearing adapter list immediately before filter change")
+                    adapter.submitList(null)
+                    lastSubmittedPackages = emptyList()
+
                     currentTypeFilter = filter
                     viewModel.setPackageTypeFilter(filter)
                 }
@@ -204,65 +209,44 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         // Update RecyclerView - only if the list actually changed
         val listChanged = state.packages != lastSubmittedPackages
+        Log.d(TAG, "About to call adapter.submitList with ${state.packages.size} packages, listChanged=$listChanged, isRenderingUI=${state.isRenderingUI}")
 
-        if (listChanged) {
-            val oldSize = lastSubmittedPackages.size
-            val newSize = state.packages.size
+        if (!listChanged) {
+            Log.d(TAG, "Skipping adapter.submitList - list unchanged")
+            return
+        }
+
+        // Submit the list
+        if (state.isRenderingUI) {
+            Log.d(TAG, "Submitting ${state.packages.size} packages with callback")
             lastSubmittedPackages = state.packages
-
-            // Only clear list if size changes dramatically (more than 10% difference)
-            val sizeDifference = kotlin.math.abs(newSize - oldSize)
-            val shouldClearFirst = oldSize > 0 && sizeDifference > (oldSize * 0.1)
-
-            if (shouldClearFirst) {
-                // For large changes, hide RecyclerView during transition
-                binding.packagesRecyclerView.visibility = View.INVISIBLE
-
-                // Submit list with null to clear, then submit new list
-                adapter.submitList(null)
-                binding.packagesRecyclerView.post {
-                    adapter.submitList(state.packages) {
-                        // Show RecyclerView after list is submitted
-                        binding.packagesRecyclerView.visibility = View.VISIBLE
-                        if (state.isRenderingUI) {
-                            binding.packagesRecyclerView.post {
-                                viewModel.setUIReady()
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Just submit the new list directly - DiffUtil will handle it smoothly
-                adapter.submitList(state.packages) {
-                    if (state.isRenderingUI) {
-                        binding.packagesRecyclerView.post {
-                            viewModel.setUIReady()
-                        }
-                    }
-                }
+            adapter.submitList(state.packages) {
+                Log.d(TAG, "adapter.submitList callback executed, adapter.currentList.size=${adapter.currentList.size}")
+                // Call setUIReady after the list is submitted
+                viewModel.setUIReady()
             }
         } else {
-            // Still need to call setUIReady if we're in rendering state
-            if (state.isRenderingUI) {
-                binding.packagesRecyclerView.post {
-                    viewModel.setUIReady()
-                }
-            }
+            Log.d(TAG, "Submitting ${state.packages.size} packages (isRenderingUI=false)")
+            lastSubmittedPackages = state.packages
+            adapter.submitList(state.packages)
         }
 
         // Show/hide states
         when {
-            state.isLoading -> {
+            state.isLoadingData && state.packages.isEmpty() -> {
+                // Only show loading spinner if we're loading data and have no packages yet
                 binding.loadingState.visibility = View.VISIBLE
                 binding.emptyState.visibility = View.GONE
                 binding.packagesRecyclerView.visibility = View.GONE
             }
             state.packages.isEmpty() -> {
+                // No packages (even if still rendering UI) - show empty state
                 binding.loadingState.visibility = View.GONE
                 binding.emptyState.visibility = View.VISIBLE
                 binding.packagesRecyclerView.visibility = View.GONE
             }
             else -> {
+                // We have packages - show them (even if still rendering)
                 binding.loadingState.visibility = View.GONE
                 binding.emptyState.visibility = View.GONE
                 binding.packagesRecyclerView.visibility = View.VISIBLE

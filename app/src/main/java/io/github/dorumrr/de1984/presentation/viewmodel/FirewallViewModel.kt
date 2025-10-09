@@ -139,7 +139,8 @@ class FirewallViewModel(
             // Then persist to database
             manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked)
                 .onSuccess {
-                    // Success - UI already updated
+                    // Reload packages to apply filters correctly
+                    loadNetworkPackages()
                 }
                 .onFailure { error ->
                     // Revert on failure
@@ -162,7 +163,8 @@ class FirewallViewModel(
             // Then persist to database
             manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
                 .onSuccess {
-                    // Success - UI already updated
+                    // Reload packages to apply filters correctly
+                    loadNetworkPackages()
                 }
                 .onFailure { error ->
                     // Revert on failure
@@ -185,7 +187,8 @@ class FirewallViewModel(
             // Then persist to database
             manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
                 .onSuccess {
-                    // Success - UI already updated
+                    // Reload packages to apply filters correctly
+                    loadNetworkPackages()
                 }
                 .onFailure { error ->
                     // Revert on failure

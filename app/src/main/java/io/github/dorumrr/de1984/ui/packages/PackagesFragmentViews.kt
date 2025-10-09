@@ -217,14 +217,14 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Show/hide states
         when {
-            state.isLoading && state.packages.isEmpty() -> {
-                // Only show loading spinner if we have no packages yet
+            state.isLoadingData && state.packages.isEmpty() -> {
+                // Only show loading spinner if we're loading data and have no packages yet
                 binding.loadingState.visibility = View.VISIBLE
                 binding.emptyState.visibility = View.GONE
                 binding.packagesRecyclerView.visibility = View.GONE
             }
             state.packages.isEmpty() -> {
-                // No packages and not loading - show empty state
+                // No packages (even if still rendering UI) - show empty state
                 binding.loadingState.visibility = View.GONE
                 binding.emptyState.visibility = View.VISIBLE
                 binding.packagesRecyclerView.visibility = View.GONE

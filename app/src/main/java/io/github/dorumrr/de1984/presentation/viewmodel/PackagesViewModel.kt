@@ -122,7 +122,8 @@ class PackagesViewModel(
             // Then persist to system
             managePackageUseCase.setPackageEnabled(packageName, enabled)
                 .onSuccess {
-                    // Success - UI already updated
+                    // Reload packages to apply filters correctly
+                    loadPackages()
                 }
                 .onFailure { error ->
                     // Revert on failure

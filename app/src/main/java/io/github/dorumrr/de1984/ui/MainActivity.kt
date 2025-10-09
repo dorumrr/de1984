@@ -215,21 +215,25 @@ class MainActivity : AppCompatActivity() {
     private fun updateToolbar() {
         when (currentTab) {
             Tab.FIREWALL -> {
-                binding.toolbarTitle.text = "De1984 Firewall"
+                binding.toolbarTitle.text = "FIREWALL"
                 binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.VISIBLE
+                // Update OFF badge based on current firewall state
+                binding.firewallOffBadge.visibility = if (firewallViewModel.uiState.value.isFirewallEnabled) View.GONE else View.VISIBLE
             }
             Tab.APPS -> {
-                binding.toolbarTitle.text = "De1984 Apps"
+                binding.toolbarTitle.text = "PACKAGES"
                 binding.toolbarIcon.visibility = View.VISIBLE
                 binding.toolbarIcon.setImageResource(R.drawable.ic_grid_view)
                 binding.firewallToggle.visibility = View.GONE
+                binding.firewallOffBadge.visibility = View.GONE
             }
             Tab.SETTINGS -> {
-                binding.toolbarTitle.text = "De1984 Settings"
+                binding.toolbarTitle.text = "SETTINGS"
                 binding.toolbarIcon.visibility = View.VISIBLE
                 binding.toolbarIcon.setImageResource(R.drawable.ic_settings)
                 binding.firewallToggle.visibility = View.GONE
+                binding.firewallOffBadge.visibility = View.GONE
             }
         }
     }
@@ -249,6 +253,13 @@ class MainActivity : AppCompatActivity() {
         binding.firewallToggle.isChecked = isEnabled
         binding.firewallToggle.setOnCheckedChangeListener { _, isChecked ->
             onFirewallToggleChanged(isChecked)
+        }
+
+        // Update OFF badge visibility (only show on Firewall tab when disabled)
+        if (currentTab == Tab.FIREWALL) {
+            binding.firewallOffBadge.visibility = if (isEnabled) View.GONE else View.VISIBLE
+        } else {
+            binding.firewallOffBadge.visibility = View.GONE
         }
     }
 

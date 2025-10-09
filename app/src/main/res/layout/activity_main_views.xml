@@ -64,6 +64,23 @@
                     android:contentDescription="Section Icon"
                     app:tint="@color/white" />
 
+                <!-- OFF Badge (visible when firewall is off, before switch) -->
+                <TextView
+                    android:id="@+id/firewall_off_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="INACTIVE"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:background="@drawable/status_badge_error"
+                    android:visibility="gone" />
+
                 <!-- Firewall Toggle Switch (visible only on Firewall tab) -->
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/firewall_toggle"

@@ -1,13 +1,19 @@
 # Edge-to-Edge Display Fix for All Devices
 
-## Problem
-The bottom navigation bar had a dark line/indicator appearing on some devices due to improper handling of system window insets in edge-to-edge mode.
+## Problems Fixed
+1. **Dark line/indicator** appearing at the bottom on some devices due to improper handling of system window insets in edge-to-edge mode
+2. **Text overlapping icons** in bottom navigation on some devices/Android versions due to insufficient spacing
 
-## Root Cause
-The app was using `WindowCompat.setDecorFitsSystemWindows(window, false)` to enable edge-to-edge display, but wasn't properly applying window insets to the UI components. This caused:
-1. The bottom navigation to extend behind the system navigation bar
-2. A dark overlay/scrim to appear on some devices
-3. Inconsistent behavior across different Android versions
+## Root Causes
+1. **Dark line issue:** The app was using `WindowCompat.setDecorFitsSystemWindows(window, false)` to enable edge-to-edge display, but wasn't properly applying window insets to the UI components. This caused:
+   - The bottom navigation to extend behind the system navigation bar
+   - A dark overlay/scrim to appear on some devices
+   - Inconsistent behavior across different Android versions
+
+2. **Text overlap issue:** The bottom navigation had:
+   - Fixed height of `80dp` which was too small for icon + label
+   - Large icon size (`32dp`) leaving insufficient space for text
+   - No internal padding to separate icon from label
 
 ## Solution Overview
 Implemented proper window insets handling to ensure consistent behavior across all devices and Android versions (API 21+).
@@ -25,16 +31,23 @@ Added proper window insets listener that:
 ```kotlin
 ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
     val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-    
+
     // Apply top padding for status bar to the toolbar
     binding.toolbar.setPadding(0, systemBars.top, 0, 0)
-    
+
     // Apply bottom padding for navigation bar to the bottom navigation
-    binding.bottomNavigation.setPadding(0, 0, 0, systemBars.bottom)
-    
+    // Preserve the existing top/bottom padding from layout (8dp each)
+    val bottomNavPaddingTop = binding.bottomNavigation.paddingTop
+    binding.bottomNavigation.setPadding(
+        0,
+        bottomNavPaddingTop,
+        0,
+        bottomNavPaddingTop + systemBars.bottom
+    )
+
     // Don't apply padding to root view
     view.setPadding(0, 0, 0, 0)
-    
+
     insets
 }
 ```
@@ -49,6 +62,10 @@ ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
 - Added `android:clipToPadding="false"` to prevent clipping when padding is applied
 
 #### BottomNavigationView Changes:
+- Changed `android:layout_height="80dp"` to `"wrap_content"` for flexible sizing
+- Added `android:minHeight="56dp"` to ensure minimum touch target size
+- Added `android:paddingTop="8dp"` and `android:paddingBottom="8dp"` for internal spacing
+- Reduced `app:itemIconSize="32dp"` to `"24dp"` for better proportion
 - Added `android:clipToPadding="false"` to allow content to extend into padding area
 - Added `app:itemRippleColor="@android:color/transparent"` to remove ripple effects
 - Kept `app:itemActiveIndicatorStyle="@null"` to remove circular background
@@ -137,6 +154,8 @@ Test on the following to ensure consistency:
 ✅ Navigation bar is transparent with white bottom nav visible
 ✅ No circular background behind selected icon
 ✅ Full-width rectangular selection background
+✅ **No text overlapping icons** - proper spacing between icon and label
+✅ **Proper touch targets** - minimum 56dp height maintained
 ✅ Consistent spacing on all devices
 
 ## Key Attributes Reference

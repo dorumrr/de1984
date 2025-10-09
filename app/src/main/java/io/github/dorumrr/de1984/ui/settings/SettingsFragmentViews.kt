@@ -461,8 +461,11 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun navigateToAcknowledgements() {
+        // Get the container ID from the current fragment's parent
+        val containerId = (view?.parent as? ViewGroup)?.id ?: android.R.id.content
+
         parentFragmentManager.commit {
-            replace(R.id.fragment_container, AcknowledgementsFragmentViews())
+            replace(containerId, AcknowledgementsFragmentViews())
             addToBackStack("acknowledgements")
         }
     }

@@ -50,7 +50,7 @@ class De1984Dependencies(private val context: Context) {
     // =============================================================================================
 
     val rootManager: RootManager by lazy {
-        RootManager()
+        RootManager(context)
     }
 
     val errorHandler: ErrorHandler by lazy {

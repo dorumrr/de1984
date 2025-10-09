@@ -36,6 +36,7 @@ class SettingsViewModel(
         loadSettings()
         loadSystemInfo()
         cleanupOrphanedPreferences()
+        requestRootPermission() // Check root status on initialization
     }
 
 
@@ -43,6 +44,14 @@ class SettingsViewModel(
         viewModelScope.launch {
             rootManager.checkRootStatus()
         }
+    }
+
+    fun hasRequestedRootPermission(): Boolean {
+        return rootManager.hasRequestedRootPermission()
+    }
+
+    fun markRootPermissionRequested() {
+        rootManager.markRootPermissionRequested()
     }
     
     private fun loadSettings() {

@@ -243,6 +243,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         )
 
         // Setup Advanced Tier
+        // Show button only if root permission hasn't been requested yet
+        val showRootButton = !viewModel.hasRequestedRootPermission() && !state.hasAdvancedPermissions
+
         setupPermissionTier(
             binding.permissionTierAdvanced,
             title = "Advanced Operations",
@@ -250,11 +253,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             status = if (state.hasAdvancedPermissions) "Completed" else "Root Required",
             isComplete = state.hasAdvancedPermissions,
             permissions = state.advancedPermissions,
-            setupButtonText = "Test Root Access",
-            onSetupClick = if (!state.hasAdvancedPermissions) {
-                { handleRootAccessTest() }
-            } else null,
-            showRootStatus = true
+            setupButtonText = "Grant Root Access",
+            onSetupClick = if (showRootButton) {
+                { handleRootAccessRequest() }
+            } else null
         )
     }
 
@@ -266,8 +268,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         isComplete: Boolean,
         permissions: List<PermissionInfo>,
         setupButtonText: String,
-        onSetupClick: (() -> Unit)?,
-        showRootStatus: Boolean = false
+        onSetupClick: (() -> Unit)?
     ) {
         // Set title and description
         tierBinding.tierTitle.text = title
@@ -312,12 +313,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             tierBinding.setupButtonContainer.visibility = View.GONE
         }
 
-        // Root status (only for advanced tier)
-        if (showRootStatus) {
-            tierBinding.rootStatusContainer.visibility = View.VISIBLE
-        } else {
-            tierBinding.rootStatusContainer.visibility = View.GONE
-        }
+        // Root status visibility is controlled by updateRootStatus() based on actual root status
+        // Don't override it here
     }
 
     private fun updateRootStatus(rootStatus: RootStatus) {
@@ -327,33 +324,57 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             RootStatus.ROOTED_WITH_PERMISSION -> {
                 // Root is granted - hide root status section entirely
                 tierBinding.rootStatusContainer.visibility = View.GONE
+                tierBinding.rootStatusInstructions.visibility = View.GONE
+                tierBinding.rootingToolsTitle.visibility = View.GONE
+                tierBinding.rootingToolsBody.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.ROOTED_NO_PERMISSION -> {
-                // Device is rooted but permission denied - show status and hide button
-                tierBinding.rootStatusContainer.visibility = View.VISIBLE
-                tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_DENIED
-                tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_DENIED
-                tierBinding.rootStatusInstructions.visibility = View.VISIBLE
-                tierBinding.setupButtonContainer.visibility = View.VISIBLE
-                tierBinding.setupButton.text = "Test Root Access"
+                // Device is rooted but permission not granted
+                if (viewModel.hasRequestedRootPermission()) {
+                    // User already tried and denied - show instructions, hide button
+                    tierBinding.rootStatusContainer.visibility = View.VISIBLE
+                    tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_DENIED
+                    tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_DENIED
+                    tierBinding.rootStatusInstructions.visibility = View.VISIBLE
+                    tierBinding.rootStatusInstructions.text = Constants.RootAccess.GRANT_INSTRUCTIONS_TITLE + "\n" + Constants.RootAccess.GRANT_INSTRUCTIONS_BODY
+                    tierBinding.rootingToolsTitle.visibility = View.GONE
+                    tierBinding.rootingToolsBody.visibility = View.GONE
+                    tierBinding.setupButtonContainer.visibility = View.GONE
+                } else {
+                    // Never requested - show button, hide status
+                    tierBinding.rootStatusContainer.visibility = View.GONE
+                    tierBinding.rootStatusInstructions.visibility = View.GONE
+                    tierBinding.rootingToolsTitle.visibility = View.GONE
+                    tierBinding.rootingToolsBody.visibility = View.GONE
+                    tierBinding.setupButtonContainer.visibility = View.VISIBLE
+                    tierBinding.setupButton.text = "Grant Root Access"
+                }
             }
             RootStatus.NOT_ROOTED -> {
-                // Device is not rooted - show "Device Not Rooted" message
+                // Device is not rooted - show message, hide button
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
-                tierBinding.rootStatusTitle.text = "Device Not Rooted"
+                tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_NOT_AVAILABLE
                 tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_NOT_AVAILABLE
+
+                // Hide the instructions text (not needed)
                 tierBinding.rootStatusInstructions.visibility = View.GONE
+
+                tierBinding.rootingToolsTitle.visibility = View.VISIBLE
+                tierBinding.rootingToolsTitle.text = Constants.RootAccess.ROOTING_TOOLS_TITLE.replace("<b>", "").replace("</b>", "")
+
+                tierBinding.rootingToolsBody.visibility = View.VISIBLE
+                tierBinding.rootingToolsBody.text = Constants.RootAccess.ROOTING_TOOLS_BODY
+
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.CHECKING -> {
-                // Checking root status - show test button
-                tierBinding.rootStatusContainer.visibility = View.VISIBLE
-                tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_CHECKING
-                tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_CHECKING
+                // Checking root status - hide everything during check
+                tierBinding.rootStatusContainer.visibility = View.GONE
                 tierBinding.rootStatusInstructions.visibility = View.GONE
-                tierBinding.setupButtonContainer.visibility = View.VISIBLE
-                tierBinding.setupButton.text = "Test Root Access"
+                tierBinding.rootingToolsTitle.visibility = View.GONE
+                tierBinding.rootingToolsBody.visibility = View.GONE
+                tierBinding.setupButtonContainer.visibility = View.GONE
             }
         }
     }
@@ -414,7 +435,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         }
     }
 
-    private fun handleRootAccessTest() {
+    private fun handleRootAccessRequest() {
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastRootTestTime < 1000) {
             Log.d(TAG, "Root test throttled - too soon")
@@ -422,42 +443,72 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         }
         lastRootTestTime = currentTime
 
-        var resultMessage = "🔄 Testing root access..."
+        // Mark that we've requested root permission
+        viewModel.markRootPermissionRequested()
+
+        var resultMessage = "🔄 Testing root access...\n\nPlease grant permission in the popup dialog."
         val dialog = AlertDialog.Builder(requireContext())
             .setTitle("Root Access Test")
             .setMessage(resultMessage)
-            .setCancelable(false)
+            .setCancelable(true)
+            .setNegativeButton("Cancel") { d, _ -> d.dismiss() }
             .create()
         dialog.show()
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 resultMessage = testRootAccess()
-                dialog.setMessage(resultMessage)
-                permissionViewModel.refreshPermissions()
+                if (dialog.isShowing) {
+                    // Use Html.fromHtml to support bold text
+                    val formattedMessage = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                        android.text.Html.fromHtml(resultMessage, android.text.Html.FROM_HTML_MODE_LEGACY)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        android.text.Html.fromHtml(resultMessage)
+                    }
+                    dialog.setMessage(formattedMessage)
+                    dialog.setCancelable(true)
+                    dialog.setButton(AlertDialog.BUTTON_POSITIVE, "OK") { d, _ ->
+                        d.dismiss()
+                        // Refresh permissions and root status after dismissing
+                        permissionViewModel.refreshPermissions()
+                        viewModel.requestRootPermission()
+                    }
+                    // Remove cancel button
+                    dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.visibility = View.GONE
+                }
             } catch (e: Exception) {
                 resultMessage = "❌ Root test failed.\n\nError: ${e.message}"
-                dialog.setMessage(resultMessage)
-            } finally {
-                dialog.setCancelable(true)
-                dialog.setButton(AlertDialog.BUTTON_POSITIVE, "OK") { d, _ -> d.dismiss() }
+                if (dialog.isShowing) {
+                    dialog.setMessage(resultMessage)
+                    dialog.setCancelable(true)
+                    dialog.setButton(AlertDialog.BUTTON_POSITIVE, "OK") { d, _ -> d.dismiss() }
+                    dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.visibility = View.GONE
+                }
             }
         }
     }
 
-    private suspend fun testRootAccess(): String {
-        return try {
-            val process = Runtime.getRuntime().exec("su -c id")
-            val exitCode = process.waitFor()
+    private suspend fun testRootAccess(): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        return@withContext try {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
 
-            if (exitCode == 0) {
+            // Wait for process with timeout
+            val completed = kotlinx.coroutines.withTimeoutOrNull(5000) {
+                process.waitFor()
+            }
+
+            if (completed == null) {
+                process.destroy()
+                "⏱️ Root Test Timeout\n\nThe root permission request timed out. This may happen if:\n• You didn't respond to the permission dialog\n• Your root manager is not responding\n\nPlease try again."
+            } else if (completed == 0) {
                 val output = process.inputStream.bufferedReader().readText()
                 "✅ Root Access Granted!\n\nYour device is rooted and De1984 has been granted superuser permission.\n\nOutput: $output"
             } else {
-                "❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission. Please grant permission when prompted."
+                "❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission.\n\nTo grant access:\n• Try clicking \"Grant Root Access\" again and approve the prompt\n• If the permission prompt doesn't appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)"
             }
         } catch (e: Exception) {
-            "❌ Root Not Available\n\nYour device does not appear to be rooted.\n\nError: ${e.message}"
+            "❌ Root Not Available\n\nYour device does not appear to be rooted. Root access is required for advanced package management features.\n\n<b>Recommended rooting tools:</b>\n• Magisk - Most popular and widely supported root solution\n• KernelSU - Modern kernel-based root management with better security\n• APatch - Newer alternative with kernel patching approach\n\n⚠️ Important: Rooting requires unlocking the bootloader. Research your specific device model before proceeding."
         }
     }
 

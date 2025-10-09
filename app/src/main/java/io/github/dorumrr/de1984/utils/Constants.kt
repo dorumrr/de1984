@@ -115,15 +115,15 @@ object Constants {
         const val STATUS_CHECKING = "Root Access: Checking..."
 
         const val DESC_GRANTED = "Advanced operations are available"
-        const val DESC_DENIED = "Root permission was denied"
-        const val DESC_NOT_AVAILABLE = "Device is not rooted"
+        const val DESC_DENIED = "Root permission was denied. Follow the instructions below to grant access."
+        const val DESC_NOT_AVAILABLE = "Your device is not rooted. Root access is required for advanced package management operations."
         const val DESC_CHECKING = "Please wait..."
 
         const val GRANT_INSTRUCTIONS_TITLE = "To grant root access:"
         const val GRANT_INSTRUCTIONS_BODY = "• Reinstall the app to trigger the permission dialog again\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)"
 
         const val ROOTING_INSTRUCTIONS_INTRO = "Your device needs to be rooted to use advanced package management features."
-        const val ROOTING_TOOLS_TITLE = "Recommended rooting tools:"
+        const val ROOTING_TOOLS_TITLE = "<b>Recommended rooting tools:</b>"
         const val ROOTING_TOOLS_BODY = "• Magisk - Most popular and widely supported root solution. Works on Android 5.0+ and supports modules for additional features.\n• KernelSU - Modern kernel-based root management. Provides better security isolation and doesn't modify system partition.\n• APatch - Newer alternative with kernel patching approach. Good for devices with strict security policies."
         const val ROOTING_WARNING = "⚠️ Important: Rooting your device requires unlocking the bootloader. Research your specific device model before proceeding."
 

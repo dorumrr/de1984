@@ -108,7 +108,28 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="To enable these features:\n1. Root your device using Magisk or similar\n2. Grant superuser permission when prompted\n3. Test root access using the button above"
+            android:text="Your device needs to be rooted to use advanced package management features."
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/rooting_tools_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Recommended rooting tools:"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/rooting_tools_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="• Magisk - Most popular and widely supported root solution.\n• KernelSU - Modern kernel-based root management.\n• APatch - Newer alternative with kernel patching approach."
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary"
             android:visibility="gone" />

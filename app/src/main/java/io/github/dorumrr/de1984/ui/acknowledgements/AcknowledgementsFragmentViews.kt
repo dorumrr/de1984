@@ -1,5 +1,7 @@
 package io.github.dorumrr.de1984.ui.acknowledgements
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -25,6 +27,12 @@ class AcknowledgementsFragmentViews : BaseFragment<FragmentAcknowledgementsBindi
         // Back button
         binding.backButton.setOnClickListener {
             requireActivity().onBackPressedDispatcher.onBackPressed()
+        }
+
+        // Contribute link
+        binding.contributeLink.setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dorumrr/de1984"))
+            startActivity(intent)
         }
     }
 }

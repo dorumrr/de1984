@@ -130,11 +130,40 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             navigateToAcknowledgements()
         }
 
-        // Footer (author link)
-        binding.footerText.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dorumrr/de1984"))
-            startActivity(intent)
+        // Footer (author link) - make only "Doru Moraru" clickable
+        setupFooterLink()
+    }
+
+    private fun setupFooterLink() {
+        val fullText = "Giving Privacy its due, by Doru Moraru"
+        val clickableText = "Doru Moraru"
+        val startIndex = fullText.indexOf(clickableText)
+        val endIndex = startIndex + clickableText.length
+
+        val spannableString = android.text.SpannableString(fullText)
+
+        val clickableSpan = object : android.text.style.ClickableSpan() {
+            override fun onClick(widget: View) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dorumrr/de1984"))
+                startActivity(intent)
+            }
+
+            override fun updateDrawState(ds: android.text.TextPaint) {
+                super.updateDrawState(ds)
+                ds.color = ContextCompat.getColor(requireContext(), io.github.dorumrr.de1984.R.color.lineage_teal)
+                ds.isUnderlineText = true
+            }
         }
+
+        spannableString.setSpan(
+            clickableSpan,
+            startIndex,
+            endIndex,
+            android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+
+        binding.footerText.text = spannableString
+        binding.footerText.movementMethod = android.text.method.LinkMovementMethod.getInstance()
     }
 
     private fun observeUiState() {

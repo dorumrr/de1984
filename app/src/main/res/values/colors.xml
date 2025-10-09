@@ -14,7 +14,8 @@
     <!-- Status Colors -->
     <color name="success_green">#2E7D32</color> <!-- Material Green 800 - Darker, consistent green -->
     <color name="warning_orange">#FF9800</color>
-    <color name="error_red">#F44336</color>
+    <color name="error_red">#F44336</color> <!-- Material Red 500 - Consistent red -->
+    <color name="error_red_light">#FFCDD2</color> <!-- Material Red 100 - Light red for backgrounds -->
     
     <!-- Surface Colors -->
     <color name="background_light">#F5F5F5</color>

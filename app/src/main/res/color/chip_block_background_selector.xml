@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:color="#FFCDD2" android:state_checked="true" />
+    <item android:color="@color/error_red_light" android:state_checked="true" />
     <item android:color="#FFFFFF" />
 </selector>
 

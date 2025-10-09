@@ -72,7 +72,7 @@ class NetworkPackageAdapter(
                 pkg.isFullyAllowed -> {
                     networkStatusBadge.text = "Allowed"
                     networkStatusBadge.setBackgroundResource(R.drawable.status_badge_complete)
-                    networkStatusIcon.setImageResource(android.R.drawable.checkbox_on_background)
+                    networkStatusIcon.setImageResource(R.drawable.ic_check_circle)
                     networkStatusIcon.setColorFilter(
                         ContextCompat.getColor(itemView.context, android.R.color.holo_green_dark)
                     )
@@ -80,7 +80,7 @@ class NetworkPackageAdapter(
                 pkg.isFullyBlocked -> {
                     networkStatusBadge.text = "Blocked"
                     networkStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
-                    networkStatusIcon.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+                    networkStatusIcon.setImageResource(R.drawable.ic_block)
                     networkStatusIcon.setColorFilter(
                         ContextCompat.getColor(itemView.context, android.R.color.holo_red_dark)
                     )
@@ -89,7 +89,7 @@ class NetworkPackageAdapter(
                     // Show specific state for partial blocking
                     networkStatusBadge.text = pkg.networkState
                     networkStatusBadge.setBackgroundResource(R.drawable.status_badge_partial)
-                    networkStatusIcon.setImageResource(android.R.drawable.ic_dialog_alert)
+                    networkStatusIcon.setImageResource(R.drawable.ic_warning)
                     networkStatusIcon.setColorFilter(
                         ContextCompat.getColor(itemView.context, android.R.color.holo_orange_dark)
                     )
@@ -97,7 +97,7 @@ class NetworkPackageAdapter(
                 else -> {
                     networkStatusBadge.text = "Unknown"
                     networkStatusBadge.setBackgroundResource(R.drawable.root_status_background)
-                    networkStatusIcon.setImageResource(android.R.drawable.ic_dialog_info)
+                    networkStatusIcon.setImageResource(R.drawable.ic_warning)
                     networkStatusIcon.setColorFilter(
                         ContextCompat.getColor(itemView.context, android.R.color.darker_gray)
                     )

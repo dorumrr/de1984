@@ -37,7 +37,9 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="16dp">
+        android:padding="16dp"
+        android:paddingBottom="96dp"
+        android:clipToPadding="false">
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -51,7 +53,7 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <!-- Jetpack Compose -->
+                <!-- AndroidX Core KTX -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -62,7 +64,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Jetpack Compose"
+                        android:text="AndroidX Core KTX"
                         android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="?android:attr/textColorPrimary" />
@@ -70,7 +72,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="v2024.02.00"
+                        android:text="v1.12.0"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 
@@ -82,7 +84,7 @@
                     android:background="?android:attr/listDivider"
                     android:layout_marginVertical="4dp" />
 
-                <!-- Material Design 3 -->
+                <!-- Material Design Components -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -93,7 +95,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Material Design 3"
+                        android:text="Material Design Components"
                         android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="?android:attr/textColorPrimary" />
@@ -101,7 +103,38 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="vLatest"
+                        android:text="v1.11.0"
+                        android:textSize="12sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?android:attr/listDivider"
+                    android:layout_marginVertical="4dp" />
+
+                <!-- AndroidX RecyclerView -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="AndroidX RecyclerView"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="?android:attr/textColorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="v1.3.2"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 
@@ -206,7 +239,7 @@
                     android:background="?android:attr/listDivider"
                     android:layout_marginVertical="4dp" />
 
-                <!-- Kotlin Coroutines -->
+                <!-- AndroidX Lifecycle -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -217,7 +250,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Kotlin Coroutines"
+                        android:text="AndroidX Lifecycle"
                         android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="?android:attr/textColorPrimary" />
@@ -225,7 +258,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="v1.7.3"
+                        android:text="v2.7.0"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 

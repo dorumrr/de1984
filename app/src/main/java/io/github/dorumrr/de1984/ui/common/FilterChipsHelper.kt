@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984.ui.common
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import com.google.android.material.chip.Chip
@@ -11,6 +12,11 @@ import io.github.dorumrr.de1984.R
  * Reusable across Firewall and Packages screens
  */
 object FilterChipsHelper {
+
+    private const val TAG = "FilterChipsHelper"
+
+    // Flag to prevent triggering callbacks during programmatic updates
+    private var isUpdatingProgrammatically = false
     
     /**
      * Setup filter chips in a ChipGroup
@@ -68,9 +74,21 @@ object FilterChipsHelper {
             val chip = createFilterChip(chipGroup, filter, filter == selectedTypeFilter)
             chip.tag = "type:$filter" // Tag to identify chip type
             chip.setOnCheckedChangeListener { buttonView, isChecked ->
+                Log.d(TAG, "Type chip listener fired: filter=$filter, isChecked=$isChecked, isUpdatingProgrammatically=$isUpdatingProgrammatically")
+
+                // Skip if this is a programmatic update
+                if (isUpdatingProgrammatically) {
+                    Log.d(TAG, "Skipping type chip callback - programmatic update")
+                    return@setOnCheckedChangeListener
+                }
+
                 if (isChecked) {
                     // When a type chip is checked, uncheck all other type chips
                     val clickedFilter = chip.tag.toString().removePrefix("type:")
+                    Log.d(TAG, "Type chip checked by user: $clickedFilter")
+
+                    // Use programmatic flag to prevent recursion
+                    isUpdatingProgrammatically = true
 
                     // Uncheck other type chips
                     for (i in 0 until chipGroup.childCount) {
@@ -78,21 +96,22 @@ object FilterChipsHelper {
                         if (otherChip != null &&
                             otherChip.tag.toString().startsWith("type:") &&
                             otherChip != chip) {
-                            // Temporarily remove listener to avoid recursion
-                            otherChip.setOnCheckedChangeListener(null)
+                            Log.d(TAG, "Unchecking other type chip: ${otherChip.tag}")
                             otherChip.isChecked = false
-                            // Re-attach listener
-                            setupTypeChipListener(otherChip, chipGroup, onTypeFilterSelected)
                         }
                     }
 
+                    isUpdatingProgrammatically = false
+
                     // Notify the callback
+                    Log.d(TAG, "Calling onTypeFilterSelected: $clickedFilter")
                     onTypeFilterSelected(clickedFilter)
                 } else {
                     // Prevent unchecking - at least one type must be selected
-                    chip.setOnCheckedChangeListener(null)
+                    Log.d(TAG, "Preventing type chip uncheck")
+                    isUpdatingProgrammatically = true
                     chip.isChecked = true
-                    setupTypeChipListener(chip, chipGroup, onTypeFilterSelected)
+                    isUpdatingProgrammatically = false
                 }
             }
             chipGroup.addView(chip)
@@ -103,26 +122,38 @@ object FilterChipsHelper {
             val chip = createFilterChip(chipGroup, filter, filter == selectedStateFilter)
             chip.tag = "state:$filter" // Tag to identify chip type
             chip.setOnCheckedChangeListener { buttonView, isChecked ->
+                Log.d(TAG, "State chip listener fired: filter=$filter, isChecked=$isChecked, isUpdatingProgrammatically=$isUpdatingProgrammatically")
+
+                // Skip if this is a programmatic update
+                if (isUpdatingProgrammatically) {
+                    Log.d(TAG, "Skipping state chip callback - programmatic update")
+                    return@setOnCheckedChangeListener
+                }
+
                 val clickedFilter = chip.tag.toString().removePrefix("state:")
                 if (isChecked) {
                     // When a state chip is checked, uncheck all other state chips
+                    Log.d(TAG, "State chip checked by user: $clickedFilter")
+                    isUpdatingProgrammatically = true
+
                     for (i in 0 until chipGroup.childCount) {
                         val otherChip = chipGroup.getChildAt(i) as? Chip
                         if (otherChip != null &&
                             otherChip.tag.toString().startsWith("state:") &&
                             otherChip != chip) {
-                            // Temporarily remove listener to avoid recursion
-                            otherChip.setOnCheckedChangeListener(null)
+                            Log.d(TAG, "Unchecking other state chip: ${otherChip.tag}")
                             otherChip.isChecked = false
-                            // Re-attach listener
-                            setupStateChipListener(otherChip, chipGroup, onStateFilterSelected)
                         }
                     }
 
+                    isUpdatingProgrammatically = false
+
                     // Notify the callback
+                    Log.d(TAG, "Calling onStateFilterSelected: $clickedFilter")
                     onStateFilterSelected(clickedFilter)
                 } else {
                     // Allow unchecking state chips (optional filter)
+                    Log.d(TAG, "State chip unchecked by user, calling onStateFilterSelected: null")
                     onStateFilterSelected(null)
                 }
             }
@@ -130,70 +161,7 @@ object FilterChipsHelper {
         }
     }
 
-    /**
-     * Helper to setup type chip listener (for re-attaching after programmatic changes)
-     */
-    private fun setupTypeChipListener(
-        chip: Chip,
-        chipGroup: ChipGroup,
-        onTypeFilterSelected: (String) -> Unit
-    ) {
-        chip.setOnCheckedChangeListener { buttonView, isChecked ->
-            if (isChecked) {
-                val clickedFilter = chip.tag.toString().removePrefix("type:")
 
-                // Uncheck other type chips
-                for (i in 0 until chipGroup.childCount) {
-                    val otherChip = chipGroup.getChildAt(i) as? Chip
-                    if (otherChip != null &&
-                        otherChip.tag.toString().startsWith("type:") &&
-                        otherChip != chip) {
-                        otherChip.setOnCheckedChangeListener(null)
-                        otherChip.isChecked = false
-                        setupTypeChipListener(otherChip, chipGroup, onTypeFilterSelected)
-                    }
-                }
-
-                onTypeFilterSelected(clickedFilter)
-            } else {
-                // Prevent unchecking
-                chip.setOnCheckedChangeListener(null)
-                chip.isChecked = true
-                setupTypeChipListener(chip, chipGroup, onTypeFilterSelected)
-            }
-        }
-    }
-
-    /**
-     * Helper to setup state chip listener (for re-attaching after programmatic changes)
-     */
-    private fun setupStateChipListener(
-        chip: Chip,
-        chipGroup: ChipGroup,
-        onStateFilterSelected: (String?) -> Unit
-    ) {
-        chip.setOnCheckedChangeListener { buttonView, isChecked ->
-            val clickedFilter = chip.tag.toString().removePrefix("state:")
-            if (isChecked) {
-                // Uncheck other state chips
-                for (i in 0 until chipGroup.childCount) {
-                    val otherChip = chipGroup.getChildAt(i) as? Chip
-                    if (otherChip != null &&
-                        otherChip.tag.toString().startsWith("state:") &&
-                        otherChip != chip) {
-                        otherChip.setOnCheckedChangeListener(null)
-                        otherChip.isChecked = false
-                        setupStateChipListener(otherChip, chipGroup, onStateFilterSelected)
-                    }
-                }
-
-                onStateFilterSelected(clickedFilter)
-            } else {
-                // Allow unchecking state chips (optional filter)
-                onStateFilterSelected(null)
-            }
-        }
-    }
 
     /**
      * Update chip selection without recreating chips or triggering listeners
@@ -204,9 +172,13 @@ object FilterChipsHelper {
         selectedTypeFilter: String?,
         selectedStateFilter: String?
     ) {
-        // Disable all listeners temporarily
-        chipGroup.setOnCheckedStateChangeListener(null)
+        Log.d(TAG, "updateMultiSelectFilterChips called: typeFilter=$selectedTypeFilter, stateFilter=$selectedStateFilter")
 
+        // Set flag to prevent callbacks during programmatic updates
+        isUpdatingProgrammatically = true
+        Log.d(TAG, "Set isUpdatingProgrammatically = true")
+
+        // Update chip checked states
         for (i in 0 until chipGroup.childCount) {
             val chip = chipGroup.getChildAt(i) as? Chip ?: continue
             val tag = chip.tag as? String ?: continue
@@ -214,14 +186,22 @@ object FilterChipsHelper {
             when {
                 tag.startsWith("type:") -> {
                     val filterName = tag.removePrefix("type:")
-                    chip.isChecked = filterName == selectedTypeFilter
+                    val shouldBeChecked = filterName == selectedTypeFilter
+                    Log.d(TAG, "Updating type chip: $tag, shouldBeChecked=$shouldBeChecked, currentlyChecked=${chip.isChecked}")
+                    chip.isChecked = shouldBeChecked
                 }
                 tag.startsWith("state:") -> {
                     val filterName = tag.removePrefix("state:")
-                    chip.isChecked = filterName == selectedStateFilter
+                    val shouldBeChecked = filterName == selectedStateFilter
+                    Log.d(TAG, "Updating state chip: $tag, shouldBeChecked=$shouldBeChecked, currentlyChecked=${chip.isChecked}")
+                    chip.isChecked = shouldBeChecked
                 }
             }
         }
+
+        // Reset flag after updates are complete
+        isUpdatingProgrammatically = false
+        Log.d(TAG, "Set isUpdatingProgrammatically = false")
     }
     
     private fun createFilterChip(

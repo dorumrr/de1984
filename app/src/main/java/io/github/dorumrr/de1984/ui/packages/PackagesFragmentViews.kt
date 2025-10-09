@@ -54,6 +54,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     private lateinit var adapter: PackageAdapter
     private var currentTypeFilter: String? = null
     private var currentStateFilter: String? = null
+    private var lastSubmittedPackages: List<Package> = emptyList()
 
     override fun getViewBinding(
         inflater: LayoutInflater,
@@ -161,7 +162,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun updateUI(state: PackagesUiState) {
-        Log.d(TAG, "updateUI: ${state.packages.size} packages, " +
+        Log.d(TAG, "========================================")
+        Log.d(TAG, "updateUI CALLED: ${state.packages.size} packages, " +
                 "loading=${state.isLoading}, " +
                 "isLoadingData=${state.isLoadingData}, " +
                 "isRenderingUI=${state.isRenderingUI}, " +
@@ -169,21 +171,44 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 "stateFilter=${state.filterState.packageState}")
 
         // Update filter chips
+        Log.d(TAG, "About to call updateFilterChips")
         updateFilterChips(
             packageTypeFilter = state.filterState.packageType,
             packageStateFilter = state.filterState.packageState
         )
+        Log.d(TAG, "Finished updateFilterChips")
 
-        // Update RecyclerView
-        adapter.submitList(state.packages) {
-            // Called when list is submitted and rendered
+        // Update RecyclerView - only if the list actually changed
+        val listChanged = state.packages != lastSubmittedPackages
+
+        Log.d(TAG, "About to call adapter.submitList with ${state.packages.size} packages, listChanged=$listChanged")
+
+        if (listChanged) {
+            lastSubmittedPackages = state.packages
+            // Submit list with null to force immediate clear, then submit new list
+            // This prevents showing old list while DiffUtil calculates
+            adapter.submitList(null) {
+                adapter.submitList(state.packages) {
+                    Log.d(TAG, "adapter.submitList callback executed")
+                    // Called when list is submitted and rendered
+                    if (state.isRenderingUI) {
+                        // Mark UI as ready after RecyclerView has rendered
+                        binding.packagesRecyclerView.post {
+                            viewModel.setUIReady()
+                        }
+                    }
+                }
+            }
+        } else {
+            Log.d(TAG, "Skipping adapter.submitList - list unchanged")
+            // Still need to call setUIReady if we're in rendering state
             if (state.isRenderingUI) {
-                // Mark UI as ready after RecyclerView has rendered
                 binding.packagesRecyclerView.post {
                     viewModel.setUIReady()
                 }
             }
         }
+        Log.d(TAG, "========================================")
 
         // Show/hide states
         when {

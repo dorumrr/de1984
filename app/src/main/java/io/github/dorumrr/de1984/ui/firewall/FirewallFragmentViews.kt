@@ -66,6 +66,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private lateinit var adapter: NetworkPackageAdapter
     private var currentTypeFilter: String? = null
     private var currentStateFilter: String? = null
+    private var lastSubmittedPackages: List<NetworkPackage> = emptyList()
 
     override fun getViewBinding(
         inflater: LayoutInflater,
@@ -201,11 +202,27 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Update package count
         binding.packageCount.text = "${state.packages.size} packages"
 
-        // Update RecyclerView
-        adapter.submitList(state.packages) {
-            // Called when list is submitted and rendered
+        // Update RecyclerView - only if the list actually changed
+        val listChanged = state.packages != lastSubmittedPackages
+
+        if (listChanged) {
+            lastSubmittedPackages = state.packages
+            // Submit list with null to force immediate clear, then submit new list
+            // This prevents showing old list while DiffUtil calculates
+            adapter.submitList(null) {
+                adapter.submitList(state.packages) {
+                    // Called when list is submitted and rendered
+                    if (state.isRenderingUI) {
+                        // Mark UI as ready after RecyclerView has rendered
+                        binding.packagesRecyclerView.post {
+                            viewModel.setUIReady()
+                        }
+                    }
+                }
+            }
+        } else {
+            // Still need to call setUIReady if we're in rendering state
             if (state.isRenderingUI) {
-                // Mark UI as ready after RecyclerView has rendered
                 binding.packagesRecyclerView.post {
                     viewModel.setUIReady()
                 }

@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -23,8 +24,13 @@ class PackagesViewModel(
     private val rootManager: RootManager
 ) : ViewModel() {
 
+    private val TAG = "PackagesViewModel"
+
     private val _uiState = MutableStateFlow(PackagesUiState())
     val uiState: StateFlow<PackagesUiState> = _uiState.asStateFlow()
+
+    // Store pending filter state separately to avoid triggering UI updates
+    private var pendingFilterState: PackageFilterState? = null
 
     val showRootBanner: Boolean
         get() = superuserBannerState.showBanner
@@ -44,9 +50,14 @@ class PackagesViewModel(
     }
 
     fun loadPackages() {
-        val filterState = _uiState.value.filterState
+        // Use pending filter if available, otherwise use current filter
+        val filterState = pendingFilterState ?: _uiState.value.filterState
+        Log.d(TAG, ">>> loadPackages called with filter: type=${filterState.packageType}, state=${filterState.packageState}, isPending=${pendingFilterState != null}")
+
         getPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
+                Log.e(TAG, ">>> loadPackages ERROR: ${error.message}")
+                pendingFilterState = null // Clear pending filter on error
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
                     isRenderingUI = false,
@@ -54,38 +65,50 @@ class PackagesViewModel(
                 )
             }
             .onEach { packages ->
-                _uiState.value = _uiState.value.copy(
+                Log.d(TAG, ">>> loadPackages onEach: received ${packages.size} packages")
+                // Only emit state when we have the new data ready
+                // Apply the pending filter state now
+                val finalFilterState = pendingFilterState ?: _uiState.value.filterState
+                pendingFilterState = null // Clear pending filter
+
+                val newState = _uiState.value.copy(
                     packages = packages,
+                    filterState = finalFilterState,
                     isLoadingData = false,
                     isRenderingUI = true,
                     error = null
                 )
+                Log.d(TAG, ">>> EMITTING STATE: ${packages.size} packages, filter: type=${newState.filterState.packageType}, state=${newState.filterState.packageState}")
+                _uiState.value = newState
             }
             .launchIn(viewModelScope)
     }
     
     fun setPackageTypeFilter(packageType: String) {
+        Log.d(TAG, ">>> setPackageTypeFilter called: $packageType")
         val newFilterState = PackageFilterState(
             packageType = packageType,
             packageState = null
         )
-        _uiState.value = _uiState.value.copy(
-            filterState = newFilterState,
-            isLoadingData = true,
-            isRenderingUI = false
-        )
+        // Store filter in pending state - DO NOT update StateFlow yet
+        Log.d(TAG, ">>> Storing filter in pendingFilterState (no StateFlow emission)")
+        pendingFilterState = newFilterState
 
+        // Load packages will emit the state with correct data
+        Log.d(TAG, ">>> Calling loadPackages()")
         loadPackages()
     }
 
     fun setPackageStateFilter(packageState: String?) {
+        Log.d(TAG, ">>> setPackageStateFilter called: $packageState")
         val currentFilterState = _uiState.value.filterState
         val newFilterState = currentFilterState.copy(packageState = packageState)
-        _uiState.value = _uiState.value.copy(
-            filterState = newFilterState,
-            isLoadingData = true,
-            isRenderingUI = false
-        )
+        // Store filter in pending state - DO NOT update StateFlow yet
+        Log.d(TAG, ">>> Storing filter in pendingFilterState (no StateFlow emission)")
+        pendingFilterState = newFilterState
+
+        // Load packages will emit the state with correct data
+        Log.d(TAG, ">>> Calling loadPackages()")
         loadPackages()
     }
 

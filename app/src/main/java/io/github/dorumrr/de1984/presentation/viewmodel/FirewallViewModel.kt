@@ -34,6 +34,9 @@ class FirewallViewModel(
     private val _uiState = MutableStateFlow(FirewallUiState())
     val uiState: StateFlow<FirewallUiState> = _uiState.asStateFlow()
 
+    // Store pending filter state separately to avoid triggering UI updates
+    private var pendingFilterState: FirewallFilterState? = null
+
     val showRootBanner: Boolean
         get() = superuserBannerState.showBanner
 
@@ -76,15 +79,12 @@ class FirewallViewModel(
     }
     
     fun loadNetworkPackages() {
-        _uiState.value = _uiState.value.copy(
-            isLoadingData = true,
-            isRenderingUI = false
-        )
-
-        val filterState = _uiState.value.filterState
+        // Use pending filter if available, otherwise use current filter
+        val filterState = pendingFilterState ?: _uiState.value.filterState
 
         getNetworkPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
+                pendingFilterState = null // Clear pending filter on error
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
                     isRenderingUI = false,
@@ -92,8 +92,13 @@ class FirewallViewModel(
                 )
             }
             .onEach { packages ->
+                // Apply the pending filter state now
+                val finalFilterState = pendingFilterState ?: _uiState.value.filterState
+                pendingFilterState = null // Clear pending filter
+
                 _uiState.value = _uiState.value.copy(
                     packages = packages,
+                    filterState = finalFilterState,
                     isLoadingData = false,
                     isRenderingUI = true,
                     error = null
@@ -107,25 +112,20 @@ class FirewallViewModel(
             packageType = packageType,
             networkState = null
         )
-        _uiState.value = _uiState.value.copy(
-            filterState = newFilterState,
-            packages = emptyList(), // Clear packages to avoid showing old list
-            isLoadingData = true,
-            isRenderingUI = false
-        )
+        // Store filter in pending state - DO NOT update StateFlow yet
+        pendingFilterState = newFilterState
 
+        // Load packages will emit the state with correct data
         loadNetworkPackages()
     }
 
     fun setNetworkStateFilter(networkState: String?) {
         val currentFilterState = _uiState.value.filterState
         val newFilterState = currentFilterState.copy(networkState = networkState)
-        _uiState.value = _uiState.value.copy(
-            filterState = newFilterState,
-            packages = emptyList(), // Clear packages to avoid showing old list
-            isLoadingData = true,
-            isRenderingUI = false
-        )
+        // Store filter in pending state - DO NOT update StateFlow yet
+        pendingFilterState = newFilterState
+
+        // Load packages will emit the state with correct data
         loadNetworkPackages()
     }
     

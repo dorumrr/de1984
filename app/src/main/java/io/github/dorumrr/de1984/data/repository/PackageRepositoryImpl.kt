@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984.data.repository
 
+import android.util.Log
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.model.toDomain
 import io.github.dorumrr.de1984.domain.model.Package
@@ -8,6 +9,7 @@ import io.github.dorumrr.de1984.domain.repository.PackageRepository
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 
 class PackageRepositoryImpl(
     private val packageDataSource: PackageDataSource
@@ -15,16 +17,29 @@ class PackageRepositoryImpl(
     
     override fun getPackages(): Flow<List<Package>> {
         return packageDataSource.getPackages()
+            .onEach { entities ->
+                Log.d("PackageRepository", ">>> DataSource emitted: ${entities.size} entities")
+            }
             .map { entities ->
-                entities
+                val packages = entities
                     .filter { !Constants.App.isOwnApp(it.packageName) }
                     .map { it.toDomain() }
+                Log.d("PackageRepository", ">>> After mapping: ${packages.size} packages")
+                packages
             }
     }
-    
+
     override fun getPackagesByType(type: PackageType): Flow<List<Package>> {
+        Log.d("PackageRepository", ">>> getPackagesByType called: $type")
         return getPackages()
-            .map { packages -> packages.filter { it.type == type } }
+            .onEach { packages ->
+                Log.d("PackageRepository", ">>> getPackages() emitted: ${packages.size} packages (before type filter)")
+            }
+            .map { packages ->
+                val filtered = packages.filter { it.type == type }
+                Log.d("PackageRepository", ">>> After type filter ($type): ${filtered.size} packages")
+                filtered
+            }
     }
     
     override fun getPackagesByEnabledState(enabled: Boolean): Flow<List<Package>> {

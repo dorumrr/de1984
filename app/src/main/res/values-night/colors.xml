@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Bottom Navigation Colors (Dark Mode) -->
+    <color name="bottom_nav_background">#2C2C2C</color> <!-- Dark surface background -->
     <color name="bottom_nav_selected_background">#004D40</color> <!-- Dark teal background -->
+
+    <!-- Chip Colors (Dark Mode) -->
+    <color name="chip_background_checked">#004D40</color> <!-- Dark teal -->
+    <color name="chip_background_unchecked">#424242</color> <!-- Dark surface variant -->
+    <color name="chip_stroke_checked">#4DB6AC</color> <!-- Light teal -->
+    <color name="chip_stroke_unchecked">#757575</color> <!-- Medium gray -->
+    <color name="chip_text_checked">#80CBC4</color> <!-- Light teal -->
+    <color name="chip_text_unchecked">#E0E0E0</color> <!-- Light gray -->
 </resources>
 

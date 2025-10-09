@@ -34,5 +34,14 @@
     <color name="outline_dark">#616161</color>
 
     <!-- Bottom Navigation Colors (Light Mode) -->
+    <color name="bottom_nav_background">#FFFFFF</color> <!-- White background -->
     <color name="bottom_nav_selected_background">#E0F2F1</color> <!-- Light teal background -->
+
+    <!-- Chip Colors (Light Mode) -->
+    <color name="chip_background_checked">#E0F2F1</color> <!-- Light teal -->
+    <color name="chip_background_unchecked">#FFFFFF</color> <!-- White -->
+    <color name="chip_stroke_checked">#00897B</color> <!-- Teal -->
+    <color name="chip_stroke_unchecked">#BDBDBD</color> <!-- Light gray -->
+    <color name="chip_text_checked">#00695C</color> <!-- Dark teal -->
+    <color name="chip_text_unchecked">#616161</color> <!-- Dark gray -->
 </resources>

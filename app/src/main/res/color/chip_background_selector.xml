@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:color="#E0F2F1" android:state_checked="true" />
-    <item android:color="#FFFFFF" />
+    <!-- Checked state - Use teal background -->
+    <item android:color="@color/chip_background_checked" android:state_checked="true" />
+    <!-- Unchecked state - Use surface color -->
+    <item android:color="@color/chip_background_unchecked" />
 </selector>
 

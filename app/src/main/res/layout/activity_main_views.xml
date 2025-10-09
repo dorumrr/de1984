@@ -89,7 +89,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/bottom_nav_background"
-        app:itemIconSize="32dp"
+        app:itemIconSize="40dp"
         app:itemIconTint="@color/bottom_nav_item_color"
         app:itemTextColor="@color/bottom_nav_item_color"
         app:itemBackground="@drawable/bottom_nav_item_background"

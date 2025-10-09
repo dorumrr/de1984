@@ -140,10 +140,19 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainViewsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Apply window insets
+        // Apply window insets to handle edge-to-edge properly
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            // Apply top padding for status bar to the toolbar
+            binding.toolbar.setPadding(0, systemBars.top, 0, 0)
+
+            // Apply bottom padding for navigation bar to the bottom navigation
+            binding.bottomNavigation.setPadding(0, 0, 0, systemBars.bottom)
+
+            // Don't apply padding to root view
             view.setPadding(0, 0, 0, 0)
+
             insets
         }
 

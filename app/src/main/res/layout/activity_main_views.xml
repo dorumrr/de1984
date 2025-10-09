@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:elevation="2dp"
-        android:fitsSystemWindows="true"
+        android:fitsSystemWindows="false"
         app:elevation="2dp">
 
         <com.google.android.material.appbar.MaterialToolbar
@@ -19,6 +19,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/lineage_teal"
+            android:clipToPadding="false"
             android:theme="@style/ThemeOverlay.Material3.Dark"
             app:titleTextColor="@color/white">
 
@@ -94,12 +95,14 @@
         android:layout_height="80dp"
         android:background="@color/white"
         android:elevation="8dp"
+        android:clipToPadding="false"
         app:elevation="8dp"
         app:itemIconSize="32dp"
         app:itemIconTint="@color/bottom_nav_item_color"
         app:itemTextColor="@color/bottom_nav_item_color"
         app:itemBackground="@drawable/bottom_nav_item_background"
         app:itemActiveIndicatorStyle="@null"
+        app:itemRippleColor="@android:color/transparent"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/menu_bottom_navigation" />
 

@@ -74,6 +74,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Check root access
         viewModel.checkRootAccess()
+
+        // Add layout change listener to track when RecyclerView actually renders
+        binding.packagesRecyclerView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            Log.d(TAG, ">>> RecyclerView layout changed, adapter.itemCount=${adapter.itemCount}, childCount=${binding.packagesRecyclerView.childCount}")
+        }
     }
 
     private fun setupRecyclerView() {
@@ -109,6 +114,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 Log.d(TAG, "Type filter clicked: $filter, current: $currentTypeFilter")
                 // Only trigger if different from current
                 if (filter != currentTypeFilter) {
+                    // Clear the list IMMEDIATELY to prevent showing stale data
+                    Log.d(TAG, "Clearing adapter list immediately before filter change")
+                    adapter.submitList(null)
+                    lastSubmittedPackages = emptyList()
+
                     currentTypeFilter = filter
                     viewModel.setPackageTypeFilter(filter)
                 }
@@ -180,49 +190,47 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Update RecyclerView - only if the list actually changed
         val listChanged = state.packages != lastSubmittedPackages
+        Log.d(TAG, "About to call adapter.submitList with ${state.packages.size} packages, listChanged=$listChanged, isRenderingUI=${state.isRenderingUI}")
 
-        Log.d(TAG, "About to call adapter.submitList with ${state.packages.size} packages, listChanged=$listChanged")
+        if (!listChanged) {
+            Log.d(TAG, "Skipping adapter.submitList - list unchanged")
+            Log.d(TAG, "========================================")
+            return
+        }
 
-        if (listChanged) {
+        // Submit the list
+        if (state.isRenderingUI) {
+            Log.d(TAG, "Submitting ${state.packages.size} packages with callback")
             lastSubmittedPackages = state.packages
-            // Submit list with null to force immediate clear, then submit new list
-            // This prevents showing old list while DiffUtil calculates
-            adapter.submitList(null) {
-                adapter.submitList(state.packages) {
-                    Log.d(TAG, "adapter.submitList callback executed")
-                    // Called when list is submitted and rendered
-                    if (state.isRenderingUI) {
-                        // Mark UI as ready after RecyclerView has rendered
-                        binding.packagesRecyclerView.post {
-                            viewModel.setUIReady()
-                        }
-                    }
-                }
+            adapter.submitList(state.packages) {
+                Log.d(TAG, "adapter.submitList callback executed, adapter.currentList.size=${adapter.currentList.size}")
+                // Call setUIReady after the list is submitted
+                viewModel.setUIReady()
             }
         } else {
-            Log.d(TAG, "Skipping adapter.submitList - list unchanged")
-            // Still need to call setUIReady if we're in rendering state
-            if (state.isRenderingUI) {
-                binding.packagesRecyclerView.post {
-                    viewModel.setUIReady()
-                }
-            }
+            Log.d(TAG, "Submitting ${state.packages.size} packages (isRenderingUI=false)")
+            lastSubmittedPackages = state.packages
+            adapter.submitList(state.packages)
         }
+
         Log.d(TAG, "========================================")
 
         // Show/hide states
         when {
-            state.isLoading -> {
+            state.isLoading && state.packages.isEmpty() -> {
+                // Only show loading spinner if we have no packages yet
                 binding.loadingState.visibility = View.VISIBLE
                 binding.emptyState.visibility = View.GONE
                 binding.packagesRecyclerView.visibility = View.GONE
             }
             state.packages.isEmpty() -> {
+                // No packages and not loading - show empty state
                 binding.loadingState.visibility = View.GONE
                 binding.emptyState.visibility = View.VISIBLE
                 binding.packagesRecyclerView.visibility = View.GONE
             }
             else -> {
+                // We have packages - show them (even if still rendering)
                 binding.loadingState.visibility = View.GONE
                 binding.emptyState.visibility = View.GONE
                 binding.packagesRecyclerView.visibility = View.VISIBLE

@@ -206,14 +206,35 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val listChanged = state.packages != lastSubmittedPackages
 
         if (listChanged) {
+            val oldSize = lastSubmittedPackages.size
+            val newSize = state.packages.size
             lastSubmittedPackages = state.packages
-            // Submit list with null to force immediate clear, then submit new list
-            // This prevents showing old list while DiffUtil calculates
-            adapter.submitList(null) {
+
+            // Only clear list if size changes dramatically (more than 10% difference)
+            val sizeDifference = kotlin.math.abs(newSize - oldSize)
+            val shouldClearFirst = oldSize > 0 && sizeDifference > (oldSize * 0.1)
+
+            if (shouldClearFirst) {
+                // For large changes, hide RecyclerView during transition
+                binding.packagesRecyclerView.visibility = View.INVISIBLE
+
+                // Submit list with null to clear, then submit new list
+                adapter.submitList(null)
+                binding.packagesRecyclerView.post {
+                    adapter.submitList(state.packages) {
+                        // Show RecyclerView after list is submitted
+                        binding.packagesRecyclerView.visibility = View.VISIBLE
+                        if (state.isRenderingUI) {
+                            binding.packagesRecyclerView.post {
+                                viewModel.setUIReady()
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Just submit the new list directly - DiffUtil will handle it smoothly
                 adapter.submitList(state.packages) {
-                    // Called when list is submitted and rendered
                     if (state.isRenderingUI) {
-                        // Mark UI as ready after RecyclerView has rendered
                         binding.packagesRecyclerView.post {
                             viewModel.setUIReady()
                         }

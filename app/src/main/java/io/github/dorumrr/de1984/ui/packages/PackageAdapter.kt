@@ -90,22 +90,10 @@ class PackageAdapter(
                 binding.enabledBadge.setBackgroundResource(R.drawable.status_badge_background)
             }
 
-            // Set package type badge
-            when (pkg.type) {
-                PackageType.SYSTEM -> {
-                    binding.packageTypeBadge.text = "System"
-                    binding.packageTypeBadge.setBackgroundResource(R.drawable.root_status_background)
-                    binding.packageTypeBadge.setTextColor(
-                        ContextCompat.getColor(binding.root.context, R.color.blue_grey)
-                    )
-                }
-                PackageType.USER -> {
-                    binding.packageTypeBadge.text = "User"
-                    binding.packageTypeBadge.setBackgroundResource(R.drawable.status_badge_light_blue)
-                    binding.packageTypeBadge.setTextColor(
-                        ContextCompat.getColor(binding.root.context, R.color.dark_teal)
-                    )
-                }
+            // Set package type badge (Chip handles styling automatically)
+            binding.packageTypeBadge.text = when (pkg.type) {
+                PackageType.SYSTEM -> "System"
+                PackageType.USER -> "User"
             }
 
             // Set click listener

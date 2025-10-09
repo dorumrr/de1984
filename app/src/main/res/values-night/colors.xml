@@ -11,5 +11,10 @@
     <color name="chip_stroke_unchecked">#757575</color> <!-- Medium gray -->
     <color name="chip_text_checked">#80CBC4</color> <!-- Light teal -->
     <color name="chip_text_unchecked">#E0E0E0</color> <!-- Light gray -->
+
+    <!-- Package Type Chip Colors (Dark Mode) -->
+    <color name="package_type_chip_background">#424242</color> <!-- Dark gray -->
+    <color name="package_type_chip_stroke">#616161</color> <!-- Medium gray border -->
+    <color name="package_type_chip_text">#E0E0E0</color> <!-- Light gray text -->
 </resources>
 

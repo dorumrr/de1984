@@ -81,13 +81,21 @@ class PackageAdapter(
                 binding.appIcon.setImageResource(R.drawable.de1984_icon)
             }
 
-            // Set enabled/disabled badge
+            // Set enabled/disabled badge and status icon
             if (pkg.isEnabled) {
                 binding.enabledBadge.text = "Enabled"
                 binding.enabledBadge.setBackgroundResource(R.drawable.status_badge_complete)
+                binding.statusIcon.setImageResource(R.drawable.ic_check_circle)
+                binding.statusIcon.setColorFilter(
+                    ContextCompat.getColor(binding.root.context, android.R.color.holo_green_dark)
+                )
             } else {
                 binding.enabledBadge.text = "Disabled"
                 binding.enabledBadge.setBackgroundResource(R.drawable.status_badge_background)
+                binding.statusIcon.setImageResource(R.drawable.ic_block)
+                binding.statusIcon.setColorFilter(
+                    ContextCompat.getColor(binding.root.context, android.R.color.darker_gray)
+                )
             }
 
             // Set package type badge

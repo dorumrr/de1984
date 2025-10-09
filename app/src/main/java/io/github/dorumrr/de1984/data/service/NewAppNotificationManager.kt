@@ -16,7 +16,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.receiver.NewAppNotificationReceiver
-import io.github.dorumrr.de1984.ui.MainActivityViews
+import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
 
 class NewAppNotificationManager(
@@ -136,7 +136,7 @@ class NewAppNotificationManager(
     }
     
     private fun createOpenFirewallIntent(packageName: String): PendingIntent {
-        val intent = Intent(context, MainActivityViews::class.java).apply {
+        val intent = Intent(context, MainActivity::class.java).apply {
             action = ACTION_OPEN_FIREWALL
             putExtra(EXTRA_PACKAGE_NAME, packageName)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

@@ -71,6 +71,15 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         permissionViewModel.refreshPermissions()
     }
 
+    // Activity result launcher for battery optimization settings
+    private val batteryOptimizationLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        // Refresh permissions when user returns from battery settings
+        Log.d(TAG, "Returned from battery optimization settings, refreshing permissions")
+        permissionViewModel.refreshPermissions()
+    }
+
     private var lastRootTestTime = 0L
 
     override fun getViewBinding(
@@ -242,7 +251,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             isComplete = state.hasAdvancedPermissions,
             permissions = state.advancedPermissions,
             setupButtonText = "Test Root Access",
-            onSetupClick = { handleRootAccessTest() },
+            onSetupClick = if (!state.hasAdvancedPermissions) {
+                { handleRootAccessTest() }
+            } else null,
             showRootStatus = true
         )
     }
@@ -314,38 +325,35 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         when (rootStatus) {
             RootStatus.ROOTED_WITH_PERMISSION -> {
-                // Update status badge to show root is granted
-                tierBinding.tierStatusBadge.text = "Completed"
-                tierBinding.tierStatusBadge.setBackgroundResource(R.drawable.status_badge_complete)
+                // Root is granted - hide root status section entirely
                 tierBinding.rootStatusContainer.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.ROOTED_NO_PERMISSION -> {
-                tierBinding.tierStatusBadge.text = "Root Required"
-                tierBinding.tierStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
+                // Device is rooted but permission denied - show status and hide button
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_DENIED
                 tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_DENIED
                 tierBinding.rootStatusInstructions.visibility = View.VISIBLE
-                tierBinding.setupButtonContainer.visibility = View.GONE
+                tierBinding.setupButtonContainer.visibility = View.VISIBLE
+                tierBinding.setupButton.text = "Test Root Access"
             }
             RootStatus.NOT_ROOTED -> {
-                tierBinding.tierStatusBadge.text = "Root Required"
-                tierBinding.tierStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
+                // Device is not rooted - show "Device Not Rooted" message
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
-                tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_NOT_AVAILABLE
+                tierBinding.rootStatusTitle.text = "Device Not Rooted"
                 tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_NOT_AVAILABLE
-                tierBinding.rootStatusInstructions.visibility = View.VISIBLE
+                tierBinding.rootStatusInstructions.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.CHECKING -> {
-                tierBinding.tierStatusBadge.text = "Checking..."
-                tierBinding.tierStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
+                // Checking root status - show test button
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_CHECKING
                 tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_CHECKING
                 tierBinding.rootStatusInstructions.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.VISIBLE
+                tierBinding.setupButton.text = "Test Root Access"
             }
         }
     }
@@ -395,11 +403,11 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             } else {
                 null
             }
-            intent?.let { startActivity(it) }
+            intent?.let { batteryOptimizationLauncher.launch(it) }
         } catch (e: Exception) {
             try {
                 val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                startActivity(intent)
+                batteryOptimizationLauncher.launch(intent)
             } catch (e2: Exception) {
                 openAppSettings()
             }

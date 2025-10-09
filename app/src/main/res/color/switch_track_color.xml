@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Checked (ON) state - Light Green (30% opacity) -->
+    <item android:alpha="0.3" android:color="@color/success_green" android:state_checked="true"/>
+    <!-- Unchecked (OFF) state - Light Red (30% opacity) -->
+    <item android:alpha="0.3" android:color="@color/error_red"/>
+</selector>
+

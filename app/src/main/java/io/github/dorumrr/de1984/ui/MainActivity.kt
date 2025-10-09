@@ -30,10 +30,10 @@ import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.launch
 
 /**
- * Main activity for De1984 app using Views (not Compose)
+ * Main activity for De1984 app
  * Manages navigation between Firewall, Apps, and Settings screens
  */
-class MainActivityViews : AppCompatActivity() {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainViewsBinding
     

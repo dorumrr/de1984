@@ -183,7 +183,9 @@
                         android:id="@+id/firewall_policy_switch"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp" />
+                        android:layout_marginStart="16dp"
+                        app:thumbTint="@color/switch_thumb_color"
+                        app:trackTint="@color/switch_track_color" />
 
                 </LinearLayout>
 
@@ -223,7 +225,9 @@
                         android:id="@+id/show_app_icons_switch"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp" />
+                        android:layout_marginStart="16dp"
+                        app:thumbTint="@color/switch_thumb_color"
+                        app:trackTint="@color/switch_track_color" />
 
                 </LinearLayout>
 
@@ -263,7 +267,9 @@
                         android:id="@+id/new_app_notifications_switch"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp" />
+                        android:layout_marginStart="16dp"
+                        app:thumbTint="@color/switch_thumb_color"
+                        app:trackTint="@color/switch_track_color" />
 
                 </LinearLayout>
 

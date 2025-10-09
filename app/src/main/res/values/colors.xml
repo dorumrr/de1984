@@ -32,4 +32,7 @@
     <color name="black">#000000</color>
     <color name="outline">#90A4AE</color>
     <color name="outline_dark">#616161</color>
+
+    <!-- Bottom Navigation Colors (Light Mode) -->
+    <color name="bottom_nav_selected_background">#E0F2F1</color> <!-- Light teal background -->
 </resources>

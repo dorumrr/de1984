@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bottom Navigation Colors (Dark Mode) -->
+    <color name="bottom_nav_selected_background">#004D40</color> <!-- Dark teal background -->
+</resources>
+

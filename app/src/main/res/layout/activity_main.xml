@@ -22,7 +22,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:clipToPadding="false"
-        app:itemIconSize="28dp"
+        app:itemIconSize="32dp"
         app:itemIconTint="@color/bottom_nav_item_color"
         app:itemTextColor="@color/bottom_nav_item_color"
         app:itemBackground="@drawable/bottom_nav_item_background"

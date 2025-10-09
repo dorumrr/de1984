@@ -97,7 +97,7 @@
         android:elevation="8dp"
         android:clipToPadding="false"
         app:elevation="8dp"
-        app:itemIconSize="28dp"
+        app:itemIconSize="32dp"
         app:itemIconTint="@color/bottom_nav_item_color"
         app:itemTextColor="@color/bottom_nav_item_color"
         app:itemBackground="@drawable/bottom_nav_item_background"

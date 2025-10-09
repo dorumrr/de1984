@@ -49,4 +49,7 @@
     <color name="package_type_chip_background">#F5F5F5</color> <!-- Light gray -->
     <color name="package_type_chip_stroke">#E0E0E0</color> <!-- Gray border -->
     <color name="package_type_chip_text">#616161</color> <!-- Dark gray text -->
+
+    <!-- Root Status Background (Light Mode) -->
+    <color name="root_status_background">#F5F5F5</color> <!-- Light gray -->
 </resources>

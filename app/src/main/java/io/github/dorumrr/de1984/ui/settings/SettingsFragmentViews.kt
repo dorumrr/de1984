@@ -151,7 +151,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             override fun updateDrawState(ds: android.text.TextPaint) {
                 super.updateDrawState(ds)
                 ds.color = ContextCompat.getColor(requireContext(), io.github.dorumrr.de1984.R.color.lineage_teal)
-                ds.isUnderlineText = true
+                ds.isUnderlineText = false  // No underline
             }
         }
 

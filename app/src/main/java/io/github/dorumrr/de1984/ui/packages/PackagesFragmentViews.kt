@@ -294,11 +294,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Setup Enable/Disable action
         if (pkg.isEnabled) {
-            binding.enableDisableIcon.text = "🚫"
+            binding.enableDisableIcon.setImageResource(R.drawable.ic_block)
             binding.enableDisableTitle.text = "Disable"
             binding.enableDisableDescription.text = "Prevent this app from running"
         } else {
-            binding.enableDisableIcon.text = "✅"
+            binding.enableDisableIcon.setImageResource(R.drawable.ic_check_circle)
             binding.enableDisableTitle.text = "Enable"
             binding.enableDisableDescription.text = "Allow this app to run"
         }

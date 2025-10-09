@@ -61,58 +61,47 @@
                 android:maxLines="1"
                 android:ellipsize="end" />
 
-            <!-- Status Row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <!-- Network Status Badge -->
-                <TextView
-                    android:id="@+id/network_status_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Allowed"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
-                    android:background="@drawable/status_badge_complete"
-                    android:textColor="@android:color/white" />
-
-                <!-- Package Type Badge -->
-                <TextView
-                    android:id="@+id/package_type_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="System"
-                    android:textSize="10sp"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
-                    android:background="@drawable/root_status_background"
-                    android:textColor="?android:attr/textColorSecondary" />
-
-            </LinearLayout>
-
         </LinearLayout>
 
-        <!-- Network Status Icon -->
-        <ImageView
-            android:id="@+id/network_status_icon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+        <!-- Badges Column (Right Side) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
-            android:layout_gravity="center_vertical"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:tint="#E57373"
-            android:contentDescription="Network status" />
+            android:orientation="vertical"
+            android:gravity="end">
+
+            <!-- Network Status Badge -->
+            <TextView
+                android:id="@+id/network_status_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Allowed"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/status_badge_complete"
+                android:textColor="@android:color/white" />
+
+            <!-- Package Type Badge -->
+            <TextView
+                android:id="@+id/package_type_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="System"
+                android:textSize="10sp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/root_status_background"
+                android:textColor="?android:attr/textColorSecondary" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

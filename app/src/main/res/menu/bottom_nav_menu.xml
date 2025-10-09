@@ -2,17 +2,17 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/firewallFragment"
-        android:icon="@android:drawable/ic_secure"
+        android:icon="@drawable/ic_shield"
         android:title="Firewall" />
-    
+
     <item
         android:id="@+id/packagesFragment"
-        android:icon="@android:drawable/ic_menu_view"
+        android:icon="@drawable/ic_apps"
         android:title="Packages" />
-    
+
     <item
         android:id="@+id/settingsFragment"
-        android:icon="@android:drawable/ic_menu_preferences"
+        android:icon="@drawable/ic_settings"
         android:title="Settings" />
 </menu>
 

@@ -45,7 +45,6 @@ class NetworkPackageAdapter(
         private val packageName: TextView = itemView.findViewById(R.id.package_name)
         private val networkStatusBadge: TextView = itemView.findViewById(R.id.network_status_badge)
         private val packageTypeBadge: TextView = itemView.findViewById(R.id.package_type_badge)
-        private val networkStatusIcon: ImageView = itemView.findViewById(R.id.network_status_icon)
 
         fun bind(pkg: NetworkPackage) {
             // Set app name and package name
@@ -67,40 +66,24 @@ class NetworkPackageAdapter(
                 appIcon.visibility = View.GONE
             }
 
-            // Set network status badge and icon based on granular state
+            // Set network status badge based on granular state
             when {
                 pkg.isFullyAllowed -> {
                     networkStatusBadge.text = "Allowed"
                     networkStatusBadge.setBackgroundResource(R.drawable.status_badge_complete)
-                    networkStatusIcon.setImageResource(R.drawable.ic_check_circle)
-                    networkStatusIcon.setColorFilter(
-                        ContextCompat.getColor(itemView.context, android.R.color.holo_green_dark)
-                    )
                 }
                 pkg.isFullyBlocked -> {
                     networkStatusBadge.text = "Blocked"
                     networkStatusBadge.setBackgroundResource(R.drawable.status_badge_background)
-                    networkStatusIcon.setImageResource(R.drawable.ic_block)
-                    networkStatusIcon.setColorFilter(
-                        ContextCompat.getColor(itemView.context, android.R.color.holo_red_dark)
-                    )
                 }
                 pkg.isPartiallyBlocked -> {
                     // Show specific state for partial blocking
                     networkStatusBadge.text = pkg.networkState
                     networkStatusBadge.setBackgroundResource(R.drawable.status_badge_partial)
-                    networkStatusIcon.setImageResource(R.drawable.ic_warning)
-                    networkStatusIcon.setColorFilter(
-                        ContextCompat.getColor(itemView.context, android.R.color.holo_orange_dark)
-                    )
                 }
                 else -> {
                     networkStatusBadge.text = "Unknown"
                     networkStatusBadge.setBackgroundResource(R.drawable.root_status_background)
-                    networkStatusIcon.setImageResource(R.drawable.ic_warning)
-                    networkStatusIcon.setColorFilter(
-                        ContextCompat.getColor(itemView.context, android.R.color.darker_gray)
-                    )
                 }
             }
 

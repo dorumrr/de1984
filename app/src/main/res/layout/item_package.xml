@@ -34,7 +34,6 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
             android:orientation="vertical"
             android:layout_gravity="center_vertical">
 
@@ -62,54 +61,47 @@
                 android:maxLines="1"
                 android:ellipsize="end" />
 
-            <!-- Badges Row -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-
-                <!-- Enabled/Disabled Badge -->
-                <TextView
-                    android:id="@+id/enabled_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Enabled"
-                    android:textSize="10sp"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
-                    android:background="@drawable/status_badge_complete"
-                    android:textColor="@android:color/white" />
-
-                <!-- Package Type Badge -->
-                <TextView
-                    android:id="@+id/package_type_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="System"
-                    android:textSize="10sp"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
-                    android:background="@drawable/status_badge_partial"
-                    android:textColor="@android:color/white" />
-
-            </LinearLayout>
-
         </LinearLayout>
 
-        <!-- Status Icon (like Firewall) -->
-        <ImageView
-            android:id="@+id/status_icon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_check_circle"
-            android:contentDescription="Status icon"
-            android:visibility="visible" />
+        <!-- Badges Column (Right Side) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical"
+            android:gravity="end">
+
+            <!-- Enabled/Disabled Badge -->
+            <TextView
+                android:id="@+id/enabled_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Enabled"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/status_badge_complete"
+                android:textColor="@android:color/white" />
+
+            <!-- Package Type Badge -->
+            <TextView
+                android:id="@+id/package_type_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="System"
+                android:textSize="10sp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/status_badge_partial"
+                android:textColor="@android:color/white" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

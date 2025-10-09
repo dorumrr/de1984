@@ -54,16 +54,6 @@
 
     </LinearLayout>
 
-    <!-- Package Actions Title -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Package Actions"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="?android:attr/textColorPrimary"
-        android:paddingBottom="12dp" />
-
     <!-- Force Stop Action -->
     <LinearLayout
         android:id="@+id/force_stop_action"
@@ -76,12 +66,12 @@
         android:clickable="true"
         android:focusable="true">
 
-        <TextView
+        <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:text="⏹️"
-            android:textSize="20sp"
-            android:gravity="center" />
+            android:src="@drawable/ic_stop"
+            android:tint="?android:attr/textColorPrimary"
+            android:contentDescription="Force stop icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -130,13 +120,13 @@
         android:clickable="true"
         android:focusable="true">
 
-        <TextView
+        <ImageView
             android:id="@+id/enable_disable_icon"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:text="✅"
-            android:textSize="20sp"
-            android:gravity="center" />
+            android:src="@drawable/ic_block"
+            android:tint="?android:attr/textColorPrimary"
+            android:contentDescription="Enable/Disable icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -186,12 +176,12 @@
         android:clickable="true"
         android:focusable="true">
 
-        <TextView
+        <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:text="🗑️"
-            android:textSize="20sp"
-            android:gravity="center" />
+            android:src="@drawable/ic_delete"
+            android:tint="#D32F2F"
+            android:contentDescription="Uninstall icon" />
 
         <LinearLayout
             android:layout_width="0dp"

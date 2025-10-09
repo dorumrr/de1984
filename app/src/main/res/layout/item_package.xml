@@ -69,7 +69,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:orientation="vertical"
-            android:gravity="end">
+            android:gravity="end|center_vertical">
 
             <!-- Enabled/Disabled Badge -->
             <TextView
@@ -87,20 +87,19 @@
                 android:textColor="@android:color/white" />
 
             <!-- Package Type Badge -->
-            <com.google.android.material.chip.Chip
+            <TextView
                 android:id="@+id/package_type_badge"
-                style="@style/Widget.Material3.Chip.Assist"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="System"
                 android:textSize="10sp"
-                android:clickable="false"
-                android:focusable="false"
-                app:chipMinHeight="24dp"
-                app:chipBackgroundColor="@color/package_type_chip_background"
-                app:chipStrokeColor="@color/package_type_chip_stroke"
-                app:chipStrokeWidth="1dp"
+                android:textStyle="bold"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/package_type_badge_background"
                 android:textColor="@color/package_type_chip_text" />
 
         </LinearLayout>

@@ -64,7 +64,24 @@
                     android:contentDescription="Section Icon"
                     app:tint="@color/white" />
 
-                <!-- OFF Badge (visible when firewall is off, before switch) -->
+                <!-- ACTIVE Badge (visible when firewall is on, before switch) -->
+                <TextView
+                    android:id="@+id/firewall_active_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="ACTIVE"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:background="@drawable/status_badge_active"
+                    android:visibility="gone" />
+
+                <!-- INACTIVE Badge (visible when firewall is off, before switch) -->
                 <TextView
                     android:id="@+id/firewall_off_badge"
                     android:layout_width="wrap_content"

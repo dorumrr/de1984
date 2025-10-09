@@ -218,14 +218,17 @@ class MainActivity : AppCompatActivity() {
                 binding.toolbarTitle.text = "FIREWALL"
                 binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.VISIBLE
-                // Update OFF badge based on current firewall state
-                binding.firewallOffBadge.visibility = if (firewallViewModel.uiState.value.isFirewallEnabled) View.GONE else View.VISIBLE
+                // Update badges based on current firewall state
+                val isEnabled = firewallViewModel.uiState.value.isFirewallEnabled
+                binding.firewallActiveBadge.visibility = if (isEnabled) View.VISIBLE else View.GONE
+                binding.firewallOffBadge.visibility = if (isEnabled) View.GONE else View.VISIBLE
             }
             Tab.APPS -> {
                 binding.toolbarTitle.text = "PACKAGES"
                 binding.toolbarIcon.visibility = View.VISIBLE
                 binding.toolbarIcon.setImageResource(R.drawable.ic_grid_view)
                 binding.firewallToggle.visibility = View.GONE
+                binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
             Tab.SETTINGS -> {
@@ -233,6 +236,7 @@ class MainActivity : AppCompatActivity() {
                 binding.toolbarIcon.visibility = View.VISIBLE
                 binding.toolbarIcon.setImageResource(R.drawable.ic_settings)
                 binding.firewallToggle.visibility = View.GONE
+                binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
         }
@@ -255,10 +259,12 @@ class MainActivity : AppCompatActivity() {
             onFirewallToggleChanged(isChecked)
         }
 
-        // Update OFF badge visibility (only show on Firewall tab when disabled)
+        // Update badge visibility (only show on Firewall tab)
         if (currentTab == Tab.FIREWALL) {
+            binding.firewallActiveBadge.visibility = if (isEnabled) View.VISIBLE else View.GONE
             binding.firewallOffBadge.visibility = if (isEnabled) View.GONE else View.VISIBLE
         } else {
+            binding.firewallActiveBadge.visibility = View.GONE
             binding.firewallOffBadge.visibility = View.GONE
         }
     }

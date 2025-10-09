@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/switch_text"
+    android:layout_width="56dp"
+    android:layout_height="32dp"
+    android:gravity="center"
+    android:text="OFF"
+    android:textColor="@color/white"
+    android:textSize="14sp"
+    android:textStyle="bold"
+    android:background="@drawable/switch_background_off"
+    android:clickable="true"
+    android:focusable="true" />
+

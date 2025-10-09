@@ -50,20 +50,9 @@
         android:requestLegacyExternalStorage="false"
         tools:targetApi="31">
         
+        <!-- Main activity (Views-based) -->
         <activity
-            android:name=".ui.MainActivity"
-            android:exported="true"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.De1984">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <!-- Temporary test activity for Views migration -->
-        <activity
-            android:name=".ui.TestViewsActivity"
+            android:name=".ui.MainActivityViews"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.De1984.Views">
@@ -72,6 +61,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Old Compose-based MainActivity (kept for reference, not launcher) -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.De1984" />
+
+        <!-- Temporary test activity for Views migration -->
+        <activity
+            android:name=".ui.TestViewsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.De1984.Views" />
 
         <!-- VPN Service for firewall functionality -->
         <service

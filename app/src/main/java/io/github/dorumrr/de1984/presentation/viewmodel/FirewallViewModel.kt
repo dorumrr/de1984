@@ -37,7 +37,7 @@ class FirewallViewModel(
     // Store pending filter state separately to avoid triggering UI updates
     private var pendingFilterState: FirewallFilterState? = null
 
-    val showRootBanner: Boolean
+    val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
 
     fun dismissRootBanner() {

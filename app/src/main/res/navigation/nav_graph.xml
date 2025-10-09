@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/firewallFragment">
+
+    <fragment
+        android:id="@+id/firewallFragment"
+        android:name="io.github.dorumrr.de1984.ui.firewall.FirewallFragment"
+        android:label="Firewall" />
+
+    <fragment
+        android:id="@+id/packagesFragment"
+        android:name="io.github.dorumrr.de1984.ui.packages.PackagesFragment"
+        android:label="Packages" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="io.github.dorumrr.de1984.ui.settings.SettingsFragment"
+        android:label="Settings">
+        
+        <action
+            android:id="@+id/action_settings_to_acknowledgements"
+            app:destination="@id/acknowledgementsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/acknowledgementsFragment"
+        android:name="io.github.dorumrr.de1984.ui.acknowledgements.AcknowledgementsFragment"
+        android:label="Acknowledgements" />
+
+</navigation>
+

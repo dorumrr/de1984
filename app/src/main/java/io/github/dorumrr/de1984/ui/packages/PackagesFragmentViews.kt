@@ -237,11 +237,15 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             }
         }
 
-        // Show root banner if needed
-        binding.rootBanner.visibility = if (viewModel.showRootBanner) {
-            View.VISIBLE
-        } else {
-            View.GONE
+        // Show root banner if needed - observe StateFlow
+        lifecycleScope.launch {
+            viewModel.showRootBanner.collect { showBanner ->
+                binding.rootBanner.visibility = if (showBanner) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
+            }
         }
 
         // Show error if any

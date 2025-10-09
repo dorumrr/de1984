@@ -32,7 +32,7 @@ class PackagesViewModel(
     // Store pending filter state separately to avoid triggering UI updates
     private var pendingFilterState: PackageFilterState? = null
 
-    val showRootBanner: Boolean
+    val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
 
     fun dismissRootBanner() {

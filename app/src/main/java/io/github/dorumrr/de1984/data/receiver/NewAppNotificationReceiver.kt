@@ -172,7 +172,7 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
             )
 
             if (!isFirewallEnabled) {
-                val intent = Intent(context, io.github.dorumrr.de1984.ui.MainActivity::class.java).apply {
+                val intent = Intent(context, io.github.dorumrr.de1984.ui.MainActivityViews::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                     putExtra("show_firewall_prompt", true)
                 }

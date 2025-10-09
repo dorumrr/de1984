@@ -155,6 +155,21 @@ fun extractAppNamesFromPackages(packageNames: List<String>): List<String> {
 - **Separation of concerns**: UI, business logic, and data layers clearly separated
 - **Consistent file naming**: Follow established naming conventions
 - **Logical grouping**: Related classes and interfaces in the same package
+- **Documentation organization**: Keep project root clean by organizing documentation in `docs/` folder
+
+### Documentation File Organization
+**Root Level** (Keep these at project root):
+- `README.md` - Project overview and quick start
+- `RULES.md` - Development rules and standards
+- `PRD.md` - Product Requirements Document
+- `RELEASE_SIGNING_GUIDE.md` - Release signing instructions
+
+**docs/ Folder** (Move all other documentation here):
+- Migration logs and progress tracking
+- Implementation plans and audits
+- Phase completion summaries
+- Technical design documents
+- Architecture decision records
 
 ### De1984-Specific Structure:
 

@@ -204,9 +204,6 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             networkStateFilter = state.filterState.networkState
         )
 
-        // Update package count
-        binding.packageCount.text = "${state.packages.size} packages"
-
         // Update RecyclerView - only if the list actually changed
         val listChanged = state.packages != lastSubmittedPackages
         Log.d(TAG, "About to call adapter.submitList with ${state.packages.size} packages, listChanged=$listChanged, isRenderingUI=${state.isRenderingUI}")

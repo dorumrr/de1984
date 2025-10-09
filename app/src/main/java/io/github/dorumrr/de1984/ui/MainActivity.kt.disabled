@@ -1,0 +1,56 @@
+package io.github.dorumrr.de1984.ui
+
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.setupWithNavController
+import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.R
+import io.github.dorumrr.de1984.data.common.PermissionManager
+import io.github.dorumrr.de1984.data.service.PackageMonitoringService
+import io.github.dorumrr.de1984.databinding.ActivityMainBinding
+
+/**
+ * Main Activity that hosts the navigation graph and bottom navigation
+ */
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+
+    private val permissionManager: PermissionManager by lazy {
+        (application as De1984Application).dependencies.permissionManager
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        setupNavigation()
+        startMonitoring()
+        checkPermissions()
+    }
+
+    private fun setupNavigation() {
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navController = navHostFragment.navController
+
+        // Connect bottom navigation with nav controller
+        binding.bottomNavigation.setupWithNavController(navController)
+    }
+
+    private fun startMonitoring() {
+        PackageMonitoringService.startMonitoring(this)
+    }
+
+    private fun checkPermissions() {
+        // TODO: Implement permission checking flow
+        // This will be handled by a dialog or separate flow
+        if (!permissionManager.hasNotificationPermission()) {
+            // Show permission request dialog
+        }
+    }
+}
+

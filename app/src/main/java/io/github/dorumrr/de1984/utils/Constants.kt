@@ -1,41 +1,40 @@
 package io.github.dorumrr.de1984.utils
 
-import androidx.compose.ui.unit.dp
-
 object Constants {
-    
+
     object UI {
-        val SPACING_EXTRA_TINY = 2.dp
-        val SPACING_TINY = 4.dp
-        val SPACING_SMALL = 8.dp
-        val SPACING_MEDIUM = 12.dp
-        val SPACING_STANDARD = 16.dp
-        val SPACING_LARGE = 24.dp
+        // Spacing values (in dp - use with resources)
+        const val SPACING_EXTRA_TINY = 2
+        const val SPACING_TINY = 4
+        const val SPACING_SMALL = 8
+        const val SPACING_MEDIUM = 12
+        const val SPACING_STANDARD = 16
+        const val SPACING_LARGE = 24
 
-        val ELEVATION_CARD = 2.dp
-        val ELEVATION_SURFACE = 4.dp
+        const val ELEVATION_CARD = 2
+        const val ELEVATION_SURFACE = 4
 
-        val CORNER_RADIUS_STANDARD = 12.dp
+        const val CORNER_RADIUS_STANDARD = 12
 
-        val ICON_SIZE_TINY = 16.dp
-        val ICON_SIZE_SMALL = 24.dp
-        val ICON_SIZE_MEDIUM = 32.dp
-        val ICON_SIZE_LARGE = 40.dp
-        val ICON_SIZE_EXTRA_LARGE = 60.dp
+        const val ICON_SIZE_TINY = 16
+        const val ICON_SIZE_SMALL = 24
+        const val ICON_SIZE_MEDIUM = 32
+        const val ICON_SIZE_LARGE = 40
+        const val ICON_SIZE_EXTRA_LARGE = 60
 
-        val STATUS_DOT_SIZE = 8.dp
+        const val STATUS_DOT_SIZE = 8
 
-        val PADDING_CARD_LARGE = 20.dp
+        const val PADDING_CARD_LARGE = 20
 
-        val BOTTOM_SHEET_CORNER_RADIUS = 28.dp
-        val DRAG_HANDLE_WIDTH = 32.dp
-        val DRAG_HANDLE_HEIGHT = 4.dp
-        val BOTTOM_SHEET_DISMISS_THRESHOLD = 100.dp
+        const val BOTTOM_SHEET_CORNER_RADIUS = 28
+        const val DRAG_HANDLE_WIDTH = 32
+        const val DRAG_HANDLE_HEIGHT = 4
+        const val BOTTOM_SHEET_DISMISS_THRESHOLD = 100
 
-        val BORDER_WIDTH_THIN = 1.dp
+        const val BORDER_WIDTH_THIN = 1
 
-        val TOGGLE_SWITCH_WIDTH = 56.dp
-        val BOTTOM_NAV_HEIGHT = 80.dp
+        const val TOGGLE_SWITCH_WIDTH = 56
+        const val BOTTOM_NAV_HEIGHT = 80
 
         object Dialogs {
             const val FIREWALL_START_TITLE = "Start De1984 Firewall?"
@@ -43,11 +42,11 @@ object Constants {
             const val FIREWALL_START_CONFIRM = "Start Firewall"
             const val FIREWALL_START_SKIP = "Later"
         }
-        val BADGE_PADDING_HORIZONTAL = 8.dp
-        val BADGE_PADDING_VERTICAL = 4.dp
+        const val BADGE_PADDING_HORIZONTAL = 8
+        const val BADGE_PADDING_VERTICAL = 4
 
-        val BUTTON_PADDING_HORIZONTAL = 12.dp
-        val BUTTON_PADDING_VERTICAL = 8.dp
+        const val BUTTON_PADDING_HORIZONTAL = 12
+        const val BUTTON_PADDING_VERTICAL = 8
 
         const val ALPHA_FULL = 1f
         const val ALPHA_DISABLED = 0.6f

@@ -12,7 +12,7 @@
     <color name="dark_blue_grey">#0F1419</color>
     
     <!-- Status Colors -->
-    <color name="success_green">#4CAF50</color>
+    <color name="success_green">#2E7D32</color> <!-- Material Green 800 - Darker, consistent green -->
     <color name="warning_orange">#FF9800</color>
     <color name="error_red">#F44336</color>
     

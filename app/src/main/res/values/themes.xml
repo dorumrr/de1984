@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme for De1984 - Light Mode (Compose) -->
+    <!-- Base application theme for De1984 - Light Mode -->
     <style name="Theme.De1984" parent="android:Theme.Material.Light.NoActionBar">
         <!-- Status bar -->
         <item name="android:statusBarColor">@color/lineage_teal</item>

@@ -284,6 +284,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         }
 
         binding.forceStopAction.setOnClickListener {
+            dialog.dismiss()
             showForceStopConfirmation(pkg)
         }
 
@@ -299,6 +300,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         }
 
         binding.enableDisableAction.setOnClickListener {
+            dialog.dismiss()
             showEnableDisableConfirmation(pkg, !pkg.isEnabled)
         }
 

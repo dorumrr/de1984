@@ -298,6 +298,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             enabled = true,
             onToggle = { blocked ->
                 viewModel.setWifiBlocking(pkg.packageName, blocked)
+                dialog.dismiss()
             }
         )
 
@@ -312,6 +313,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 viewModel.setMobileBlocking(pkg.packageName, blocked)
                 // Update roaming visibility when mobile state changes
                 updateRoamingVisibility(blocked)
+                dialog.dismiss()
             }
         )
 
@@ -325,6 +327,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 enabled = true,
                 onToggle = { blocked ->
                     viewModel.setRoamingBlocking(pkg.packageName, blocked)
+                    dialog.dismiss()
                 }
             )
         }

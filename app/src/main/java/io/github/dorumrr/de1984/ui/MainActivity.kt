@@ -176,10 +176,9 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
-        // Setup firewall toggle (custom switch view)
-        binding.firewallToggle.setOnClickListener {
-            val currentState = firewallViewModel.uiState.value.isFirewallEnabled
-            onFirewallToggleChanged(!currentState)
+        // Setup firewall toggle (Material Switch)
+        binding.firewallToggle.setOnCheckedChangeListener { _, isChecked ->
+            onFirewallToggleChanged(isChecked)
         }
 
         updateToolbar()
@@ -245,12 +244,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSwitchAppearance(isEnabled: Boolean) {
-        if (isEnabled) {
-            binding.firewallToggle.text = "ON"
-            binding.firewallToggle.setBackgroundResource(R.drawable.switch_background_on)
-        } else {
-            binding.firewallToggle.text = "OFF"
-            binding.firewallToggle.setBackgroundResource(R.drawable.switch_background_off)
+        // Update switch state without triggering the listener
+        binding.firewallToggle.setOnCheckedChangeListener(null)
+        binding.firewallToggle.isChecked = isEnabled
+        binding.firewallToggle.setOnCheckedChangeListener { _, isChecked ->
+            onFirewallToggleChanged(isChecked)
         }
     }
 

@@ -72,7 +72,7 @@
                         android:id="@+id/donate_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Donate ♥️"
+                        android:text="Donate"
                         android:textColor="#000000"
                         app:backgroundTint="#FFD700"
                         app:strokeColor="#000000"
@@ -115,11 +115,12 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="⚙️"
-                        android:textSize="40sp" />
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:src="@drawable/ic_settings"
+                        android:contentDescription="Settings icon"
+                        app:tint="?android:attr/textColorPrimary" />
 
                     <LinearLayout
                         android:layout_width="0dp"

@@ -24,11 +24,19 @@
             android:padding="16dp"
             android:gravity="center_vertical">
 
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/ic_warning"
+                android:contentDescription="Warning icon"
+                app:tint="#E65100" />
+
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="⚠️ Root access required for package management"
+                android:text="Root access required for package management"
                 android:textSize="14sp"
                 android:textColor="#E65100" />
 
@@ -111,11 +119,12 @@
             android:padding="32dp"
             android:visibility="gone">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📦"
-                android:textSize="48sp" />
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/ic_package"
+                android:contentDescription="Package icon"
+                app:tint="?android:attr/textColorSecondary" />
 
             <TextView
                 android:layout_width="wrap_content"

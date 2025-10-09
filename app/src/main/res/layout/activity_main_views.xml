@@ -30,9 +30,10 @@
                 android:layout_height="match_parent"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
+                android:paddingStart="0dp"
                 android:paddingTop="6dp"
                 android:paddingBottom="6dp"
-                android:paddingEnd="16dp">
+                android:paddingEnd="8dp">
 
                 <!-- App Logo -->
                 <ImageView

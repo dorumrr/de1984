@@ -108,15 +108,17 @@ class MainActivity : AppCompatActivity() {
         // Enable edge-to-edge display
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
+        // Setup UI first (so user doesn't see white screen)
+        setupMainUI(savedInstanceState)
+
         // Start package monitoring service
         PackageMonitoringService.startMonitoring(this)
 
-        // Check if we need to request permissions
+        // Check if we need to request permissions (after UI is loaded)
         if (!permissionManager.hasNotificationPermission()) {
             requestNotificationPermission()
         } else {
             permissionsCompleted = true
-            setupMainUI(savedInstanceState)
         }
     }
 
@@ -132,7 +134,11 @@ class MainActivity : AppCompatActivity() {
     private fun onPermissionsComplete() {
         permissionsCompleted = true
         shouldShowFirewallStartDialog = true
-        setupMainUI(null)
+        // UI is already setup in onCreate, just show dialog if needed
+        if (shouldShowFirewallStartDialog) {
+            shouldShowFirewallStartDialog = false
+            showFirewallStartDialog()
+        }
     }
 
     private fun setupMainUI(savedInstanceState: Bundle?) {

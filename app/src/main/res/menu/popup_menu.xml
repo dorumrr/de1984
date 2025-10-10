@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <item
+        android:id="@+id/menu_firewall"
+        android:icon="@drawable/ic_shield"
+        android:title="@string/nav_firewall" />
+    
+    <item
+        android:id="@+id/menu_packages"
+        android:icon="@drawable/ic_apps"
+        android:title="@string/nav_packages" />
+    
+    <item
+        android:id="@+id/menu_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/nav_settings" />
+    
+</menu>
+

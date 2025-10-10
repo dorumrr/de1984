@@ -5,9 +5,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -15,6 +15,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import io.github.dorumrr.de1984.BuildConfig
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.PermissionManager
@@ -31,7 +32,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Main activity for De1984 app
- * Manages navigation between Firewall, Apps, and Settings screens
+ * Manages navigation between Firewall, Packages, and Settings screens using overflow menu
  */
 class MainActivity : AppCompatActivity() {
 
@@ -152,9 +153,6 @@ class MainActivity : AppCompatActivity() {
             // Apply top padding for status bar to the toolbar
             binding.toolbar.setPadding(0, systemBars.top, 0, 0)
 
-            // Apply bottom padding for navigation bar to the bottom navigation
-            binding.bottomNavigation.setPadding(0, 0, 0, systemBars.bottom)
-
             // Don't apply padding to root view
             view.setPadding(0, 0, 0, 0)
 
@@ -162,7 +160,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupToolbar()
-        setupBottomNavigation()
+        setupMenuIcon()
         observeFirewallState()
 
         // Load initial fragment
@@ -180,6 +178,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
+        // No back button or home button needed for popup menu navigation
 
         // Setup firewall toggle (Material Switch)
         binding.firewallToggle.setOnCheckedChangeListener { _, isChecked ->
@@ -189,25 +188,58 @@ class MainActivity : AppCompatActivity() {
         updateToolbar()
     }
 
-    private fun setupBottomNavigation() {
-        binding.bottomNavigation.setOnItemSelectedListener { item ->
+    private fun setupMenuIcon() {
+        // Setup three-dot menu icon click listener
+        binding.menuIcon.setOnClickListener { view ->
+            showPopupMenu(view)
+        }
+    }
+
+    private fun showPopupMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menuInflater.inflate(R.menu.popup_menu, popup.menu)
+
+        // Set icons visible (Material 3 style)
+        try {
+            val fieldMPopup = PopupMenu::class.java.getDeclaredField("mPopup")
+            fieldMPopup.isAccessible = true
+            val mPopup = fieldMPopup.get(popup)
+            mPopup.javaClass
+                .getDeclaredMethod("setForceShowIcon", Boolean::class.java)
+                .invoke(mPopup, true)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Highlight current tab
+        when (currentTab) {
+            Tab.FIREWALL -> popup.menu.findItem(R.id.menu_firewall)?.isChecked = true
+            Tab.APPS -> popup.menu.findItem(R.id.menu_packages)?.isChecked = true
+            Tab.SETTINGS -> popup.menu.findItem(R.id.menu_settings)?.isChecked = true
+        }
+
+        popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                R.id.nav_firewall -> {
+                R.id.menu_firewall -> {
                     loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
                     true
                 }
-                R.id.nav_apps -> {
+                R.id.menu_packages -> {
                     loadFragment(PackagesFragmentViews(), Tab.APPS)
                     true
                 }
-                R.id.nav_settings -> {
+                R.id.menu_settings -> {
                     loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
                     true
                 }
                 else -> false
             }
         }
+
+        popup.show()
     }
+
+
 
     private fun loadFragment(fragment: androidx.fragment.app.Fragment, tab: Tab) {
         currentTab = tab
@@ -215,6 +247,11 @@ class MainActivity : AppCompatActivity() {
             replace(R.id.fragment_container, fragment)
         }
         updateToolbar()
+        updateNavigationDrawerSelection()
+    }
+
+    private fun updateNavigationDrawerSelection() {
+        // No need to update navigation view for popup menu
     }
 
     private fun updateToolbar() {

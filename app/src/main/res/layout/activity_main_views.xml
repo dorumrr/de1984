@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Root layout with popup menu navigation -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -21,7 +23,11 @@
             android:minHeight="64dp"
             android:background="@color/lineage_teal"
             android:clipToPadding="false"
+            android:contentInsetStart="0dp"
+            android:contentInsetStartWithNavigation="0dp"
             android:theme="@style/ThemeOverlay.Material3.Dark"
+            app:contentInsetStart="0dp"
+            app:contentInsetStartWithNavigation="0dp"
             app:titleTextColor="@color/white">
 
             <!-- Custom toolbar content -->
@@ -30,30 +36,48 @@
                 android:layout_height="match_parent"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingStart="0dp"
+                android:paddingStart="4dp"
                 android:paddingTop="6dp"
                 android:paddingBottom="6dp"
-                android:paddingEnd="8dp">
+                android:paddingEnd="4dp"
+                android:background="#FF0000">
 
-                <!-- App Logo -->
-                <ImageView
-                    android:id="@+id/app_logo"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    android:layout_marginEnd="8dp"
-                    android:src="@drawable/de1984_logo"
-                    android:contentDescription="De1984 Logo" />
-
-                <!-- Title -->
-                <TextView
-                    android:id="@+id/toolbar_title"
-                    android:layout_width="0dp"
+                <!-- Logo + Title Group -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="#00FF00">
+
+                    <!-- App Logo -->
+                    <ImageView
+                        android:id="@+id/app_logo"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:layout_marginEnd="8dp"
+                        android:src="@drawable/de1984_logo"
+                        android:contentDescription="De1984 Logo" />
+
+                    <!-- Title -->
+                    <TextView
+                        android:id="@+id/toolbar_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="FIREWALL"
+                        android:textColor="@color/white"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.05" />
+
+                </LinearLayout>
+
+                <!-- Spacer to push status and menu to the right -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
                     android:layout_weight="1"
-                    android:text="De1984 Firewall"
-                    android:textColor="@color/white"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:background="#FFFF00" />
 
                 <!-- Section Icon (visible on Apps/Settings tabs, on the right) -->
                 <ImageView
@@ -64,49 +88,70 @@
                     android:contentDescription="Section Icon"
                     app:tint="@color/white" />
 
-                <!-- ACTIVE Badge (visible when firewall is on, before switch) -->
-                <TextView
-                    android:id="@+id/firewall_active_badge"
+                <!-- Status Badge + Switch Group -->
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:text="ACTIVE"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/white"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
-                    android:background="@drawable/status_badge_active"
-                    android:visibility="gone" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="#FF00FF">
 
-                <!-- INACTIVE Badge (visible when firewall is off, before switch) -->
-                <TextView
-                    android:id="@+id/firewall_off_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:text="INACTIVE"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/white"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
-                    android:background="@drawable/status_badge_error"
-                    android:visibility="gone" />
+                    <!-- ACTIVE Badge (visible when firewall is on, before switch) -->
+                    <TextView
+                        android:id="@+id/firewall_active_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:text="ACTIVE"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="2dp"
+                        android:background="@drawable/status_badge_active"
+                        android:visibility="gone" />
 
-                <!-- Firewall Toggle Switch (visible only on Firewall tab) -->
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/firewall_toggle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    app:thumbTint="@color/white"
-                    app:trackTint="@color/switch_track_color"
-                    app:trackDecorationTint="@android:color/transparent" />
+                    <!-- INACTIVE Badge (visible when firewall is off, before switch) -->
+                    <TextView
+                        android:id="@+id/firewall_off_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:text="INACTIVE"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="2dp"
+                        android:background="@drawable/status_badge_error"
+                        android:visibility="visible" />
+
+                    <!-- Firewall Toggle Switch (visible only on Firewall tab) -->
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/firewall_toggle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:visibility="visible"
+                        app:thumbTint="@color/white"
+                        app:trackTint="@color/switch_track_color"
+                        app:trackDecorationTint="@android:color/transparent" />
+
+                </LinearLayout>
+
+                <!-- Three-dot Menu Icon (on the right) -->
+                <ImageView
+                    android:id="@+id/menu_icon"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_more_vert"
+                    android:contentDescription="Menu"
+                    android:background="#00FFFF"
+                    app:tint="@color/white" />
 
             </LinearLayout>
 
@@ -120,21 +165,6 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
-
-    <!-- Bottom Navigation -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottom_navigation"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/bottom_nav_background"
-        app:itemIconSize="40dp"
-        app:itemIconTint="@color/bottom_nav_item_color"
-        app:itemTextColor="@color/bottom_nav_item_color"
-        app:itemBackground="@drawable/bottom_nav_item_background"
-        app:itemActiveIndicatorStyle="@null"
-        app:itemRippleColor="@android:color/transparent"
-        app:labelVisibilityMode="unlabeled"
-        app:menu="@menu/menu_bottom_navigation" />
 
 </LinearLayout>
 

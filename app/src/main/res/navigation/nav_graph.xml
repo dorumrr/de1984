@@ -6,19 +6,19 @@
 
     <fragment
         android:id="@+id/firewallFragment"
-        android:name="io.github.dorumrr.de1984.ui.firewall.FirewallFragment"
+        android:name="io.github.dorumrr.de1984.ui.firewall.FirewallFragmentViews"
         android:label="Firewall" />
 
     <fragment
         android:id="@+id/packagesFragment"
-        android:name="io.github.dorumrr.de1984.ui.packages.PackagesFragment"
+        android:name="io.github.dorumrr.de1984.ui.packages.PackagesFragmentViews"
         android:label="Packages" />
 
     <fragment
         android:id="@+id/settingsFragment"
-        android:name="io.github.dorumrr.de1984.ui.settings.SettingsFragment"
+        android:name="io.github.dorumrr.de1984.ui.settings.SettingsFragmentViews"
         android:label="Settings">
-        
+
         <action
             android:id="@+id/action_settings_to_credits"
             app:destination="@id/creditsFragment" />
@@ -26,7 +26,7 @@
 
     <fragment
         android:id="@+id/creditsFragment"
-        android:name="io.github.dorumrr.de1984.ui.credits.CreditsFragment"
+        android:name="io.github.dorumrr.de1984.ui.credits.CreditsFragmentViews"
         android:label="Credits" />
 
 </navigation>

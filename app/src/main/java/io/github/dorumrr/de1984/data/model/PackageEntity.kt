@@ -48,7 +48,10 @@ fun Package.toEntity(): PackageEntity {
         name = name,
         icon = icon,
         isEnabled = isEnabled,
-        type = type.name.lowercase(),
+        type = when (type) {
+            PackageType.SYSTEM -> Constants.Packages.TYPE_SYSTEM
+            PackageType.USER -> Constants.Packages.TYPE_USER
+        },
         versionName = versionName,
         versionCode = versionCode,
         installTime = installTime,

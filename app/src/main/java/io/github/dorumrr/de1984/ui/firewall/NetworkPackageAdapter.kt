@@ -47,8 +47,12 @@ class NetworkPackageAdapter(
         private val appName: TextView = itemView.findViewById(R.id.app_name)
         private val packageName: TextView = itemView.findViewById(R.id.package_name)
         private val wifiIcon: ImageView = itemView.findViewById(R.id.wifi_icon)
+        private val wifiBlockedOverlay: ImageView = itemView.findViewById(R.id.wifi_blocked_overlay)
         private val mobileIcon: ImageView = itemView.findViewById(R.id.mobile_icon)
+        private val mobileBlockedOverlay: ImageView = itemView.findViewById(R.id.mobile_blocked_overlay)
+        private val roamingContainer: View = itemView.findViewById(R.id.roaming_container)
         private val roamingIcon: ImageView = itemView.findViewById(R.id.roaming_icon)
+        private val roamingBlockedOverlay: ImageView = itemView.findViewById(R.id.roaming_blocked_overlay)
 
         // Check device capability once
         private val hasCellular: Boolean by lazy {
@@ -80,28 +84,34 @@ class NetworkPackageAdapter(
             val allowedColor = ContextCompat.getColor(itemView.context, R.color.success_green)
             val blockedColor = ContextCompat.getColor(itemView.context, R.color.error_red)
 
-            // Set WiFi icon color (always visible)
+            // Set WiFi icon color and overlay
             wifiIcon.setColorFilter(
                 if (pkg.wifiBlocked) blockedColor else allowedColor,
                 PorterDuff.Mode.SRC_IN
             )
+            wifiBlockedOverlay.visibility = if (pkg.wifiBlocked) View.VISIBLE else View.GONE
+            wifiBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
 
-            // Set Mobile icon color (always visible)
+            // Set Mobile icon color and overlay
             mobileIcon.setColorFilter(
                 if (pkg.mobileBlocked) blockedColor else allowedColor,
                 PorterDuff.Mode.SRC_IN
             )
+            mobileBlockedOverlay.visibility = if (pkg.mobileBlocked) View.VISIBLE else View.GONE
+            mobileBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
 
-            // Set Roaming icon visibility and color
+            // Set Roaming icon visibility, color, and overlay
             // Only show if device has cellular AND mobile is allowed
             if (hasCellular && !pkg.mobileBlocked) {
-                roamingIcon.visibility = View.VISIBLE
+                roamingContainer.visibility = View.VISIBLE
                 roamingIcon.setColorFilter(
                     if (pkg.roamingBlocked) blockedColor else allowedColor,
                     PorterDuff.Mode.SRC_IN
                 )
+                roamingBlockedOverlay.visibility = if (pkg.roamingBlocked) View.VISIBLE else View.GONE
+                roamingBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
             } else {
-                roamingIcon.visibility = View.GONE
+                roamingContainer.visibility = View.GONE
             }
 
             // Set click listener

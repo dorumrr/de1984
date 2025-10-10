@@ -78,32 +78,72 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- WiFi Icon -->
-                <ImageView
-                    android:id="@+id/wifi_icon"
+                <!-- WiFi Icon with overlay -->
+                <FrameLayout
+                    android:layout_width="20dp"
+                    android:layout_height="20dp">
+
+                    <ImageView
+                        android:id="@+id/wifi_icon"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_wifi"
+                        android:contentDescription="WiFi status" />
+
+                    <ImageView
+                        android:id="@+id/wifi_blocked_overlay"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_blocked_overlay"
+                        android:visibility="gone"
+                        android:contentDescription="WiFi blocked" />
+                </FrameLayout>
+
+                <!-- Mobile Icon with overlay -->
+                <FrameLayout
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@drawable/ic_wifi"
-                    android:contentDescription="WiFi status" />
+                    android:layout_marginStart="6dp">
 
-                <!-- Mobile Icon -->
-                <ImageView
-                    android:id="@+id/mobile_icon"
+                    <ImageView
+                        android:id="@+id/mobile_icon"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_mobile"
+                        android:contentDescription="Mobile data status" />
+
+                    <ImageView
+                        android:id="@+id/mobile_blocked_overlay"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_blocked_overlay"
+                        android:visibility="gone"
+                        android:contentDescription="Mobile blocked" />
+                </FrameLayout>
+
+                <!-- Roaming Icon with overlay (conditionally visible) -->
+                <FrameLayout
+                    android:id="@+id/roaming_container"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:layout_marginStart="6dp"
-                    android:src="@drawable/ic_mobile"
-                    android:contentDescription="Mobile data status" />
+                    android:visibility="gone">
 
-                <!-- Roaming Icon (conditionally visible) -->
-                <ImageView
-                    android:id="@+id/roaming_icon"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_marginStart="6dp"
-                    android:src="@drawable/ic_roaming"
-                    android:contentDescription="Roaming status"
-                    android:visibility="gone" />
+                    <ImageView
+                        android:id="@+id/roaming_icon"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_roaming"
+                        android:contentDescription="Roaming status" />
+
+                    <ImageView
+                        android:id="@+id/roaming_blocked_overlay"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_blocked_overlay"
+                        android:visibility="gone"
+                        android:contentDescription="Roaming blocked" />
+                </FrameLayout>
 
             </LinearLayout>
 

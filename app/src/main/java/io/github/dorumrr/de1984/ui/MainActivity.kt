@@ -2,6 +2,9 @@ package io.github.dorumrr.de1984.ui
 
 import android.Manifest
 import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -9,6 +12,7 @@ import android.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -212,6 +216,16 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
         }
 
+        // Tint icons for light/dark mode compatibility
+        val iconColor = getMenuIconColor()
+        for (i in 0 until popup.menu.size()) {
+            val item = popup.menu.getItem(i)
+            item.icon?.let { icon ->
+                icon.mutate() // Mutate to avoid affecting other instances
+                icon.colorFilter = PorterDuffColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+            }
+        }
+
         // Highlight current tab
         when (currentTab) {
             Tab.FIREWALL -> popup.menu.findItem(R.id.menu_firewall)?.isChecked = true
@@ -349,6 +363,28 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(Constants.UI.Dialogs.FIREWALL_START_SKIP, null)
             .setCancelable(true)
             .show()
+    }
+
+    /**
+     * Get the appropriate icon color for popup menu based on current theme
+     * Ensures icons are visible in both light and dark modes
+     */
+    private fun getMenuIconColor(): Int {
+        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        return when (nightModeFlags) {
+            Configuration.UI_MODE_NIGHT_YES -> {
+                // Dark mode - use light gray for better visibility
+                ContextCompat.getColor(this, android.R.color.white)
+            }
+            Configuration.UI_MODE_NIGHT_NO -> {
+                // Light mode - use dark gray
+                ContextCompat.getColor(this, android.R.color.black)
+            }
+            else -> {
+                // Default to dark gray
+                ContextCompat.getColor(this, android.R.color.black)
+            }
+        }
     }
 
     enum class Tab {

@@ -306,6 +306,137 @@ class PackagesFragmentViews : BaseFragment() {
 ### Core Design Philosophy
 **CONSISTENT USER EXPERIENCE** across all sections. Every UI element should follow established patterns to create a cohesive, professional, and intuitive interface.
 
+## 🌐 Cross-Platform Compatibility (CRITICAL)
+
+> **Universal Principle** - Applicable to all Android projects
+
+**Principle**: ALL code and design MUST ensure functionality and visual consistency across devices, Android versions, and themes.
+
+### MANDATORY Compatibility Requirements
+
+**ALWAYS TEST AND VERIFY**:
+- ✅ **Android Versions**: API 21 (Lollipop) through latest (API 34+)
+- ✅ **Light/Dark Modes**: All UI elements must adapt correctly to both themes
+- ✅ **Screen Sizes**: Phone, tablet, foldable devices
+- ✅ **Screen Densities**: ldpi, mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi
+- ✅ **Orientation**: Portrait and landscape (where applicable)
+
+### Implementation Rules
+
+#### 1. Icon Compatibility
+```kotlin
+// ❌ BAD: Hardcoded colors or theme attributes in XML
+<vector android:tint="?attr/colorControlNormal">  <!-- NOT compatible with older Android -->
+<vector android:fillColor="#FF000000">            <!-- Won't work in dark mode -->
+
+// ✅ GOOD: White base + programmatic tinting
+<vector android:fillColor="@android:color/white"> <!-- Base color for tinting -->
+
+// Then tint programmatically based on theme:
+private fun getIconColor(): Int {
+    val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+    return when (nightModeFlags) {
+        Configuration.UI_MODE_NIGHT_YES -> ContextCompat.getColor(this, android.R.color.white)
+        Configuration.UI_MODE_NIGHT_NO -> ContextCompat.getColor(this, android.R.color.black)
+        else -> ContextCompat.getColor(this, android.R.color.black)
+    }
+}
+```
+
+#### 2. Color Resources
+```xml
+<!-- ✅ GOOD: Define colors for both light and dark modes -->
+<!-- values/colors.xml (Light mode) -->
+<color name="text_primary">#000000</color>
+<color name="background">#FFFFFF</color>
+
+<!-- values-night/colors.xml (Dark mode) -->
+<color name="text_primary">#FFFFFF</color>
+<color name="background">#1E1E1E</color>
+```
+
+#### 3. Text Sizes
+```xml
+<!-- ✅ GOOD: Use sp for text, dp for dimensions -->
+<TextView
+    android:textSize="16sp"     <!-- Scales with user's font size preference -->
+    android:padding="16dp" />   <!-- Fixed dimension -->
+```
+
+#### 4. Touch Targets
+```xml
+<!-- ✅ GOOD: Minimum 48dp for all interactive elements -->
+<ImageView
+    android:layout_width="48dp"
+    android:layout_height="48dp"
+    android:padding="12dp"      <!-- Icon can be smaller, but touch area is 48dp -->
+    android:background="?attr/selectableItemBackgroundBorderless" />
+```
+
+#### 5. Theme-Aware Attributes
+```xml
+<!-- ✅ GOOD: Use theme attributes that adapt automatically -->
+<View
+    android:background="?attr/colorSurface"           <!-- Adapts to theme -->
+    android:textColor="?attr/colorOnSurface" />       <!-- Adapts to theme -->
+
+<!-- ❌ BAD: Hardcoded colors -->
+<View
+    android:background="#FFFFFF"                      <!-- Only works in light mode -->
+    android:textColor="#000000" />                    <!-- Only works in light mode -->
+```
+
+### Testing Checklist (MANDATORY Before Committing)
+
+**For EVERY UI change, verify**:
+- [ ] Tested in light mode - all elements visible and properly styled
+- [ ] Tested in dark mode - all elements visible and properly styled
+- [ ] Tested on API 21 (Lollipop) - oldest supported version
+- [ ] Tested on API 26 (Oreo) - mid-range version
+- [ ] Tested on API 29+ (Q+) - modern versions with dark mode
+- [ ] Tested on API 34+ (latest) - newest features
+- [ ] All icons are visible in both themes
+- [ ] All text is readable with proper contrast (WCAG AA)
+- [ ] All touch targets are minimum 48dp
+- [ ] No hardcoded colors that break in dark mode
+- [ ] No theme attributes that break on older Android versions
+
+### Common Pitfalls to Avoid
+
+**❌ NEVER DO THIS**:
+```kotlin
+// Hardcoded colors
+view.setBackgroundColor(Color.WHITE)  // Breaks in dark mode
+
+// Theme attributes in vector drawables (API compatibility issues)
+android:tint="?attr/colorControlNormal"
+
+// Hardcoded black/white in icons
+android:fillColor="#000000"  // Invisible in dark mode
+
+// Small touch targets
+android:layout_width="24dp"  // Too small for touch
+android:layout_height="24dp"
+```
+
+**✅ ALWAYS DO THIS**:
+```kotlin
+// Use theme-aware colors
+val backgroundColor = ContextCompat.getColor(context, R.color.background)
+view.setBackgroundColor(backgroundColor)
+
+// Programmatic icon tinting
+icon.mutate()
+icon.colorFilter = PorterDuffColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+
+// White base in vector drawables
+android:fillColor="@android:color/white"
+
+// Proper touch targets
+android:layout_width="48dp"
+android:layout_height="48dp"
+```
+
 ### Material Design 3 Compliance
 **Principle**: Strict adherence to Material Design 3 guidelines with LineageOS branding.
 
@@ -328,6 +459,10 @@ class PackagesFragmentViews : BaseFragment() {
 ### When to Apply Rules Strictly vs. Flexibly
 
 **STRICT ENFORCEMENT** (Non-negotiable):
+- **Cross-platform compatibility**: MUST work across all Android versions (API 21+), light/dark modes, and screen sizes
+- **Icon tinting**: NEVER use hardcoded colors or `android:tint` attributes - always use programmatic tinting
+- **Theme compatibility**: ALL UI elements must adapt to light/dark modes correctly
+- **Touch targets**: Minimum 48dp for all interactive elements
 - **DRY violations**: Always extract magic numbers and duplicate code
 - **Architecture patterns**: MVVM + Repository must be maintained
 - **Clean Code**: Meaningful names and small functions are essential
@@ -593,6 +728,19 @@ binding.icon.layoutParams.height = Constants.UI.ICON_SIZE_MEDIUM.dp
 ## 📝 Code Review Checklist
 
 **Before Committing Code**:
+
+### Compatibility (CRITICAL)
+- [ ] Tested in light mode - all elements visible
+- [ ] Tested in dark mode - all elements visible
+- [ ] No hardcoded colors that break in dark mode
+- [ ] Icons use white base + programmatic tinting (no `android:tint` attributes)
+- [ ] All touch targets are minimum 48dp
+- [ ] Text uses `sp` units, dimensions use `dp` units
+- [ ] Theme-aware attributes used (`?attr/colorSurface`, not hardcoded colors)
+- [ ] Tested on API 21 (oldest supported version)
+- [ ] Tested on API 29+ (dark mode support)
+
+### Code Quality
 - [ ] No hardcoded spacing values (use `Constants.UI.*`)
 - [ ] No string-based type comparisons (use enum comparisons)
 - [ ] No deprecated code remaining
@@ -647,9 +795,13 @@ The ProGuard configuration properly handles:
 **When in doubt, look at existing code and follow the same patterns!**
 
 **Key Mantras**:
+- 🌐 **Compatibility first** - ALWAYS test light/dark modes and multiple Android versions
+- 🎨 **Icons need tinting** - White base + programmatic tinting, NEVER hardcoded colors
+- 📱 **Touch targets matter** - Minimum 48dp for all interactive elements
 - 🎯 **Constants over magic numbers** - Every hardcoded value should have a name
 - 🔒 **Enums over strings** - Type safety prevents runtime errors
 - 🧹 **Clean over clever** - Readable code beats clever code
 - 🚀 **Simple over complex** - Solve today's problems, not tomorrow's hypotheticals
 - ✅ **Build often** - Catch errors early, fix them immediately
 - 📦 **Test release builds** - Minification can hide issues that only appear in release
+- 🌓 **Test both themes** - Every UI change must work in light AND dark mode

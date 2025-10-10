@@ -9,20 +9,33 @@ Complete guide for building and distributing De1984 APKs.
 De1984 supports **TWO distribution methods** with **DIFFERENT signatures**:
 
 ### 1️⃣ F-Droid Distribution (Recommended)
-- **Command:** `./dev.sh fdroid`
-- **Signature:** Debug keystore (standard Android debug key)
+- **Command:** `./dev.sh release` (production keystore)
+- **Signature:** Your production keystore (custom key)
 - **File:** `de1984-v1.0.0-release.apk`
 - **Purpose:** Upload to GitHub for F-Droid reproducible builds
 - **Users:** Install from F-Droid app store
+- **Note:** F-Droid verifies reproducibility, then publishes YOUR signed APK
 
-### 2️⃣ Personal Distribution
+### 2️⃣ Personal Distribution (Alternative)
 - **Command:** `./dev.sh release`
 - **Signature:** Your production keystore (custom key)
 - **File:** `de1984-v1.0.0-release-signed.apk`
 - **Purpose:** Direct distribution (sideloading)
 - **Users:** Manual APK installation
+- **Note:** Same signature as F-Droid version
 
-⚠️ **IMPORTANT:** Users **CANNOT** switch between F-Droid and personal versions without uninstalling first!
+### 🔄 F-Droid Workflow Evolution
+
+**Initial Testing Phase:**
+1. Use debug keystore to verify reproducible builds work
+2. F-Droid confirms: "reproducible is OK"
+
+**Production Phase:**
+1. Switch to production keystore
+2. Rebuild and sign with production key
+3. Replace APK on GitHub
+4. Update F-Droid YAML with production SHA256
+5. Retrigger F-Droid CI pipeline
 
 ---
 
@@ -30,20 +43,34 @@ De1984 supports **TWO distribution methods** with **DIFFERENT signatures**:
 
 ### For F-Droid Distribution
 
+**Phase 1: Testing (Debug Keystore)**
 ```bash
-# Build APK for F-Droid
+# Build with debug keystore for testing
 ./dev.sh fdroid
 
-# Upload to GitHub releases
-# File: app/build/outputs/apk/release/de1984-v1.0.0-release.apk
+# Upload to GitHub and submit to F-Droid
+# Wait for "reproducible is OK" confirmation
+```
+
+**Phase 2: Production (After F-Droid Confirms)**
+```bash
+# First time only: Create production keystore
+./dev.sh create-keystore
+
+# Build and sign with production key
+./dev.sh release
+
+# The command will show complete instructions for:
+# - Renaming APK for GitHub
+# - Replacing APK on GitHub
+# - Updating F-Droid YAML with production SHA256
+# - Committing and pushing changes
+# - Retriggering F-Droid CI
 ```
 
 ### For Personal Distribution
 
 ```bash
-# First time only: Create production keystore
-./dev.sh create-keystore
-
 # Build and sign with production key
 ./dev.sh release
 
@@ -58,39 +85,66 @@ De1984 supports **TWO distribution methods** with **DIFFERENT signatures**:
 | Command | Output File | Signature | Purpose |
 |---------|-------------|-----------|---------|
 | `./dev.sh build` | `de1984-v1.0.0-debug.apk` | Debug key | Local testing only |
-| `./dev.sh fdroid` | `de1984-v1.0.0-release.apk` | Debug key | F-Droid distribution |
-| `./dev.sh release` | `de1984-v1.0.0-release-signed.apk` | Production key | Personal distribution |
+| `./dev.sh release` | `de1984-v1.0.0-release-signed.apk` | Production key | F-Droid + Personal distribution |
 | `./dev.sh install` | (installs debug) | Debug key | Install on device/emulator |
+| `./dev.sh create-keystore` | `release-keystore.jks` | N/A | Create production keystore (once) |
+
+**Note:** For F-Droid, rename `de1984-v1.0.0-release-signed.apk` to `de1984-v1.0.0-release.apk` before uploading to GitHub.
 
 ---
 
 ## 📋 F-Droid Release Workflow
 
-### First Release (v1.0.0)
+### Phase 1: Initial Testing (Debug Keystore)
+
+**Purpose:** Verify reproducible builds work before using production keystore.
 
 ```bash
 # 1. Update version in app/build.gradle.kts
 #    versionCode = 1
 #    versionName = "1.0.0"
 
-# 2. Build F-Droid APK
+# 2. Build with debug keystore (for testing)
 ./dev.sh fdroid
 
-# 3. Verify debug keystore signature
-keytool -list -v -keystore ~/.android/debug.keystore -storepass android -keypass android | grep SHA256
-
-# 4. Tag and push
+# 3. Tag and push
 git tag -a v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
 
-# 5. Upload to GitHub releases
+# 4. Upload to GitHub releases
 # Upload: app/build/outputs/apk/release/de1984-v1.0.0-release.apk
-# URL: https://github.com/dorumrr/de1984/releases/tag/v1.0.0
 
-# 6. Update F-Droid YAML
-# Binaries: https://github.com/dorumrr/de1984/releases/download/v%v/de1984-v%v-release.apk
+# 5. Create F-Droid YAML with debug keystore SHA256
 # AllowedAPKSigningKeys: c0857326a4d913b819098a99f56c0ddbaac1c9e3523cb4fc3586ff27b3160845
+
+# 6. Wait for F-Droid feedback: "reproducible is OK"
 ```
+
+### Phase 2: Production Signing (After F-Droid Confirms)
+
+**Purpose:** Switch to production keystore for actual release.
+
+**The `./dev.sh release` command handles everything and shows complete instructions!**
+
+```bash
+# 1. Create production keystore (first time only)
+./dev.sh create-keystore
+
+# 2. Build and sign with production key
+./dev.sh release
+```
+
+**The release command will:**
+- ✅ Build and sign APK with production keystore
+- ✅ Display production SHA256 for F-Droid YAML
+- ✅ Show step-by-step instructions for:
+  - Renaming APK for GitHub upload
+  - Replacing APK on GitHub releases
+  - Updating F-Droid YAML with production SHA256
+  - Committing and pushing changes
+  - Retriggering F-Droid CI pipeline
+
+**Just follow the on-screen instructions!** Everything you need is displayed after the build completes.
 
 ### Subsequent Releases (v1.0.1+)
 
@@ -99,17 +153,21 @@ git push origin v1.0.0
 #    versionCode = 2
 #    versionName = "1.0.1"
 
-# 2. Build F-Droid APK
-./dev.sh fdroid
+# 2. Build with production key
+./dev.sh release
 
-# 3. Tag and push
+# 3. Rename for GitHub
+cp app/build/outputs/apk/release/de1984-v1.0.1-release-signed.apk \
+   app/build/outputs/apk/release/de1984-v1.0.1-release.apk
+
+# 4. Tag and push
 git tag -a v1.0.1 -m "Release v1.0.1"
 git push origin v1.0.1
 
-# 4. Upload to GitHub releases
+# 5. Upload to GitHub releases
 # Upload: app/build/outputs/apk/release/de1984-v1.0.1-release.apk
 
-# 5. F-Droid auto-detects new version and builds
+# 6. F-Droid auto-detects new version and builds
 ```
 
 ---
@@ -241,27 +299,47 @@ unzip -p app/build/outputs/apk/release/de1984-v1.0.0-release-signed.apk META-INF
 ## ✅ Release Checklist
 
 ### First Time Setup
-- [ ] Decide: F-Droid OR Personal distribution (or both)
-- [ ] If F-Droid: Backup `~/.android/debug.keystore`
-- [ ] If Personal: `./dev.sh create-keystore` and backup `release-keystore.jks`
-- [ ] Save all passwords in password manager
+- [ ] Create production keystore: `./dev.sh create-keystore`
+- [ ] Backup `release-keystore.jks` to multiple secure locations
+- [ ] Save keystore password in password manager
+- [ ] Save key alias: `de1984-release-key`
 
-### Every F-Droid Release
+### Phase 1: Initial F-Droid Submission (Debug Keystore)
 - [ ] Update `versionCode` and `versionName` in `app/build.gradle.kts`
 - [ ] Test app thoroughly
-- [ ] `./dev.sh fdroid`
-- [ ] Verify debug keystore signature matches F-Droid YAML
+- [ ] `./dev.sh fdroid` (builds with debug keystore)
 - [ ] Create and push Git tag
 - [ ] Upload `de1984-v1.0.0-release.apk` to GitHub releases
-- [ ] Wait for F-Droid to build and publish
+- [ ] Create F-Droid YAML with debug keystore SHA256
+- [ ] Submit to F-Droid
+- [ ] Wait for feedback: "reproducible is OK"
 
-### Every Personal Release
+### Phase 2: Switch to Production Keystore
+- [ ] `./dev.sh release` (build with production keystore)
+- [ ] Get production SHA256: `keytool -list -v -keystore release-keystore.jks`
+- [ ] Rename APK: `de1984-v1.0.0-release-signed.apk` → `de1984-v1.0.0-release.apk`
+- [ ] Delete old debug-signed APK from GitHub
+- [ ] Upload new production-signed APK to GitHub
+- [ ] Update F-Droid YAML `AllowedAPKSigningKeys` with production SHA256
+- [ ] Commit and push F-Droid YAML changes
+- [ ] Retrigger F-Droid CI pipeline
+- [ ] Verify F-Droid build passes
+
+### Every Subsequent F-Droid Release
+- [ ] Update `versionCode` and `versionName` in `app/build.gradle.kts`
+- [ ] Test app thoroughly
+- [ ] `./dev.sh release` (production keystore)
+- [ ] Rename APK for GitHub upload
+- [ ] Create and push Git tag
+- [ ] Upload `de1984-v1.0.x-release.apk` to GitHub releases
+- [ ] F-Droid auto-detects and builds new version
+
+### Every Personal Distribution Release
 - [ ] Update `versionCode` and `versionName` in `app/build.gradle.kts`
 - [ ] Test app thoroughly
 - [ ] `./dev.sh release`
 - [ ] Test signed APK on device
-- [ ] Create and push Git tag
-- [ ] Distribute `de1984-v1.0.0-release-signed.apk`
+- [ ] Distribute `de1984-v1.0.0-release-signed.apk` directly
 
 ---
 
@@ -313,8 +391,17 @@ cp ~/secure-backup/de1984-debug.keystore ~/.android/debug.keystore
 
 | Distribution | Command | File | Signature | Users |
 |--------------|---------|------|-----------|-------|
-| **F-Droid** | `./dev.sh fdroid` | `de1984-v1.0.0-release.apk` | Debug keystore | F-Droid app |
+| **F-Droid (Initial)** | `./dev.sh fdroid` | `de1984-v1.0.0-release.apk` | Debug keystore | Testing only |
+| **F-Droid (Production)** | `./dev.sh release` | `de1984-v1.0.0-release.apk`* | Production keystore | F-Droid app |
 | **Personal** | `./dev.sh release` | `de1984-v1.0.0-release-signed.apk` | Production keystore | Direct install |
 | **Testing** | `./dev.sh build` | `de1984-v1.0.0-debug.apk` | Debug keystore | Development only |
 
-**Choose ONE distribution method and stick with it!** Users cannot switch between F-Droid and personal versions without uninstalling first.
+*Rename from `de1984-v1.0.0-release-signed.apk` before uploading to GitHub.
+
+### F-Droid Workflow Summary
+
+1. **Initial submission:** Use debug keystore to verify reproducible builds
+2. **After "reproducible is OK":** Switch to production keystore
+3. **All future releases:** Use production keystore
+
+📖 **Complete guide:** [FDROID_PRODUCTION_SIGNING_WORKFLOW.md](FDROID_PRODUCTION_SIGNING_WORKFLOW.md)

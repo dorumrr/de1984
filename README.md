@@ -166,19 +166,18 @@ The `./dev.sh` script provides everything you need for development and releases:
 
 #### 📦 Release Commands
 
-De1984 supports **two distribution methods** with different signatures:
-
 **For F-Droid Distribution (Recommended):**
+
+Phase 1: Testing
 ```bash
-# Build APK for F-Droid reproducible builds
+# Build with debug keystore for testing
 ./dev.sh fdroid
 
-# Output: app/build/outputs/apk/release/de1984-v1.0.0-release.apk
-# Upload this to GitHub releases
-# F-Droid will verify and distribute
+# Upload to GitHub and submit to F-Droid
+# Wait for "reproducible is OK" confirmation
 ```
 
-**For Personal Distribution:**
+Phase 2: Production (After F-Droid confirms)
 ```bash
 # First time only: Create production keystore
 ./dev.sh create-keystore
@@ -186,19 +185,29 @@ De1984 supports **two distribution methods** with different signatures:
 # Build and sign with production key
 ./dev.sh release
 
+# Follow on-screen instructions to:
+# - Rename and upload APK to GitHub
+# - Update F-Droid YAML with production SHA256
+# - Commit and push changes
+# - Retrigger F-Droid CI
+```
+
+**For Personal Distribution:**
+```bash
+# Build and sign with production key
+./dev.sh release
+
 # Output: app/build/outputs/apk/release/de1984-v1.0.0-release-signed.apk
 # Distribute this APK directly to users
 ```
-
-⚠️ **Important:** Users cannot switch between F-Droid and personal versions without uninstalling first!
 
 ### Understanding APK Types
 
 | Command | Output File | Signature | Purpose |
 |---------|-------------|-----------|---------|
 | `./dev.sh build` | `de1984-v1.0.0-debug.apk` | Debug key | Local testing only |
-| `./dev.sh fdroid` | `de1984-v1.0.0-release.apk` | Debug key | F-Droid distribution |
-| `./dev.sh release` | `de1984-v1.0.0-release-signed.apk` | Production key | Personal distribution |
+| `./dev.sh fdroid` | `de1984-v1.0.0-release.apk` | Debug key | F-Droid testing phase |
+| `./dev.sh release` | `de1984-v1.0.0-release-signed.apk` | Production key | F-Droid production + Personal |
 
 ### Release Build Workflow
 

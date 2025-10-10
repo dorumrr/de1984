@@ -117,40 +117,42 @@ All contributions are **valued** and **appreciated**!
    cd de1984
    ```
 
-2. **Install on device/emulator**
+2. **Run the development script**
+   ```bash
+   # Show welcome screen with command explanations
+   ./dev.sh
+   ```
+
+3. **Install on device/emulator**
    ```bash
    # Install on physical device
    ./dev.sh install device
-   
+
    # Install on emulator
    ./dev.sh install emulator
-   
+
    # Auto-detect device/emulator
    ./dev.sh install
    ```
 
-3. **Take screenshots**
-   ```bash
-   ./dev.sh screenshot
-   ```
+### Development Workflow
 
-### Development Commands
+The `./dev.sh` script provides everything you need for development and releases:
+
+#### 🔧 Development Commands
 
 ```bash
+# Build debug APK for local testing
+./dev.sh build
+
 # Build, uninstall old, install fresh debug APK
 ./dev.sh install [device|emulator]
 
-# Build debug + unsigned release APKs
-./dev.sh build
-
-# Build and sign release APK (ready for distribution) - See [RELEASE_SIGNING_GUIDE.md](RELEASE_SIGNING_GUIDE.md)
-./dev.sh release
+# Launch the app
+./dev.sh launch
 
 # Take screenshot (saved to screenshots/)
 ./dev.sh screenshot
-
-# Launch the app
-./dev.sh launch
 
 # Show live app logs
 ./dev.sh logs
@@ -162,9 +164,50 @@ All contributions are **valued** and **appreciated**!
 ./dev.sh help
 ```
 
+#### 📦 Release Commands
+
+De1984 supports **two distribution methods** with different signatures:
+
+**For F-Droid Distribution (Recommended):**
+```bash
+# Build APK for F-Droid reproducible builds
+./dev.sh fdroid
+
+# Output: app/build/outputs/apk/release/de1984-v1.0.0-release.apk
+# Upload this to GitHub releases
+# F-Droid will verify and distribute
+```
+
+**For Personal Distribution:**
+```bash
+# First time only: Create production keystore
+./dev.sh create-keystore
+
+# Build and sign with production key
+./dev.sh release
+
+# Output: app/build/outputs/apk/release/de1984-v1.0.0-release-signed.apk
+# Distribute this APK directly to users
+```
+
+⚠️ **Important:** Users cannot switch between F-Droid and personal versions without uninstalling first!
+
+### Understanding APK Types
+
+| Command | Output File | Signature | Purpose |
+|---------|-------------|-----------|---------|
+| `./dev.sh build` | `de1984-v1.0.0-debug.apk` | Debug key | Local testing only |
+| `./dev.sh fdroid` | `de1984-v1.0.0-release.apk` | Debug key | F-Droid distribution |
+| `./dev.sh release` | `de1984-v1.0.0-release-signed.apk` | Production key | Personal distribution |
+
 ### Release Build Workflow
 
-See [RELEASE_SIGNING_GUIDE.md](RELEASE_SIGNING_GUIDE.md) for detailed instructions.
+See [RELEASE_SIGNING_GUIDE.md](RELEASE_SIGNING_GUIDE.md) for complete release instructions including:
+- F-Droid release workflow
+- Production release workflow
+- Keystore management and backup
+- Signature verification
+- Troubleshooting
 
 ## 🏗️ Technical Details
 

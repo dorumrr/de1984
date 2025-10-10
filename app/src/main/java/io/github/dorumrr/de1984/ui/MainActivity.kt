@@ -27,7 +27,7 @@ import io.github.dorumrr.de1984.data.service.PackageMonitoringService
 import io.github.dorumrr.de1984.databinding.ActivityMainViewsBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
-import io.github.dorumrr.de1984.ui.acknowledgements.AcknowledgementsFragmentViews
+import io.github.dorumrr.de1984.ui.credits.CreditsFragmentViews
 import io.github.dorumrr.de1984.ui.firewall.FirewallFragmentViews
 import io.github.dorumrr.de1984.ui.packages.PackagesFragmentViews
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
@@ -231,7 +231,7 @@ class MainActivity : AppCompatActivity() {
             Tab.FIREWALL -> popup.menu.findItem(R.id.menu_firewall)?.isChecked = true
             Tab.APPS -> popup.menu.findItem(R.id.menu_packages)?.isChecked = true
             Tab.SETTINGS -> popup.menu.findItem(R.id.menu_settings)?.isChecked = true
-            Tab.ACKNOWLEDGEMENTS -> popup.menu.findItem(R.id.menu_acknowledgements)?.isChecked = true
+            Tab.CREDITS -> popup.menu.findItem(R.id.menu_credits)?.isChecked = true
         }
 
         popup.setOnMenuItemClickListener { item ->
@@ -248,8 +248,8 @@ class MainActivity : AppCompatActivity() {
                     loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
                     true
                 }
-                R.id.menu_acknowledgements -> {
-                    loadFragment(AcknowledgementsFragmentViews(), Tab.ACKNOWLEDGEMENTS)
+                R.id.menu_credits -> {
+                    loadFragment(CreditsFragmentViews(), Tab.CREDITS)
                     true
                 }
                 else -> false
@@ -305,8 +305,8 @@ class MainActivity : AppCompatActivity() {
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
-            Tab.ACKNOWLEDGEMENTS -> {
-                binding.toolbarTitle.text = "ACKNOWLEDGEMENTS"
+            Tab.CREDITS -> {
+                binding.toolbarTitle.text = "CREDITS"
                 binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
@@ -391,7 +391,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     enum class Tab {
-        FIREWALL, APPS, SETTINGS, ACKNOWLEDGEMENTS
+        FIREWALL, APPS, SETTINGS, CREDITS
     }
 }
 

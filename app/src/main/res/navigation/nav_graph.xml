@@ -20,14 +20,14 @@
         android:label="Settings">
         
         <action
-            android:id="@+id/action_settings_to_acknowledgements"
-            app:destination="@id/acknowledgementsFragment" />
+            android:id="@+id/action_settings_to_credits"
+            app:destination="@id/creditsFragment" />
     </fragment>
 
     <fragment
-        android:id="@+id/acknowledgementsFragment"
-        android:name="io.github.dorumrr.de1984.ui.acknowledgements.AcknowledgementsFragment"
-        android:label="Acknowledgements" />
+        android:id="@+id/creditsFragment"
+        android:name="io.github.dorumrr.de1984.ui.credits.CreditsFragment"
+        android:label="Credits" />
 
 </navigation>
 

@@ -1,4 +1,4 @@
-package io.github.dorumrr.de1984.ui.acknowledgements
+package io.github.dorumrr.de1984.ui.credits
 
 import android.content.Intent
 import android.net.Uri
@@ -8,19 +8,19 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import io.github.dorumrr.de1984.R
-import io.github.dorumrr.de1984.databinding.FragmentAcknowledgementsBinding
+import io.github.dorumrr.de1984.databinding.FragmentCreditsBinding
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 
 /**
- * Acknowledgements screen showing libraries used in the app
+ * Credits screen showing libraries used in the app
  */
-class AcknowledgementsFragmentViews : BaseFragment<FragmentAcknowledgementsBinding>() {
+class CreditsFragmentViews : BaseFragment<FragmentCreditsBinding>() {
 
     override fun getViewBinding(
         inflater: LayoutInflater,
         container: ViewGroup?
-    ): FragmentAcknowledgementsBinding {
-        return FragmentAcknowledgementsBinding.inflate(inflater, container, false)
+    ): FragmentCreditsBinding {
+        return FragmentCreditsBinding.inflate(inflater, container, false)
     }
 
     override fun scrollToTop() {

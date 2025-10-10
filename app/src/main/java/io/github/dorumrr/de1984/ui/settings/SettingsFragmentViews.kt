@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
  * - App info with version and donate button
  * - Options: Firewall policy, Show icons, New app notifications
  * - Permissions setup (placeholder for now)
- * - Acknowledgements navigation
+ * - Credits navigation
  */
 class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 

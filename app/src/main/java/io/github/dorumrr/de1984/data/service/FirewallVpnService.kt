@@ -143,18 +143,12 @@ class FirewallVpnService : VpnService() {
     }
 
     private fun isBatteryOptimizationDisabled(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true
-        }
-
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
         return powerManager.isIgnoringBatteryOptimizations(packageName)
     }
 
     private fun checkBatteryOptimization() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return
-        }
+        // Battery optimization is available on all supported API levels (26+)
     }
 
     private fun startMonitoring() {
@@ -446,19 +440,17 @@ class FirewallVpnService : VpnService() {
     }
     
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Firewall VPN service notification"
-                setShowBadge(false)
-            }
-            
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Firewall VPN service notification"
+            setShowBadge(false)
         }
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
     }
     
     private fun createNotification(): Notification {

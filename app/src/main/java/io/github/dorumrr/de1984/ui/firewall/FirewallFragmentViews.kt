@@ -362,7 +362,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
     }
 
-    private fun updateSwitchColors(switch: SwitchMaterial, isBlocked: Boolean) {
+    private fun updateSwitchColors(switch: SwitchMaterial, @Suppress("UNUSED_PARAMETER") isBlocked: Boolean) {
         val context = switch.context
 
         // Create color state lists for checked (blocked/ON) and unchecked (allowed/OFF) states

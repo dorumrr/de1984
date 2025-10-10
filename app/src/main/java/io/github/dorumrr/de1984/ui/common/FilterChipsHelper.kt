@@ -73,7 +73,7 @@ object FilterChipsHelper {
         typeFilters.forEach { filter ->
             val chip = createFilterChip(chipGroup, filter, filter == selectedTypeFilter)
             chip.tag = "type:$filter" // Tag to identify chip type
-            chip.setOnCheckedChangeListener { buttonView, isChecked ->
+            chip.setOnCheckedChangeListener { _, isChecked ->
                 Log.d(TAG, "Type chip listener fired: filter=$filter, isChecked=$isChecked, isUpdatingProgrammatically=$isUpdatingProgrammatically")
 
                 // Skip if this is a programmatic update
@@ -121,7 +121,7 @@ object FilterChipsHelper {
         stateFilters.forEach { filter ->
             val chip = createFilterChip(chipGroup, filter, filter == selectedStateFilter)
             chip.tag = "state:$filter" // Tag to identify chip type
-            chip.setOnCheckedChangeListener { buttonView, isChecked ->
+            chip.setOnCheckedChangeListener { _, isChecked ->
                 Log.d(TAG, "State chip listener fired: filter=$filter, isChecked=$isChecked, isUpdatingProgrammatically=$isUpdatingProgrammatically")
 
                 // Skip if this is a programmatic update

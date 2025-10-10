@@ -82,6 +82,12 @@ class FirewallViewModel(
         // Use pending filter if available, otherwise use current filter
         val filterState = pendingFilterState ?: _uiState.value.filterState
 
+        // Show loading state
+        _uiState.value = _uiState.value.copy(
+            isLoadingData = true,
+            isRenderingUI = false
+        )
+
         getNetworkPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
                 pendingFilterState = null // Clear pending filter on error

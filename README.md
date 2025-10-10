@@ -170,17 +170,19 @@ See [RELEASE_SIGNING_GUIDE.md](RELEASE_SIGNING_GUIDE.md) for detailed instructio
 
 ### Architecture
 - **Language**: Kotlin 100%
-- **UI Framework**: Jetpack Compose + Material 3
+- **UI Framework**: XML Views + ViewBinding + Material 3
 - **Architecture**: MVVM + Repository pattern
 - **Database**: Room for local storage
 - **DI**: Manual Dependency Injection (ServiceLocator pattern)
 - **Root Operations**: LibSU
+- **Async**: Kotlin Coroutines + StateFlow
 
 ### Code Quality
 - **DRY, KISS, Clean Code** principles
 - **MVVM + Repository** architecture
 - **Manual Dependency Injection**
 - **Material Design 3** compliance
+- **Android 8.0 - 15** compatibility (API 26-35)
 
 ## 📄 License
 

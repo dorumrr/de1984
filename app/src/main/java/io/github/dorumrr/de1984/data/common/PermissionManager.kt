@@ -133,10 +133,6 @@ class PermissionManager(
     }
 
     fun isBatteryOptimizationDisabled(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true
-        }
-
         return try {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
             powerManager.isIgnoringBatteryOptimizations(context.packageName)
@@ -146,10 +142,6 @@ class PermissionManager(
     }
 
     fun createBatteryOptimizationIntent(): android.content.Intent? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return null
-        }
-
         if (isBatteryOptimizationDisabled()) {
             return null
         }

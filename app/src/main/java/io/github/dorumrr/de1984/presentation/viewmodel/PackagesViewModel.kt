@@ -54,6 +54,12 @@ class PackagesViewModel(
         val filterState = pendingFilterState ?: _uiState.value.filterState
         Log.d(TAG, ">>> loadPackages called with filter: type=${filterState.packageType}, state=${filterState.packageState}, isPending=${pendingFilterState != null}")
 
+        // Show loading state
+        _uiState.value = _uiState.value.copy(
+            isLoadingData = true,
+            isRenderingUI = false
+        )
+
         getPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
                 Log.e(TAG, ">>> loadPackages ERROR: ${error.message}")

@@ -42,47 +42,49 @@
 ### De1984-Specific Implementation:
 
 **What Must Be Constants**:
-- ✅ Spacing values: `16.dp`, `24.dp` → `Constants.UI.SPACING_STANDARD`, `SPACING_LARGE`
+- ✅ Spacing/padding values: `16dp`, `24dp` → `Constants.UI.SPACING_STANDARD`, `SPACING_LARGE`
 - ✅ Package types: `"system"`, `"user"` → `Constants.Packages.TYPE_SYSTEM`, `TYPE_USER`
 - ✅ Package states: `"Enabled"`, `"Disabled"` → `Constants.Packages.STATE_ENABLED`, `STATE_DISABLED`
-- ✅ Icon sizes: `24.dp`, `32.dp` → `Constants.UI.ICON_SIZE_SMALL`, `ICON_SIZE_MEDIUM`
+- ✅ Icon sizes: `24dp`, `32dp` → `Constants.UI.ICON_SIZE_SMALL`, `ICON_SIZE_MEDIUM`
 - ✅ UI dimensions: Bottom sheet radius, drag handles, borders
+- ✅ Text sizes: `16sp`, `14sp` → `Constants.UI.TEXT_SIZE_BODY`, `TEXT_SIZE_CAPTION`
 
 **What Can Be Contextual** (Not constants):
-- ❌ Content padding: `PaddingValues(16.dp)` - LazyColumn/LazyRow specific
-- ❌ Arrangement spacing: `Arrangement.spacedBy(16.dp)` - Layout specific
-- ❌ Directional padding: `.padding(horizontal = 16.dp, vertical = 8.dp)` - Context specific
+- ❌ Layout-specific margins in XML that aren't reused
+- ❌ One-off padding values unique to a single view
 - ❌ Component-specific sizes that aren't reused elsewhere
 
 **Rule of Thumb**: If a value appears 2+ times or has semantic meaning, make it a constant.
 
 ```kotlin
-// ❌ BAD: Repeated magic numbers
-@Composable
-fun HeaderComponent() {
-    Spacer(modifier = Modifier.height(16.dp))
-    Icon(modifier = Modifier.size(32.dp))
-}
+// ❌ BAD: Repeated magic numbers in XML layouts
+<!-- item_package.xml -->
+<TextView
+    android:layout_marginStart="16dp"
+    android:textSize="16sp" />
 
-@Composable
-fun CardComponent() {
-    Spacer(modifier = Modifier.height(16.dp))
-    Icon(modifier = Modifier.size(32.dp))
-}
+<!-- item_network_package.xml -->
+<TextView
+    android:layout_marginStart="16dp"
+    android:textSize="16sp" />
 
 // ✅ GOOD: Centralized constants (De1984 example)
 object Constants {
     object UI {
-        val SPACING_STANDARD = 16.dp
-        val ICON_SIZE_MEDIUM = 32.dp
+        const val SPACING_STANDARD = 16  // dp
+        const val TEXT_SIZE_BODY = 16    // sp
     }
 }
 
-@Composable
-fun HeaderComponent() {
-    Spacer(modifier = Modifier.height(Constants.UI.SPACING_STANDARD))
-    Icon(modifier = Modifier.size(Constants.UI.ICON_SIZE_MEDIUM))
+// Use in code:
+binding.textView.apply {
+    setPadding(Constants.UI.SPACING_STANDARD.dp, 0, 0, 0)
+    textSize = Constants.UI.TEXT_SIZE_BODY.toFloat()
 }
+
+// Or reference in XML via dimens.xml:
+<dimen name="spacing_standard">16dp</dimen>
+<dimen name="text_size_body">16sp</dimen>
 ```
 
 ## 🔧 KISS (Keep It Simple, Stupid)
@@ -248,28 +250,56 @@ io.github.dorumrr.de1984/
 - **Use Cases**: Encapsulate business logic in use cases
 - **State Management**: Consistent state management across the app
 
+### De1984 UI Stack
+**Current Implementation**: XML Layouts + View Binding + Fragments
+
 ```kotlin
-// MVVM Implementation Example
-class PackageListViewModel constructor(
-    private val packageRepository: PackageRepository,
-    private val packageUseCase: GetPackagesUseCase
-) : ViewModel() {
+// MVVM Implementation Example with View Binding
+class PackagesFragmentViews : BaseFragment() {
+    private var _binding: FragmentPackagesBinding? = null
+    private val binding get() = _binding!!
 
-    private val _packages = MutableStateFlow<List<PackageInfo>>(emptyList())
-    val packages: StateFlow<List<PackageInfo>> = _packages.asStateFlow()
+    private val viewModel: PackagesViewModel by viewModels {
+        De1984Application.dependencies.packagesViewModelFactory
+    }
 
-    fun loadPackages() {
-        viewModelScope.launch {
-            try {
-                val result = packageUseCase.execute()
-                _packages.value = result
-            } catch (e: Exception) {
-                // Handle error
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentPackagesBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupRecyclerView()
+        observeViewModel()
+    }
+
+    private fun observeViewModel() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        is PackagesUiState.Success -> updateUI(state.packages)
+                        is PackagesUiState.Error -> showError(state.message)
+                        is PackagesUiState.Loading -> showLoading()
+                    }
+                }
             }
         }
     }
 }
 ```
+
+**Key Components**:
+- **View Binding**: Type-safe view access (replaces findViewById)
+- **Fragments**: Screen-level UI components
+- **RecyclerView**: Efficient list rendering with adapters
+- **Material Design Components**: Bottom sheets, chips, dialogs
+- **StateFlow**: Reactive state management from ViewModels
 
 ## 🎨 Visual Consistency & Design Standards
 
@@ -283,7 +313,8 @@ class PackageListViewModel constructor(
 - **Color System**: LineageOS teal theme (`#167C80` primary, `#4DB6AC` dark primary)
 - **Typography**: Material 3 scales (22sp titles, 16sp body, 14sp labels)
 - **Spacing**: 8dp/16dp grid system, 12dp radius, 16dp padding
-- **Components**: Material 3 Compose components only
+- **Components**: Material Design Components (MDC) for Android with XML layouts
+- **View Binding**: Use View Binding for type-safe view access
 - **Theme**: Light/dark mode with consistent color mapping
 
 ### Accessibility Requirements
@@ -412,23 +443,39 @@ fun getFiltered(filter: String): Flow<List<Package>> {
 ```kotlin
 object Constants {
     object UI {
-        // Spacing (8dp grid system)
-        val SPACING_TINY = 4.dp
-        val SPACING_SMALL = 8.dp
-        val SPACING_STANDARD = 16.dp
-        val SPACING_LARGE = 24.dp
+        // Spacing (8dp grid system) - use in code, reference in XML via dimens.xml
+        const val SPACING_EXTRA_TINY = 2  // dp
+        const val SPACING_TINY = 4         // dp
+        const val SPACING_SMALL = 8        // dp
+        const val SPACING_MEDIUM = 12      // dp
+        const val SPACING_STANDARD = 16    // dp
+        const val SPACING_LARGE = 24       // dp
+
+        // Elevation
+        const val ELEVATION_CARD = 2       // dp
+        const val ELEVATION_SURFACE = 4    // dp
+
+        // Corner radius
+        const val CORNER_RADIUS_STANDARD = 12 // dp
 
         // Icon sizes
-        val ICON_SIZE_SMALL = 24.dp
-        val ICON_SIZE_MEDIUM = 32.dp
+        const val ICON_SIZE_TINY = 16      // dp
+        const val ICON_SIZE_SMALL = 24     // dp
+        const val ICON_SIZE_MEDIUM = 32    // dp
+        const val ICON_SIZE_LARGE = 40     // dp
+        const val ICON_SIZE_EXTRA_LARGE = 60 // dp
 
         // Bottom sheet
-        val BOTTOM_SHEET_CORNER_RADIUS = 28.dp
-        val DRAG_HANDLE_WIDTH = 32.dp
-        val DRAG_HANDLE_HEIGHT = 4.dp
+        const val BOTTOM_SHEET_CORNER_RADIUS = 28 // dp
+        const val DRAG_HANDLE_WIDTH = 32          // dp
+        const val DRAG_HANDLE_HEIGHT = 4          // dp
 
         // Borders
-        val BORDER_WIDTH_THIN = 1.dp
+        const val BORDER_WIDTH_THIN = 1 // dp
+
+        // Alpha values
+        const val ALPHA_FULL = 1f
+        const val ALPHA_DISABLED = 0.6f
     }
 
     object Packages {
@@ -439,14 +486,75 @@ object Constants {
         // Package states
         const val STATE_ENABLED = "Enabled"
         const val STATE_DISABLED = "Disabled"
+
+        // Filters
+        val PACKAGE_TYPE_FILTERS = listOf("User", "System")
+        val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled")
     }
 
     object App {
         const val NAME = "De1984"
         const val PACKAGE_NAME = "io.github.dorumrr.de1984"
+        const val PACKAGE_NAME_DEBUG = "io.github.dorumrr.de1984.debug"
+
+        fun isOwnApp(packageName: String): Boolean {
+            return packageName == PACKAGE_NAME || packageName == PACKAGE_NAME_DEBUG
+        }
+    }
+
+    object Settings {
+        const val PREFS_NAME = "de1984_prefs"
+        const val KEY_SHOW_APP_ICONS = "show_app_icons"
+        const val KEY_DEFAULT_FIREWALL_POLICY = "default_firewall_policy"
+        const val KEY_FIREWALL_ENABLED = "firewall_enabled"
+        // ... other settings constants
+    }
+
+    object Firewall {
+        const val STATE_BLOCKED = "Blocked"
+        const val STATE_ALLOWED = "Allowed"
+        val NETWORK_STATE_FILTERS = listOf("Allowed", "Blocked")
+        // ... other firewall constants
     }
 }
 ```
+
+**Usage in Kotlin Code**:
+```kotlin
+// Use constants when setting dimensions programmatically
+binding.textView.apply {
+    setPadding(
+        Constants.UI.SPACING_STANDARD.dpToPx(context),
+        Constants.UI.SPACING_SMALL.dpToPx(context),
+        Constants.UI.SPACING_STANDARD.dpToPx(context),
+        Constants.UI.SPACING_SMALL.dpToPx(context)
+    )
+}
+
+// Or use extension functions
+binding.icon.layoutParams.width = Constants.UI.ICON_SIZE_MEDIUM.dp
+binding.icon.layoutParams.height = Constants.UI.ICON_SIZE_MEDIUM.dp
+```
+
+**Usage in XML Layouts**:
+```xml
+<!-- Current practice: Direct dp values in XML -->
+<!-- For consistency, use the same values as defined in Constants.kt -->
+<com.google.android.material.card.MaterialCardView
+    android:layout_marginStart="12dp"
+    android:layout_marginEnd="12dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="12dp">
+
+    <ImageView
+        android:layout_width="48dp"
+        android:layout_height="48dp" />
+</com.google.android.material.card.MaterialCardView>
+```
+
+**Note**: XML layouts use hardcoded dp values. Constants.kt serves as the single source of truth for these values when used in Kotlin code.
 
 **Adding New Constants**:
 1. Determine the appropriate category (UI, Packages, App, etc.)
@@ -511,7 +619,7 @@ object Constants {
 The ProGuard configuration properly handles:
 - ✅ Manual DI (ViewModels, factories, ServiceLocator)
 - ✅ Room Database (entities, DAOs, generated classes)
-- ✅ Jetpack Compose (@Composable, lambdas, state)
+- ✅ View Binding (generated binding classes)
 - ✅ Kotlin features (sealed classes, data classes, enums)
 - ✅ OkHttp (SSL/TLS for update checker)
 - ✅ Coroutines (Flow, StateFlow, continuations)

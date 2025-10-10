@@ -217,6 +217,7 @@ class MainActivity : AppCompatActivity() {
             Tab.FIREWALL -> popup.menu.findItem(R.id.menu_firewall)?.isChecked = true
             Tab.APPS -> popup.menu.findItem(R.id.menu_packages)?.isChecked = true
             Tab.SETTINGS -> popup.menu.findItem(R.id.menu_settings)?.isChecked = true
+            Tab.ACKNOWLEDGEMENTS -> popup.menu.findItem(R.id.menu_acknowledgements)?.isChecked = true
         }
 
         popup.setOnMenuItemClickListener { item ->
@@ -234,7 +235,7 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.menu_acknowledgements -> {
-                    loadAcknowledgementsFragment()
+                    loadFragment(AcknowledgementsFragmentViews(), Tab.ACKNOWLEDGEMENTS)
                     true
                 }
                 else -> false
@@ -253,19 +254,6 @@ class MainActivity : AppCompatActivity() {
         }
         updateToolbar()
         updateNavigationDrawerSelection()
-    }
-
-    private fun loadAcknowledgementsFragment() {
-        supportFragmentManager.commit {
-            replace(R.id.fragment_container, AcknowledgementsFragmentViews())
-            addToBackStack("acknowledgements")
-        }
-        // Hide toolbar elements when showing acknowledgements
-        binding.toolbarTitle.text = ""
-        binding.toolbarIcon.visibility = View.GONE
-        binding.firewallToggle.visibility = View.GONE
-        binding.firewallActiveBadge.visibility = View.GONE
-        binding.firewallOffBadge.visibility = View.GONE
     }
 
     private fun updateNavigationDrawerSelection() {
@@ -295,6 +283,14 @@ class MainActivity : AppCompatActivity() {
                 binding.toolbarTitle.text = "SETTINGS"
                 binding.toolbarIcon.visibility = View.VISIBLE
                 binding.toolbarIcon.setImageResource(R.drawable.ic_settings)
+                binding.firewallToggle.visibility = View.GONE
+                binding.firewallActiveBadge.visibility = View.GONE
+                binding.firewallOffBadge.visibility = View.GONE
+            }
+            Tab.ACKNOWLEDGEMENTS -> {
+                binding.toolbarTitle.text = "ACKNOWLEDGEMENTS"
+                binding.toolbarIcon.visibility = View.VISIBLE
+                binding.toolbarIcon.setImageResource(R.drawable.ic_info)
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
@@ -356,7 +352,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     enum class Tab {
-        FIREWALL, APPS, SETTINGS
+        FIREWALL, APPS, SETTINGS, ACKNOWLEDGEMENTS
     }
 }
 

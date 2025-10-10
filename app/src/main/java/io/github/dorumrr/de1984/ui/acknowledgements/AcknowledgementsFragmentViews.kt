@@ -24,11 +24,6 @@ class AcknowledgementsFragmentViews : BaseFragment<FragmentAcknowledgementsBindi
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Back button
-        binding.backButton.setOnClickListener {
-            requireActivity().onBackPressedDispatcher.onBackPressed()
-        }
-
         // Contribute link
         binding.contributeLink.setOnClickListener {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dorumrr/de1984"))

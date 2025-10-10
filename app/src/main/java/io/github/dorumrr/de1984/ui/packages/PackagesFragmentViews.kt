@@ -116,25 +116,46 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             selectedTypeFilter = currentTypeFilter,
             selectedStateFilter = currentStateFilter,
             onTypeFilterSelected = { filter ->
-                Log.d(TAG, "Type filter clicked: $filter, current: $currentTypeFilter")
+                val timestamp = System.currentTimeMillis()
+                Log.d(TAG, "════════════════════════════════════════════════════════════════")
+                Log.d(TAG, "[$timestamp] 🔘 TYPE FILTER CLICKED: $filter")
+                Log.d(TAG, "[$timestamp] Current type filter: $currentTypeFilter")
+                Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
+
                 // Only trigger if different from current
                 if (filter != currentTypeFilter) {
-                    // Clear the list IMMEDIATELY to prevent showing stale data
-                    Log.d(TAG, "Clearing adapter list immediately before filter change")
-                    adapter.submitList(null)
-                    lastSubmittedPackages = emptyList()
+                    Log.d(TAG, "[$timestamp] Filter CHANGED from $currentTypeFilter to $filter")
 
+                    // Don't clear adapter - let ViewModel handle the state transition
                     currentTypeFilter = filter
+                    Log.d(TAG, "[$timestamp] Calling viewModel.setPackageTypeFilter($filter)...")
                     viewModel.setPackageTypeFilter(filter)
+                    Log.d(TAG, "[$timestamp] viewModel.setPackageTypeFilter() returned")
+                } else {
+                    Log.d(TAG, "[$timestamp] Filter UNCHANGED, ignoring click")
                 }
+                Log.d(TAG, "════════════════════════════════════════════════════════════════")
             },
             onStateFilterSelected = { filter ->
-                Log.d(TAG, "State filter clicked: $filter, current: $currentStateFilter")
+                val timestamp = System.currentTimeMillis()
+                Log.d(TAG, "════════════════════════════════════════════════════════════════")
+                Log.d(TAG, "[$timestamp] 🔘 STATE FILTER CLICKED: $filter")
+                Log.d(TAG, "[$timestamp] Current state filter: $currentStateFilter")
+                Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
+
                 // Only trigger if different from current
                 if (filter != currentStateFilter) {
+                    Log.d(TAG, "[$timestamp] Filter CHANGED from $currentStateFilter to $filter")
+
+                    // Don't clear adapter - let ViewModel handle the state transition
                     currentStateFilter = filter
+                    Log.d(TAG, "[$timestamp] Calling viewModel.setPackageStateFilter($filter)...")
                     viewModel.setPackageStateFilter(filter)
+                    Log.d(TAG, "[$timestamp] viewModel.setPackageStateFilter() returned")
+                } else {
+                    Log.d(TAG, "[$timestamp] Filter UNCHANGED, ignoring click")
                 }
+                Log.d(TAG, "════════════════════════════════════════════════════════════════")
             }
         )
     }
@@ -167,80 +188,97 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun observeUiState() {
+        Log.d(TAG, "observeUiState() - Setting up StateFlow collection")
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                Log.d(TAG, "observeUiState() - Lifecycle STARTED, beginning to collect StateFlow")
                 viewModel.uiState.collect { state ->
+                    val timestamp = System.currentTimeMillis()
+                    Log.d(TAG, "════════════════════════════════════════════════════════════════")
+                    Log.d(TAG, "[$timestamp] 📥 StateFlow COLLECTED new state")
+                    Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
+                    Log.d(TAG, "[$timestamp] State: packages.size=${state.packages.size}, isLoadingData=${state.isLoadingData}")
+                    Log.d(TAG, "[$timestamp] Calling updateUI()...")
                     updateUI(state)
+                    Log.d(TAG, "[$timestamp] updateUI() returned")
+                    Log.d(TAG, "════════════════════════════════════════════════════════════════")
                 }
             }
         }
     }
 
     private fun updateUI(state: PackagesUiState) {
-        Log.d(TAG, "========================================")
-        Log.d(TAG, "updateUI CALLED: ${state.packages.size} packages, " +
-                "loading=${state.isLoading}, " +
-                "isLoadingData=${state.isLoadingData}, " +
-                "isRenderingUI=${state.isRenderingUI}, " +
-                "typeFilter=${state.filterState.packageType}, " +
-                "stateFilter=${state.filterState.packageState}")
+        // Simple approach: Just show/hide based on state
+        if (state.isLoadingData && state.packages.isEmpty()) {
+            binding.packagesRecyclerView.visibility = View.INVISIBLE  // INVISIBLE instead of GONE
+            binding.loadingState.visibility = View.VISIBLE
+            binding.emptyState.visibility = View.GONE
+        } else if (state.packages.isEmpty()) {
+            binding.packagesRecyclerView.visibility = View.INVISIBLE
+            binding.loadingState.visibility = View.GONE
+            binding.emptyState.visibility = View.VISIBLE
+        } else {
+            // We have packages - show RecyclerView immediately
+            binding.packagesRecyclerView.visibility = View.VISIBLE
+            binding.loadingState.visibility = View.GONE
+            binding.emptyState.visibility = View.GONE
+        }
 
-        // Update filter chips
-        Log.d(TAG, "About to call updateFilterChips")
+        val timestamp = System.currentTimeMillis()
+        Log.d(TAG, "════════════════════════════════════════════════════════════════")
+        Log.d(TAG, "[$timestamp] updateUI() CALLED")
+        Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
+        Log.d(TAG, "[$timestamp] State: packages.size=${state.packages.size}, isLoadingData=${state.isLoadingData}, isRenderingUI=${state.isRenderingUI}")
+        Log.d(TAG, "[$timestamp] Filter: type=${state.filterState.packageType}, state=${state.filterState.packageState}")
+        Log.d(TAG, "[$timestamp] First 5 packages: ${state.packages.take(5).map { it.packageName }}")
+        Log.d(TAG, "[$timestamp] lastSubmittedPackages.size=${lastSubmittedPackages.size}")
+        Log.d(TAG, "[$timestamp] lastSubmittedPackages first 5: ${lastSubmittedPackages.take(5).map { it.packageName }}")
+        Log.d(TAG, "[$timestamp] adapter.currentList.size=${adapter.currentList.size}")
+        Log.d(TAG, "[$timestamp] adapter.currentList first 5: ${adapter.currentList.take(5).map { it.packageName }}")
+        Log.d(TAG, "[$timestamp] Current visibility AFTER immediate update: loading=${binding.loadingState.visibility}, empty=${binding.emptyState.visibility}, recycler=${binding.packagesRecyclerView.visibility}")
+        Log.d(TAG, "[$timestamp] RecyclerView.isShown=${binding.packagesRecyclerView.isShown}, alpha=${binding.packagesRecyclerView.alpha}")
+
+        Log.d(TAG, "[$timestamp] Visibility was set IMMEDIATELY at function start to prevent flash")
+        Log.d(TAG, "[$timestamp] RecyclerView should now be hidden if loading")
+
+        // Update filter chips AFTER hiding RecyclerView (if needed)
+        // This prevents the RecyclerView from being visible with old data while filter chips update
+        Log.d(TAG, "[$timestamp] Updating filter chips...")
         updateFilterChips(
             packageTypeFilter = state.filterState.packageType,
             packageStateFilter = state.filterState.packageState
         )
-        Log.d(TAG, "Finished updateFilterChips")
+        Log.d(TAG, "[$timestamp] Filter chips updated")
 
         // Update RecyclerView - only if the list actually changed
         val listChanged = state.packages != lastSubmittedPackages
-        Log.d(TAG, "About to call adapter.submitList with ${state.packages.size} packages, listChanged=$listChanged, isRenderingUI=${state.isRenderingUI}")
+        Log.d(TAG, "[$timestamp] List comparison: listChanged=$listChanged")
+        Log.d(TAG, "[$timestamp] state.packages.size=${state.packages.size}, lastSubmittedPackages.size=${lastSubmittedPackages.size}")
+        Log.d(TAG, "[$timestamp] state.packages == lastSubmittedPackages: ${state.packages == lastSubmittedPackages}")
 
         if (!listChanged) {
-            Log.d(TAG, "Skipping adapter.submitList - list unchanged")
-            Log.d(TAG, "========================================")
+            Log.d(TAG, "[$timestamp] ⏭️  EARLY RETURN: List unchanged, skipping adapter.submitList")
+            Log.d(TAG, "[$timestamp] adapter.currentList.size=${adapter.currentList.size}")
+            Log.d(TAG, "[$timestamp] BUT RecyclerView is showing: ${binding.packagesRecyclerView.isShown}")
+            Log.d(TAG, "[$timestamp] AND adapter has items: ${adapter.currentList.size}")
+            Log.d(TAG, "[$timestamp] First 5 in adapter: ${adapter.currentList.take(5).map { it.packageName }}")
+            Log.d(TAG, "[$timestamp] ⚠️  USER SEES: ${if (binding.packagesRecyclerView.isShown) "RecyclerView with ${adapter.currentList.size} items" else "Loading or Empty state"}")
+            Log.d(TAG, "════════════════════════════════════════════════════════════════")
             return
         }
 
-        // Submit the list
+        // Submit the list - simple, no callbacks
+        lastSubmittedPackages = state.packages
+        adapter.submitList(state.packages)
         if (state.isRenderingUI) {
-            Log.d(TAG, "Submitting ${state.packages.size} packages with callback")
-            lastSubmittedPackages = state.packages
-            adapter.submitList(state.packages) {
-                Log.d(TAG, "adapter.submitList callback executed, adapter.currentList.size=${adapter.currentList.size}")
-                // Call setUIReady after the list is submitted
-                viewModel.setUIReady()
-            }
-        } else {
-            Log.d(TAG, "Submitting ${state.packages.size} packages (isRenderingUI=false)")
-            lastSubmittedPackages = state.packages
-            adapter.submitList(state.packages)
+            viewModel.setUIReady()
         }
 
-        Log.d(TAG, "========================================")
-
-        // Show/hide states
-        when {
-            state.isLoadingData -> {
-                // Show loading spinner whenever we're loading data
-                binding.loadingState.visibility = View.VISIBLE
-                binding.emptyState.visibility = View.GONE
-                binding.packagesRecyclerView.visibility = View.GONE
-            }
-            state.packages.isEmpty() -> {
-                // No packages - show empty state
-                binding.loadingState.visibility = View.GONE
-                binding.emptyState.visibility = View.VISIBLE
-                binding.packagesRecyclerView.visibility = View.GONE
-            }
-            else -> {
-                // We have packages - show them
-                binding.loadingState.visibility = View.GONE
-                binding.emptyState.visibility = View.GONE
-                binding.packagesRecyclerView.visibility = View.VISIBLE
-            }
-        }
+        Log.d(TAG, "[$timestamp] adapter.currentList.size AFTER submit call=${adapter.currentList.size}")
+        Log.d(TAG, "[$timestamp] adapter.currentList AFTER submit first 5: ${adapter.currentList.take(5).map { it.packageName }}")
+        Log.d(TAG, "[$timestamp] RecyclerView.isShown AFTER submit=${binding.packagesRecyclerView.isShown}")
+        Log.d(TAG, "[$timestamp] updateUI() COMPLETED")
+        Log.d(TAG, "════════════════════════════════════════════════════════════════")
 
         // Show root banner if needed - observe StateFlow
         lifecycleScope.launch {

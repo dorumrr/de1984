@@ -121,11 +121,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 // Only trigger if different from current
                 if (filter != currentTypeFilter) {
                     Log.d(TAG, "Type filter selected: $filter")
-                    // Clear the list IMMEDIATELY to prevent showing stale data
-                    Log.d(TAG, "Clearing adapter list immediately before filter change")
-                    adapter.submitList(null)
-                    lastSubmittedPackages = emptyList()
-
+                    // Don't clear adapter - let ViewModel handle the state transition
                     currentTypeFilter = filter
                     viewModel.setPackageTypeFilter(filter)
                 }
@@ -134,6 +130,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 // Only trigger if different from current
                 if (filter != currentStateFilter) {
                     Log.d(TAG, "State filter selected: $filter")
+                    // Don't clear adapter - let ViewModel handle the state transition
                     currentStateFilter = filter
                     viewModel.setNetworkStateFilter(filter)
                 }
@@ -196,14 +193,37 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private fun updateUI(state: io.github.dorumrr.de1984.presentation.viewmodel.FirewallUiState) {
+        val timestamp = System.currentTimeMillis()
+
+        // Simple approach: Just show/hide based on state, no fancy logic
+        if (state.isLoadingData && state.packages.isEmpty()) {
+            Log.d(TAG, "[$timestamp] 🔴 Loading - showing SPINNER")
+            binding.packagesRecyclerView.visibility = View.INVISIBLE  // INVISIBLE instead of GONE
+            binding.loadingState.visibility = View.VISIBLE
+            binding.emptyState.visibility = View.GONE
+        } else if (state.packages.isEmpty()) {
+            Log.d(TAG, "[$timestamp] 🔴 Empty - showing EMPTY")
+            binding.packagesRecyclerView.visibility = View.INVISIBLE
+            binding.loadingState.visibility = View.GONE
+            binding.emptyState.visibility = View.VISIBLE
+        } else {
+            // We have packages - show RecyclerView immediately, hide spinner
+            Log.d(TAG, "[$timestamp] 🟢 Have data - showing RECYCLERVIEW")
+            binding.packagesRecyclerView.visibility = View.VISIBLE
+            binding.loadingState.visibility = View.GONE
+            binding.emptyState.visibility = View.GONE
+        }
+
         Log.d(TAG, "updateUI: ${state.packages.size} packages, " +
                 "loading=${state.isLoading}, " +
                 "isLoadingData=${state.isLoadingData}, " +
                 "isRenderingUI=${state.isRenderingUI}, " +
                 "typeFilter=${state.filterState.packageType}, " +
                 "stateFilter=${state.filterState.networkState}")
+        Log.d(TAG, "Visibility set IMMEDIATELY at function start to prevent flash")
 
-        // Update filter chips
+        // Update filter chips AFTER hiding RecyclerView (if needed)
+        // This prevents the RecyclerView from being visible with old data while filter chips update
         updateFilterChips(
             packageTypeFilter = state.filterState.packageType,
             networkStateFilter = state.filterState.networkState
@@ -218,41 +238,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             return
         }
 
-        // Submit the list
+        // Submit the list - simple, no callbacks
+        Log.d(TAG, "Submitting ${state.packages.size} packages")
+        lastSubmittedPackages = state.packages
+        adapter.submitList(state.packages)
         if (state.isRenderingUI) {
-            Log.d(TAG, "Submitting ${state.packages.size} packages with callback")
-            lastSubmittedPackages = state.packages
-            adapter.submitList(state.packages) {
-                Log.d(TAG, "adapter.submitList callback executed, adapter.currentList.size=${adapter.currentList.size}")
-                // Call setUIReady after the list is submitted
-                viewModel.setUIReady()
-            }
-        } else {
-            Log.d(TAG, "Submitting ${state.packages.size} packages (isRenderingUI=false)")
-            lastSubmittedPackages = state.packages
-            adapter.submitList(state.packages)
-        }
-
-        // Show/hide states
-        when {
-            state.isLoadingData -> {
-                // Show loading spinner whenever we're loading data
-                binding.loadingState.visibility = View.VISIBLE
-                binding.emptyState.visibility = View.GONE
-                binding.packagesRecyclerView.visibility = View.GONE
-            }
-            state.packages.isEmpty() -> {
-                // No packages - show empty state
-                binding.loadingState.visibility = View.GONE
-                binding.emptyState.visibility = View.VISIBLE
-                binding.packagesRecyclerView.visibility = View.GONE
-            }
-            else -> {
-                // We have packages - show them
-                binding.loadingState.visibility = View.GONE
-                binding.emptyState.visibility = View.GONE
-                binding.packagesRecyclerView.visibility = View.VISIBLE
-            }
+            viewModel.setUIReady()
         }
     }
 

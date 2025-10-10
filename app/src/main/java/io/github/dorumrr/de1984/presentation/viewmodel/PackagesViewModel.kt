@@ -9,7 +9,7 @@ import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.usecase.GetPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManagePackageUseCase
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,8 +32,9 @@ class PackagesViewModel(
 
     // Store pending filter state separately to avoid triggering UI updates
     private var pendingFilterState: PackageFilterState? = null
-    private var loadingStartTime: Long = 0
-    private val MIN_LOADING_DISPLAY_TIME_MS = 300L // Minimum time to show loading spinner
+
+    // Job to track the current data loading operation
+    private var loadJob: Job? = null
 
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
@@ -54,55 +55,86 @@ class PackagesViewModel(
     }
 
     fun loadPackages() {
+        val timestamp = System.currentTimeMillis()
+        Log.d(TAG, "════════════════════════════════════════════════════════════════")
+        Log.d(TAG, "[$timestamp] loadPackages() CALLED")
+        Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
+        Log.d(TAG, "[$timestamp] Current loadJob: $loadJob (isActive=${loadJob?.isActive}, isCancelled=${loadJob?.isCancelled}, isCompleted=${loadJob?.isCompleted})")
+
+        // Cancel any previous loading operation
+        if (loadJob != null) {
+            Log.d(TAG, "[$timestamp] CANCELLING previous loadJob: $loadJob")
+            loadJob?.cancel()
+            Log.d(TAG, "[$timestamp] Previous loadJob cancelled. New state: isActive=${loadJob?.isActive}, isCancelled=${loadJob?.isCancelled}")
+        } else {
+            Log.d(TAG, "[$timestamp] No previous loadJob to cancel")
+        }
+
         // Use pending filter if available, otherwise use current filter
         val filterState = pendingFilterState ?: _uiState.value.filterState
-        Log.d(TAG, ">>> loadPackages called with filter: type=${filterState.packageType}, state=${filterState.packageState}, isPending=${pendingFilterState != null}")
+        Log.d(TAG, "[$timestamp] Filter state: type=${filterState.packageType}, state=${filterState.packageState}")
+        Log.d(TAG, "[$timestamp] Pending filter: ${pendingFilterState?.let { "type=${it.packageType}, state=${it.packageState}" } ?: "null"}")
 
-        // Show loading state and clear packages to prevent stale data flash
-        loadingStartTime = System.currentTimeMillis()
+        // Clear pending filter immediately after using it
+        pendingFilterState = null
+        Log.d(TAG, "[$timestamp] Cleared pendingFilterState")
+
+        Log.d(TAG, "[$timestamp] Current UI state BEFORE clear: packages.size=${_uiState.value.packages.size}, isLoadingData=${_uiState.value.isLoadingData}, isRenderingUI=${_uiState.value.isRenderingUI}")
+
+        // Clear packages AND update filter state immediately to prevent showing stale data
+        Log.d(TAG, "[$timestamp] CLEARING packages and setting isLoadingData=true")
+        Log.d(TAG, "[$timestamp] UPDATING filterState to: type=${filterState.packageType}, state=${filterState.packageState}")
         _uiState.value = _uiState.value.copy(
             isLoadingData = true,
             isRenderingUI = false,
-            packages = emptyList()
+            packages = emptyList(),
+            filterState = filterState  // Update filter immediately!
         )
+        Log.d(TAG, "[$timestamp] UI state AFTER clear: packages.size=${_uiState.value.packages.size}, isLoadingData=${_uiState.value.isLoadingData}, isRenderingUI=${_uiState.value.isRenderingUI}, filterState: type=${_uiState.value.filterState.packageType}")
+        Log.d(TAG, "[$timestamp] STATE EMITTED: empty list, isLoadingData=true, filterState updated")
 
-        getPackagesUseCase.getFilteredByState(filterState)
+        Log.d(TAG, "[$timestamp] Starting Flow collection for filter: type=${filterState.packageType}, state=${filterState.packageState}")
+        loadJob = getPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
-                Log.e(TAG, ">>> loadPackages ERROR: ${error.message}")
-                pendingFilterState = null // Clear pending filter on error
+                val errorTimestamp = System.currentTimeMillis()
+                Log.e(TAG, "[$errorTimestamp] ❌ ERROR in Flow: ${error.message}")
+                Log.e(TAG, "[$errorTimestamp] Error stacktrace:", error)
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
                     isRenderingUI = false,
                     error = error.message
                 )
+                Log.d(TAG, "[$errorTimestamp] STATE EMITTED: error state, isLoadingData=false")
             }
             .onEach { packages ->
-                Log.d(TAG, ">>> loadPackages onEach: received ${packages.size} packages")
+                val onEachTimestamp = System.currentTimeMillis()
+                Log.d(TAG, "────────────────────────────────────────────────────────────────")
+                Log.d(TAG, "[$onEachTimestamp] ✅ Flow.onEach TRIGGERED")
+                Log.d(TAG, "[$onEachTimestamp] Thread: ${Thread.currentThread().name}")
+                Log.d(TAG, "[$onEachTimestamp] Received ${packages.size} packages")
+                Log.d(TAG, "[$onEachTimestamp] First 5 packages: ${packages.take(5).map { it.packageName }}")
+                Log.d(TAG, "[$onEachTimestamp] Current loadJob: $loadJob (isActive=${loadJob?.isActive})")
+                Log.d(TAG, "[$onEachTimestamp] Current UI state BEFORE update: packages.size=${_uiState.value.packages.size}, isLoadingData=${_uiState.value.isLoadingData}")
 
-                // Ensure minimum loading display time for better UX
-                val elapsedTime = System.currentTimeMillis() - loadingStartTime
-                val remainingTime = MIN_LOADING_DISPLAY_TIME_MS - elapsedTime
-                if (remainingTime > 0) {
-                    Log.d(TAG, ">>> Delaying for ${remainingTime}ms to show loading spinner")
-                    delay(remainingTime)
-                }
-
-                // Only emit state when we have the new data ready
-                // Apply the pending filter state now
-                val finalFilterState = pendingFilterState ?: _uiState.value.filterState
-                pendingFilterState = null // Clear pending filter
-
+                // Filter state was already updated when we started loading
                 val newState = _uiState.value.copy(
                     packages = packages,
-                    filterState = finalFilterState,
                     isLoadingData = false,
                     isRenderingUI = true,
                     error = null
                 )
-                Log.d(TAG, ">>> EMITTING STATE: ${packages.size} packages, filter: type=${newState.filterState.packageType}, state=${newState.filterState.packageState}")
+                Log.d(TAG, "[$onEachTimestamp] New state created: packages.size=${newState.packages.size}, isLoadingData=${newState.isLoadingData}, isRenderingUI=${newState.isRenderingUI}, filterState: type=${newState.filterState.packageType}")
+                Log.d(TAG, "[$onEachTimestamp] EMITTING STATE with ${packages.size} packages")
                 _uiState.value = newState
+                Log.d(TAG, "[$onEachTimestamp] STATE EMITTED SUCCESSFULLY")
+                Log.d(TAG, "[$onEachTimestamp] Current UI state AFTER update: packages.size=${_uiState.value.packages.size}, isLoadingData=${_uiState.value.isLoadingData}")
+                Log.d(TAG, "────────────────────────────────────────────────────────────────")
             }
             .launchIn(viewModelScope)
+
+        Log.d(TAG, "[$timestamp] New loadJob created: $loadJob (isActive=${loadJob?.isActive})")
+        Log.d(TAG, "[$timestamp] loadPackages() COMPLETED")
+        Log.d(TAG, "════════════════════════════════════════════════════════════════")
     }
     
     fun setPackageTypeFilter(packageType: String) {

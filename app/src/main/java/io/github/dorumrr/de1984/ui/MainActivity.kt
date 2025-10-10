@@ -73,10 +73,9 @@ class MainActivity : AppCompatActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted || permissionManager.hasNotificationPermission()) {
-            onPermissionsComplete()
-        }
+        // Always setup UI regardless of permission result
+        // The app works without notification permission (notifications just won't show)
+        onPermissionsComplete()
     }
 
     private val vpnPermissionLauncher = registerForActivityResult(

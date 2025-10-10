@@ -66,6 +66,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Show loading state immediately until first state emission
+        binding.loadingState.visibility = View.VISIBLE
+        binding.emptyState.visibility = View.GONE
+        binding.packagesRecyclerView.visibility = View.GONE
+
         setupRecyclerView()
         setupFilterChips()
         setupRootBanner()
@@ -217,20 +222,20 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Show/hide states
         when {
-            state.isLoadingData && state.packages.isEmpty() -> {
-                // Only show loading spinner if we're loading data and have no packages yet
+            state.isLoadingData -> {
+                // Show loading spinner whenever we're loading data
                 binding.loadingState.visibility = View.VISIBLE
                 binding.emptyState.visibility = View.GONE
                 binding.packagesRecyclerView.visibility = View.GONE
             }
             state.packages.isEmpty() -> {
-                // No packages (even if still rendering UI) - show empty state
+                // No packages - show empty state
                 binding.loadingState.visibility = View.GONE
                 binding.emptyState.visibility = View.VISIBLE
                 binding.packagesRecyclerView.visibility = View.GONE
             }
             else -> {
-                // We have packages - show them (even if still rendering)
+                // We have packages - show them
                 binding.loadingState.visibility = View.GONE
                 binding.emptyState.visibility = View.GONE
                 binding.packagesRecyclerView.visibility = View.VISIBLE

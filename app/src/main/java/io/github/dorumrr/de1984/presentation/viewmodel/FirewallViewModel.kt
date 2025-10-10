@@ -15,6 +15,7 @@ import io.github.dorumrr.de1984.domain.usecase.GetNetworkPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManageNetworkAccessUseCase
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
 import io.github.dorumrr.de1984.utils.Constants
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +37,8 @@ class FirewallViewModel(
 
     // Store pending filter state separately to avoid triggering UI updates
     private var pendingFilterState: FirewallFilterState? = null
+    private var loadingStartTime: Long = 0
+    private val MIN_LOADING_DISPLAY_TIME_MS = 300L // Minimum time to show loading spinner
 
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
@@ -82,6 +85,14 @@ class FirewallViewModel(
         // Use pending filter if available, otherwise use current filter
         val filterState = pendingFilterState ?: _uiState.value.filterState
 
+        // Show loading state and clear packages to prevent stale data flash
+        loadingStartTime = System.currentTimeMillis()
+        _uiState.value = _uiState.value.copy(
+            isLoadingData = true,
+            isRenderingUI = false,
+            packages = emptyList()
+        )
+
         getNetworkPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
                 pendingFilterState = null // Clear pending filter on error
@@ -92,6 +103,13 @@ class FirewallViewModel(
                 )
             }
             .onEach { packages ->
+                // Ensure minimum loading display time for better UX
+                val elapsedTime = System.currentTimeMillis() - loadingStartTime
+                val remainingTime = MIN_LOADING_DISPLAY_TIME_MS - elapsedTime
+                if (remainingTime > 0) {
+                    delay(remainingTime)
+                }
+
                 // Apply the pending filter state now
                 val finalFilterState = pendingFilterState ?: _uiState.value.filterState
                 pendingFilterState = null // Clear pending filter

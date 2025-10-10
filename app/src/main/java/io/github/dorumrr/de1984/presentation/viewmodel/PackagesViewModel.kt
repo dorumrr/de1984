@@ -9,6 +9,7 @@ import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.usecase.GetPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManagePackageUseCase
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +32,8 @@ class PackagesViewModel(
 
     // Store pending filter state separately to avoid triggering UI updates
     private var pendingFilterState: PackageFilterState? = null
+    private var loadingStartTime: Long = 0
+    private val MIN_LOADING_DISPLAY_TIME_MS = 300L // Minimum time to show loading spinner
 
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
@@ -46,6 +49,7 @@ class PackagesViewModel(
     }
 
     init {
+        Log.d(TAG, ">>> ViewModel INIT - About to call loadPackages()")
         loadPackages()
     }
 
@@ -53,6 +57,14 @@ class PackagesViewModel(
         // Use pending filter if available, otherwise use current filter
         val filterState = pendingFilterState ?: _uiState.value.filterState
         Log.d(TAG, ">>> loadPackages called with filter: type=${filterState.packageType}, state=${filterState.packageState}, isPending=${pendingFilterState != null}")
+
+        // Show loading state and clear packages to prevent stale data flash
+        loadingStartTime = System.currentTimeMillis()
+        _uiState.value = _uiState.value.copy(
+            isLoadingData = true,
+            isRenderingUI = false,
+            packages = emptyList()
+        )
 
         getPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
@@ -66,6 +78,15 @@ class PackagesViewModel(
             }
             .onEach { packages ->
                 Log.d(TAG, ">>> loadPackages onEach: received ${packages.size} packages")
+
+                // Ensure minimum loading display time for better UX
+                val elapsedTime = System.currentTimeMillis() - loadingStartTime
+                val remainingTime = MIN_LOADING_DISPLAY_TIME_MS - elapsedTime
+                if (remainingTime > 0) {
+                    Log.d(TAG, ">>> Delaying for ${remainingTime}ms to show loading spinner")
+                    delay(remainingTime)
+                }
+
                 // Only emit state when we have the new data ready
                 // Apply the pending filter state now
                 val finalFilterState = pendingFilterState ?: _uiState.value.filterState

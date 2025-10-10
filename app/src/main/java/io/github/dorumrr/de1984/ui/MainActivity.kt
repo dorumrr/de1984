@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
     // Permission launchers
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
+    ) { _ ->
         // Always setup UI regardless of permission result
         // The app works without notification permission (notifications just won't show)
         onPermissionsComplete()

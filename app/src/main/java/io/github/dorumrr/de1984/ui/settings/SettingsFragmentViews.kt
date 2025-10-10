@@ -537,7 +537,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 "❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission.\n\nTo grant access:\n• Try clicking \"Grant Root Access\" again and approve the prompt\n• If the permission prompt doesn't appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)"
             }
         } catch (e: Exception) {
-            "❌ Root Not Available\n\nYour device does not appear to be rooted. Root access is required for advanced package management features.\n\n<b>Recommended rooting tools:</b>\n• Magisk - Most popular and widely supported root solution\n• KernelSU - Modern kernel-based root management with better security\n• APatch - Newer alternative with kernel patching approach\n\n⚠️ Important: Rooting requires unlocking the bootloader. Research your specific device model before proceeding."
+            "❌ Your device does not appear to be rooted. Root access is required for advanced package management features."
         }
     }
 

@@ -98,7 +98,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="v1.12.0"
+                        android:text="v1.13.1"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 
@@ -129,7 +129,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="v1.11.0"
+                        android:text="v1.12.0"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 
@@ -191,7 +191,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="v2.7.6"
+                        android:text="v2.8.4"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 
@@ -253,7 +253,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="v1.9.x"
+                        android:text="v1.9.20"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 
@@ -284,7 +284,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="v2.7.0"
+                        android:text="v2.8.7"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 

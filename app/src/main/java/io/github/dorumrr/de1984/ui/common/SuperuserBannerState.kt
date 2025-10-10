@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * State manager for the superuser banner
- * Converted from Compose mutableStateOf to StateFlow for Views compatibility
  */
 class SuperuserBannerState {
 

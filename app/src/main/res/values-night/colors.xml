@@ -19,5 +19,8 @@
 
     <!-- Root Status Background (Dark Mode) -->
     <color name="root_status_background">#3A3A3A</color> <!-- Darker gray for dark mode -->
+
+    <!-- Outline Colors (Dark Mode) -->
+    <color name="outline">#616161</color> <!-- Medium gray for borders in dark mode -->
 </resources>
 

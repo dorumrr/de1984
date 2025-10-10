@@ -346,13 +346,16 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private fun updateRootStatus(rootStatus: RootStatus) {
         val tierBinding = binding.permissionTierAdvanced
 
+        // Get theme-aware icon color (textColorSecondary)
+        val typedValue = android.util.TypedValue()
+        requireContext().theme.resolveAttribute(android.R.attr.textColorSecondary, typedValue, true)
+        val iconColor = typedValue.data
+
         when (rootStatus) {
             RootStatus.ROOTED_WITH_PERMISSION -> {
                 // Root is granted - hide root status section entirely
                 tierBinding.rootStatusContainer.visibility = View.GONE
-                tierBinding.rootStatusInstructions.visibility = View.GONE
-                tierBinding.rootingToolsTitle.visibility = View.GONE
-                tierBinding.rootingToolsBody.visibility = View.GONE
+                tierBinding.rootingToolsContainer.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.ROOTED_NO_PERMISSION -> {
@@ -360,36 +363,32 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 if (viewModel.hasRequestedRootPermission()) {
                     // User already tried and denied - show instructions, hide button
                     tierBinding.rootStatusContainer.visibility = View.VISIBLE
+                    tierBinding.rootStatusIcon.setColorFilter(iconColor)
                     tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_DENIED
                     tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_DENIED
                     tierBinding.rootStatusInstructions.visibility = View.VISIBLE
                     tierBinding.rootStatusInstructions.text = Constants.RootAccess.GRANT_INSTRUCTIONS_TITLE + "\n" + Constants.RootAccess.GRANT_INSTRUCTIONS_BODY
-                    tierBinding.rootingToolsTitle.visibility = View.GONE
-                    tierBinding.rootingToolsBody.visibility = View.GONE
+                    tierBinding.rootingToolsContainer.visibility = View.GONE
                     tierBinding.setupButtonContainer.visibility = View.GONE
                 } else {
                     // Never requested - show button, hide status
                     tierBinding.rootStatusContainer.visibility = View.GONE
-                    tierBinding.rootStatusInstructions.visibility = View.GONE
-                    tierBinding.rootingToolsTitle.visibility = View.GONE
-                    tierBinding.rootingToolsBody.visibility = View.GONE
+                    tierBinding.rootingToolsContainer.visibility = View.GONE
                     tierBinding.setupButtonContainer.visibility = View.VISIBLE
                     tierBinding.setupButton.text = "Grant Root Access"
                 }
             }
             RootStatus.NOT_ROOTED -> {
-                // Device is not rooted - show message, hide button
+                // Device is not rooted - show message and rooting tools
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
+                tierBinding.rootStatusIcon.setColorFilter(iconColor)
                 tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_NOT_AVAILABLE
                 tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_NOT_AVAILABLE
-
-                // Hide the instructions text (not needed)
                 tierBinding.rootStatusInstructions.visibility = View.GONE
 
-                tierBinding.rootingToolsTitle.visibility = View.VISIBLE
+                // Show rooting tools in separate card
+                tierBinding.rootingToolsContainer.visibility = View.VISIBLE
                 tierBinding.rootingToolsTitle.text = Constants.RootAccess.ROOTING_TOOLS_TITLE.replace("<b>", "").replace("</b>", "")
-
-                tierBinding.rootingToolsBody.visibility = View.VISIBLE
                 tierBinding.rootingToolsBody.text = Constants.RootAccess.ROOTING_TOOLS_BODY
 
                 tierBinding.setupButtonContainer.visibility = View.GONE
@@ -397,9 +396,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             RootStatus.CHECKING -> {
                 // Checking root status - hide everything during check
                 tierBinding.rootStatusContainer.visibility = View.GONE
-                tierBinding.rootStatusInstructions.visibility = View.GONE
-                tierBinding.rootingToolsTitle.visibility = View.GONE
-                tierBinding.rootingToolsBody.visibility = View.GONE
+                tierBinding.rootingToolsContainer.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
         }

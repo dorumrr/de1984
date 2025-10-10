@@ -39,8 +39,7 @@
                 android:paddingStart="4dp"
                 android:paddingTop="6dp"
                 android:paddingBottom="6dp"
-                android:paddingEnd="4dp"
-                android:background="#FF0000">
+                android:paddingEnd="4dp">
 
                 <!-- Logo + Title Group -->
                 <LinearLayout
@@ -48,7 +47,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:background="#00FF00">
+                    android:layout_marginStart="3dp">
 
                     <!-- App Logo -->
                     <ImageView
@@ -76,8 +75,7 @@
                 <View
                     android:layout_width="0dp"
                     android:layout_height="1dp"
-                    android:layout_weight="1"
-                    android:background="#FFFF00" />
+                    android:layout_weight="1" />
 
                 <!-- Section Icon (visible on Apps/Settings tabs, on the right) -->
                 <ImageView
@@ -93,8 +91,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="#FF00FF">
+                    android:gravity="center_vertical">
 
                     <!-- ACTIVE Badge (visible when firewall is on, before switch) -->
                     <TextView
@@ -128,14 +125,14 @@
                         android:paddingTop="2dp"
                         android:paddingBottom="2dp"
                         android:background="@drawable/status_badge_error"
-                        android:visibility="visible" />
+                        android:visibility="gone" />
 
                     <!-- Firewall Toggle Switch (visible only on Firewall tab) -->
                     <com.google.android.material.switchmaterial.SwitchMaterial
                         android:id="@+id/firewall_toggle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:visibility="visible"
+                        android:visibility="gone"
                         app:thumbTint="@color/white"
                         app:trackTint="@color/switch_track_color"
                         app:trackDecorationTint="@android:color/transparent" />
@@ -150,7 +147,7 @@
                     android:padding="12dp"
                     android:src="@drawable/ic_more_vert"
                     android:contentDescription="Menu"
-                    android:background="#00FFFF"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     app:tint="@color/white" />
 
             </LinearLayout>

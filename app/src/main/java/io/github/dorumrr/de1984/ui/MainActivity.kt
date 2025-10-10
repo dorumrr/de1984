@@ -23,6 +23,7 @@ import io.github.dorumrr.de1984.data.service.PackageMonitoringService
 import io.github.dorumrr.de1984.databinding.ActivityMainViewsBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
+import io.github.dorumrr.de1984.ui.acknowledgements.AcknowledgementsFragmentViews
 import io.github.dorumrr.de1984.ui.firewall.FirewallFragmentViews
 import io.github.dorumrr.de1984.ui.packages.PackagesFragmentViews
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
@@ -232,6 +233,10 @@ class MainActivity : AppCompatActivity() {
                     loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
                     true
                 }
+                R.id.menu_acknowledgements -> {
+                    loadAcknowledgementsFragment()
+                    true
+                }
                 else -> false
             }
         }
@@ -248,6 +253,19 @@ class MainActivity : AppCompatActivity() {
         }
         updateToolbar()
         updateNavigationDrawerSelection()
+    }
+
+    private fun loadAcknowledgementsFragment() {
+        supportFragmentManager.commit {
+            replace(R.id.fragment_container, AcknowledgementsFragmentViews())
+            addToBackStack("acknowledgements")
+        }
+        // Hide toolbar elements when showing acknowledgements
+        binding.toolbarTitle.text = ""
+        binding.toolbarIcon.visibility = View.GONE
+        binding.firewallToggle.visibility = View.GONE
+        binding.firewallActiveBadge.visibility = View.GONE
+        binding.firewallOffBadge.visibility = View.GONE
     }
 
     private fun updateNavigationDrawerSelection() {

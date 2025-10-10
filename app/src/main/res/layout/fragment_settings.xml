@@ -378,45 +378,6 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Acknowledgements Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/acknowledgements_card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardElevation="2dp"
-            app:cardCornerRadius="12dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?android:attr/selectableItemBackground">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="20dp"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Acknowledgements"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="?android:attr/textColorPrimary" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="›"
-                    android:textSize="24sp"
-                    android:textColor="?android:attr/textColorSecondary" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
         <!-- Footer -->
         <TextView
             android:id="@+id/footer_text"

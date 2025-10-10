@@ -31,7 +31,6 @@ import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.databinding.FragmentSettingsBinding
 import io.github.dorumrr.de1984.databinding.PermissionTierSectionBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
-import io.github.dorumrr.de1984.ui.acknowledgements.AcknowledgementsFragmentViews
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
 import io.github.dorumrr.de1984.utils.Constants
@@ -122,12 +121,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // New app notifications switch
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setNewAppNotifications(isChecked)
-        }
-
-        // Acknowledgements card
-        binding.acknowledgementsCard.setOnClickListener {
-            Log.d(TAG, "Acknowledgements clicked")
-            navigateToAcknowledgements()
         }
 
         // Footer (author link) - make only "Doru Moraru" clickable
@@ -546,16 +539,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             data = Uri.fromParts("package", requireContext().packageName, null)
         }
         startActivity(intent)
-    }
-
-    private fun navigateToAcknowledgements() {
-        // Get the container ID from the current fragment's parent
-        val containerId = (view?.parent as? ViewGroup)?.id ?: android.R.id.content
-
-        parentFragmentManager.commit {
-            replace(containerId, AcknowledgementsFragmentViews())
-            addToBackStack("acknowledgements")
-        }
     }
 
     companion object {

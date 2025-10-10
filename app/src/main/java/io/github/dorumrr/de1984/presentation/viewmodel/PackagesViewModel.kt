@@ -115,11 +115,10 @@ class PackagesViewModel(
             // Then persist to system
             managePackageUseCase.setPackageEnabled(packageName, enabled)
                 .onSuccess {
-                    // Reload packages to apply filters correctly
-                    loadPackages()
+                    // Success - optimistic update already applied, no need to reload
                 }
                 .onFailure { error ->
-                    // Revert on failure
+                    // Revert on failure by reloading
                     loadPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()

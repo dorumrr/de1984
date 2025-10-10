@@ -152,11 +152,10 @@ class FirewallViewModel(
             // Then persist to database
             manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked)
                 .onSuccess {
-                    // Reload packages to apply filters correctly
-                    loadNetworkPackages()
+                    // Success - optimistic update already applied, no need to reload
                 }
                 .onFailure { error ->
-                    // Revert on failure
+                    // Revert on failure by reloading
                     loadNetworkPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
@@ -176,11 +175,10 @@ class FirewallViewModel(
             // Then persist to database
             manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
                 .onSuccess {
-                    // Reload packages to apply filters correctly
-                    loadNetworkPackages()
+                    // Success - optimistic update already applied, no need to reload
                 }
                 .onFailure { error ->
-                    // Revert on failure
+                    // Revert on failure by reloading
                     loadNetworkPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
@@ -200,11 +198,10 @@ class FirewallViewModel(
             // Then persist to database
             manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
                 .onSuccess {
-                    // Reload packages to apply filters correctly
-                    loadNetworkPackages()
+                    // Success - optimistic update already applied, no need to reload
                 }
                 .onFailure { error ->
-                    // Revert on failure
+                    // Revert on failure by reloading
                     loadNetworkPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()

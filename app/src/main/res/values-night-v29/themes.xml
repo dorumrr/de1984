@@ -1,19 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme for De1984 - Dark Mode -->
-    <style name="Theme.De1984" parent="android:Theme.Material.NoActionBar">
-        <!-- Status bar -->
-        <item name="android:statusBarColor">@color/lineage_teal</item>
-        <item name="android:windowLightStatusBar">false</item>
-
-        <!-- Navigation bar -->
-        <item name="android:navigationBarColor">@color/background_dark</item>
-
-        <!-- Window background for splash/loading screen with logo - dark background -->
-        <item name="android:windowBackground">@drawable/splash_background</item>
-    </style>
-
-    <!-- AppCompat theme for Views-based activities - Dark Mode -->
+    <!-- AppCompat theme for Views-based activities - Dark Mode (API 29+) -->
     <style name="Theme.De1984.Views" parent="Theme.Material3.Dark.NoActionBar">
         <!-- Status bar -->
         <item name="android:statusBarColor">@android:color/transparent</item>
@@ -21,9 +8,12 @@
 
         <!-- Navigation bar -->
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar">false</item>
 
         <!-- Enable edge-to-edge -->
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
 
         <!-- Window background -->
         <item name="android:windowBackground">@color/background_dark</item>

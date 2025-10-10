@@ -32,8 +32,9 @@ class HandleNewAppInstallUseCase constructor(
             if (existingRule != null) {
                 return Result.success(Unit)
             }
-            
+
             val defaultRule = createDefaultFirewallRule(packageName, packageInfo)
+                ?: return Result.failure(Exception("Failed to create firewall rule: applicationInfo is null"))
             firewallRepository.insertRule(defaultRule)
             
             Result.success(Unit)
@@ -79,20 +80,21 @@ class HandleNewAppInstallUseCase constructor(
         }
     }
     
-    private fun createDefaultFirewallRule(packageName: String, packageInfo: android.content.pm.PackageInfo): FirewallRule {
+    private fun createDefaultFirewallRule(packageName: String, packageInfo: android.content.pm.PackageInfo): FirewallRule? {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val defaultPolicy = prefs.getString(
             Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
             Constants.Settings.DEFAULT_FIREWALL_POLICY
         )
 
+        val appInfo = packageInfo.applicationInfo ?: return null
         val appName = try {
-            context.packageManager.getApplicationLabel(packageInfo.applicationInfo).toString()
+            context.packageManager.getApplicationLabel(appInfo).toString()
         } catch (e: Exception) {
             packageName
         }
-        val uid = packageInfo.applicationInfo.uid
-        val isSystemApp = (packageInfo.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+        val uid = appInfo.uid
+        val isSystemApp = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
 
         return when (defaultPolicy) {
             Constants.Settings.POLICY_BLOCK_ALL -> {

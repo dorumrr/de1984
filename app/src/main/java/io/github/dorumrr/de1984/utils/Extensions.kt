@@ -16,7 +16,7 @@ fun String.isSystemPackage(): Boolean {
 
 fun PackageInfo.getDisplayName(context: Context): String {
     return try {
-        val appInfo = this.applicationInfo
+        val appInfo = this.applicationInfo ?: return this.packageName.formatPackageName()
         context.packageManager.getApplicationLabel(appInfo).toString()
     } catch (e: Exception) {
         this.packageName.formatPackageName()

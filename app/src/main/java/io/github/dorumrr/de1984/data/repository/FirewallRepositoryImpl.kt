@@ -16,6 +16,7 @@ class FirewallRepositoryImpl(
 
     private fun notifyRulesChanged() {
         val intent = android.content.Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED")
+        intent.setPackage(context.packageName)
         context.sendBroadcast(intent)
     }
     

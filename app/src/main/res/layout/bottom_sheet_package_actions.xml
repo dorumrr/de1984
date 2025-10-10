@@ -70,7 +70,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_stop"
-            android:tint="?android:attr/textColorPrimary"
+            app:tint="?android:attr/textColorPrimary"
             android:contentDescription="Force stop icon" />
 
         <LinearLayout
@@ -125,7 +125,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_block"
-            android:tint="?android:attr/textColorPrimary"
+            app:tint="?android:attr/textColorPrimary"
             android:contentDescription="Enable/Disable icon" />
 
         <LinearLayout
@@ -180,7 +180,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_delete"
-            android:tint="#D32F2F"
+            app:tint="#D32F2F"
             android:contentDescription="Uninstall icon" />
 
         <LinearLayout

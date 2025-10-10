@@ -121,7 +121,7 @@ class PackageMonitoringService : Service() {
             packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
                 .filter { packageInfo ->
                     packageInfo.requestedPermissions?.contains(android.Manifest.permission.INTERNET) == true &&
-                    (packageInfo.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
+                    packageInfo.applicationInfo?.let { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 } == true
                 }
                 .map { it.packageName }
                 .toSet()

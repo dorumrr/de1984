@@ -268,6 +268,12 @@ class MainActivity : AppCompatActivity() {
         }
         updateToolbar()
         updateNavigationDrawerSelection()
+
+        // Scroll to top when fragment is loaded
+        // Use post to ensure fragment view is created
+        binding.root.post {
+            (fragment as? io.github.dorumrr.de1984.ui.base.BaseFragment<*>)?.scrollToTop()
+        }
     }
 
     private fun updateNavigationDrawerSelection() {
@@ -287,24 +293,21 @@ class MainActivity : AppCompatActivity() {
             }
             Tab.APPS -> {
                 binding.toolbarTitle.text = "PACKAGES"
-                binding.toolbarIcon.visibility = View.VISIBLE
-                binding.toolbarIcon.setImageResource(R.drawable.ic_grid_view)
+                binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
             Tab.SETTINGS -> {
                 binding.toolbarTitle.text = "SETTINGS"
-                binding.toolbarIcon.visibility = View.VISIBLE
-                binding.toolbarIcon.setImageResource(R.drawable.ic_settings)
+                binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
             Tab.ACKNOWLEDGEMENTS -> {
                 binding.toolbarTitle.text = "ACKNOWLEDGEMENTS"
-                binding.toolbarIcon.visibility = View.VISIBLE
-                binding.toolbarIcon.setImageResource(R.drawable.ic_info)
+                binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE

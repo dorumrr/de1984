@@ -25,19 +25,27 @@ import androidx.viewbinding.ViewBinding
  * ```
  */
 abstract class BaseFragment<VB : ViewBinding> : Fragment() {
-    
+
     private var _binding: VB? = null
-    
+
     /**
      * Access to the binding object. Only valid between onCreateView and onDestroyView.
      */
     protected val binding get() = _binding!!
-    
+
     /**
      * Implement this to provide the ViewBinding for this fragment
      */
     abstract fun getViewBinding(inflater: LayoutInflater, container: ViewGroup?): VB
-    
+
+    /**
+     * Override this to implement scroll to top behavior when fragment is shown
+     */
+    open fun scrollToTop() {
+        // Default implementation does nothing
+        // Override in fragments that need scroll-to-top behavior
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -46,7 +54,7 @@ abstract class BaseFragment<VB : ViewBinding> : Fragment() {
         _binding = getViewBinding(inflater, container)
         return binding.root
     }
-    
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null

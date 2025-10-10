@@ -86,6 +86,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         container: ViewGroup?
     ) = FragmentSettingsBinding.inflate(inflater, container, false)
 
+    override fun scrollToTop() {
+        binding.root.scrollTo(0, 0)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         Log.d(TAG, "onViewCreated: SettingsFragmentViews initialized")

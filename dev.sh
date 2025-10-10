@@ -12,13 +12,13 @@ APP_ID_DEBUG="${APP_ID}.debug"
 # Extract version from build.gradle.kts (now using hardcoded versionName)
 APP_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
 
-
 APK_PATH_DEBUG="app/build/outputs/apk/debug/de1984-v${APP_VERSION}-debug.apk"
 APK_PATH_RELEASE="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release.apk"
 APK_PATH_RELEASE_ALIGNED="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release-aligned.apk"
 APK_PATH_RELEASE_SIGNED="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release-signed.apk"
 SCREENSHOT_DIR="screenshots"
 KEYSTORE_PATH="release-keystore.jks"
+DEBUG_KEYSTORE_PATH="$HOME/.android/debug.keystore"
 
 # Colors for output
 RED='\033[0;31m'
@@ -336,6 +336,42 @@ build_all_apks() {
     log_success "Debug build complete!"
     log_info "Debug APK: $APK_PATH_DEBUG"
     log_info "This APK is signed with debug key and ready for development/testing"
+}
+
+# Build F-Droid APK (unsigned release for F-Droid verification)
+build_fdroid_apk() {
+    log_header "Building F-Droid APK (Unsigned Release)"
+
+    if [ ! -f "gradlew" ]; then
+        log_error "gradlew not found! Are you in the project root?"
+        exit 1
+    fi
+
+    log_info "Building unsigned release APK for F-Droid..."
+    log_info "This APK will be signed with debug keystore automatically by Gradle"
+    ./gradlew clean assembleRelease --no-daemon
+
+    if [ ! -f "$APK_PATH_RELEASE" ]; then
+        log_error "Release APK build failed! File not found: $APK_PATH_RELEASE"
+        exit 1
+    fi
+
+    local filesize=$(ls -lh "$APK_PATH_RELEASE" | awk '{print $5}')
+    log_success "F-Droid APK built successfully!"
+    log_info "Location: $APK_PATH_RELEASE"
+    log_info "Size: $filesize"
+
+    # Verify it's signed with debug keystore
+    log_info "Verifying signature..."
+    if [ -f "$DEBUG_KEYSTORE_PATH" ]; then
+        local expected_sha=$(keytool -list -v -keystore "$DEBUG_KEYSTORE_PATH" -storepass android -keypass android 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //' | tr -d ':' | tr '[:upper:]' '[:lower:]')
+        log_success "Debug keystore SHA256: $expected_sha"
+        log_info "This signature should match AllowedAPKSigningKeys in F-Droid YAML"
+    fi
+
+    echo ""
+    log_success "✅ This APK is ready for F-Droid reproducible builds!"
+    log_github_reminder "$APK_PATH_RELEASE" "fdroid"
 }
 
 # Uninstall existing app
@@ -742,9 +778,65 @@ sign_release_apk() {
     log_success "This APK is ready for distribution!"
 }
 
+# Get production keystore SHA256
+get_production_sha256() {
+    if [ ! -f "$KEYSTORE_PATH" ]; then
+        log_error "Production keystore not found: $KEYSTORE_PATH"
+        return 1
+    fi
+
+    # Get SHA256 with colons
+    local sha256_with_colons=$(keytool -list -v -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //')
+
+    # Convert to lowercase without colons (for F-Droid YAML)
+    local sha256_lowercase=$(echo "$sha256_with_colons" | tr -d ':' | tr '[:upper:]' '[:lower:]')
+
+    echo "$sha256_lowercase"
+}
+
+# Show F-Droid instructions
+show_fdroid_instructions() {
+    local apk_file="$1"
+    local sha256="$2"
+
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${NC}  ${YELLOW}📋 F-DROID RELEASE WORKFLOW${NC}"
+    echo -e "${GREEN}╠════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${GREEN}║${NC}  ${BLUE}Step 1: Rename APK for GitHub${NC}"
+    echo -e "${GREEN}║${NC}  cp $(basename "$apk_file") \\"
+    echo -e "${GREEN}║${NC}     de1984-v${APP_VERSION}-release.apk"
+    echo -e "${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ${BLUE}Step 2: Replace APK on GitHub${NC}"
+    echo -e "${GREEN}║${NC}  • Go to: https://github.com/dorumrr/de1984/releases/tag/v${APP_VERSION}"
+    echo -e "${GREEN}║${NC}  • Click 'Edit' on the release"
+    echo -e "${GREEN}║${NC}  • Delete old APK: de1984-v${APP_VERSION}-release.apk"
+    echo -e "${GREEN}║${NC}  • Upload new APK: de1984-v${APP_VERSION}-release.apk"
+    echo -e "${GREEN}║${NC}  • Click 'Update release'"
+    echo -e "${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ${BLUE}Step 3: Update F-Droid YAML${NC}"
+    echo -e "${GREEN}║${NC}  File: ../f-droid-data/metadata/io.github.dorumrr.de1984.yml"
+    echo -e "${GREEN}║${NC}  Update line: AllowedAPKSigningKeys: ${sha256}"
+    echo -e "${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ${BLUE}Step 4: Commit and Push${NC}"
+    echo -e "${GREEN}║${NC}  cd ../f-droid-data"
+    echo -e "${GREEN}║${NC}  git add metadata/io.github.dorumrr.de1984.yml"
+    echo -e "${GREEN}║${NC}  git commit -m \"Update De1984: Switch to production keystore\""
+    echo -e "${GREEN}║${NC}  git push origin add-de1984"
+    echo -e "${GREEN}║${NC}"
+    echo -e "${GREEN}║${NC}  ${BLUE}Step 5: Retrigger F-Droid CI${NC}"
+    echo -e "${GREEN}║${NC}  • Via GitLab web interface: Add comment or click 'Retry'"
+    echo -e "${GREEN}║${NC}  • Or empty commit: git commit --allow-empty -m 'Retrigger CI'"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}📝 Production Keystore SHA256 (for F-Droid YAML):${NC}"
+    echo -e "${RED}${sha256}${NC}"
+    echo ""
+}
+
 # Build and sign release APK (complete workflow)
 build_and_sign_release() {
-    log_header "Building and Signing Release APK"
+    log_header "Building and Signing Release APK (Production)"
 
     # Check keystore first
     check_keystore
@@ -760,12 +852,85 @@ build_and_sign_release() {
     rm -f "$APK_PATH_RELEASE"
 
     echo ""
-    log_success "Release build complete!"
+    log_success "Production release build complete!"
     log_info "Signed APK: $APK_PATH_RELEASE_SIGNED"
-    log_info "This APK is ready for distribution"
 
-    # Show prominent GitHub upload reminder
-    log_github_reminder "$APK_PATH_RELEASE_SIGNED"
+    # Get production SHA256
+    local production_sha256=$(get_production_sha256)
+
+    if [ -n "$production_sha256" ]; then
+        echo ""
+        log_info "Production keystore SHA256: $production_sha256"
+    fi
+
+    echo ""
+    log_info "This APK is ready for:"
+    echo "  • F-Droid distribution (after renaming and updating YAML)"
+    echo "  • Personal distribution (use as-is)"
+
+    # Show F-Droid workflow instructions
+    if [ -n "$production_sha256" ]; then
+        show_fdroid_instructions "$APK_PATH_RELEASE_SIGNED" "$production_sha256"
+    fi
+
+    # Show GitHub upload reminder
+    log_github_reminder "$APK_PATH_RELEASE_SIGNED" "release"
+}
+
+# Show welcome screen with command explanations
+show_welcome() {
+    clear
+    echo ""
+    echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║${NC}                                                                      ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}                ${GREEN}🔷 De1984 Development Script 🔷${NC}                 ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}                                                                      ${BLUE}║${NC}"
+    echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}📋 AVAILABLE COMMANDS:${NC}"
+    echo ""
+    echo -e "${GREEN}BUILD${NC}    - Build debug APK for local testing"
+    echo -e "         ${BLUE}→${NC} Signed with debug keystore"
+    echo -e "         ${BLUE}→${NC} For development and testing only"
+    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh build${NC}"
+    echo ""
+    echo -e "${GREEN}INSTALL${NC}  - Uninstall old version and install fresh debug APK"
+    echo -e "         ${BLUE}→${NC} Builds, uninstalls, and installs on device/emulator"
+    echo -e "         ${BLUE}→${NC} For testing during development"
+    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh install [device|emulator]${NC}"
+    echo ""
+    echo -e "${GREEN}FDROID${NC}   - Build APK for F-Droid reproducible builds"
+    echo -e "         ${BLUE}→${NC} Unsigned release APK (signed with debug key by Gradle)"
+    echo -e "         ${BLUE}→${NC} Upload this to GitHub releases"
+    echo -e "         ${BLUE}→${NC} Reference in F-Droid YAML: de1984-v%v-release.apk"
+    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh fdroid${NC}"
+    echo ""
+    echo -e "${GREEN}RELEASE${NC}  - Build production-signed APK for F-Droid + personal distribution"
+    echo -e "         ${BLUE}→${NC} Signed with YOUR production keystore"
+    echo -e "         ${BLUE}→${NC} For F-Droid: Rename and upload to GitHub"
+    echo -e "         ${BLUE}→${NC} For personal: Use as-is for direct distribution"
+    echo -e "         ${BLUE}→${NC} Shows complete F-Droid workflow instructions"
+    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh release${NC}"
+    echo ""
+    echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║${NC} ${YELLOW}⚠️  IMPORTANT: F-Droid Workflow${NC}                                     ${BLUE}║${NC}"
+    echo -e "${BLUE}╠══════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BLUE}║${NC} • FDROID (testing): Use debug keystore to verify reproducibility    ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC} • RELEASE (production): Use production keystore for actual release  ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC} • After F-Droid confirms 'reproducible is OK', switch to RELEASE    ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC} • RELEASE command shows complete F-Droid workflow instructions      ${BLUE}║${NC}"
+    echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}Type any command above or 'help' for full documentation${NC}"
+    echo ""
+
+    # Auto-continue after 5 seconds
+    for i in {5..1}; do
+        echo -ne "\r${BLUE}Continuing in ${i} seconds... (Press Enter to skip)${NC}"
+        read -t 1 -n 1 && break
+    done
+    echo -e "\r${NC}                                                          "
+    echo ""
 }
 
 # Show help
@@ -775,6 +940,7 @@ show_help() {
     echo "Usage: ./dev.sh [command] [options]"
     echo ""
     echo "Development Commands:"
+    echo "  build                      - Build debug APK (for local testing)"
     echo "  install [device|emulator]  - Build debug, uninstall old, install fresh APK"
     echo "  launch                     - Launch the app"
     echo "  screenshot                 - Take and save screenshot"
@@ -784,37 +950,58 @@ show_help() {
     echo "  uninstall                  - Uninstall app only"
     echo ""
     echo "Build Commands:"
-    echo "  build                      - Build debug APK (for development/testing)"
-    echo "  release                    - Build and sign release APK (for GitHub releases)"
-    echo "  create-keystore            - Create keystore for signing releases"
+    echo "  fdroid                     - Build APK for F-Droid testing (debug keystore)"
+    echo "  release                    - Build production-signed APK (shows F-Droid workflow)"
+    echo "  create-keystore            - Create production keystore (first time only)"
     echo ""
     echo "Emulator Commands:"
-    echo "  emulator [name]            - Start Android emulator (optionally specify which one)"
+    echo "  emulator [name]            - Start Android emulator"
     echo "  list-emulators             - List available emulators"
     echo ""
     echo "Help:"
     echo "  help                       - Show this help"
     echo ""
     echo "Examples:"
+    echo "  ./dev.sh build               - Build debug APK for testing"
     echo "  ./dev.sh install device      - Install debug APK on physical device"
-    echo "  ./dev.sh install emulator    - Install debug APK on emulator"
-    echo "  ./dev.sh build               - Build debug APK for development"
-    echo "  ./dev.sh create-keystore     - Create keystore (first time only)"
-    echo "  ./dev.sh release             - Build and sign release APK for GitHub"
-    echo "  ./dev.sh emulator            - Start default emulator"
-    echo "  ./dev.sh screenshot          - Take screenshot"
+    echo "  ./dev.sh fdroid              - Build APK for F-Droid testing (debug key)"
+    echo "  ./dev.sh create-keystore     - Create production keystore (once)"
+    echo "  ./dev.sh release             - Build production APK + show F-Droid workflow"
     echo ""
-    echo "Release Workflow:"
-    echo "  1. ./dev.sh create-keystore  - Create keystore (once)"
-    echo "  2. ./dev.sh release          - Build and sign release APK"
-    echo "  3. Upload signed APK to GitHub releases (F-Droid will verify against it)"
+    echo "F-Droid Workflow:"
+    echo "  Phase 1 (Testing):"
+    echo "    1. ./dev.sh fdroid         - Build with debug keystore"
+    echo "    2. Upload to GitHub and submit to F-Droid"
+    echo "    3. Wait for 'reproducible is OK' confirmation"
+    echo ""
+    echo "  Phase 2 (Production):"
+    echo "    1. ./dev.sh create-keystore  - Create production keystore (once)"
+    echo "    2. ./dev.sh release          - Build with production key"
+    echo "    3. Follow on-screen instructions to:"
+    echo "       - Rename APK for GitHub"
+    echo "       - Replace APK on GitHub"
+    echo "       - Update F-Droid YAML with production SHA256"
+    echo "       - Commit and push changes"
+    echo "       - Retrigger F-Droid CI"
+    echo ""
+    echo "Personal Distribution:"
+    echo "  1. ./dev.sh release          - Build production-signed APK"
+    echo "  2. Distribute de1984-v1.0.0-release-signed.apk directly"
     echo ""
 }
 
 # Main script logic
 main() {
-    local command="${1:-help}"
+    local command="${1:-welcome}"
     local target="${2:-auto}"
+
+    # Show welcome screen if no command or if explicitly requested
+    if [ "$command" = "welcome" ] || [ -z "$1" ]; then
+        show_welcome
+        # After welcome, show help
+        show_help
+        exit 0
+    fi
 
     case "$command" in
         "install")
@@ -855,6 +1042,9 @@ main() {
             ;;
         "build")
             build_all_apks
+            ;;
+        "fdroid")
+            build_fdroid_apk
             ;;
         "release")
             build_and_sign_release

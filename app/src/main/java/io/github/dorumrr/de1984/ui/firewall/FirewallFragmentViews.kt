@@ -75,7 +75,6 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(TAG, "onViewCreated: FirewallFragmentViews initialized")
 
         // Show loading state immediately until first state emission
         binding.loadingState.visibility = View.VISIBLE
@@ -118,19 +117,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             selectedTypeFilter = currentTypeFilter,
             selectedStateFilter = currentStateFilter,
             onTypeFilterSelected = { filter ->
-                // Only trigger if different from current
                 if (filter != currentTypeFilter) {
-                    Log.d(TAG, "Type filter selected: $filter")
-                    // Don't clear adapter - let ViewModel handle the state transition
                     currentTypeFilter = filter
                     viewModel.setPackageTypeFilter(filter)
                 }
             },
             onStateFilterSelected = { filter ->
-                // Only trigger if different from current
                 if (filter != currentStateFilter) {
-                    Log.d(TAG, "State filter selected: $filter")
-                    // Don't clear adapter - let ViewModel handle the state transition
                     currentStateFilter = filter
                     viewModel.setNetworkStateFilter(filter)
                 }
@@ -142,11 +135,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         packageTypeFilter: String,
         networkStateFilter: String?
     ) {
-        Log.d(TAG, "updateFilterChips: type=$packageTypeFilter, state=$networkStateFilter, current type=$currentTypeFilter, current state=$currentStateFilter")
-
         // Only update if filters have changed
         if (packageTypeFilter == currentTypeFilter && networkStateFilter == currentStateFilter) {
-            Log.d(TAG, "Filters unchanged, skipping update")
             return
         }
 
@@ -193,53 +183,33 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private fun updateUI(state: io.github.dorumrr.de1984.presentation.viewmodel.FirewallUiState) {
-        val timestamp = System.currentTimeMillis()
-
-        // Simple approach: Just show/hide based on state, no fancy logic
+        // Update visibility based on state
         if (state.isLoadingData && state.packages.isEmpty()) {
-            Log.d(TAG, "[$timestamp] 🔴 Loading - showing SPINNER")
             binding.packagesRecyclerView.visibility = View.INVISIBLE  // INVISIBLE instead of GONE
             binding.loadingState.visibility = View.VISIBLE
             binding.emptyState.visibility = View.GONE
         } else if (state.packages.isEmpty()) {
-            Log.d(TAG, "[$timestamp] 🔴 Empty - showing EMPTY")
             binding.packagesRecyclerView.visibility = View.INVISIBLE
             binding.loadingState.visibility = View.GONE
             binding.emptyState.visibility = View.VISIBLE
         } else {
-            // We have packages - show RecyclerView immediately, hide spinner
-            Log.d(TAG, "[$timestamp] 🟢 Have data - showing RECYCLERVIEW")
             binding.packagesRecyclerView.visibility = View.VISIBLE
             binding.loadingState.visibility = View.GONE
             binding.emptyState.visibility = View.GONE
         }
 
-        Log.d(TAG, "updateUI: ${state.packages.size} packages, " +
-                "loading=${state.isLoading}, " +
-                "isLoadingData=${state.isLoadingData}, " +
-                "isRenderingUI=${state.isRenderingUI}, " +
-                "typeFilter=${state.filterState.packageType}, " +
-                "stateFilter=${state.filterState.networkState}")
-        Log.d(TAG, "Visibility set IMMEDIATELY at function start to prevent flash")
-
-        // Update filter chips AFTER hiding RecyclerView (if needed)
-        // This prevents the RecyclerView from being visible with old data while filter chips update
+        // Update filter chips
         updateFilterChips(
             packageTypeFilter = state.filterState.packageType,
             networkStateFilter = state.filterState.networkState
         )
 
-        // Update RecyclerView - only if the list actually changed
+        // Update RecyclerView only if list changed
         val listChanged = state.packages != lastSubmittedPackages
-        Log.d(TAG, "About to call adapter.submitList with ${state.packages.size} packages, listChanged=$listChanged, isRenderingUI=${state.isRenderingUI}")
-
         if (!listChanged) {
-            Log.d(TAG, "Skipping adapter.submitList - list unchanged")
             return
         }
 
-        // Submit the list - simple, no callbacks
-        Log.d(TAG, "Submitting ${state.packages.size} packages")
         lastSubmittedPackages = state.packages
         adapter.submitList(state.packages)
         if (state.isRenderingUI) {
@@ -348,11 +318,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Update colors based on state
         updateSwitchColors(binding.toggleSwitch, isBlocked)
 
-        Log.d(TAG, "[$label] Initial state: isBlocked=$isBlocked, switchChecked=${binding.toggleSwitch.isChecked}")
-
         // Simple switch listener - only fires on user interaction
         binding.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
-            Log.d(TAG, "[$label] Switch changed: isChecked=$isChecked")
             updateSwitchColors(binding.toggleSwitch, isChecked)
             onToggle(isChecked)
         }

@@ -50,118 +50,58 @@ class PackagesViewModel(
     }
 
     init {
-        Log.d(TAG, ">>> ViewModel INIT - About to call loadPackages()")
         loadPackages()
     }
 
     fun loadPackages() {
-        val timestamp = System.currentTimeMillis()
-        Log.d(TAG, "════════════════════════════════════════════════════════════════")
-        Log.d(TAG, "[$timestamp] loadPackages() CALLED")
-        Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
-        Log.d(TAG, "[$timestamp] Current loadJob: $loadJob (isActive=${loadJob?.isActive}, isCancelled=${loadJob?.isCancelled}, isCompleted=${loadJob?.isCompleted})")
-
         // Cancel any previous loading operation
-        if (loadJob != null) {
-            Log.d(TAG, "[$timestamp] CANCELLING previous loadJob: $loadJob")
-            loadJob?.cancel()
-            Log.d(TAG, "[$timestamp] Previous loadJob cancelled. New state: isActive=${loadJob?.isActive}, isCancelled=${loadJob?.isCancelled}")
-        } else {
-            Log.d(TAG, "[$timestamp] No previous loadJob to cancel")
-        }
+        loadJob?.cancel()
 
         // Use pending filter if available, otherwise use current filter
         val filterState = pendingFilterState ?: _uiState.value.filterState
-        Log.d(TAG, "[$timestamp] Filter state: type=${filterState.packageType}, state=${filterState.packageState}")
-        Log.d(TAG, "[$timestamp] Pending filter: ${pendingFilterState?.let { "type=${it.packageType}, state=${it.packageState}" } ?: "null"}")
-
-        // Clear pending filter immediately after using it
         pendingFilterState = null
-        Log.d(TAG, "[$timestamp] Cleared pendingFilterState")
 
-        Log.d(TAG, "[$timestamp] Current UI state BEFORE clear: packages.size=${_uiState.value.packages.size}, isLoadingData=${_uiState.value.isLoadingData}, isRenderingUI=${_uiState.value.isRenderingUI}")
-
-        // Clear packages AND update filter state immediately to prevent showing stale data
-        Log.d(TAG, "[$timestamp] CLEARING packages and setting isLoadingData=true")
-        Log.d(TAG, "[$timestamp] UPDATING filterState to: type=${filterState.packageType}, state=${filterState.packageState}")
+        // Clear packages and update filter state immediately
         _uiState.value = _uiState.value.copy(
             isLoadingData = true,
             isRenderingUI = false,
             packages = emptyList(),
-            filterState = filterState  // Update filter immediately!
+            filterState = filterState
         )
-        Log.d(TAG, "[$timestamp] UI state AFTER clear: packages.size=${_uiState.value.packages.size}, isLoadingData=${_uiState.value.isLoadingData}, isRenderingUI=${_uiState.value.isRenderingUI}, filterState: type=${_uiState.value.filterState.packageType}")
-        Log.d(TAG, "[$timestamp] STATE EMITTED: empty list, isLoadingData=true, filterState updated")
 
-        Log.d(TAG, "[$timestamp] Starting Flow collection for filter: type=${filterState.packageType}, state=${filterState.packageState}")
         loadJob = getPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
-                val errorTimestamp = System.currentTimeMillis()
-                Log.e(TAG, "[$errorTimestamp] ❌ ERROR in Flow: ${error.message}")
-                Log.e(TAG, "[$errorTimestamp] Error stacktrace:", error)
+                Log.e(TAG, "Error loading packages", error)
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
                     isRenderingUI = false,
                     error = error.message
                 )
-                Log.d(TAG, "[$errorTimestamp] STATE EMITTED: error state, isLoadingData=false")
             }
             .onEach { packages ->
-                val onEachTimestamp = System.currentTimeMillis()
-                Log.d(TAG, "────────────────────────────────────────────────────────────────")
-                Log.d(TAG, "[$onEachTimestamp] ✅ Flow.onEach TRIGGERED")
-                Log.d(TAG, "[$onEachTimestamp] Thread: ${Thread.currentThread().name}")
-                Log.d(TAG, "[$onEachTimestamp] Received ${packages.size} packages")
-                Log.d(TAG, "[$onEachTimestamp] First 5 packages: ${packages.take(5).map { it.packageName }}")
-                Log.d(TAG, "[$onEachTimestamp] Current loadJob: $loadJob (isActive=${loadJob?.isActive})")
-                Log.d(TAG, "[$onEachTimestamp] Current UI state BEFORE update: packages.size=${_uiState.value.packages.size}, isLoadingData=${_uiState.value.isLoadingData}")
-
-                // Filter state was already updated when we started loading
-                val newState = _uiState.value.copy(
+                _uiState.value = _uiState.value.copy(
                     packages = packages,
                     isLoadingData = false,
                     isRenderingUI = true,
                     error = null
                 )
-                Log.d(TAG, "[$onEachTimestamp] New state created: packages.size=${newState.packages.size}, isLoadingData=${newState.isLoadingData}, isRenderingUI=${newState.isRenderingUI}, filterState: type=${newState.filterState.packageType}")
-                Log.d(TAG, "[$onEachTimestamp] EMITTING STATE with ${packages.size} packages")
-                _uiState.value = newState
-                Log.d(TAG, "[$onEachTimestamp] STATE EMITTED SUCCESSFULLY")
-                Log.d(TAG, "[$onEachTimestamp] Current UI state AFTER update: packages.size=${_uiState.value.packages.size}, isLoadingData=${_uiState.value.isLoadingData}")
-                Log.d(TAG, "────────────────────────────────────────────────────────────────")
             }
             .launchIn(viewModelScope)
-
-        Log.d(TAG, "[$timestamp] New loadJob created: $loadJob (isActive=${loadJob?.isActive})")
-        Log.d(TAG, "[$timestamp] loadPackages() COMPLETED")
-        Log.d(TAG, "════════════════════════════════════════════════════════════════")
     }
     
     fun setPackageTypeFilter(packageType: String) {
-        Log.d(TAG, ">>> setPackageTypeFilter called: $packageType")
         val newFilterState = PackageFilterState(
             packageType = packageType,
             packageState = null
         )
-        // Store filter in pending state - DO NOT update StateFlow yet
-        Log.d(TAG, ">>> Storing filter in pendingFilterState (no StateFlow emission)")
         pendingFilterState = newFilterState
-
-        // Load packages will emit the state with correct data
-        Log.d(TAG, ">>> Calling loadPackages()")
         loadPackages()
     }
 
     fun setPackageStateFilter(packageState: String?) {
-        Log.d(TAG, ">>> setPackageStateFilter called: $packageState")
         val currentFilterState = _uiState.value.filterState
         val newFilterState = currentFilterState.copy(packageState = packageState)
-        // Store filter in pending state - DO NOT update StateFlow yet
-        Log.d(TAG, ">>> Storing filter in pendingFilterState (no StateFlow emission)")
         pendingFilterState = newFilterState
-
-        // Load packages will emit the state with correct data
-        Log.d(TAG, ">>> Calling loadPackages()")
         loadPackages()
     }
 

@@ -69,7 +69,7 @@ If you find De1984 useful, consider supporting development:
 ## 📥 Installation
 
 ### F-Droid (Recommended)
-- ✅ Automatic updates via F-Droid app
+- ✅ Automatic updates via [F-Droid app](https://f-droid.org/en/packages/io.github.dorumrr.de1984/)
 - ✅ Signed by F-Droid
 - ✅ Reproducible builds
 
@@ -239,7 +239,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/dorumrr/de1984/issues)
-- **F-Droid**: Coming soon
+- **F-Droid**: [De1984 Firewall and Package Control](https://f-droid.org/en/packages/io.github.dorumrr.de1984/)
 
 ---
 

@@ -101,8 +101,8 @@ class NetworkPackageAdapter(
             mobileBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
 
             // Set Roaming icon visibility, color, and overlay
-            // Only show if device has cellular AND mobile is allowed
-            if (hasCellular && !pkg.mobileBlocked) {
+            // Always show if device has cellular
+            if (hasCellular) {
                 roamingContainer.visibility = View.VISIBLE
                 roamingIcon.setColorFilter(
                     if (pkg.roamingBlocked) blockedColor else allowedColor,
@@ -111,6 +111,7 @@ class NetworkPackageAdapter(
                 roamingBlockedOverlay.visibility = if (pkg.roamingBlocked) View.VISIBLE else View.GONE
                 roamingBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
             } else {
+                // Hide roaming icon on WiFi-only devices
                 roamingContainer.visibility = View.GONE
             }
 

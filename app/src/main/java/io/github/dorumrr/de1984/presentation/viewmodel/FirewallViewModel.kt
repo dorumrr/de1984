@@ -167,47 +167,91 @@ class FirewallViewModel(
 
     fun setMobileBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
-            // Optimistically update UI first
-            updatePackageInList(packageName) { pkg ->
-                pkg.copy(mobileBlocked = blocked)
-            }
+            // If mobile is being blocked, also block roaming (roaming requires mobile)
+            if (blocked) {
+                // Optimistically update both mobile and roaming
+                updatePackageInList(packageName) { pkg ->
+                    pkg.copy(mobileBlocked = blocked, roamingBlocked = true)
+                }
 
-            // Then persist to database
-            manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
-                .onSuccess {
-                    // Success - optimistic update already applied, no need to reload
-                }
-                .onFailure { error ->
-                    // Revert on failure by reloading
-                    loadNetworkPackages()
-                    if (superuserBannerState.shouldShowBannerForError(error)) {
-                        superuserBannerState.showSuperuserRequiredBanner()
+                // Persist both changes
+                manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
+                    .onSuccess {
+                        manageNetworkAccessUseCase.setRoamingBlocking(packageName, true)
                     }
-                    _uiState.value = _uiState.value.copy(error = error.message)
+                    .onFailure { error ->
+                        // Revert on failure by reloading
+                        loadNetworkPackages()
+                        if (superuserBannerState.shouldShowBannerForError(error)) {
+                            superuserBannerState.showSuperuserRequiredBanner()
+                        }
+                        _uiState.value = _uiState.value.copy(error = error.message)
+                    }
+            } else {
+                // Mobile is being enabled - only update mobile, leave roaming as is
+                updatePackageInList(packageName) { pkg ->
+                    pkg.copy(mobileBlocked = blocked)
                 }
+
+                // Then persist to database
+                manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
+                    .onSuccess {
+                        // Success - optimistic update already applied, no need to reload
+                    }
+                    .onFailure { error ->
+                        // Revert on failure by reloading
+                        loadNetworkPackages()
+                        if (superuserBannerState.shouldShowBannerForError(error)) {
+                            superuserBannerState.showSuperuserRequiredBanner()
+                        }
+                        _uiState.value = _uiState.value.copy(error = error.message)
+                    }
+            }
         }
     }
 
     fun setRoamingBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
-            // Optimistically update UI first
-            updatePackageInList(packageName) { pkg ->
-                pkg.copy(roamingBlocked = blocked)
-            }
+            // If roaming is being enabled (unblocked), also enable mobile (roaming requires mobile)
+            if (!blocked) {
+                // Optimistically update both roaming and mobile
+                updatePackageInList(packageName) { pkg ->
+                    pkg.copy(roamingBlocked = blocked, mobileBlocked = false)
+                }
 
-            // Then persist to database
-            manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
-                .onSuccess {
-                    // Success - optimistic update already applied, no need to reload
-                }
-                .onFailure { error ->
-                    // Revert on failure by reloading
-                    loadNetworkPackages()
-                    if (superuserBannerState.shouldShowBannerForError(error)) {
-                        superuserBannerState.showSuperuserRequiredBanner()
+                // Persist both changes
+                manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
+                    .onSuccess {
+                        manageNetworkAccessUseCase.setMobileBlocking(packageName, false)
                     }
-                    _uiState.value = _uiState.value.copy(error = error.message)
+                    .onFailure { error ->
+                        // Revert on failure by reloading
+                        loadNetworkPackages()
+                        if (superuserBannerState.shouldShowBannerForError(error)) {
+                            superuserBannerState.showSuperuserRequiredBanner()
+                        }
+                        _uiState.value = _uiState.value.copy(error = error.message)
+                    }
+            } else {
+                // Roaming is being disabled - only update roaming, leave mobile as is
+                updatePackageInList(packageName) { pkg ->
+                    pkg.copy(roamingBlocked = blocked)
                 }
+
+                // Then persist to database
+                manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
+                    .onSuccess {
+                        // Success - optimistic update already applied, no need to reload
+                    }
+                    .onFailure { error ->
+                        // Revert on failure by reloading
+                        loadNetworkPackages()
+                        if (superuserBannerState.shouldShowBannerForError(error)) {
+                            superuserBannerState.showSuperuserRequiredBanner()
+                        }
+                        _uiState.value = _uiState.value.copy(error = error.message)
+                    }
+            }
         }
     }
 

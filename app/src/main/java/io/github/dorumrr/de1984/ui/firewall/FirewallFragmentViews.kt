@@ -241,21 +241,17 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
 
-        // Track current mobile blocked state
-        var currentMobileBlocked = pkg.mobileBlocked
-
-        // Function to update roaming visibility
-        fun updateRoamingVisibility(mobileBlocked: Boolean) {
-            if (hasCellular && !mobileBlocked) {
-                // Show roaming when mobile is allowed
-                binding.roamingDivider.visibility = View.VISIBLE
-                binding.roamingToggle.root.visibility = View.VISIBLE
-            } else {
-                // Hide roaming when mobile is blocked or no cellular
-                binding.roamingDivider.visibility = View.GONE
-                binding.roamingToggle.root.visibility = View.GONE
-            }
+        // Always show roaming toggle if device has cellular
+        if (hasCellular) {
+            binding.roamingDivider.visibility = View.VISIBLE
+            binding.roamingToggle.root.visibility = View.VISIBLE
+        } else {
+            binding.roamingDivider.visibility = View.GONE
+            binding.roamingToggle.root.visibility = View.GONE
         }
+
+        // Flag to prevent infinite recursion when updating switches programmatically
+        var isUpdatingProgrammatically = false
 
         // Setup WiFi toggle
         setupNetworkToggle(
@@ -265,7 +261,6 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             enabled = true,
             onToggle = { blocked ->
                 viewModel.setWifiBlocking(pkg.packageName, blocked)
-                // Don't dismiss - let user make multiple changes
             }
         )
 
@@ -276,31 +271,49 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             isBlocked = pkg.mobileBlocked,
             enabled = true,
             onToggle = { blocked ->
-                currentMobileBlocked = blocked
+                if (isUpdatingProgrammatically) return@setupNetworkToggle
+
                 viewModel.setMobileBlocking(pkg.packageName, blocked)
-                // Update roaming visibility when mobile state changes
-                updateRoamingVisibility(blocked)
-                // Don't dismiss - let user make multiple changes
+
+                // If mobile is blocked, automatically block roaming too
+                if (blocked && hasCellular) {
+                    viewModel.setRoamingBlocking(pkg.packageName, true)
+                    // Update the roaming toggle UI
+                    isUpdatingProgrammatically = true
+                    binding.roamingToggle.toggleSwitch.isChecked = true
+                    updateSwitchColors(binding.roamingToggle.toggleSwitch, true)
+                    isUpdatingProgrammatically = false
+                }
             }
         )
 
-        // Setup Roaming toggle (only if device has cellular and mobile is allowed)
+        // Setup Roaming toggle (only if device has cellular)
         if (hasCellular) {
-            val roamingBinding = binding.roamingToggle
             setupNetworkToggle(
-                binding = roamingBinding,
+                binding = binding.roamingToggle,
                 label = "Roaming",
                 isBlocked = pkg.roamingBlocked,
                 enabled = true,
                 onToggle = { blocked ->
+                    if (isUpdatingProgrammatically) return@setupNetworkToggle
+
+                    // If roaming is being enabled (unblocked), enable mobile too
+                    if (!blocked) {
+                        val mobileBlocked = binding.mobileToggle.toggleSwitch.isChecked
+                        if (mobileBlocked) {
+                            viewModel.setMobileBlocking(pkg.packageName, false)
+                            // Update the mobile toggle UI
+                            isUpdatingProgrammatically = true
+                            binding.mobileToggle.toggleSwitch.isChecked = false
+                            updateSwitchColors(binding.mobileToggle.toggleSwitch, false)
+                            isUpdatingProgrammatically = false
+                        }
+                    }
+
                     viewModel.setRoamingBlocking(pkg.packageName, blocked)
-                    // Don't dismiss - let user make multiple changes
                 }
             )
         }
-
-        // Set initial roaming visibility
-        updateRoamingVisibility(currentMobileBlocked)
 
         dialog.setContentView(binding.root)
         dialog.show()

@@ -14,14 +14,31 @@ class GetNetworkPackagesUseCase constructor(
 
     operator fun invoke(): Flow<List<NetworkPackage>> {
         return networkPackageRepository.getNetworkPackages()
+            .map { packages -> packages.map { it.enforceRoamingDependency() } }
+    }
+
+    /**
+     * Enforce business rule: Roaming requires Mobile to be enabled
+     * If mobile is blocked, roaming must also be blocked
+     */
+    private fun NetworkPackage.enforceRoamingDependency(): NetworkPackage {
+        return if (mobileBlocked && !roamingBlocked) {
+            // Invalid state: mobile blocked but roaming allowed
+            // Fix by blocking roaming too
+            copy(roamingBlocked = true)
+        } else {
+            this
+        }
     }
     
     fun getByType(type: PackageType): Flow<List<NetworkPackage>> {
         return networkPackageRepository.getNetworkPackagesByType(type)
+            .map { packages -> packages.map { it.enforceRoamingDependency() } }
     }
 
     fun getByAccessState(state: NetworkAccessState): Flow<List<NetworkPackage>> {
         return networkPackageRepository.getNetworkPackagesByAccessState(state)
+            .map { packages -> packages.map { it.enforceRoamingDependency() } }
     }
 
     fun getFilteredByState(filterState: FirewallFilterState): Flow<List<NetworkPackage>> {
@@ -46,10 +63,12 @@ class GetNetworkPackagesUseCase constructor(
     
     fun getBlocked(): Flow<List<NetworkPackage>> {
         return networkPackageRepository.getBlockedPackages()
+            .map { packages -> packages.map { it.enforceRoamingDependency() } }
     }
-    
+
     fun getAllowed(): Flow<List<NetworkPackage>> {
         return networkPackageRepository.getAllowedPackages()
+            .map { packages -> packages.map { it.enforceRoamingDependency() } }
     }
     
     fun getByTypeAndState(type: PackageType, state: NetworkAccessState): Flow<List<NetworkPackage>> {

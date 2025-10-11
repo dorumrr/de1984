@@ -7,15 +7,11 @@ A privacy-focused Firewall and Package Manager for Android devices.
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="200" alt="Firewall Screen" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="200" alt="Firewall Controls" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="200" alt="Packages Screen" />
-</p>
-
-<p align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="200" alt="Package Management" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="200" alt="Permissions Screen" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="200" alt="Settings Screen" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="120" alt="De 1984 Firewall by Doru Moraru" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="120" alt="De1984 Firewall Controls by Doru Moraru" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="120" alt="De1984 Packages by Doru Moraru" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="120" alt="De1984 Packages Control by Doru Moraru" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="120" alt="De1984 Options by Doru Moraru" />
 </p>
 
 ## ✨ Features

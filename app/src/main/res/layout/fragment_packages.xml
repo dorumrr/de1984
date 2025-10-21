@@ -92,7 +92,8 @@
         app:boxCornerRadiusTopEnd="12dp"
         app:boxCornerRadiusBottomStart="12dp"
         app:boxCornerRadiusBottomEnd="12dp"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+        app:hintTextAppearance="@style/TextAppearance.Material3.BodySmall"
+        style="@style/Widget.De1984.TextInputLayout.Compact">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/search_input"
@@ -100,6 +101,9 @@
             android:layout_height="wrap_content"
             android:inputType="text"
             android:maxLines="1"
+            android:textSize="14sp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
             android:imeOptions="actionSearch" />
 
     </com.google.android.material.textfield.TextInputLayout>

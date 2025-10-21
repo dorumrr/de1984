@@ -28,4 +28,11 @@
         <!-- Window background -->
         <item name="android:windowBackground">@color/white</item>
     </style>
+
+    <!-- Compact TextInputLayout for search boxes -->
+    <style name="Widget.De1984.TextInputLayout.Compact" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCollapsedPaddingTop">8dp</item>
+        <item name="android:paddingTop">0dp</item>
+        <item name="android:paddingBottom">0dp</item>
+    </style>
 </resources>

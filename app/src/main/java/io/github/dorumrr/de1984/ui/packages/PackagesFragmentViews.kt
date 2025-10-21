@@ -88,7 +88,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Add layout change listener to track when RecyclerView actually renders
         binding.packagesRecyclerView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            Log.d(TAG, ">>> RecyclerView layout changed, adapter.itemCount=${adapter.itemCount}, childCount=${binding.packagesRecyclerView.childCount}")
+            // RecyclerView layout changed
         }
     }
 
@@ -122,46 +122,20 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             selectedTypeFilter = currentTypeFilter,
             selectedStateFilter = currentStateFilter,
             onTypeFilterSelected = { filter ->
-                val timestamp = System.currentTimeMillis()
-                Log.d(TAG, "════════════════════════════════════════════════════════════════")
-                Log.d(TAG, "[$timestamp] 🔘 TYPE FILTER CLICKED: $filter")
-                Log.d(TAG, "[$timestamp] Current type filter: $currentTypeFilter")
-                Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
-
                 // Only trigger if different from current
                 if (filter != currentTypeFilter) {
-                    Log.d(TAG, "[$timestamp] Filter CHANGED from $currentTypeFilter to $filter")
-
                     // Don't clear adapter - let ViewModel handle the state transition
                     currentTypeFilter = filter
-                    Log.d(TAG, "[$timestamp] Calling viewModel.setPackageTypeFilter($filter)...")
                     viewModel.setPackageTypeFilter(filter)
-                    Log.d(TAG, "[$timestamp] viewModel.setPackageTypeFilter() returned")
-                } else {
-                    Log.d(TAG, "[$timestamp] Filter UNCHANGED, ignoring click")
                 }
-                Log.d(TAG, "════════════════════════════════════════════════════════════════")
             },
             onStateFilterSelected = { filter ->
-                val timestamp = System.currentTimeMillis()
-                Log.d(TAG, "════════════════════════════════════════════════════════════════")
-                Log.d(TAG, "[$timestamp] 🔘 STATE FILTER CLICKED: $filter")
-                Log.d(TAG, "[$timestamp] Current state filter: $currentStateFilter")
-                Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
-
                 // Only trigger if different from current
                 if (filter != currentStateFilter) {
-                    Log.d(TAG, "[$timestamp] Filter CHANGED from $currentStateFilter to $filter")
-
                     // Don't clear adapter - let ViewModel handle the state transition
                     currentStateFilter = filter
-                    Log.d(TAG, "[$timestamp] Calling viewModel.setPackageStateFilter($filter)...")
                     viewModel.setPackageStateFilter(filter)
-                    Log.d(TAG, "[$timestamp] viewModel.setPackageStateFilter() returned")
-                } else {
-                    Log.d(TAG, "[$timestamp] Filter UNCHANGED, ignoring click")
                 }
-                Log.d(TAG, "════════════════════════════════════════════════════════════════")
             }
         )
     }
@@ -237,11 +211,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun updateFilterChips(packageTypeFilter: String, packageStateFilter: String?) {
-        Log.d(TAG, "updateFilterChips: type=$packageTypeFilter, state=$packageStateFilter, current type=$currentTypeFilter, current state=$currentStateFilter")
-
         // Only update if filters have changed
         if (packageTypeFilter == currentTypeFilter && packageStateFilter == currentStateFilter) {
-            Log.d(TAG, "Filters unchanged, skipping update")
             return
         }
 
@@ -264,20 +235,10 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun observeUiState() {
-        Log.d(TAG, "observeUiState() - Setting up StateFlow collection")
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                Log.d(TAG, "observeUiState() - Lifecycle STARTED, beginning to collect StateFlow")
                 viewModel.uiState.collect { state ->
-                    val timestamp = System.currentTimeMillis()
-                    Log.d(TAG, "════════════════════════════════════════════════════════════════")
-                    Log.d(TAG, "[$timestamp] 📥 StateFlow COLLECTED new state")
-                    Log.d(TAG, "[$timestamp] Thread: ${Thread.currentThread().name}")
-                    Log.d(TAG, "[$timestamp] State: packages.size=${state.packages.size}, isLoadingData=${state.isLoadingData}")
-                    Log.d(TAG, "[$timestamp] Calling updateUI()...")
                     updateUI(state)
-                    Log.d(TAG, "[$timestamp] updateUI() returned")
-                    Log.d(TAG, "════════════════════════════════════════════════════════════════")
                 }
             }
         }

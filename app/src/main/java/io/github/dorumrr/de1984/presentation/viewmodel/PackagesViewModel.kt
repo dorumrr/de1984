@@ -71,7 +71,6 @@ class PackagesViewModel(
 
         loadJob = getPackagesUseCase.getFilteredByState(filterState)
             .catch { error ->
-                Log.e(TAG, "Error loading packages", error)
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
                     isRenderingUI = false,

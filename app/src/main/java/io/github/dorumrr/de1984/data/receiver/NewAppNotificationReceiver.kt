@@ -58,16 +58,11 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
                     NewAppNotificationManager.ACTION_ALLOW_MOBILE -> {
                         handleAllowMobile(context, packageName, manageNetworkAccessUseCase)
                     }
-                    else -> {
-                        Log.w(TAG, "   ⚠️ Unknown action: $action")
-                    }
                 }
             }
-            
+
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error handling notification action", e)
-        } finally {
-            Log.d(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            // Error handling notification action
         }
     }
     
@@ -79,12 +74,10 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
 
             if (wifiResult.isSuccess && mobileResult.isSuccess && roamingResult.isSuccess) {
                 checkFirewallAndRedirect(context)
-            } else {
-                Log.e(TAG, "❌ Some blocking operations failed for: $packageName")
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error blocking all networks for $packageName", e)
+            // Error blocking all networks
         }
     }
 
@@ -94,12 +87,9 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
                 .onSuccess {
                     checkFirewallAndRedirect(context)
                 }
-                .onFailure { error ->
-                    Log.e(TAG, "❌ Failed to block WiFi for $packageName: ${error.message}")
-                }
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error blocking WiFi for $packageName", e)
+            // Error blocking WiFi
         }
     }
 
@@ -109,12 +99,9 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
                 .onSuccess {
                     checkFirewallAndRedirect(context)
                 }
-                .onFailure { error ->
-                    Log.e(TAG, "❌ Failed to block Mobile for $packageName: ${error.message}")
-                }
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error blocking Mobile for $packageName", e)
+            // Error blocking Mobile
         }
     }
     
@@ -129,7 +116,7 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error allowing all networks for $packageName", e)
+            // Error allowing all networks
         }
     }
 
@@ -139,12 +126,9 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
                 .onSuccess {
                     checkFirewallAndRedirect(context)
                 }
-                .onFailure { error ->
-                    Log.e(TAG, "❌ Failed to allow WiFi for $packageName: ${error.message}")
-                }
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error allowing WiFi for $packageName", e)
+            // Error allowing WiFi
         }
     }
 
@@ -154,12 +138,9 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
                 .onSuccess {
                     checkFirewallAndRedirect(context)
                 }
-                .onFailure { error ->
-                    Log.e(TAG, "❌ Failed to allow Mobile for $packageName: ${error.message}")
-                }
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error allowing Mobile for $packageName", e)
+            // Error allowing Mobile
         }
     }
 
@@ -178,12 +159,10 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
                 }
 
                 context.startActivity(intent)
-            } else {
-                Log.d(TAG, "✅ Firewall is already enabled")
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error checking firewall status", e)
+            // Error checking firewall status
         }
     }
 
@@ -194,7 +173,7 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
             
             notificationManager.cancel(notificationId)
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error dismissing notification for $packageName", e)
+            // Error dismissing notification
         }
     }
 }

@@ -136,11 +136,8 @@ class PackageMonitoringService : Service() {
                 .onSuccess {
                     newAppNotificationManager.showNewAppNotification(packageName)
                 }
-                .onFailure { error ->
-                    Log.e(TAG, "❌ Failed to process new app: $packageName", error)
-                }
         } catch (e: Exception) {
-            Log.e(TAG, "Error processing new package: $packageName", e)
+            // Error processing new package
         }
     }
 }

@@ -91,7 +91,6 @@ class AndroidPackageDataSource(
                         )
                     }.sortedBy { it.name.lowercase() }
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading packages: ${e.message}", e)
                 emptyList()
             }
         }
@@ -175,9 +174,9 @@ class AndroidPackageDataSource(
                 )
                 return@withContext true
             } catch (e: SecurityException) {
-                android.util.Log.d("AndroidPackageDataSource", "PackageManager method failed (expected): ${e.message}")
+                // PackageManager method failed (expected)
             } catch (e: Exception) {
-                android.util.Log.w("AndroidPackageDataSource", "PackageManager method failed: ${e.message}")
+                // PackageManager method failed
             }
 
             try {
@@ -194,7 +193,7 @@ class AndroidPackageDataSource(
                     return@withContext true
                 }
             } catch (e: Exception) {
-                android.util.Log.d("AndroidPackageDataSource", "Root shell method failed: ${e.message}")
+                // Root shell method failed
             }
 
             try {
@@ -211,7 +210,7 @@ class AndroidPackageDataSource(
                     return@withContext true
                 }
             } catch (e: Exception) {
-                android.util.Log.d("AndroidPackageDataSource", "Shell method failed: ${e.message}")
+                // Shell method failed
             }
 
             false
@@ -233,7 +232,7 @@ class AndroidPackageDataSource(
                     return@withContext true
                 }
             } catch (e: Exception) {
-                android.util.Log.d("AndroidPackageDataSource", "Root shell method failed: ${e.message}")
+                // Root shell method failed
             }
 
             try {
@@ -245,7 +244,7 @@ class AndroidPackageDataSource(
                     return@withContext true
                 }
             } catch (e: Exception) {
-                android.util.Log.d("AndroidPackageDataSource", "Shell method failed: ${e.message}")
+                // Shell method failed
             }
 
             false
@@ -267,14 +266,14 @@ class AndroidPackageDataSource(
                     return@withContext true
                 }
             } catch (e: Exception) {
-                android.util.Log.d("AndroidPackageDataSource", "Root shell method failed: ${e.message}")
+                // Root shell method failed
             }
 
             try {
                 val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
                 activityManager.killBackgroundProcesses(packageName)
             } catch (e: Exception) {
-                android.util.Log.d("AndroidPackageDataSource", "ActivityManager method failed: ${e.message}")
+                // ActivityManager method failed
             }
 
             try {
@@ -286,7 +285,7 @@ class AndroidPackageDataSource(
                     return@withContext true
                 }
             } catch (e: Exception) {
-                android.util.Log.d("AndroidPackageDataSource", "Shell method failed: ${e.message}")
+                // Shell method failed
             }
 
             false
@@ -439,7 +438,6 @@ class AndroidPackageDataSource(
                 firewallRepository.insertRule(rule)
                 true
             } catch (e: Exception) {
-                android.util.Log.e("AndroidPackageDataSource", "Failed to set WiFi blocking for $packageName", e)
                 false
             }
         }

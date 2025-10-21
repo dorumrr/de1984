@@ -65,7 +65,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        Log.d(TAG, "Notification permission result: $isGranted")
         permissionViewModel.markNotificationPermissionRequested()
         permissionViewModel.refreshPermissions()
     }
@@ -75,7 +74,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         ActivityResultContracts.StartActivityForResult()
     ) { _ ->
         // Refresh permissions when user returns from battery settings
-        Log.d(TAG, "Returned from battery optimization settings, refreshing permissions")
         permissionViewModel.refreshPermissions()
     }
 
@@ -92,7 +90,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(TAG, "onViewCreated: SettingsFragmentViews initialized")
 
         setupViews()
         observeUiState()
@@ -174,11 +171,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun updateUI(state: io.github.dorumrr.de1984.presentation.viewmodel.SettingsUiState) {
-        Log.d(TAG, "updateUI: version=${state.appVersion}, " +
-                "showIcons=${state.showAppIcons}, " +
-                "notifications=${state.newAppNotifications}, " +
-                "policy=${state.defaultFirewallPolicy}")
-
         // Update app version
         binding.appVersion.text = "Version ${state.appVersion}"
 
@@ -236,10 +228,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun updatePermissionTiers(state: io.github.dorumrr.de1984.ui.permissions.PermissionSetupUiState) {
-        Log.d(TAG, "updatePermissionTiers: basic=${state.hasBasicPermissions}, " +
-                "battery=${state.hasBatteryOptimizationExemption}, " +
-                "advanced=${state.hasAdvancedPermissions}")
-
         // Setup Basic Tier
         setupPermissionTier(
             binding.permissionTierBasic,
@@ -461,7 +449,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private fun handleRootAccessRequest() {
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastRootTestTime < 1000) {
-            Log.d(TAG, "Root test throttled - too soon")
             return
         }
         lastRootTestTime = currentTime

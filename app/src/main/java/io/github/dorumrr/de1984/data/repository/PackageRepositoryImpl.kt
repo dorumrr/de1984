@@ -17,28 +17,17 @@ class PackageRepositoryImpl(
     
     override fun getPackages(): Flow<List<Package>> {
         return packageDataSource.getPackages()
-            .onEach { entities ->
-                Log.d("PackageRepository", ">>> DataSource emitted: ${entities.size} entities")
-            }
             .map { entities ->
-                val packages = entities
+                entities
                     .filter { !Constants.App.isOwnApp(it.packageName) }
                     .map { it.toDomain() }
-                Log.d("PackageRepository", ">>> After mapping: ${packages.size} packages")
-                packages
             }
     }
 
     override fun getPackagesByType(type: PackageType): Flow<List<Package>> {
-        Log.d("PackageRepository", ">>> getPackagesByType called: $type")
         return getPackages()
-            .onEach { packages ->
-                Log.d("PackageRepository", ">>> getPackages() emitted: ${packages.size} packages (before type filter)")
-            }
             .map { packages ->
-                val filtered = packages.filter { it.type == type }
-                Log.d("PackageRepository", ">>> After type filter ($type): ${filtered.size} packages")
-                filtered
+                packages.filter { it.type == type }
             }
     }
     

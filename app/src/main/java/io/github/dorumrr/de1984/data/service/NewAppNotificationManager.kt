@@ -104,9 +104,9 @@ class NewAppNotificationManager(
             
             val notificationId = NOTIFICATION_ID_BASE + packageName.hashCode()
             notificationManager.notify(notificationId, notification)
-            
+
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to show notification for $packageName", e)
+            // Failed to show notification
         }
     }
     

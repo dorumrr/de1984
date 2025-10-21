@@ -23,9 +23,6 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 restoreFirewallState(context)
             }
-            else -> {
-                Log.w(TAG, "   ⚠️ Unknown action: $action")
-            }
         }
 
     }
@@ -43,13 +40,11 @@ class BootReceiver : BroadcastReceiver() {
                 try {
                     context.startService(serviceIntent)
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ Failed to start firewall service", e)
+                    // Failed to start firewall service
                 }
-            } else {
-                Log.d(TAG, "ℹ️ Firewall was disabled, not starting service")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error restoring firewall state", e)
+            // Error restoring firewall state
         }
     }
 }

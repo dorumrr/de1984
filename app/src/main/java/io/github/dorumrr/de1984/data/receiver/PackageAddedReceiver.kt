@@ -43,16 +43,13 @@ class PackageAddedReceiver : BroadcastReceiver() {
                         .onSuccess {
                             newAppNotificationManager.showNewAppNotification(packageName)
                         }
-                        .onFailure { error ->
-                            Log.e(TAG, "❌ Failed to process new app $packageName: ${error.message}")
-                        }
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ Unexpected error processing new app $packageName", e)
+                    // Error processing new app
                 }
             }
-            
+
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error in PackageAddedReceiver", e)
+            // Error in PackageAddedReceiver
         }
     }
     

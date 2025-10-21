@@ -65,8 +65,6 @@ class FirewallVpnService : VpnService() {
             if (intent?.action == "io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED") {
                 if (isServiceActive) {
                     restartVpn()
-                } else {
-                    Log.w(TAG, "   ⚠️ Service not active, ignoring broadcast")
                 }
             }
         }
@@ -136,7 +134,7 @@ class FirewallVpnService : VpnService() {
         try {
             unregisterReceiver(rulesChangedReceiver)
         } catch (e: Exception) {
-            Log.w(TAG, "⚠️ Failed to unregister broadcast receiver", e)
+            // Failed to unregister broadcast receiver
         }
 
         super.onDestroy()
@@ -253,7 +251,6 @@ class FirewallVpnService : VpnService() {
                     lastAppliedNetworkType = currentNetworkType
                     lastAppliedScreenState = isScreenOn
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ Exception in restartVpn()", e)
                     if (isServiceActive) {
                         stopSelf()
                     }
@@ -435,7 +432,7 @@ class FirewallVpnService : VpnService() {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Exception in stopVpn()", e)
+            // Exception in stopVpn
         }
     }
     

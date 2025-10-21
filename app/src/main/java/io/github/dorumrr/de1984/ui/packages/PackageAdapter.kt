@@ -34,22 +34,14 @@ class PackageAdapter(
 
     override fun onBindViewHolder(holder: PackageViewHolder, position: Int) {
         val item = getItem(position)
-        if (position == 0) {
-            Log.d(TAG, ">>> onBindViewHolder: position=0, package=${item.name}, packageType=${item.type}, currentList.size=${currentList.size}")
-            // Log first 5 packages to see what's being rendered
-            val preview = currentList.take(5).map { "${it.name}(${it.type})" }.joinToString(", ")
-            Log.d(TAG, ">>> First 5 packages: $preview")
-        }
         holder.bind(item, showIcons)
     }
 
     override fun submitList(list: List<Package>?) {
-        Log.d(TAG, ">>> submitList called: newList.size=${list?.size}, currentList.size=${currentList.size}")
         super.submitList(list)
     }
 
     override fun submitList(list: List<Package>?, commitCallback: Runnable?) {
-        Log.d(TAG, ">>> submitList (with callback) called: newList.size=${list?.size}, currentList.size=${currentList.size}")
         super.submitList(list, commitCallback)
     }
 

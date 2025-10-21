@@ -183,11 +183,6 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             }
         }
 
-        // Clear focus and hide keyboard when clicking outside search box
-        binding.rootContainer.setOnClickListener {
-            hideKeyboardAndClearFocus()
-        }
-
         // Clear focus and hide keyboard when touching/scrolling RecyclerView
         binding.packagesRecyclerView.setOnTouchListener { view, event ->
             if (event.action == android.view.MotionEvent.ACTION_DOWN) {
@@ -197,6 +192,41 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 }
             }
             false // Allow touch events to propagate for normal scrolling
+        }
+
+        // Clear focus when scrolling RecyclerView
+        binding.packagesRecyclerView.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: androidx.recyclerview.widget.RecyclerView, newState: Int) {
+                if (newState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_DRAGGING) {
+                    if (binding.searchInput.hasFocus()) {
+                        hideKeyboardAndClearFocus()
+                    }
+                }
+            }
+        })
+
+        // Clear focus when clicking on root container (outside search box)
+        binding.rootContainer.setOnTouchListener { view, event ->
+            if (event.action == android.view.MotionEvent.ACTION_DOWN) {
+                // Check if touch is outside the search layout
+                val searchLayoutLocation = IntArray(2)
+                binding.searchLayout.getLocationOnScreen(searchLayoutLocation)
+                val searchLayoutRect = android.graphics.Rect(
+                    searchLayoutLocation[0],
+                    searchLayoutLocation[1],
+                    searchLayoutLocation[0] + binding.searchLayout.width,
+                    searchLayoutLocation[1] + binding.searchLayout.height
+                )
+
+                val touchX = event.rawX.toInt()
+                val touchY = event.rawY.toInt()
+
+                if (!searchLayoutRect.contains(touchX, touchY) && binding.searchInput.hasFocus()) {
+                    hideKeyboardAndClearFocus()
+                    view.requestFocus()
+                }
+            }
+            false // Allow touch events to propagate
         }
     }
 

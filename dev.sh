@@ -128,6 +128,146 @@ find_emulators() {
     fi
 }
 
+# Check if an AVD is Android 15 (API 36)
+is_android_15_avd() {
+    local avd_name="$1"
+    local avd_config="$HOME/.android/avd/${avd_name}.avd/config.ini"
+
+    if [ -f "$avd_config" ]; then
+        if grep -q "android-36" "$avd_config" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Find best emulator (prefer Android 15 Pixel 9a)
+find_best_emulator() {
+    local avds=($(find_emulators))
+
+    if [ ${#avds[@]} -eq 0 ]; then
+        echo ""
+        return 1
+    fi
+
+    # First priority: Android 15 Pixel 9a (best for testing)
+    for avd in "${avds[@]}"; do
+        if is_android_15_avd "$avd" && [[ "$avd" =~ [Pp]ixel.*9a ]]; then
+            echo "$avd"
+            return 0
+        fi
+    done
+
+    # Second priority: Android 15 Pixel 9 (non-fold)
+    for avd in "${avds[@]}"; do
+        if is_android_15_avd "$avd" && [[ "$avd" =~ [Pp]ixel.*9 ]] && [[ ! "$avd" =~ [Ff]old ]]; then
+            echo "$avd"
+            return 0
+        fi
+    done
+
+    # Third priority: Any Android 15 Pixel (excluding folds)
+    for avd in "${avds[@]}"; do
+        if is_android_15_avd "$avd" && [[ "$avd" =~ [Pp]ixel ]] && [[ ! "$avd" =~ [Ff]old ]]; then
+            echo "$avd"
+            return 0
+        fi
+    done
+
+    # Fourth priority: Any Android 15 device (excluding folds)
+    for avd in "${avds[@]}"; do
+        if is_android_15_avd "$avd" && [[ ! "$avd" =~ [Ff]old ]]; then
+            echo "$avd"
+            return 0
+        fi
+    done
+
+    # Fifth priority: Any Pixel device (excluding folds)
+    for avd in "${avds[@]}"; do
+        if [[ "$avd" =~ [Pp]ixel ]] && [[ ! "$avd" =~ [Ff]old ]]; then
+            echo "$avd"
+            return 0
+        fi
+    done
+
+    # Fallback: First available
+    echo "${avds[0]}"
+    return 0
+}
+
+# Create Android 15 Pixel 9a emulator
+create_android_15_pixel() {
+    log_header "Creating Android 15 Pixel 9a Emulator"
+
+    local sdk_path=$(find_android_sdk)
+    if [ -z "$sdk_path" ]; then
+        log_error "Android SDK not found!"
+        return 1
+    fi
+
+    local avdmanager="$sdk_path/cmdline-tools/latest/bin/avdmanager"
+    local sdkmanager="$sdk_path/cmdline-tools/latest/bin/sdkmanager"
+
+    # Check if cmdline-tools exist
+    if [ ! -f "$avdmanager" ]; then
+        log_error "avdmanager not found!"
+        log_info "Please install Android SDK Command-line Tools:"
+        log_info "1. Open Android Studio"
+        log_info "2. Settings → Appearance & Behavior → System Settings → Android SDK"
+        log_info "3. SDK Tools tab → Check 'Android SDK Command-line Tools'"
+        log_info "4. Click Apply"
+        return 1
+    fi
+
+    # Check if Android 15 system image is installed
+    log_info "Checking for Android 15 system image..."
+    if [ ! -d "$sdk_path/system-images/android-36/google_apis/arm64-v8a" ] && \
+       [ ! -d "$sdk_path/system-images/android-36/google_apis/x86_64" ]; then
+        log_warn "Android 15 system image not found. Installing..."
+        log_info "This may take a few minutes..."
+
+        # Determine architecture
+        local arch="x86_64"
+        if [[ "$(uname -m)" == "arm64" ]]; then
+            arch="arm64-v8a"
+        fi
+
+        "$sdkmanager" "system-images;android-36;google_apis;${arch}"
+
+        if [ $? -ne 0 ]; then
+            log_error "Failed to install Android 15 system image"
+            return 1
+        fi
+    fi
+
+    log_success "Android 15 system image found"
+
+    # Create AVD with Pixel 9a
+    local avd_name="Pixel_9a_API_36"
+    log_info "Creating Pixel 9a emulator: $avd_name"
+
+    # Determine architecture
+    local arch="x86_64"
+    if [[ "$(uname -m)" == "arm64" ]]; then
+        arch="arm64-v8a"
+    fi
+
+    echo "no" | "$avdmanager" create avd \
+        --force \
+        --name "$avd_name" \
+        --package "system-images;android-36;google_apis;${arch}" \
+        --device "pixel_9a"
+
+    if [ $? -eq 0 ]; then
+        log_success "Created Android 15 Pixel 9a emulator: $avd_name"
+        echo "$avd_name"
+        return 0
+    else
+        log_error "Failed to create emulator"
+        return 1
+    fi
+}
+
 # Start emulator automatically
 start_emulator() {
     local requested_emulator="${1:-}"
@@ -160,13 +300,27 @@ start_emulator() {
     local avds=($(find_emulators))
 
     if [ ${#avds[@]} -eq 0 ]; then
-        log_error "No Android Virtual Devices (AVDs) found!"
-        log_info "Please create an emulator first:"
-        log_info "1. Open Android Studio"
-        log_info "2. Tools → AVD Manager → Create Virtual Device"
-        log_info "3. Choose device and system image"
-        log_info "4. Then run: ./dev.sh install emulator"
-        exit 1
+        log_warn "No Android Virtual Devices (AVDs) found!"
+        log_info "Would you like to create an Android 15 Pixel 9a emulator? (recommended)"
+        read -p "Create Android 15 Pixel 9a emulator? (yes/no): " create_confirm
+
+        if [ "$create_confirm" = "yes" ]; then
+            local new_avd=$(create_android_15_pixel)
+            if [ -n "$new_avd" ]; then
+                requested_emulator="$new_avd"
+                avds=("$new_avd")
+            else
+                log_error "Failed to create emulator"
+                exit 1
+            fi
+        else
+            log_info "Please create an emulator manually:"
+            log_info "1. Open Android Studio"
+            log_info "2. Tools → AVD Manager → Create Virtual Device"
+            log_info "3. Choose Pixel 9a and Android 15 (API 36) system image"
+            log_info "4. Then run: ./dev.sh install emulator"
+            exit 1
+        fi
     fi
 
     # Choose emulator
@@ -193,14 +347,30 @@ start_emulator() {
             exit 1
         fi
     else
-        # Use first available emulator
-        emulator_name="${avds[0]}"
-        log_info "Using default emulator: $emulator_name"
+        # Use best available emulator (prefer Android 15 Pixel)
+        emulator_name=$(find_best_emulator)
+
+        if [ -z "$emulator_name" ]; then
+            log_error "No suitable emulator found"
+            exit 1
+        fi
+
+        if is_android_15_avd "$emulator_name"; then
+            log_success "Using Android 15 emulator: $emulator_name ✨"
+        else
+            log_warn "Using emulator: $emulator_name (not Android 15)"
+            log_info "Tip: Create Android 15 Pixel 9a emulator with: ./dev.sh create-emulator"
+        fi
+
         if [ ${#avds[@]} -gt 1 ]; then
             log_info "Other available emulators:"
-            for i in "${!avds[@]}"; do
-                if [ $i -ne 0 ]; then
-                    echo "  📱 ${avds[$i]}"
+            for avd in "${avds[@]}"; do
+                if [ "$avd" != "$emulator_name" ]; then
+                    if is_android_15_avd "$avd"; then
+                        echo "  📱 $avd ${GREEN}(Android 15)${NC}"
+                    else
+                        echo "  📱 $avd"
+                    fi
                 fi
             done
             log_info "To use specific emulator: ./dev.sh emulator [name]"
@@ -209,8 +379,8 @@ start_emulator() {
 
     log_info "Starting emulator (this may take 30-60 seconds)..."
 
-    # Start emulator in background
-    "$emulator_cmd" -avd "$emulator_name" -no-snapshot-save -no-audio &
+    # Start emulator in background with output redirected to /dev/null
+    "$emulator_cmd" -avd "$emulator_name" -no-snapshot-save -no-audio > /dev/null 2>&1 &
     local emulator_pid=$!
 
     log_info "Emulator starting with PID: $emulator_pid"
@@ -558,15 +728,33 @@ list_emulators() {
     local avds=($(find_emulators))
     if [ ${#avds[@]} -eq 0 ]; then
         log_warn "No Android Virtual Devices (AVDs) found!"
-        log_info "Create an emulator in Android Studio:"
-        log_info "Tools → AVD Manager → Create Virtual Device"
+        log_info "Create Android 15 Pixel 9a emulator with: ./dev.sh create-emulator"
+        log_info "Or create manually in Android Studio:"
+        log_info "Tools → AVD Manager → Create Virtual Device → Pixel 9a + Android 15"
     else
+        local best_avd=$(find_best_emulator)
         log_success "Found ${#avds[@]} emulator(s):"
         for avd in "${avds[@]}"; do
-            echo "  📱 $avd"
+            local marker=""
+            if [ "$avd" = "$best_avd" ]; then
+                marker=" ${GREEN}(default - will be auto-selected)${NC}"
+            fi
+
+            if is_android_15_avd "$avd"; then
+                echo -e "  📱 $avd ${GREEN}[Android 15]${NC}$marker"
+            else
+                echo -e "  📱 $avd$marker"
+            fi
         done
         echo ""
-        log_info "Start with: ./dev.sh emulator"
+        log_info "Start default: ./dev.sh emulator"
+        log_info "Start specific: ./dev.sh emulator [name]"
+
+        if ! is_android_15_avd "$best_avd"; then
+            echo ""
+            log_warn "Tip: Create Android 15 Pixel 9a emulator for better testing:"
+            log_info "./dev.sh create-emulator"
+        fi
     fi
 }
 
@@ -955,8 +1143,9 @@ show_help() {
     echo "  create-keystore            - Create production keystore (first time only)"
     echo ""
     echo "Emulator Commands:"
-    echo "  emulator [name]            - Start Android emulator"
+    echo "  emulator [name]            - Start Android emulator (auto-selects Android 15 Pixel 9a)"
     echo "  list-emulators             - List available emulators"
+    echo "  create-emulator            - Create Android 15 Pixel 9a emulator (recommended)"
     echo ""
     echo "Help:"
     echo "  help                       - Show this help"
@@ -1063,6 +1252,13 @@ main() {
             ;;
         "list-emulators")
             list_emulators
+            ;;
+        "create-emulator")
+            local new_avd=$(create_android_15_pixel)
+            if [ -n "$new_avd" ]; then
+                log_success "Emulator created successfully!"
+                log_info "Start it with: ./dev.sh emulator $new_avd"
+            fi
             ;;
         "help"|"-h"|"--help")
             show_help

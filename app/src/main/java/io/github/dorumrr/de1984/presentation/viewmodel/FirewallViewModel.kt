@@ -320,6 +320,10 @@ class FirewallViewModel(
         saveFirewallState(false)
     }
 
+    fun setSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+    }
+
     class Factory(
         private val application: Application,
         private val getNetworkPackagesUseCase: GetNetworkPackagesUseCase,
@@ -346,6 +350,7 @@ class FirewallViewModel(
 data class FirewallUiState(
     val packages: List<NetworkPackage> = emptyList(),
     val filterState: FirewallFilterState = FirewallFilterState(),
+    val searchQuery: String = "",
     val isLoadingData: Boolean = true,
     val isRenderingUI: Boolean = false,
     val error: String? = null,

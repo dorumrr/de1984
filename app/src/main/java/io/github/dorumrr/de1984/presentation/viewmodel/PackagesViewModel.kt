@@ -178,6 +178,10 @@ class PackagesViewModel(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    fun setSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+    }
+
     private fun updatePackageInList(packageName: String, transform: (Package) -> Package) {
         val currentPackages = _uiState.value.packages
         val updatedPackages = currentPackages.map { pkg ->
@@ -219,6 +223,7 @@ data class PackageFilterState(
 data class PackagesUiState(
     val packages: List<Package> = emptyList(),
     val filterState: PackageFilterState = PackageFilterState(),
+    val searchQuery: String = "",
     val isLoadingData: Boolean = true,
     val isRenderingUI: Boolean = false,
     val error: String? = null

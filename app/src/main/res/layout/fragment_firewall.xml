@@ -29,6 +29,35 @@
 
         </HorizontalScrollView>
 
+        <!-- Search Box -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/search_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:hint="Search apps..."
+            app:startIconDrawable="@android:drawable/ic_menu_search"
+            app:endIconMode="clear_text"
+            app:boxBackgroundMode="outline"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/search_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:maxLines="1"
+                android:imeOptions="actionSearch" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
         <!-- RecyclerView - Full Width, No Container -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/packages_recycler_view"

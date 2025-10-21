@@ -27,6 +27,7 @@ import io.github.dorumrr.de1984.ui.common.FilterChipsHelper
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
 import kotlinx.coroutines.launch
+import androidx.core.widget.addTextChangedListener
 
 class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
@@ -77,6 +78,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         setupRecyclerView()
         setupFilterChips()
+        setupSearchBox()
         setupRootBanner()
         observeUiState()
         observeSettings()
@@ -164,6 +166,13 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         )
     }
 
+    private fun setupSearchBox() {
+        binding.searchInput.addTextChangedListener { text ->
+            val query = text?.toString() ?: ""
+            viewModel.setSearchQuery(query)
+        }
+    }
+
     private fun updateFilterChips(packageTypeFilter: String, packageStateFilter: String?) {
         Log.d(TAG, "updateFilterChips: type=$packageTypeFilter, state=$packageStateFilter, current type=$currentTypeFilter, current state=$currentStateFilter")
 
@@ -233,14 +242,25 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             packageStateFilter = state.filterState.packageState
         )
 
+        // Apply search filtering with partial substring matching
+        val displayedPackages = if (state.searchQuery.isBlank()) {
+            state.packages
+        } else {
+            val query = state.searchQuery.lowercase()
+            state.packages.filter { pkg ->
+                pkg.name.lowercase().contains(query, ignoreCase = false) ||
+                pkg.packageName.lowercase().contains(query, ignoreCase = false)
+            }
+        }
+
         // Update RecyclerView only if list changed
-        val listChanged = state.packages != lastSubmittedPackages
+        val listChanged = displayedPackages != lastSubmittedPackages
         if (!listChanged) {
             return
         }
 
-        lastSubmittedPackages = state.packages
-        adapter.submitList(state.packages)
+        lastSubmittedPackages = displayedPackages
+        adapter.submitList(displayedPackages)
         if (state.isRenderingUI) {
             viewModel.setUIReady()
         }

@@ -138,10 +138,43 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private fun setupSearchBox() {
+        // Text change listener for real-time search
         binding.searchInput.addTextChangedListener { text ->
             val query = text?.toString() ?: ""
             viewModel.setSearchQuery(query)
         }
+
+        // Handle keyboard "Search" or "Done" button
+        binding.searchInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                hideKeyboardAndClearFocus()
+                true
+            } else {
+                false
+            }
+        }
+
+        // Clear focus and hide keyboard when clicking outside search box
+        binding.rootContainer.setOnClickListener {
+            hideKeyboardAndClearFocus()
+        }
+
+        // Clear focus and hide keyboard when touching/scrolling RecyclerView
+        binding.packagesRecyclerView.setOnTouchListener { view, event ->
+            if (event.action == android.view.MotionEvent.ACTION_DOWN) {
+                if (binding.searchInput.hasFocus()) {
+                    hideKeyboardAndClearFocus()
+                    view.requestFocus()
+                }
+            }
+            false // Allow touch events to propagate for normal scrolling
+        }
+    }
+
+    private fun hideKeyboardAndClearFocus() {
+        binding.searchInput.clearFocus()
+        val imm = requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+        imm?.hideSoftInputFromWindow(binding.searchInput.windowToken, 0)
     }
 
     private fun updateFilterChips(

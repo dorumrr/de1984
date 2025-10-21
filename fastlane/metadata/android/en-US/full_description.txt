@@ -1,48 +1,56 @@
 De1984 is a firewall and package manager for Android devices.
 
 <b>FIREWALL FEATURES</b>
-• VPN-based firewall (no root required)
-• Block apps from accessing WiFi, Mobile Data, or Roaming
-• Per-app network control with granular permissions
+
+- VPN-based firewall (no root required)
+- Block apps from accessing WiFi, Mobile Data, or Roaming
+- Per-app network control with granular permissions
 
 <b>PACKAGE MANAGEMENT (with root)</b>
-• Enable/disable users of system apps
-• Force stop running apps
-• Uninstall system and user apps
+
+- Enable/disable users of system apps
+- Force stop running apps
+- Uninstall system and user apps
 
 <b>PRIVACY FIRST</b>
-• Zero tracking or analytics
-• No telemetry
-• Local-only data storage
-• 100% open source (MIT License)
+
+- Zero tracking or analytics
+- No telemetry
+- Local-only data storage
+- 100% open source (MIT License)
 
 <b>MODERN DESIGN</b>
-• Material Design 3
-• Dark mode support
-• Clean, intuitive UI
-• Fast and responsive
+
+- Material Design 3
+- Dark mode support
+- Clean, intuitive UI
+- Fast and responsive
 
 <b>FLOSS COMPLIANCE</b>
-• No proprietary libraries
-• No Google Play Services
-• No Firebase or analytics
-• Buildable from source
+
+- No proprietary libraries
+- No Google Play Services
+- No Firebase or analytics
+- Buildable from source
 
 <b>REQUIREMENTS</b>
-• Android 8.0 (API 26) or higher
-• Root access optional (required for package management features)
-• VPN permission (for firewall functionality)
+
+- Android 8.0 (API 26) or higher
+- Root access optional (required for package management features)
+- VPN permission (for firewall functionality)
 
 <b>PERMISSIONS</b>
-• INTERNET: For firewall functionality (VPN-based)
-• ACCESS_NETWORK_STATE: Monitor network connectivity
-• BIND_VPN_SERVICE: Create local VPN for firewall
-• QUERY_ALL_PACKAGES: View installed apps (optional)
-• Root access: For advanced package management (optional)
+
+- INTERNET: For firewall functionality (VPN-based)
+- ACCESS_NETWORK_STATE: Monitor network connectivity
+- BIND_VPN_SERVICE: Create local VPN for firewall
+- QUERY_ALL_PACKAGES: View installed apps (optional)
+- Root access: For advanced package management (optional)
 
 <b>OPEN SOURCE</b>
-Source code: https://github.com/dorumrr/de1984
-License: MIT
-Issues: https://github.com/dorumrr/de1984/issues
+
+Source code: https://github.com/dorumrr/de1984  
+License: MIT  
+Issues: https://github.com/dorumrr/de1984/issues  
 
 Giving Privacy its due, by Doru Moraru

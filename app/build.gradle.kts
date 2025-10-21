@@ -42,7 +42,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false  // Disabled due to R8 base.jar issue
+            isMinifyEnabled = false  // Disabled due to a known R8 base.jar issue
             isShrinkResources = false
             isCrunchPngs = false
             proguardFiles(

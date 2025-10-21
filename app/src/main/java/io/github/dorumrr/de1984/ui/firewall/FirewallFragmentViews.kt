@@ -280,14 +280,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             networkStateFilter = state.filterState.networkState
         )
 
-        // Apply search filtering with partial substring matching
+        // Apply search filtering with partial substring matching (app name only)
         val displayedPackages = if (state.searchQuery.isBlank()) {
             state.packages
         } else {
             val query = state.searchQuery.lowercase()
             state.packages.filter { pkg ->
-                pkg.name.lowercase().contains(query, ignoreCase = false) ||
-                pkg.packageName.lowercase().contains(query, ignoreCase = false)
+                pkg.name.lowercase().contains(query, ignoreCase = false)
             }
         }
 

@@ -508,6 +508,67 @@ build_all_apks() {
     log_info "This APK is signed with debug key and ready for development/testing"
 }
 
+# Build debug APK with detailed info for F-Droid RFP
+build_debug_with_info() {
+    log_header "Building Debug APK (For Testing & F-Droid RFP)"
+
+    # Build debug APK
+    build_debug_apk
+
+    echo ""
+    log_success "Debug APK built successfully!"
+    echo ""
+
+    # Show file location
+    log_header "📦 APK Information"
+    echo -e "${GREEN}Location:${NC}"
+    echo -e "  ${YELLOW}$(pwd)/$APK_PATH_DEBUG${NC}"
+    echo ""
+
+    # Show file size
+    local filesize=$(ls -lh "$APK_PATH_DEBUG" | awk '{print $5}')
+    echo -e "${GREEN}Size:${NC} $filesize"
+    echo ""
+
+    # Calculate SHA-256
+    log_info "Calculating SHA-256..."
+    local sha256=$(shasum -a 256 "$APK_PATH_DEBUG" | awk '{print $1}')
+    echo -e "${GREEN}SHA-256:${NC}"
+    echo -e "  ${RED}$sha256${NC}"
+    echo ""
+
+    # Get debug keystore SHA-256 (for F-Droid AllowedAPKSigningKeys)
+    if [ -f "$DEBUG_KEYSTORE_PATH" ]; then
+        log_info "Debug keystore signature..."
+        local keystore_sha=$(keytool -list -v -keystore "$DEBUG_KEYSTORE_PATH" -storepass android -keypass android 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //' | tr -d ':' | tr '[:upper:]' '[:lower:]')
+        echo -e "${GREEN}Debug Keystore SHA-256 (for F-Droid YAML):${NC}"
+        echo -e "  ${RED}$keystore_sha${NC}"
+        echo ""
+    fi
+
+    # Show usage information
+    log_header "🎯 Usage"
+    echo -e "${BLUE}For Local Testing:${NC}"
+    echo -e "  adb install -r $APK_PATH_DEBUG"
+    echo -e "  ${YELLOW}OR${NC}"
+    echo -e "  ./dev.sh install"
+    echo ""
+
+    echo -e "${BLUE}For F-Droid RFP (Request For Packaging):${NC}"
+    echo -e "  1. Upload this APK to GitHub releases"
+    echo -e "  2. Include SHA-256 in your RFP issue"
+    echo -e "  3. Reference: https://github.com/dorumrr/de1984/releases"
+    echo ""
+
+    echo -e "${BLUE}For Debugging Issues:${NC}"
+    echo -e "  • This APK has all logs removed from source code"
+    echo -e "  • Stack traces will still show line numbers"
+    echo -e "  • Signed with debug keystore (not for production)"
+    echo ""
+
+    log_success "✅ Debug APK ready for testing and F-Droid RFP!"
+}
+
 # Build F-Droid APK (unsigned release for F-Droid verification)
 build_fdroid_apk() {
     log_header "Building F-Droid APK (Unsigned Release)"
@@ -1129,6 +1190,7 @@ show_help() {
     echo ""
     echo "Development Commands:"
     echo "  build                      - Build debug APK (for local testing)"
+    echo "  debug                      - Build debug APK with detailed info (SHA-256, location, F-Droid RFP)"
     echo "  install [device|emulator]  - Build debug, uninstall old, install fresh APK"
     echo "  launch                     - Launch the app"
     echo "  screenshot                 - Take and save screenshot"
@@ -1152,6 +1214,7 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  ./dev.sh build               - Build debug APK for testing"
+    echo "  ./dev.sh debug               - Build debug APK with SHA-256 and F-Droid RFP info"
     echo "  ./dev.sh install device      - Install debug APK on physical device"
     echo "  ./dev.sh fdroid              - Build APK for F-Droid testing (debug key)"
     echo "  ./dev.sh create-keystore     - Create production keystore (once)"
@@ -1231,6 +1294,9 @@ main() {
             ;;
         "build")
             build_all_apks
+            ;;
+        "debug")
+            build_debug_with_info
             ;;
         "fdroid")
             build_fdroid_apk

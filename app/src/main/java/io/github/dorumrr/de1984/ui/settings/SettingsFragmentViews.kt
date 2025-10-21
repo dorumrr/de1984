@@ -100,8 +100,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun setupViews() {
-        // Donate button
-        binding.donateButton.setOnClickListener {
+        // Donate button (included layout - access via root view)
+        binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.donate_button)?.setOnClickListener {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://buymeacoffee.com/ossdev"))
             startActivity(intent)
         }

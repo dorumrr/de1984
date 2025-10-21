@@ -300,11 +300,22 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="8dp"
                 android:text="Giving Privacy its due, by Doru Moraru"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:gravity="center" />
+
+            <!-- Donate Button -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:gravity="center">
+
+                <include layout="@layout/donate_button" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

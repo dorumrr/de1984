@@ -708,6 +708,10 @@ build_fdroid_release() {
 
     log_success "Git tag created and pushed!"
 
+    # Wait a moment for GitHub to process the tag
+    log_info "Waiting for GitHub to process the tag..."
+    sleep 3
+
     # Step 4: Create GitHub Release
     log_header "Step 4: Create GitHub Release"
 
@@ -716,16 +720,40 @@ build_fdroid_release() {
     log_info "Creating GitHub release: $release_title"
     log_info "Uploading APK: $(basename "$APK_PATH_RELEASE")"
 
-    # Create release with no notes and upload APK
-    gh release create "v${APP_VERSION}" \
-        "$APK_PATH_RELEASE" \
-        --title "$release_title" \
-        --notes ""
+    # Create release with notes and upload APK
+    # Use --target to explicitly specify the commit (avoids race condition)
+    local max_retries=3
+    local retry_count=0
+    local release_created=false
 
-    if [ $? -eq 0 ]; then
+    while [ $retry_count -lt $max_retries ]; do
+        if gh release create "v${APP_VERSION}" \
+            "$APK_PATH_RELEASE" \
+            --title "$release_title" \
+            --target "$commit_hash" \
+            --notes "De1984 Firewall and Package Control - Release v${APP_VERSION}
+
+Built with:
+- Android Gradle Plugin: 8.2.0
+- Java: 17
+- SDK: 34
+
+This APK is signed with the debug keystore for F-Droid reproducible builds."; then
+            release_created=true
+            break
+        else
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+                log_warn "Failed to create release, retrying in 3 seconds... (attempt $retry_count/$max_retries)"
+                sleep 3
+            fi
+        fi
+    done
+
+    if [ "$release_created" = true ]; then
         log_success "GitHub release created successfully!"
     else
-        log_error "Failed to create GitHub release!"
+        log_error "Failed to create GitHub release after $max_retries attempts!"
         exit 1
     fi
 

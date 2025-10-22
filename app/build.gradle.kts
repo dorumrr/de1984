@@ -15,12 +15,12 @@ tasks.whenTaskAdded {
 
 android {
     namespace = "io.github.dorumrr.de1984"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "io.github.dorumrr.de1984"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
 
         versionCode = 1
         versionName = "1.0.0"
@@ -42,7 +42,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false  // Disabled due to a known R8 base.jar issue
+            isMinifyEnabled = false  // Disabled due to R8 base.jar issue
             isShrinkResources = false
             isCrunchPngs = false
             proguardFiles(
@@ -117,17 +117,17 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
     // XML Views dependencies
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.8.4")
-    implementation("androidx.navigation:navigation-ui-ktx:2.8.4")
-    implementation("androidx.fragment:fragment-ktx:1.8.5")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.7.6")
+    implementation("androidx.navigation:navigation-ui-ktx:2.7.6")
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
 
     // Room database
     implementation("androidx.room:room-runtime:2.6.1")

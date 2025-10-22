@@ -569,6 +569,201 @@ build_debug_with_info() {
     log_success "✅ Debug APK ready for testing and F-Droid RFP!"
 }
 
+# Build F-Droid release with GitHub tag and release
+build_fdroid_release() {
+    log_header "F-Droid Release Workflow"
+
+    # Check if gh CLI is available
+    if ! command -v gh &> /dev/null; then
+        log_error "GitHub CLI (gh) not found! Please install it:"
+        echo "  brew install gh"
+        echo "  gh auth login"
+        exit 1
+    fi
+
+    # Check if authenticated
+    if ! gh auth status &> /dev/null; then
+        log_error "Not authenticated with GitHub! Please run:"
+        echo "  gh auth login"
+        exit 1
+    fi
+
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD --; then
+        log_error "You have uncommitted changes!"
+        echo ""
+        git status --short
+        echo ""
+        log_error "Please commit or stash your changes before creating a release."
+        exit 1
+    fi
+
+    # Check for unpushed commits
+    local unpushed=$(git log origin/main..HEAD --oneline 2>/dev/null)
+    if [ -n "$unpushed" ]; then
+        log_error "You have unpushed commits!"
+        echo ""
+        echo "$unpushed"
+        echo ""
+        log_error "Please push your commits before creating a release."
+        exit 1
+    fi
+
+    # Get current commit info
+    local commit_hash=$(git rev-parse HEAD)
+    local commit_short=$(git rev-parse --short HEAD)
+    local commit_message=$(git log -1 --pretty=%B)
+
+    echo ""
+    echo -e "${YELLOW}⚠️  IMPORTANT: F-Droid Release Confirmation${NC}"
+    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${YELLOW}Current commit:${NC}"
+    echo -e "  Hash:    ${GREEN}${commit_short}${NC} (${commit_hash})"
+    echo -e "  Message: ${BLUE}${commit_message}${NC}"
+    echo ""
+    echo -e "This will create a ${GREEN}v${APP_VERSION}${NC} release for F-Droid with:"
+    echo -e "  • Clean Gradle build (removes all caches)"
+    echo -e "  • APK signed with ${YELLOW}debug keystore${NC} (for reproducible builds)"
+    echo -e "  • Delete existing ${RED}v${APP_VERSION}${NC} tag/release if it exists"
+    echo -e "  • Create new Git tag: ${GREEN}v${APP_VERSION}${NC}"
+    echo -e "  • Create new GitHub release: ${GREEN}De1984 Firewall and Package Control - v${APP_VERSION}${NC}"
+    echo -e "  • Upload APK to GitHub release"
+    echo ""
+    echo -e "${YELLOW}This allows you to iterate and retry until F-Droid builds successfully.${NC}"
+    echo ""
+    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    read -p "Do you want to proceed? (yes/no): " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        log_warn "Release cancelled by user"
+        exit 0
+    fi
+
+    log_header "Step 1: Clean Gradle Build"
+    log_info "Removing all Gradle caches..."
+    rm -rf ~/.gradle/caches
+    rm -rf .gradle
+    ./gradlew --stop
+
+    log_info "Building F-Droid APK..."
+    ./gradlew clean assembleRelease --no-daemon
+
+    if [ ! -f "$APK_PATH_RELEASE" ]; then
+        log_error "Release APK build failed! File not found: $APK_PATH_RELEASE"
+        exit 1
+    fi
+
+    local filesize=$(ls -lh "$APK_PATH_RELEASE" | awk '{print $5}')
+    local apk_sha256=$(shasum -a 256 "$APK_PATH_RELEASE" | awk '{print $1}')
+
+    log_success "F-Droid APK built successfully!"
+    log_info "Location: $APK_PATH_RELEASE"
+    log_info "Size: $filesize"
+    log_info "SHA-256: $apk_sha256"
+
+    # Verify it's signed with debug keystore
+    log_info "Verifying signature..."
+    local cert_sha256=""
+    if [ -f "$DEBUG_KEYSTORE_PATH" ]; then
+        cert_sha256=$(keytool -list -v -keystore "$DEBUG_KEYSTORE_PATH" -storepass android -keypass android 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //' | tr -d ':' | tr '[:upper:]' '[:lower:]')
+        log_success "Debug keystore certificate SHA256: $cert_sha256"
+    fi
+
+    # Step 2: Delete existing tag and release if they exist
+    log_header "Step 2: Clean Up Existing Release"
+
+    # Check if GitHub release exists
+    if gh release view "v${APP_VERSION}" &>/dev/null; then
+        log_info "Deleting existing GitHub release v${APP_VERSION}..."
+        gh release delete "v${APP_VERSION}" --yes
+        log_success "GitHub release deleted"
+    else
+        log_info "No existing GitHub release found"
+    fi
+
+    # Check if local tag exists
+    if git rev-parse "v${APP_VERSION}" >/dev/null 2>&1; then
+        log_info "Deleting local tag v${APP_VERSION}..."
+        git tag -d "v${APP_VERSION}"
+        log_success "Local tag deleted"
+    fi
+
+    # Check if remote tag exists
+    if git ls-remote --tags origin | grep -q "refs/tags/v${APP_VERSION}"; then
+        log_info "Deleting remote tag v${APP_VERSION}..."
+        git push origin --delete "v${APP_VERSION}" 2>/dev/null || true
+        log_success "Remote tag deleted"
+    fi
+
+    # Step 3: Create Git Tag
+    log_header "Step 3: Create Git Tag"
+
+    log_info "Creating tag v${APP_VERSION} at commit $commit_short..."
+    git tag -a "v${APP_VERSION}" -m "Release v${APP_VERSION} for F-Droid"
+
+    log_info "Pushing tag to GitHub..."
+    git push origin "v${APP_VERSION}"
+
+    log_success "Git tag created and pushed!"
+
+    # Step 4: Create GitHub Release
+    log_header "Step 4: Create GitHub Release"
+
+    local release_title="De1984 Firewall and Package Control - v${APP_VERSION}"
+
+    log_info "Creating GitHub release: $release_title"
+    log_info "Uploading APK: $(basename "$APK_PATH_RELEASE")"
+
+    # Create release with no notes and upload APK
+    gh release create "v${APP_VERSION}" \
+        "$APK_PATH_RELEASE" \
+        --title "$release_title" \
+        --notes ""
+
+    if [ $? -eq 0 ]; then
+        log_success "GitHub release created successfully!"
+    else
+        log_error "Failed to create GitHub release!"
+        exit 1
+    fi
+
+    # Step 5: Show F-Droid YAML information
+    log_header "Step 5: F-Droid YAML Configuration"
+
+    echo ""
+    echo -e "${GREEN}✅ Release complete! Here's what you need for F-Droid:${NC}"
+    echo ""
+    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}Commit ID for fdroiddata YAML:${NC}"
+    echo -e "${GREEN}${commit_hash}${NC}"
+    echo ""
+    echo -e "${YELLOW}Certificate SHA-256 for AllowedAPKSigningKeys:${NC}"
+    echo -e "${GREEN}${cert_sha256}${NC}"
+    echo ""
+    echo -e "${YELLOW}GitHub Release URL:${NC}"
+    echo -e "${GREEN}https://github.com/dorumrr/de1984/releases/tag/v${APP_VERSION}${NC}"
+    echo ""
+    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${YELLOW}Add this to your fdroiddata YAML:${NC}"
+    echo ""
+    echo -e "Builds:"
+    echo -e "  - versionName: ${APP_VERSION}"
+    echo -e "    versionCode: 1"
+    echo -e "    commit: ${GREEN}${commit_hash}${NC}"
+    echo -e "    subdir: app"
+    echo -e "    gradle:"
+    echo -e "      - yes"
+    echo -e "    prebuild: sed -i -e '/applicationIdSuffix/d' build.gradle.kts"
+    echo ""
+    echo -e "AllowedAPKSigningKeys: ${GREEN}${cert_sha256}${NC}"
+    echo ""
+    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+}
+
 # Build F-Droid APK (unsigned release for F-Droid verification)
 build_fdroid_apk() {
     log_header "Building F-Droid APK (Unsigned Release)"
@@ -1154,6 +1349,13 @@ show_welcome() {
     echo -e "         ${BLUE}→${NC} Reference in F-Droid YAML: de1984-v%v-release.apk"
     echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh fdroid${NC}"
     echo ""
+    echo -e "${GREEN}FDROID-RELEASE${NC} - Complete F-Droid release workflow (automated)"
+    echo -e "         ${BLUE}→${NC} Clean Gradle build with debug keystore"
+    echo -e "         ${BLUE}→${NC} Create Git tag (v${APP_VERSION})"
+    echo -e "         ${BLUE}→${NC} Create GitHub release with APK"
+    echo -e "         ${BLUE}→${NC} Shows commit ID for fdroiddata YAML"
+    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh fdroid-release${NC}"
+    echo ""
     echo -e "${GREEN}RELEASE${NC}  - Build production-signed APK for F-Droid + personal distribution"
     echo -e "         ${BLUE}→${NC} Signed with YOUR production keystore"
     echo -e "         ${BLUE}→${NC} For F-Droid: Rename and upload to GitHub"
@@ -1369,6 +1571,7 @@ show_help() {
     echo ""
     echo "Build Commands:"
     echo "  fdroid                     - Build APK for F-Droid testing (debug keystore)"
+    echo "  fdroid-release             - Complete F-Droid release (build + tag + GitHub release)"
     echo "  reproducible               - Test F-Droid reproducible build locally"
     echo "  release                    - Build production-signed APK (shows F-Droid workflow)"
     echo "  create-keystore            - Create production keystore (first time only)"
@@ -1470,6 +1673,9 @@ main() {
             ;;
         "fdroid")
             build_fdroid_apk
+            ;;
+        "fdroid-release")
+            build_fdroid_release
             ;;
         "reproducible")
             test_reproducible_build

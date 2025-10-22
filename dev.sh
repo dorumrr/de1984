@@ -1182,6 +1182,174 @@ show_welcome() {
     echo ""
 }
 
+# Test reproducible build locally (simulates F-Droid process)
+test_reproducible_build() {
+    log_header "Testing F-Droid Reproducible Build Locally"
+
+    log_info "This tests if two clean builds produce identical APKs"
+    echo ""
+
+    # Step 1: First clean build
+    log_header "Step 1: First Clean Build"
+    log_info "Cleaning Gradle caches..."
+    ./gradlew clean
+    rm -rf ~/.gradle/caches
+    rm -rf .gradle
+    ./gradlew --stop
+
+    log_info "Building first APK..."
+    ./gradlew assembleRelease --no-daemon
+
+    if [ ! -f "$APK_PATH_RELEASE" ]; then
+        log_error "Build failed! APK not found: $APK_PATH_RELEASE"
+        exit 1
+    fi
+
+    # Save first build
+    local first_apk="app/build/outputs/apk/release/de1984-v${APP_VERSION}-build1.apk"
+    cp "$APK_PATH_RELEASE" "$first_apk"
+    local first_sha=$(shasum -a 256 "$first_apk" | awk '{print $1}')
+    local first_size=$(ls -lh "$first_apk" | awk '{print $5}')
+
+    log_success "First build: $first_apk ($first_size)"
+    echo -e "  SHA-256: ${YELLOW}$first_sha${NC}"
+
+    # Step 2: Second clean build
+    log_header "Step 2: Second Clean Build"
+    log_info "Cleaning Gradle caches again..."
+    ./gradlew clean
+    rm -rf ~/.gradle/caches
+    rm -rf .gradle
+    ./gradlew --stop
+
+    log_info "Building second APK..."
+    ./gradlew assembleRelease --no-daemon
+
+    if [ ! -f "$APK_PATH_RELEASE" ]; then
+        log_error "Build failed! APK not found: $APK_PATH_RELEASE"
+        exit 1
+    fi
+
+    # Save second build
+    local second_apk="app/build/outputs/apk/release/de1984-v${APP_VERSION}-build2.apk"
+    cp "$APK_PATH_RELEASE" "$second_apk"
+    local second_sha=$(shasum -a 256 "$second_apk" | awk '{print $1}')
+    local second_size=$(ls -lh "$second_apk" | awk '{print $5}')
+
+    log_success "Second build: $second_apk ($second_size)"
+    echo -e "  SHA-256: ${YELLOW}$second_sha${NC}"
+
+    # Step 3: Compare builds
+    log_header "Step 3: Comparing Builds"
+    echo ""
+    echo -e "${BLUE}Build 1 SHA-256:${NC}"
+    echo -e "  ${YELLOW}$first_sha${NC}"
+    echo ""
+    echo -e "${BLUE}Build 2 SHA-256:${NC}"
+    echo -e "  ${YELLOW}$second_sha${NC}"
+    echo ""
+
+    if [ "$first_sha" = "$second_sha" ]; then
+        log_success "✅ BUILDS ARE IDENTICAL! Reproducible build works!"
+        echo ""
+        echo -e "${GREEN}🎯 Your builds are reproducible!${NC}"
+        echo -e "   F-Droid will be able to verify your APK"
+    else
+        log_error "❌ BUILDS ARE DIFFERENT! Not reproducible yet."
+        echo ""
+        echo -e "${RED}⚠️  The builds differ - reproducibility needs work${NC}"
+        echo ""
+
+        # Try to find differences
+        log_info "Analyzing differences..."
+
+        # Check if diffoscope is available
+        if command -v diffoscope &> /dev/null; then
+            log_info "Running diffoscope (this may take a while)..."
+            diffoscope "$first_apk" "$second_apk" --text diffoscope-output.txt 2>/dev/null || true
+            if [ -f diffoscope-output.txt ]; then
+                log_info "Differences saved to: ${YELLOW}diffoscope-output.txt${NC}"
+                echo ""
+                echo "First 50 lines of differences:"
+                head -50 diffoscope-output.txt
+            fi
+        else
+            log_warn "Install 'diffoscope' for detailed diff analysis:"
+            echo "  brew install diffoscope  # macOS"
+            echo "  apt install diffoscope   # Debian/Ubuntu"
+        fi
+
+        # Basic size comparison
+        local size1=$(stat -f%z "$first_apk" 2>/dev/null || stat -c%s "$first_apk")
+        local size2=$(stat -f%z "$second_apk" 2>/dev/null || stat -c%s "$second_apk")
+        local size_diff=$((size2 - size1))
+
+        echo ""
+        echo -e "${BLUE}Size comparison:${NC}"
+        echo -e "  Build 1: $first_size ($size1 bytes)"
+        echo -e "  Build 2: $second_size ($size2 bytes)"
+        echo -e "  Difference: $size_diff bytes"
+    fi
+
+    # Step 4: Verify signature
+    log_header "Step 4: Verifying Signature"
+
+    # Find Android SDK
+    local android_sdk=""
+    if [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME" ]; then
+        android_sdk="$ANDROID_HOME"
+    elif [ -d "$HOME/Library/Android/sdk" ]; then
+        android_sdk="$HOME/Library/Android/sdk"
+    elif [ -d "$HOME/Android/Sdk" ]; then
+        android_sdk="$HOME/Android/Sdk"
+    fi
+
+    if [ -n "$android_sdk" ]; then
+        local build_tools_dir=$(find "$android_sdk/build-tools" -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1)
+        local apksigner="$build_tools_dir/apksigner"
+
+        if [ -f "$apksigner" ]; then
+            log_info "Verifying APK signature..."
+            echo ""
+            "$apksigner" verify --verbose "$second_apk" 2>&1 | head -10
+        fi
+    fi
+
+    # Step 5: Summary
+    echo ""
+    log_header "📋 Summary"
+    echo ""
+
+    if [ "$first_sha" = "$second_sha" ]; then
+        echo -e "${GREEN}✅ Reproducible build: SUCCESS${NC}"
+        echo ""
+        echo -e "${BLUE}Next steps:${NC}"
+        echo -e "  1. Upload ${YELLOW}$APK_PATH_RELEASE${NC} to GitHub releases"
+        echo -e "  2. Update F-Droid YAML (remove zipalign postbuild)"
+        echo -e "  3. F-Droid will verify reproducibility"
+        echo ""
+        echo -e "${YELLOW}📝 F-Droid YAML should have:${NC}"
+        echo -e "  Binaries: https://github.com/dorumrr/de1984/releases/download/v%v/de1984-v%v-release.apk"
+        echo -e "  (NO srclibs or postbuild sections needed)"
+    else
+        echo -e "${RED}❌ Reproducible build: FAILED${NC}"
+        echo ""
+        echo -e "${BLUE}Possible causes:${NC}"
+        echo -e "  • Timestamps in compiled files"
+        echo -e "  • Non-deterministic resource compilation (AAPT2)"
+        echo -e "  • Build environment differences"
+        echo -e "  • Gradle cache state"
+        echo ""
+        echo -e "${YELLOW}📝 Options:${NC}"
+        echo -e "  1. Remove 'Binaries:' from F-Droid YAML (F-Droid signs with their key)"
+        echo -e "  2. Investigate differences (use diffoscope)"
+        echo -e "  3. Add more reproducibility flags to build.gradle.kts"
+    fi
+
+    echo ""
+    log_info "Test complete!"
+}
+
 # Show help
 show_help() {
     echo "De1984 Development Script"
@@ -1201,6 +1369,7 @@ show_help() {
     echo ""
     echo "Build Commands:"
     echo "  fdroid                     - Build APK for F-Droid testing (debug keystore)"
+    echo "  reproducible               - Test F-Droid reproducible build locally"
     echo "  release                    - Build production-signed APK (shows F-Droid workflow)"
     echo "  create-keystore            - Create production keystore (first time only)"
     echo ""
@@ -1217,6 +1386,7 @@ show_help() {
     echo "  ./dev.sh debug               - Build debug APK with SHA-256 and F-Droid RFP info"
     echo "  ./dev.sh install device      - Install debug APK on physical device"
     echo "  ./dev.sh fdroid              - Build APK for F-Droid testing (debug key)"
+    echo "  ./dev.sh reproducible        - Test F-Droid reproducible build locally"
     echo "  ./dev.sh create-keystore     - Create production keystore (once)"
     echo "  ./dev.sh release             - Build production APK + show F-Droid workflow"
     echo ""
@@ -1300,6 +1470,9 @@ main() {
             ;;
         "fdroid")
             build_fdroid_apk
+            ;;
+        "reproducible")
+            test_reproducible_build
             ;;
         "release")
             build_and_sign_release

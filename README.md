@@ -2,9 +2,9 @@
 
 **Privacy isn’t default. Take it back with De1984 Firewall and Package control.**
 
-<a hreh="https://apt.izzysoft.de/packages/io.github.dorumrr.de1984" target="_blank"><img height="50" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"></a> <!-- <a hreh="https://f-droid.org/en/packages/io.github.dorumrr.de1984" target="_blank"><img height="50" src="https://f-droid.org/badge/get-it-on.png"></a> --> 
-
-<!-- [![SUPPORT DEVELOPMENT](https://img.shields.io/badge/SUPPORT%20DEVELOPMENT-DONATE-2E2E2E?style=for-the-badge&color=FFD700)](https://buymeacoffee.com/ossdev) -->
+<div>
+  <a href="https://apt.izzysoft.de/packages/io.github.dorumrr.de1984"><img height="50" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"></a> <!-- <a href="https://f-droid.org/en/packages/io.github.dorumrr.de1984/"><img height="50" src="https://f-droid.org/badge/get-it-on.png"></a>--> <a href="https://www.buymeacoffee.com/ossdev"><img height="50" src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png" /></a>
+</div>
 
 ## 📸 Screenshots
 

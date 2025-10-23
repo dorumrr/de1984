@@ -1,7 +1,17 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+}
+
+// Load keystore.properties if it exists (standard Android approach)
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 // Disable baseline profiles for reproducible builds (F-Droid compatibility)
@@ -40,6 +50,21 @@ android {
         includeInBundle = false
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                val storeFilePath = keystoreProperties.getProperty("storeFile")
+                if (storeFilePath != null && storeFilePath.isNotEmpty()) {
+                    // Path is relative to rootProject directory
+                    storeFile = rootProject.file(storeFilePath)
+                    storePassword = keystoreProperties.getProperty("storePassword")
+                    keyAlias = keystoreProperties.getProperty("keyAlias") ?: "de1984-release-key"
+                    keyPassword = keystoreProperties.getProperty("keyPassword")
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false  // Disabled due to R8 base.jar issue
@@ -50,8 +75,14 @@ android {
                 "proguard-rules.pro"
             )
             isProfileable = false
-            // Use debug signing for reproducible builds
-            signingConfig = signingConfigs.getByName("debug")
+
+            // Sign with production keystore if keystore.properties exists
+            // Otherwise unsigned (will be signed by dev.sh script)
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.findByName("release")
+            } else {
+                null
+            }
 
             // Add deterministic BuildConfig fields for reproducible builds
             buildConfigField("String", "BUILD_TIME", "\"1970-01-01T00:00:00Z\"")
@@ -60,6 +91,7 @@ android {
         debug {
             isDebuggable = true
             applicationIdSuffix = ".debug"
+            // Debug builds use the default debug keystore automatically
         }
     }
 
@@ -108,7 +140,7 @@ android {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val versionName = defaultConfig.versionName ?: "unknown"
             output.outputFileName = if (name.contains("release")) {
-                "de1984-v${versionName}-release.apk"
+                "de1984-v${versionName}.apk"
             } else {
                 "de1984-v${versionName}-debug.apk"
             }

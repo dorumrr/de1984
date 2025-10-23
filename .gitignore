@@ -90,4 +90,4 @@ screenshots/
 release-keystore.jks
 release-keystore.jks.backup
 
-FDROID_SUBMISSION_GUIDE.md
+keystore.properties

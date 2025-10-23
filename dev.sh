@@ -13,12 +13,10 @@ APP_ID_DEBUG="${APP_ID}.debug"
 APP_VERSION=$(grep 'versionName = ' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
 
 APK_PATH_DEBUG="app/build/outputs/apk/debug/de1984-v${APP_VERSION}-debug.apk"
-APK_PATH_RELEASE="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release.apk"
-APK_PATH_RELEASE_ALIGNED="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release-aligned.apk"
-APK_PATH_RELEASE_SIGNED="app/build/outputs/apk/release/de1984-v${APP_VERSION}-release-signed.apk"
+APK_PATH_RELEASE="app/build/outputs/apk/release/de1984-v${APP_VERSION}.apk"
 SCREENSHOT_DIR="screenshots"
 KEYSTORE_PATH="release-keystore.jks"
-DEBUG_KEYSTORE_PATH="$HOME/.android/debug.keystore"
+KEY_ALIAS="de1984-release-key"
 
 # Colors for output
 RED='\033[0;31m'
@@ -48,24 +46,7 @@ log_header() {
     echo -e "\n${BLUE}🔷 $1${NC}"
 }
 
-log_big_red() {
-    echo -e "\n${RED}🚨🚨🚨 $1 🚨🚨🚨${NC}\n"
-}
 
-log_github_reminder() {
-    local apk_file="$1"
-    echo ""
-    echo -e "${GREEN}✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅${NC}"
-    echo -e "${GREEN}    ✅✅✅               UPLOAD TO GITHUB RELEASES               ✅✅✅${NC}"
-    echo -e "${GREEN}✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅${NC}"
-    echo ""
-    echo -e "${GREEN}📦 File: ${NC}\033[1m${RED}$(basename "$apk_file")\033[0m"
-    echo -e "${BLUE}🔗 Upload to: ${NC}\033[1m${RED}https://github.com/dorumrr/de1984/releases\033[0m"
-    echo -e "${NC}⚠️  F-Droid will verify against this signed APK${NC}"
-    echo ""
-    echo -e "${GREEN}✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅${NC}"
-    echo ""
-}
 
 # Check if ADB is available
 check_adb() {
@@ -128,20 +109,7 @@ find_emulators() {
     fi
 }
 
-# Check if an AVD is Android 15 (API 36)
-is_android_15_avd() {
-    local avd_name="$1"
-    local avd_config="$HOME/.android/avd/${avd_name}.avd/config.ini"
-
-    if [ -f "$avd_config" ]; then
-        if grep -q "android-36" "$avd_config" 2>/dev/null; then
-            return 0
-        fi
-    fi
-    return 1
-}
-
-# Find best emulator (prefer Android 15 Pixel 9a)
+# Find best emulator (prefer Pixel 9a, then first available)
 find_best_emulator() {
     local avds=($(find_emulators))
 
@@ -150,41 +118,9 @@ find_best_emulator() {
         return 1
     fi
 
-    # First priority: Android 15 Pixel 9a (best for testing)
+    # First priority: Pixel 9a
     for avd in "${avds[@]}"; do
-        if is_android_15_avd "$avd" && [[ "$avd" =~ [Pp]ixel.*9a ]]; then
-            echo "$avd"
-            return 0
-        fi
-    done
-
-    # Second priority: Android 15 Pixel 9 (non-fold)
-    for avd in "${avds[@]}"; do
-        if is_android_15_avd "$avd" && [[ "$avd" =~ [Pp]ixel.*9 ]] && [[ ! "$avd" =~ [Ff]old ]]; then
-            echo "$avd"
-            return 0
-        fi
-    done
-
-    # Third priority: Any Android 15 Pixel (excluding folds)
-    for avd in "${avds[@]}"; do
-        if is_android_15_avd "$avd" && [[ "$avd" =~ [Pp]ixel ]] && [[ ! "$avd" =~ [Ff]old ]]; then
-            echo "$avd"
-            return 0
-        fi
-    done
-
-    # Fourth priority: Any Android 15 device (excluding folds)
-    for avd in "${avds[@]}"; do
-        if is_android_15_avd "$avd" && [[ ! "$avd" =~ [Ff]old ]]; then
-            echo "$avd"
-            return 0
-        fi
-    done
-
-    # Fifth priority: Any Pixel device (excluding folds)
-    for avd in "${avds[@]}"; do
-        if [[ "$avd" =~ [Pp]ixel ]] && [[ ! "$avd" =~ [Ff]old ]]; then
+        if [[ "$avd" =~ [Pp]ixel.*9a ]]; then
             echo "$avd"
             return 0
         fi
@@ -193,79 +129,6 @@ find_best_emulator() {
     # Fallback: First available
     echo "${avds[0]}"
     return 0
-}
-
-# Create Android 15 Pixel 9a emulator
-create_android_15_pixel() {
-    log_header "Creating Android 15 Pixel 9a Emulator"
-
-    local sdk_path=$(find_android_sdk)
-    if [ -z "$sdk_path" ]; then
-        log_error "Android SDK not found!"
-        return 1
-    fi
-
-    local avdmanager="$sdk_path/cmdline-tools/latest/bin/avdmanager"
-    local sdkmanager="$sdk_path/cmdline-tools/latest/bin/sdkmanager"
-
-    # Check if cmdline-tools exist
-    if [ ! -f "$avdmanager" ]; then
-        log_error "avdmanager not found!"
-        log_info "Please install Android SDK Command-line Tools:"
-        log_info "1. Open Android Studio"
-        log_info "2. Settings → Appearance & Behavior → System Settings → Android SDK"
-        log_info "3. SDK Tools tab → Check 'Android SDK Command-line Tools'"
-        log_info "4. Click Apply"
-        return 1
-    fi
-
-    # Check if Android 15 system image is installed
-    log_info "Checking for Android 15 system image..."
-    if [ ! -d "$sdk_path/system-images/android-36/google_apis/arm64-v8a" ] && \
-       [ ! -d "$sdk_path/system-images/android-36/google_apis/x86_64" ]; then
-        log_warn "Android 15 system image not found. Installing..."
-        log_info "This may take a few minutes..."
-
-        # Determine architecture
-        local arch="x86_64"
-        if [[ "$(uname -m)" == "arm64" ]]; then
-            arch="arm64-v8a"
-        fi
-
-        "$sdkmanager" "system-images;android-36;google_apis;${arch}"
-
-        if [ $? -ne 0 ]; then
-            log_error "Failed to install Android 15 system image"
-            return 1
-        fi
-    fi
-
-    log_success "Android 15 system image found"
-
-    # Create AVD with Pixel 9a
-    local avd_name="Pixel_9a_API_36"
-    log_info "Creating Pixel 9a emulator: $avd_name"
-
-    # Determine architecture
-    local arch="x86_64"
-    if [[ "$(uname -m)" == "arm64" ]]; then
-        arch="arm64-v8a"
-    fi
-
-    echo "no" | "$avdmanager" create avd \
-        --force \
-        --name "$avd_name" \
-        --package "system-images;android-36;google_apis;${arch}" \
-        --device "pixel_9a"
-
-    if [ $? -eq 0 ]; then
-        log_success "Created Android 15 Pixel 9a emulator: $avd_name"
-        echo "$avd_name"
-        return 0
-    else
-        log_error "Failed to create emulator"
-        return 1
-    fi
 }
 
 # Start emulator automatically
@@ -300,27 +163,13 @@ start_emulator() {
     local avds=($(find_emulators))
 
     if [ ${#avds[@]} -eq 0 ]; then
-        log_warn "No Android Virtual Devices (AVDs) found!"
-        log_info "Would you like to create an Android 15 Pixel 9a emulator? (recommended)"
-        read -p "Create Android 15 Pixel 9a emulator? (yes/no): " create_confirm
-
-        if [ "$create_confirm" = "yes" ]; then
-            local new_avd=$(create_android_15_pixel)
-            if [ -n "$new_avd" ]; then
-                requested_emulator="$new_avd"
-                avds=("$new_avd")
-            else
-                log_error "Failed to create emulator"
-                exit 1
-            fi
-        else
-            log_info "Please create an emulator manually:"
-            log_info "1. Open Android Studio"
-            log_info "2. Tools → AVD Manager → Create Virtual Device"
-            log_info "3. Choose Pixel 9a and Android 15 (API 36) system image"
-            log_info "4. Then run: ./dev.sh install emulator"
-            exit 1
-        fi
+        log_error "No Android Virtual Devices (AVDs) found!"
+        log_info "Please create an emulator:"
+        log_info "1. Open Android Studio"
+        log_info "2. Tools → AVD Manager → Create Virtual Device"
+        log_info "3. Choose Pixel 9a and Android 15 (API 36) system image"
+        log_info "4. Then run: ./dev.sh install"
+        exit 1
     fi
 
     # Choose emulator
@@ -347,7 +196,7 @@ start_emulator() {
             exit 1
         fi
     else
-        # Use best available emulator (prefer Android 15 Pixel)
+        # Use best available emulator (prefer Pixel 9a)
         emulator_name=$(find_best_emulator)
 
         if [ -z "$emulator_name" ]; then
@@ -355,26 +204,7 @@ start_emulator() {
             exit 1
         fi
 
-        if is_android_15_avd "$emulator_name"; then
-            log_success "Using Android 15 emulator: $emulator_name ✨"
-        else
-            log_warn "Using emulator: $emulator_name (not Android 15)"
-            log_info "Tip: Create Android 15 Pixel 9a emulator with: ./dev.sh create-emulator"
-        fi
-
-        if [ ${#avds[@]} -gt 1 ]; then
-            log_info "Other available emulators:"
-            for avd in "${avds[@]}"; do
-                if [ "$avd" != "$emulator_name" ]; then
-                    if is_android_15_avd "$avd"; then
-                        echo "  📱 $avd ${GREEN}(Android 15)${NC}"
-                    else
-                        echo "  📱 $avd"
-                    fi
-                fi
-            done
-            log_info "To use specific emulator: ./dev.sh emulator [name]"
-        fi
+        log_success "Using emulator: $emulator_name"
     fi
 
     log_info "Starting emulator (this may take 30-60 seconds)..."
@@ -471,31 +301,6 @@ build_debug_apk() {
     log_info "Size: $filesize"
 }
 
-# Build unsigned release APK
-build_release_apk() {
-    log_header "Building Release APK (Unsigned)"
-
-    if [ ! -f "gradlew" ]; then
-        log_error "gradlew not found! Are you in the project root?"
-        exit 1
-    fi
-
-    log_info "Building release APK..."
-    ./gradlew assembleRelease --no-daemon
-
-    if [ ! -f "$APK_PATH_RELEASE" ]; then
-        log_error "Release APK build failed! File not found: $APK_PATH_RELEASE"
-        exit 1
-    fi
-
-    local filesize=$(ls -lh "$APK_PATH_RELEASE" | awk '{print $5}')
-    log_success "Release APK built successfully!"
-    log_info "Location: $APK_PATH_RELEASE"
-    log_info "Size: $filesize"
-    log_warn "This APK is UNSIGNED and cannot be installed on devices"
-    log_info "Use './dev.sh release' to build and sign a release APK"
-}
-
 # Build debug APK only
 build_all_apks() {
     log_header "Building Debug APK"
@@ -508,302 +313,12 @@ build_all_apks() {
     log_info "This APK is signed with debug key and ready for development/testing"
 }
 
-# Build debug APK with detailed info for F-Droid RFP
-build_debug_with_info() {
-    log_header "Building Debug APK (For Testing & F-Droid RFP)"
 
-    # Build debug APK
-    build_debug_apk
 
-    echo ""
-    log_success "Debug APK built successfully!"
-    echo ""
-
-    # Show file location
-    log_header "📦 APK Information"
-    echo -e "${GREEN}Location:${NC}"
-    echo -e "  ${YELLOW}$(pwd)/$APK_PATH_DEBUG${NC}"
-    echo ""
-
-    # Show file size
-    local filesize=$(ls -lh "$APK_PATH_DEBUG" | awk '{print $5}')
-    echo -e "${GREEN}Size:${NC} $filesize"
-    echo ""
-
-    # Calculate SHA-256
-    log_info "Calculating SHA-256..."
-    local sha256=$(shasum -a 256 "$APK_PATH_DEBUG" | awk '{print $1}')
-    echo -e "${GREEN}SHA-256:${NC}"
-    echo -e "  ${RED}$sha256${NC}"
-    echo ""
-
-    # Get debug keystore SHA-256 (for F-Droid AllowedAPKSigningKeys)
-    if [ -f "$DEBUG_KEYSTORE_PATH" ]; then
-        log_info "Debug keystore signature..."
-        local keystore_sha=$(keytool -list -v -keystore "$DEBUG_KEYSTORE_PATH" -storepass android -keypass android 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //' | tr -d ':' | tr '[:upper:]' '[:lower:]')
-        echo -e "${GREEN}Debug Keystore SHA-256 (for F-Droid YAML):${NC}"
-        echo -e "  ${RED}$keystore_sha${NC}"
-        echo ""
-    fi
-
-    # Show usage information
-    log_header "🎯 Usage"
-    echo -e "${BLUE}For Local Testing:${NC}"
-    echo -e "  adb install -r $APK_PATH_DEBUG"
-    echo -e "  ${YELLOW}OR${NC}"
-    echo -e "  ./dev.sh install"
-    echo ""
-
-    echo -e "${BLUE}For F-Droid RFP (Request For Packaging):${NC}"
-    echo -e "  1. Upload this APK to GitHub releases"
-    echo -e "  2. Include SHA-256 in your RFP issue"
-    echo -e "  3. Reference: https://github.com/dorumrr/de1984/releases"
-    echo ""
-
-    echo -e "${BLUE}For Debugging Issues:${NC}"
-    echo -e "  • This APK has all logs removed from source code"
-    echo -e "  • Stack traces will still show line numbers"
-    echo -e "  • Signed with debug keystore (not for production)"
-    echo ""
-
-    log_success "✅ Debug APK ready for testing and F-Droid RFP!"
-}
-
-# Build F-Droid release with GitHub tag and release
-build_fdroid_release() {
-    log_header "F-Droid Release Workflow"
-
-    # Check if gh CLI is available
-    if ! command -v gh &> /dev/null; then
-        log_error "GitHub CLI (gh) not found! Please install it:"
-        echo "  brew install gh"
-        echo "  gh auth login"
-        exit 1
-    fi
-
-    # Check if authenticated
-    if ! gh auth status &> /dev/null; then
-        log_error "Not authenticated with GitHub! Please run:"
-        echo "  gh auth login"
-        exit 1
-    fi
-
-    # Check for uncommitted changes
-    if ! git diff-index --quiet HEAD --; then
-        log_error "You have uncommitted changes!"
-        echo ""
-        git status --short
-        echo ""
-        log_error "Please commit or stash your changes before creating a release."
-        exit 1
-    fi
-
-    # Check for unpushed commits
-    local unpushed=$(git log origin/main..HEAD --oneline 2>/dev/null)
-    if [ -n "$unpushed" ]; then
-        log_error "You have unpushed commits!"
-        echo ""
-        echo "$unpushed"
-        echo ""
-        log_error "Please push your commits before creating a release."
-        exit 1
-    fi
-
-    # Get current commit info
-    local commit_hash=$(git rev-parse HEAD)
-    local commit_short=$(git rev-parse --short HEAD)
-    local commit_message=$(git log -1 --pretty=%B)
-
-    echo ""
-    echo -e "${YELLOW}⚠️  IMPORTANT: F-Droid Release Confirmation${NC}"
-    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    echo -e "${YELLOW}Current commit:${NC}"
-    echo -e "  Hash:    ${GREEN}${commit_short}${NC} (${commit_hash})"
-    echo -e "  Message: ${BLUE}${commit_message}${NC}"
-    echo ""
-    echo -e "This will create a ${GREEN}v${APP_VERSION}${NC} release for F-Droid with:"
-    echo -e "  • Clean Gradle build (removes all caches)"
-    echo -e "  • APK signed with ${YELLOW}debug keystore${NC} (for reproducible builds)"
-    echo -e "  • Delete existing ${RED}v${APP_VERSION}${NC} tag/release if it exists"
-    echo -e "  • Create new Git tag: ${GREEN}v${APP_VERSION}${NC}"
-    echo -e "  • Create new GitHub release: ${GREEN}De1984 Firewall and Package Control - v${APP_VERSION}${NC}"
-    echo -e "  • Upload APK to GitHub release"
-    echo ""
-    echo -e "${YELLOW}This allows you to iterate and retry until F-Droid builds successfully.${NC}"
-    echo ""
-    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    read -p "Do you want to proceed? (yes/no): " confirm
-
-    if [ "$confirm" != "yes" ]; then
-        log_warn "Release cancelled by user"
-        exit 0
-    fi
-
-    log_header "Step 1: Clean Gradle Build"
-    log_info "Removing all Gradle caches..."
-    rm -rf ~/.gradle/caches
-    rm -rf .gradle
-    ./gradlew --stop
-
-    log_info "Building F-Droid APK..."
-    ./gradlew clean assembleRelease --no-daemon
-
-    if [ ! -f "$APK_PATH_RELEASE" ]; then
-        log_error "Release APK build failed! File not found: $APK_PATH_RELEASE"
-        exit 1
-    fi
-
-    local filesize=$(ls -lh "$APK_PATH_RELEASE" | awk '{print $5}')
-    local apk_sha256=$(shasum -a 256 "$APK_PATH_RELEASE" | awk '{print $1}')
-
-    log_success "F-Droid APK built successfully!"
-    log_info "Location: $APK_PATH_RELEASE"
-    log_info "Size: $filesize"
-    log_info "SHA-256: $apk_sha256"
-
-    # Verify it's signed with debug keystore
-    log_info "Verifying signature..."
-    local cert_sha256=""
-    if [ -f "$DEBUG_KEYSTORE_PATH" ]; then
-        cert_sha256=$(keytool -list -v -keystore "$DEBUG_KEYSTORE_PATH" -storepass android -keypass android 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //' | tr -d ':' | tr '[:upper:]' '[:lower:]')
-        log_success "Debug keystore certificate SHA256: $cert_sha256"
-    fi
-
-    # Step 2: Delete existing tag and release if they exist
-    log_header "Step 2: Clean Up Existing Release"
-
-    # Check if GitHub release exists
-    if gh release view "v${APP_VERSION}" &>/dev/null; then
-        log_info "Deleting existing GitHub release v${APP_VERSION}..."
-        gh release delete "v${APP_VERSION}" --yes
-        log_success "GitHub release deleted"
-    else
-        log_info "No existing GitHub release found"
-    fi
-
-    # Check if local tag exists
-    if git rev-parse "v${APP_VERSION}" >/dev/null 2>&1; then
-        log_info "Deleting local tag v${APP_VERSION}..."
-        git tag -d "v${APP_VERSION}"
-        log_success "Local tag deleted"
-    fi
-
-    # Check if remote tag exists
-    if git ls-remote --tags origin | grep -q "refs/tags/v${APP_VERSION}"; then
-        log_info "Deleting remote tag v${APP_VERSION}..."
-        git push origin --delete "v${APP_VERSION}" 2>/dev/null || true
-        log_success "Remote tag deleted"
-    fi
-
-    # Step 3: Create Git Tag
-    log_header "Step 3: Create Git Tag"
-
-    log_info "Creating tag v${APP_VERSION} at commit $commit_short..."
-    git tag -a "v${APP_VERSION}" -m "Release v${APP_VERSION} for F-Droid"
-
-    log_info "Pushing tag to GitHub..."
-    git push origin "v${APP_VERSION}"
-
-    log_success "Git tag created and pushed!"
-
-    # Step 4: Create GitHub Release
-    log_header "Step 4: Create GitHub Release"
-
-    local release_title="De1984 Firewall and Package Control - v${APP_VERSION}"
-
-    log_info "Creating GitHub release: $release_title"
-    log_info "Uploading APK: $(basename "$APK_PATH_RELEASE")"
-
-    # Create release with no notes and upload APK
-    gh release create "v${APP_VERSION}" \
-        "$APK_PATH_RELEASE" \
-        --title "$release_title" \
-        --notes ""
-
-    if [ $? -eq 0 ]; then
-        log_success "GitHub release created successfully!"
-    else
-        log_error "Failed to create GitHub release!"
-        exit 1
-    fi
-
-    # Step 5: Show F-Droid YAML information
-    log_header "Step 5: F-Droid YAML Configuration"
-
-    echo ""
-    echo -e "${GREEN}✅ Release complete! Here's what you need for F-Droid:${NC}"
-    echo ""
-    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${YELLOW}Commit ID for fdroiddata YAML:${NC}"
-    echo -e "${GREEN}${commit_hash}${NC}"
-    echo ""
-    echo -e "${YELLOW}Certificate SHA-256 for AllowedAPKSigningKeys:${NC}"
-    echo -e "${GREEN}${cert_sha256}${NC}"
-    echo ""
-    echo -e "${YELLOW}GitHub Release URL:${NC}"
-    echo -e "${GREEN}https://github.com/dorumrr/de1984/releases/tag/v${APP_VERSION}${NC}"
-    echo ""
-    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    echo -e "${YELLOW}Add this to your fdroiddata YAML:${NC}"
-    echo ""
-    echo -e "Builds:"
-    echo -e "  - versionName: ${APP_VERSION}"
-    echo -e "    versionCode: 1"
-    echo -e "    commit: ${GREEN}${commit_hash}${NC}"
-    echo -e "    subdir: app"
-    echo -e "    gradle:"
-    echo -e "      - yes"
-    echo -e "    prebuild: sed -i -e '/applicationIdSuffix/d' build.gradle.kts"
-    echo ""
-    echo -e "AllowedAPKSigningKeys: ${GREEN}${cert_sha256}${NC}"
-    echo ""
-    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-}
-
-# Build F-Droid APK (unsigned release for F-Droid verification)
-build_fdroid_apk() {
-    log_header "Building F-Droid APK (Unsigned Release)"
-
-    if [ ! -f "gradlew" ]; then
-        log_error "gradlew not found! Are you in the project root?"
-        exit 1
-    fi
-
-    log_info "Building unsigned release APK for F-Droid..."
-    log_info "This APK will be signed with debug keystore automatically by Gradle"
-    ./gradlew clean assembleRelease --no-daemon
-
-    if [ ! -f "$APK_PATH_RELEASE" ]; then
-        log_error "Release APK build failed! File not found: $APK_PATH_RELEASE"
-        exit 1
-    fi
-
-    local filesize=$(ls -lh "$APK_PATH_RELEASE" | awk '{print $5}')
-    log_success "F-Droid APK built successfully!"
-    log_info "Location: $APK_PATH_RELEASE"
-    log_info "Size: $filesize"
-
-    # Verify it's signed with debug keystore
-    log_info "Verifying signature..."
-    if [ -f "$DEBUG_KEYSTORE_PATH" ]; then
-        local expected_sha=$(keytool -list -v -keystore "$DEBUG_KEYSTORE_PATH" -storepass android -keypass android 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //' | tr -d ':' | tr '[:upper:]' '[:lower:]')
-        log_success "Debug keystore SHA256: $expected_sha"
-        log_info "This signature should match AllowedAPKSigningKeys in F-Droid YAML"
-    fi
-
-    echo ""
-    log_success "✅ This APK is ready for F-Droid reproducible builds!"
-    log_github_reminder "$APK_PATH_RELEASE" "fdroid"
-}
-
-# Uninstall existing app
+# Uninstall existing app (internal - used by install command)
 uninstall_app() {
     log_header "Uninstalling Existing App"
-    
+
     # Check if debug version is installed
     if adb shell pm list packages | grep -q "$APP_ID_DEBUG"; then
         log_info "Uninstalling debug version: $APP_ID_DEBUG"
@@ -811,7 +326,7 @@ uninstall_app() {
     else
         log_info "Debug version not installed"
     fi
-    
+
     # Check if release version is installed
     if adb shell pm list packages | grep -q "^package:$APP_ID$"; then
         log_info "Uninstalling release version: $APP_ID"
@@ -819,7 +334,7 @@ uninstall_app() {
     else
         log_info "Release version not installed"
     fi
-    
+
     log_success "Uninstall complete"
 }
 
@@ -835,13 +350,13 @@ install_apk() {
     log_info "Note: Home screen shortcut will be created on first launch"
 }
 
-# Launch app
+# Launch app (internal - used by install command)
 launch_app() {
     log_header "Launching App"
-    
+
     log_info "Starting De1984..."
     adb shell am start -n "$APP_ID_DEBUG/io.github.dorumrr.de1984.ui.MainActivity"
-    
+
     log_success "App launched!"
     log_info "Home screen shortcut created automatically on first launch"
 }
@@ -879,29 +394,29 @@ take_screenshot() {
     fi
 }
 
-# Show device info
+# Show device info (internal - used by install command)
 show_device_info() {
     log_header "Device Information"
-    
+
     local device_model=$(adb shell getprop ro.product.model 2>/dev/null || echo "Unknown")
     local android_version=$(adb shell getprop ro.build.version.release 2>/dev/null || echo "Unknown")
     local api_level=$(adb shell getprop ro.build.version.sdk 2>/dev/null || echo "Unknown")
     local lineage_version=$(adb shell getprop ro.lineage.version 2>/dev/null || echo "Not LineageOS")
-    
+
     echo "📱 Device: $device_model"
     echo "🤖 Android: $android_version (API $api_level)"
     echo "🔷 LineageOS: $lineage_version"
     echo ""
 }
 
-# Show app info
+# Show app info (internal - used by install command)
 show_app_info() {
     log_header "App Information"
-    
+
     if adb shell pm list packages | grep -q "$APP_ID_DEBUG"; then
         local version=$(adb shell dumpsys package "$APP_ID_DEBUG" | grep "versionName" | head -1 | cut -d'=' -f2 || echo "Unknown")
         local install_time=$(adb shell dumpsys package "$APP_ID_DEBUG" | grep "firstInstallTime" | head -1 | cut -d'=' -f2 || echo "Unknown")
-        
+
         echo "📦 Package: $APP_ID_DEBUG"
         echo "🏷️  Version: $version"
         echo "📅 Installed: $install_time"
@@ -912,25 +427,6 @@ show_app_info() {
     echo ""
 }
 
-# Show logs
-show_logs() {
-    log_header "App Logs"
-    
-    log_info "Showing logs for: $APP_ID_DEBUG"
-    log_info "Press Ctrl+C to stop..."
-    echo ""
-    
-    adb logcat | grep "$APP_ID_DEBUG"
-}
-
-# Clear logs
-clear_logs() {
-    log_header "Clearing Logs"
-
-    adb logcat -c
-    log_success "Logs cleared"
-}
-
 # List available emulators
 list_emulators() {
     log_header "Available Android Emulators"
@@ -942,50 +438,10 @@ list_emulators() {
         return 1
     fi
 
-    log_info "Emulator command: $emulator_cmd"
-    echo ""
-
     local avds=($(find_emulators))
     if [ ${#avds[@]} -eq 0 ]; then
         log_warn "No Android Virtual Devices (AVDs) found!"
-        log_info "Create an emulator in Android Studio:"
-        log_info "Tools → AVD Manager → Create Virtual Device"
-    else
-        log_success "Found ${#avds[@]} emulator(s):"
-        for i in "${!avds[@]}"; do
-            local avd="${avds[$i]}"
-            if [ $i -eq 0 ]; then
-                echo "  📱 $avd ${GREEN}(default - will be auto-selected)${NC}"
-            else
-                echo "  📱 $avd"
-            fi
-        done
-        echo ""
-        log_info "Default: ${avds[0]} will be started automatically"
-        log_info "To start specific emulator: ./dev.sh emulator [name]"
-        log_info "To start default: ./dev.sh emulator"
-    fi
-}
-
-# List available emulators
-list_emulators() {
-    log_header "Available Android Emulators"
-
-    local emulator_cmd=$(get_emulator_command)
-    if [ -z "$emulator_cmd" ]; then
-        log_error "Android emulator command not found!"
-        log_info "Please install Android SDK or Android Studio"
-        return 1
-    fi
-
-    log_info "Emulator command: $emulator_cmd"
-    echo ""
-
-    local avds=($(find_emulators))
-    if [ ${#avds[@]} -eq 0 ]; then
-        log_warn "No Android Virtual Devices (AVDs) found!"
-        log_info "Create Android 15 Pixel 9a emulator with: ./dev.sh create-emulator"
-        log_info "Or create manually in Android Studio:"
+        log_info "Create manually in Android Studio:"
         log_info "Tools → AVD Manager → Create Virtual Device → Pixel 9a + Android 15"
     else
         local best_avd=$(find_best_emulator)
@@ -993,24 +449,12 @@ list_emulators() {
         for avd in "${avds[@]}"; do
             local marker=""
             if [ "$avd" = "$best_avd" ]; then
-                marker=" ${GREEN}(default - will be auto-selected)${NC}"
+                marker=" ${GREEN}(default)${NC}"
             fi
-
-            if is_android_15_avd "$avd"; then
-                echo -e "  📱 $avd ${GREEN}[Android 15]${NC}$marker"
-            else
-                echo -e "  📱 $avd$marker"
-            fi
+            echo -e "  📱 $avd$marker"
         done
         echo ""
-        log_info "Start default: ./dev.sh emulator"
-        log_info "Start specific: ./dev.sh emulator [name]"
-
-        if ! is_android_15_avd "$best_avd"; then
-            echo ""
-            log_warn "Tip: Create Android 15 Pixel 9a emulator for better testing:"
-            log_info "./dev.sh create-emulator"
-        fi
+        log_info "Start: ./dev.sh emulator [name]"
     fi
 }
 
@@ -1018,12 +462,159 @@ list_emulators() {
 check_keystore() {
     if [ ! -f "$KEYSTORE_PATH" ]; then
         log_error "Keystore not found: $KEYSTORE_PATH"
-        log_info "You need to create a keystore first!"
-        log_info "Run: ./dev.sh create-keystore"
-        log_info "Or see: RELEASE_SIGNING_GUIDE.md for detailed instructions"
+        log_info "You need to create a keystore first."
+        log_info "IF YOU ALREADY HAVE ONE FOR THIS PROJECT, DROP IT ON ROOT!"
+        log_info "Otherwise, run: ./dev.sh create-keystore"
+        log_info "Make sure you BACKUP the keystore afterwards!"
         exit 1
     fi
     log_success "Keystore found: $KEYSTORE_PATH"
+}
+
+# Validate keystore.properties configuration
+validate_keystore_properties() {
+    local KEYSTORE_PROPS="keystore.properties"
+
+    if [ ! -f "$KEYSTORE_PROPS" ]; then
+        log_error "Missing: $KEYSTORE_PROPS"
+        echo ""
+        log_info "The keystore.properties file is required for release builds."
+        log_info "This file should contain:"
+        echo "  • storeFile=release-keystore.jks"
+        echo "  • storePassword=your_store_password"
+        echo "  • keyAlias=de1984-release-key"
+        echo "  • keyPassword=your_key_password"
+        echo ""
+        log_info "To fix this:"
+        echo "  1. If you have an existing keystore:"
+        echo "     ./dev.sh populate-keystore-properties"
+        echo ""
+        echo "  2. If you need to create a new keystore:"
+        echo "     ./dev.sh create-keystore"
+        echo ""
+        exit 1
+    fi
+
+    # Validate required properties
+    local missing_props=()
+
+    # Check if properties exist and are not empty
+    local store_file=$(grep "^storeFile=" "$KEYSTORE_PROPS" | cut -d'=' -f2-)
+    local store_password=$(grep "^storePassword=" "$KEYSTORE_PROPS" | cut -d'=' -f2-)
+    local key_alias=$(grep "^keyAlias=" "$KEYSTORE_PROPS" | cut -d'=' -f2-)
+    local key_password=$(grep "^keyPassword=" "$KEYSTORE_PROPS" | cut -d'=' -f2-)
+
+    if [ -z "$store_file" ]; then
+        missing_props+=("storeFile")
+    fi
+    if [ -z "$store_password" ]; then
+        missing_props+=("storePassword")
+    fi
+    if [ -z "$key_alias" ]; then
+        missing_props+=("keyAlias")
+    fi
+    if [ -z "$key_password" ]; then
+        missing_props+=("keyPassword")
+    fi
+
+    if [ ${#missing_props[@]} -gt 0 ]; then
+        log_error "Invalid $KEYSTORE_PROPS - missing properties:"
+        for prop in "${missing_props[@]}"; do
+            echo "  • $prop"
+        done
+        echo ""
+        log_info "To fix this:"
+        echo "  ./dev.sh populate-keystore-properties"
+        echo ""
+        exit 1
+    fi
+
+    log_success "keystore.properties is valid"
+}
+
+# Populate keystore.properties with credentials
+populate_keystore_properties() {
+    log_header "Populate keystore.properties"
+
+    # Check if keystore exists
+    if [ ! -f "$KEYSTORE_PATH" ]; then
+        log_error "Keystore not found: $KEYSTORE_PATH"
+        log_info "You need to create a keystore first!"
+        log_info "Run: ./dev.sh create-keystore"
+        exit 1
+    fi
+
+    local KEYSTORE_PROPS="keystore.properties"
+
+    # Backup existing file if it exists
+    if [ -f "$KEYSTORE_PROPS" ]; then
+        log_warn "Existing $KEYSTORE_PROPS found"
+        read -p "Do you want to overwrite it? (yes/no): " confirm
+        if [ "$confirm" != "yes" ]; then
+            log_info "Operation cancelled"
+            exit 0
+        fi
+        cp "$KEYSTORE_PROPS" "${KEYSTORE_PROPS}.backup"
+        log_info "Backed up to ${KEYSTORE_PROPS}.backup"
+    fi
+
+    echo ""
+    log_info "Please enter your keystore credentials:"
+    echo ""
+
+    # Prompt for passwords
+    read -sp "Enter keystore password: " STORE_PASS
+    echo ""
+    read -sp "Enter key password (press Enter if same as keystore): " KEY_PASS
+    echo ""
+
+    if [ -z "$KEY_PASS" ]; then
+        KEY_PASS="$STORE_PASS"
+    fi
+
+    # Verify credentials by trying to list the keystore
+    log_info "Verifying credentials..."
+    if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASS" -alias de1984-release-key -keypass "$KEY_PASS" &>/dev/null; then
+        log_error "Invalid credentials! Could not access keystore."
+        log_info "Please check your passwords and try again."
+        # Clear passwords from memory
+        STORE_PASS=""
+        KEY_PASS=""
+        exit 1
+    fi
+
+    log_success "Credentials verified!"
+
+    # Create keystore.properties file
+    cat > "$KEYSTORE_PROPS" << EOF
+# Keystore configuration for release signing
+# This file is gitignored - never commit it to version control!
+# Generated by dev.sh on $(date)
+
+storeFile=release-keystore.jks
+storePassword=$STORE_PASS
+keyAlias=de1984-release-key
+keyPassword=$KEY_PASS
+EOF
+
+    # Clear passwords from memory
+    STORE_PASS=""
+    KEY_PASS=""
+
+    if [ -f "$KEYSTORE_PROPS" ]; then
+        echo ""
+        log_success "Created $KEYSTORE_PROPS"
+        echo ""
+        log_warn "IMPORTANT: Backup this file securely!"
+        echo "  • $KEYSTORE_PROPS (credentials)"
+        echo ""
+        log_info "You can now build releases with:"
+        echo "  • ./dev.sh release"
+        echo "  • ./gradlew assembleRelease"
+    else
+        log_error "Failed to create $KEYSTORE_PROPS"
+        exit 1
+    fi
 }
 
 # Create keystore
@@ -1106,120 +697,56 @@ create_keystore() {
         -storepass "$STORE_PASS" \
         -keypass "$KEY_PASS"
 
+    if [ ! -f "$KEYSTORE_PATH" ]; then
+        log_error "Keystore creation failed!"
+        # Clear passwords from memory
+        STORE_PASS=""
+        KEY_PASS=""
+        STORE_PASS_CONFIRM=""
+        KEY_PASS_CONFIRM=""
+        exit 1
+    fi
+
+    echo ""
+    log_success "Keystore created successfully: $KEYSTORE_PATH"
+
+    # Create keystore.properties file (standard Android approach)
+    local KEYSTORE_PROPS="keystore.properties"
+    log_info "Creating $KEYSTORE_PROPS file..."
+
+    cat > "$KEYSTORE_PROPS" << EOF
+# Keystore configuration for release signing
+# This file is gitignored - never commit it to version control!
+# Generated by dev.sh on $(date)
+
+storeFile=release-keystore.jks
+storePassword=$STORE_PASS
+keyAlias=de1984-release-key
+keyPassword=$KEY_PASS
+EOF
+
+    if [ -f "$KEYSTORE_PROPS" ]; then
+        log_success "Created $KEYSTORE_PROPS"
+        echo ""
+        log_warn "IMPORTANT: Backup these files securely!"
+        echo "  • $KEYSTORE_PATH (keystore file)"
+        echo "  • $KEYSTORE_PROPS (credentials)"
+        echo ""
+        log_info "With keystore.properties, you can now build releases with:"
+        echo "  • ./dev.sh release (uses dev.sh script)"
+        echo "  • ./gradlew assembleRelease (direct Gradle build)"
+    else
+        log_error "Failed to create $KEYSTORE_PROPS"
+    fi
+
     # Clear passwords from memory
     STORE_PASS=""
     KEY_PASS=""
     STORE_PASS_CONFIRM=""
     KEY_PASS_CONFIRM=""
 
-    if [ -f "$KEYSTORE_PATH" ]; then
-        echo ""
-        log_success "Keystore created successfully: $KEYSTORE_PATH"
-        log_warn "BACKUP THIS FILE! Store it securely!"
-        log_info "Next step: ./dev.sh release"
-    else
-        log_error "Keystore creation failed!"
-        exit 1
-    fi
-}
-
-# Sign release APK
-sign_release_apk() {
-    log_header "Signing Release APK"
-
-    # Check if unsigned APK exists
-    if [ ! -f "$APK_PATH_RELEASE" ]; then
-        log_error "Unsigned release APK not found: $APK_PATH_RELEASE"
-        log_info "Building release APK first..."
-        build_release_apk
-        echo ""
-    fi
-
-    # Check keystore
-    check_keystore
-
-    log_info "Signing APK with keystore: $KEYSTORE_PATH"
-
-    # Prompt for passwords
-    read -sp "Enter keystore password: " KEYSTORE_PASSWORD
     echo ""
-    read -sp "Enter key password (press Enter if same as keystore): " KEY_PASSWORD
-    echo ""
-
-    if [ -z "$KEY_PASSWORD" ]; then
-        KEY_PASSWORD="$KEYSTORE_PASSWORD"
-    fi
-
-    # Find Android SDK
-    local android_sdk=""
-    if [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME" ]; then
-        android_sdk="$ANDROID_HOME"
-    elif [ -n "${ANDROID_SDK_ROOT:-}" ] && [ -d "$ANDROID_SDK_ROOT" ]; then
-        android_sdk="$ANDROID_SDK_ROOT"
-    elif [ -d "$HOME/Library/Android/sdk" ]; then
-        android_sdk="$HOME/Library/Android/sdk"
-    elif [ -d "$HOME/Android/Sdk" ]; then
-        android_sdk="$HOME/Android/Sdk"
-    else
-        log_error "Android SDK not found!"
-        log_info "Please set ANDROID_HOME or ANDROID_SDK_ROOT environment variable"
-        log_info "Or install Android SDK to default location:"
-        log_info "  macOS: ~/Library/Android/sdk"
-        log_info "  Linux: ~/Android/Sdk"
-        exit 1
-    fi
-
-    log_info "Using Android SDK: $android_sdk"
-
-    # Find apksigner in build-tools
-    local build_tools_dir=$(find "$android_sdk/build-tools" -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1)
-    local apksigner="$build_tools_dir/apksigner"
-
-    if [ ! -f "$apksigner" ]; then
-        log_error "apksigner not found in Android SDK build-tools"
-        log_info "Please install Android SDK build-tools"
-        log_info "SDK location: $android_sdk"
-        exit 1
-    fi
-
-    log_info "Using apksigner: $apksigner"
-
-    # Remove old files
-    rm -f "$APK_PATH_RELEASE_SIGNED" "$APK_PATH_RELEASE_ALIGNED"
-
-    log_info "Aligning APK..."
-    local zipalign="$build_tools_dir/zipalign"
-    if [ ! -f "$zipalign" ]; then
-        log_error "zipalign not found"
-        exit 1
-    fi
-    
-    "$zipalign" -v -p 4 "$APK_PATH_RELEASE" "$APK_PATH_RELEASE_ALIGNED"
-    
-    log_info "Signing APK..."
-    "$apksigner" sign \
-        --ks "$KEYSTORE_PATH" \
-        --ks-pass "pass:$KEYSTORE_PASSWORD" \
-        --key-pass "pass:$KEY_PASSWORD" \
-        --out "$APK_PATH_RELEASE_SIGNED" \
-        "$APK_PATH_RELEASE_ALIGNED"
-    
-    rm -f "$APK_PATH_RELEASE_ALIGNED"
-
-    if [ ! -f "$APK_PATH_RELEASE_SIGNED" ]; then
-        log_error "APK signing failed!"
-        exit 1
-    fi
-
-    # Verify signature
-    log_info "Verifying signature..."
-    "$apksigner" verify "$APK_PATH_RELEASE_SIGNED"
-
-    local filesize=$(ls -lh "$APK_PATH_RELEASE_SIGNED" | awk '{print $5}')
-    log_success "Release APK signed successfully!"
-    log_info "Location: $APK_PATH_RELEASE_SIGNED"
-    log_info "Size: $filesize"
-    log_success "This APK is ready for distribution!"
+    log_info "Next step: ./dev.sh release"
 }
 
 # Get production keystore SHA256
@@ -1229,8 +756,22 @@ get_production_sha256() {
         return 1
     fi
 
-    # Get SHA256 with colons
-    local sha256_with_colons=$(keytool -list -v -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //')
+    # Read password from keystore.properties
+    local KEYSTORE_PROPS="keystore.properties"
+    if [ ! -f "$KEYSTORE_PROPS" ]; then
+        log_error "keystore.properties not found"
+        return 1
+    fi
+
+    local STORE_PASSWORD=$(grep "^storePassword=" "$KEYSTORE_PROPS" | cut -d'=' -f2-)
+
+    if [ -z "$STORE_PASSWORD" ]; then
+        log_error "storePassword not found in keystore.properties"
+        return 1
+    fi
+
+    # Get SHA256 with colons (using password from keystore.properties)
+    local sha256_with_colons=$(keytool -list -v -keystore "$KEYSTORE_PATH" -alias "$KEY_ALIAS" -storepass "$STORE_PASSWORD" 2>/dev/null | grep "SHA256:" | head -1 | sed 's/.*SHA256: //')
 
     # Convert to lowercase without colons (for F-Droid YAML)
     local sha256_lowercase=$(echo "$sha256_with_colons" | tr -d ':' | tr '[:upper:]' '[:lower:]')
@@ -1238,66 +779,44 @@ get_production_sha256() {
     echo "$sha256_lowercase"
 }
 
-# Show F-Droid instructions
-show_fdroid_instructions() {
-    local apk_file="$1"
-    local sha256="$2"
-
-    echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║${NC}  ${YELLOW}📋 F-DROID RELEASE WORKFLOW${NC}"
-    echo -e "${GREEN}╠════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${GREEN}║${NC}  ${BLUE}Step 1: Rename APK for GitHub${NC}"
-    echo -e "${GREEN}║${NC}  cp $(basename "$apk_file") \\"
-    echo -e "${GREEN}║${NC}     de1984-v${APP_VERSION}-release.apk"
-    echo -e "${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${BLUE}Step 2: Replace APK on GitHub${NC}"
-    echo -e "${GREEN}║${NC}  • Go to: https://github.com/dorumrr/de1984/releases/tag/v${APP_VERSION}"
-    echo -e "${GREEN}║${NC}  • Click 'Edit' on the release"
-    echo -e "${GREEN}║${NC}  • Delete old APK: de1984-v${APP_VERSION}-release.apk"
-    echo -e "${GREEN}║${NC}  • Upload new APK: de1984-v${APP_VERSION}-release.apk"
-    echo -e "${GREEN}║${NC}  • Click 'Update release'"
-    echo -e "${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${BLUE}Step 3: Update F-Droid YAML${NC}"
-    echo -e "${GREEN}║${NC}  File: ../f-droid-data/metadata/io.github.dorumrr.de1984.yml"
-    echo -e "${GREEN}║${NC}  Update line: AllowedAPKSigningKeys: ${sha256}"
-    echo -e "${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${BLUE}Step 4: Commit and Push${NC}"
-    echo -e "${GREEN}║${NC}  cd ../f-droid-data"
-    echo -e "${GREEN}║${NC}  git add metadata/io.github.dorumrr.de1984.yml"
-    echo -e "${GREEN}║${NC}  git commit -m \"Update De1984: Switch to production keystore\""
-    echo -e "${GREEN}║${NC}  git push origin add-de1984"
-    echo -e "${GREEN}║${NC}"
-    echo -e "${GREEN}║${NC}  ${BLUE}Step 5: Retrigger F-Droid CI${NC}"
-    echo -e "${GREEN}║${NC}  • Via GitLab web interface: Add comment or click 'Retry'"
-    echo -e "${GREEN}║${NC}  • Or empty commit: git commit --allow-empty -m 'Retrigger CI'"
-    echo -e "${GREEN}╚════════════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "${YELLOW}📝 Production Keystore SHA256 (for F-Droid YAML):${NC}"
-    echo -e "${RED}${sha256}${NC}"
-    echo ""
-}
-
 # Build and sign release APK (complete workflow)
 build_and_sign_release() {
     log_header "Building and Signing Release APK (Production)"
 
-    # Check keystore first
+    # Validate keystore.properties first
+    validate_keystore_properties
+
+    # Check keystore exists
     check_keystore
 
-    # Build release APK
-    build_release_apk
-    echo ""
+    # Build release APK (Gradle signs it automatically with keystore.properties)
+    log_info "Building release APK..."
+    ./gradlew assembleRelease --no-daemon
 
-    # Sign it
-    sign_release_apk
+    if [ ! -f "$APK_PATH_RELEASE" ]; then
+        log_error "Release APK build failed! File not found: $APK_PATH_RELEASE"
+        exit 1
+    fi
 
-    # Clean up intermediate files (keep only the final signed APK)
-    rm -f "$APK_PATH_RELEASE"
+    # Verify signature
+    local android_sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+    if [ -z "$android_sdk" ]; then
+        android_sdk="$HOME/Library/Android/sdk"
+    fi
+    local build_tools_dir=$(find "$android_sdk/build-tools" -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1)
+    local apksigner="$build_tools_dir/apksigner"
 
+    if [ -f "$apksigner" ]; then
+        log_info "Verifying signature..."
+        "$apksigner" verify "$APK_PATH_RELEASE"
+        log_success "APK signature verified!"
+    fi
+
+    local filesize=$(ls -lh "$APK_PATH_RELEASE" | awk '{print $5}')
     echo ""
     log_success "Production release build complete!"
-    log_info "Signed APK: $APK_PATH_RELEASE_SIGNED"
+    log_info "Signed APK: $APK_PATH_RELEASE"
+    log_info "Size: $filesize"
 
     # Get production SHA256
     local production_sha256=$(get_production_sha256)
@@ -1306,19 +825,7 @@ build_and_sign_release() {
         echo ""
         log_info "Production keystore SHA256: $production_sha256"
     fi
-
     echo ""
-    log_info "This APK is ready for:"
-    echo "  • F-Droid distribution (after renaming and updating YAML)"
-    echo "  • Personal distribution (use as-is)"
-
-    # Show F-Droid workflow instructions
-    if [ -n "$production_sha256" ]; then
-        show_fdroid_instructions "$APK_PATH_RELEASE_SIGNED" "$production_sha256"
-    fi
-
-    # Show GitHub upload reminder
-    log_github_reminder "$APK_PATH_RELEASE_SIGNED" "release"
 }
 
 # Show welcome screen with command explanations
@@ -1326,230 +833,32 @@ show_welcome() {
     clear
     echo ""
     echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║${NC}                                                                      ${BLUE}║${NC}"
     echo -e "${BLUE}║${NC}                ${GREEN}🔷 De1984 Development Script 🔷${NC}                 ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}                                                                      ${BLUE}║${NC}"
     echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${YELLOW}📋 AVAILABLE COMMANDS:${NC}"
+    echo -e "${YELLOW}Common Commands:${NC}"
     echo ""
-    echo -e "${GREEN}BUILD${NC}    - Build debug APK for local testing"
-    echo -e "         ${BLUE}→${NC} Signed with debug keystore"
-    echo -e "         ${BLUE}→${NC} For development and testing only"
-    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh build${NC}"
+    echo -e "  ${GREEN}build${NC}     - Build debug APK for local testing"
+    echo -e "  ${GREEN}install${NC}   - Build and install debug APK on device/emulator"
+    echo -e "  ${GREEN}release${NC}   - Build production-signed APK ${GREEN}(for ALL public distribution)${NC}"
     echo ""
-    echo -e "${GREEN}INSTALL${NC}  - Uninstall old version and install fresh debug APK"
-    echo -e "         ${BLUE}→${NC} Builds, uninstalls, and installs on device/emulator"
-    echo -e "         ${BLUE}→${NC} For testing during development"
-    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh install [device|emulator]${NC}"
+    echo -e "${YELLOW}Emulator:${NC}"
     echo ""
-    echo -e "${GREEN}FDROID${NC}   - Build APK for F-Droid reproducible builds"
-    echo -e "         ${BLUE}→${NC} Unsigned release APK (signed with debug key by Gradle)"
-    echo -e "         ${BLUE}→${NC} Upload this to GitHub releases"
-    echo -e "         ${BLUE}→${NC} Reference in F-Droid YAML: de1984-v%v-release.apk"
-    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh fdroid${NC}"
+    echo -e "  ${GREEN}emulator${NC}  - Start Android 15 Pixel 9a emulator"
     echo ""
-    echo -e "${GREEN}FDROID-RELEASE${NC} - Complete F-Droid release workflow (automated)"
-    echo -e "         ${BLUE}→${NC} Clean Gradle build with debug keystore"
-    echo -e "         ${BLUE}→${NC} Create Git tag (v${APP_VERSION})"
-    echo -e "         ${BLUE}→${NC} Create GitHub release with APK"
-    echo -e "         ${BLUE}→${NC} Shows commit ID for fdroiddata YAML"
-    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh fdroid-release${NC}"
+    echo -e "${YELLOW}Keystore:${NC}"
     echo ""
-    echo -e "${GREEN}RELEASE${NC}  - Build production-signed APK for F-Droid + personal distribution"
-    echo -e "         ${BLUE}→${NC} Signed with YOUR production keystore"
-    echo -e "         ${BLUE}→${NC} For F-Droid: Rename and upload to GitHub"
-    echo -e "         ${BLUE}→${NC} For personal: Use as-is for direct distribution"
-    echo -e "         ${BLUE}→${NC} Shows complete F-Droid workflow instructions"
-    echo -e "         ${BLUE}→${NC} Command: ${YELLOW}./dev.sh release${NC}"
+    echo -e "  ${GREEN}create-keystore${NC}              - Create production keystore (first time)"
+    echo -e "  ${GREEN}populate-keystore-properties${NC} - Populate keystore.properties"
     echo ""
-    echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║${NC} ${YELLOW}⚠️  IMPORTANT: F-Droid Workflow${NC}                                     ${BLUE}║${NC}"
-    echo -e "${BLUE}╠══════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${BLUE}║${NC} • FDROID (testing): Use debug keystore to verify reproducibility    ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC} • RELEASE (production): Use production keystore for actual release  ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC} • After F-Droid confirms 'reproducible is OK', switch to RELEASE    ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC} • RELEASE command shows complete F-Droid workflow instructions      ${BLUE}║${NC}"
-    echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${YELLOW}Help:${NC}"
     echo ""
-    echo -e "${YELLOW}Type any command above or 'help' for full documentation${NC}"
+    echo -e "  ${GREEN}help${NC}      - Show full command list"
     echo ""
-
-    # Auto-continue after 5 seconds
-    for i in {5..1}; do
-        echo -ne "\r${BLUE}Continuing in ${i} seconds... (Press Enter to skip)${NC}"
-        read -t 1 -n 1 && break
-    done
-    echo -e "\r${NC}                                                          "
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}⚠️  Production Releases:${NC} Always use ${GREEN}./dev.sh release${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
     echo ""
-}
-
-# Test reproducible build locally (simulates F-Droid process)
-test_reproducible_build() {
-    log_header "Testing F-Droid Reproducible Build Locally"
-
-    log_info "This tests if two clean builds produce identical APKs"
-    echo ""
-
-    # Step 1: First clean build
-    log_header "Step 1: First Clean Build"
-    log_info "Cleaning Gradle caches..."
-    ./gradlew clean
-    rm -rf ~/.gradle/caches
-    rm -rf .gradle
-    ./gradlew --stop
-
-    log_info "Building first APK..."
-    ./gradlew assembleRelease --no-daemon
-
-    if [ ! -f "$APK_PATH_RELEASE" ]; then
-        log_error "Build failed! APK not found: $APK_PATH_RELEASE"
-        exit 1
-    fi
-
-    # Save first build
-    local first_apk="app/build/outputs/apk/release/de1984-v${APP_VERSION}-build1.apk"
-    cp "$APK_PATH_RELEASE" "$first_apk"
-    local first_sha=$(shasum -a 256 "$first_apk" | awk '{print $1}')
-    local first_size=$(ls -lh "$first_apk" | awk '{print $5}')
-
-    log_success "First build: $first_apk ($first_size)"
-    echo -e "  SHA-256: ${YELLOW}$first_sha${NC}"
-
-    # Step 2: Second clean build
-    log_header "Step 2: Second Clean Build"
-    log_info "Cleaning Gradle caches again..."
-    ./gradlew clean
-    rm -rf ~/.gradle/caches
-    rm -rf .gradle
-    ./gradlew --stop
-
-    log_info "Building second APK..."
-    ./gradlew assembleRelease --no-daemon
-
-    if [ ! -f "$APK_PATH_RELEASE" ]; then
-        log_error "Build failed! APK not found: $APK_PATH_RELEASE"
-        exit 1
-    fi
-
-    # Save second build
-    local second_apk="app/build/outputs/apk/release/de1984-v${APP_VERSION}-build2.apk"
-    cp "$APK_PATH_RELEASE" "$second_apk"
-    local second_sha=$(shasum -a 256 "$second_apk" | awk '{print $1}')
-    local second_size=$(ls -lh "$second_apk" | awk '{print $5}')
-
-    log_success "Second build: $second_apk ($second_size)"
-    echo -e "  SHA-256: ${YELLOW}$second_sha${NC}"
-
-    # Step 3: Compare builds
-    log_header "Step 3: Comparing Builds"
-    echo ""
-    echo -e "${BLUE}Build 1 SHA-256:${NC}"
-    echo -e "  ${YELLOW}$first_sha${NC}"
-    echo ""
-    echo -e "${BLUE}Build 2 SHA-256:${NC}"
-    echo -e "  ${YELLOW}$second_sha${NC}"
-    echo ""
-
-    if [ "$first_sha" = "$second_sha" ]; then
-        log_success "✅ BUILDS ARE IDENTICAL! Reproducible build works!"
-        echo ""
-        echo -e "${GREEN}🎯 Your builds are reproducible!${NC}"
-        echo -e "   F-Droid will be able to verify your APK"
-    else
-        log_error "❌ BUILDS ARE DIFFERENT! Not reproducible yet."
-        echo ""
-        echo -e "${RED}⚠️  The builds differ - reproducibility needs work${NC}"
-        echo ""
-
-        # Try to find differences
-        log_info "Analyzing differences..."
-
-        # Check if diffoscope is available
-        if command -v diffoscope &> /dev/null; then
-            log_info "Running diffoscope (this may take a while)..."
-            diffoscope "$first_apk" "$second_apk" --text diffoscope-output.txt 2>/dev/null || true
-            if [ -f diffoscope-output.txt ]; then
-                log_info "Differences saved to: ${YELLOW}diffoscope-output.txt${NC}"
-                echo ""
-                echo "First 50 lines of differences:"
-                head -50 diffoscope-output.txt
-            fi
-        else
-            log_warn "Install 'diffoscope' for detailed diff analysis:"
-            echo "  brew install diffoscope  # macOS"
-            echo "  apt install diffoscope   # Debian/Ubuntu"
-        fi
-
-        # Basic size comparison
-        local size1=$(stat -f%z "$first_apk" 2>/dev/null || stat -c%s "$first_apk")
-        local size2=$(stat -f%z "$second_apk" 2>/dev/null || stat -c%s "$second_apk")
-        local size_diff=$((size2 - size1))
-
-        echo ""
-        echo -e "${BLUE}Size comparison:${NC}"
-        echo -e "  Build 1: $first_size ($size1 bytes)"
-        echo -e "  Build 2: $second_size ($size2 bytes)"
-        echo -e "  Difference: $size_diff bytes"
-    fi
-
-    # Step 4: Verify signature
-    log_header "Step 4: Verifying Signature"
-
-    # Find Android SDK
-    local android_sdk=""
-    if [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME" ]; then
-        android_sdk="$ANDROID_HOME"
-    elif [ -d "$HOME/Library/Android/sdk" ]; then
-        android_sdk="$HOME/Library/Android/sdk"
-    elif [ -d "$HOME/Android/Sdk" ]; then
-        android_sdk="$HOME/Android/Sdk"
-    fi
-
-    if [ -n "$android_sdk" ]; then
-        local build_tools_dir=$(find "$android_sdk/build-tools" -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1)
-        local apksigner="$build_tools_dir/apksigner"
-
-        if [ -f "$apksigner" ]; then
-            log_info "Verifying APK signature..."
-            echo ""
-            "$apksigner" verify --verbose "$second_apk" 2>&1 | head -10
-        fi
-    fi
-
-    # Step 5: Summary
-    echo ""
-    log_header "📋 Summary"
-    echo ""
-
-    if [ "$first_sha" = "$second_sha" ]; then
-        echo -e "${GREEN}✅ Reproducible build: SUCCESS${NC}"
-        echo ""
-        echo -e "${BLUE}Next steps:${NC}"
-        echo -e "  1. Upload ${YELLOW}$APK_PATH_RELEASE${NC} to GitHub releases"
-        echo -e "  2. Update F-Droid YAML (remove zipalign postbuild)"
-        echo -e "  3. F-Droid will verify reproducibility"
-        echo ""
-        echo -e "${YELLOW}📝 F-Droid YAML should have:${NC}"
-        echo -e "  Binaries: https://github.com/dorumrr/de1984/releases/download/v%v/de1984-v%v-release.apk"
-        echo -e "  (NO srclibs or postbuild sections needed)"
-    else
-        echo -e "${RED}❌ Reproducible build: FAILED${NC}"
-        echo ""
-        echo -e "${BLUE}Possible causes:${NC}"
-        echo -e "  • Timestamps in compiled files"
-        echo -e "  • Non-deterministic resource compilation (AAPT2)"
-        echo -e "  • Build environment differences"
-        echo -e "  • Gradle cache state"
-        echo ""
-        echo -e "${YELLOW}📝 Options:${NC}"
-        echo -e "  1. Remove 'Binaries:' from F-Droid YAML (F-Droid signs with their key)"
-        echo -e "  2. Investigate differences (use diffoscope)"
-        echo -e "  3. Add more reproducibility flags to build.gradle.kts"
-    fi
-
-    echo ""
-    log_info "Test complete!"
 }
 
 # Show help
@@ -1558,60 +867,24 @@ show_help() {
     echo ""
     echo "Usage: ./dev.sh [command] [options]"
     echo ""
-    echo "Development Commands:"
-    echo "  build                      - Build debug APK (for local testing)"
-    echo "  debug                      - Build debug APK with detailed info (SHA-256, location, F-Droid RFP)"
-    echo "  install [device|emulator]  - Build debug, uninstall old, install fresh APK"
-    echo "  launch                     - Launch the app"
-    echo "  screenshot                 - Take and save screenshot"
-    echo "  logs                       - Show app logs (live)"
-    echo "  clear-logs                 - Clear device logs"
-    echo "  info                       - Show device and app information"
-    echo "  uninstall                  - Uninstall app only"
+    echo "Commands:"
+    echo "  build                        - Build debug APK"
+    echo "  install [device|emulator]    - Build and install debug APK (auto-starts emulator)"
+    echo "  release                      - Build production-signed APK"
+    echo "  screenshot                   - Take and save screenshot"
     echo ""
-    echo "Build Commands:"
-    echo "  fdroid                     - Build APK for F-Droid testing (debug keystore)"
-    echo "  fdroid-release             - Complete F-Droid release (build + tag + GitHub release)"
-    echo "  reproducible               - Test F-Droid reproducible build locally"
-    echo "  release                    - Build production-signed APK (shows F-Droid workflow)"
-    echo "  create-keystore            - Create production keystore (first time only)"
+    echo "Emulator:"
+    echo "  emulator [name]              - Start Android emulator (auto-selects Pixel 9a)"
     echo ""
-    echo "Emulator Commands:"
-    echo "  emulator [name]            - Start Android emulator (auto-selects Android 15 Pixel 9a)"
-    echo "  list-emulators             - List available emulators"
-    echo "  create-emulator            - Create Android 15 Pixel 9a emulator (recommended)"
-    echo ""
-    echo "Help:"
-    echo "  help                       - Show this help"
+    echo "Keystore:"
+    echo "  create-keystore              - Create production keystore (first time)"
+    echo "  populate-keystore-properties - Create keystore.properties"
+    echo "  validate-keystore-properties - Validate keystore.properties"
     echo ""
     echo "Examples:"
-    echo "  ./dev.sh build               - Build debug APK for testing"
-    echo "  ./dev.sh debug               - Build debug APK with SHA-256 and F-Droid RFP info"
-    echo "  ./dev.sh install device      - Install debug APK on physical device"
-    echo "  ./dev.sh fdroid              - Build APK for F-Droid testing (debug key)"
-    echo "  ./dev.sh reproducible        - Test F-Droid reproducible build locally"
-    echo "  ./dev.sh create-keystore     - Create production keystore (once)"
-    echo "  ./dev.sh release             - Build production APK + show F-Droid workflow"
-    echo ""
-    echo "F-Droid Workflow:"
-    echo "  Phase 1 (Testing):"
-    echo "    1. ./dev.sh fdroid         - Build with debug keystore"
-    echo "    2. Upload to GitHub and submit to F-Droid"
-    echo "    3. Wait for 'reproducible is OK' confirmation"
-    echo ""
-    echo "  Phase 2 (Production):"
-    echo "    1. ./dev.sh create-keystore  - Create production keystore (once)"
-    echo "    2. ./dev.sh release          - Build with production key"
-    echo "    3. Follow on-screen instructions to:"
-    echo "       - Rename APK for GitHub"
-    echo "       - Replace APK on GitHub"
-    echo "       - Update F-Droid YAML with production SHA256"
-    echo "       - Commit and push changes"
-    echo "       - Retrigger F-Droid CI"
-    echo ""
-    echo "Personal Distribution:"
-    echo "  1. ./dev.sh release          - Build production-signed APK"
-    echo "  2. Distribute de1984-v1.0.0-release-signed.apk directly"
+    echo "  ./dev.sh install             - Build and install on device/emulator"
+    echo "  ./dev.sh release             - Build production APK"
+    echo "  ./dev.sh emulator            - Start Pixel 9a emulator"
     echo ""
 }
 
@@ -1644,41 +917,23 @@ main() {
             check_device "auto"
             take_screenshot
             ;;
-        "launch")
-            check_adb
-            check_device "auto"
-            launch_app
-            ;;
-        "logs")
-            check_adb
-            check_device "auto"
-            show_logs
-            ;;
-        "clear-logs")
-            check_adb
-            check_device "auto"
-            clear_logs
-            ;;
-        "info")
-            check_adb
-            check_device "auto"
-            show_device_info
-            show_app_info
-            ;;
         "build")
             build_all_apks
             ;;
-        "debug")
-            build_debug_with_info
-            ;;
-        "fdroid")
-            build_fdroid_apk
-            ;;
-        "fdroid-release")
-            build_fdroid_release
-            ;;
-        "reproducible")
-            test_reproducible_build
+        "fdroid"|"fdroid-release")
+            log_error "The 'fdroid' and 'fdroid-release' commands have been REMOVED!"
+            echo ""
+            echo -e "${YELLOW}Why were they removed?${NC}"
+            echo "  • They were unnecessary and confusing"
+            echo "  • F-Droid expects YOUR production-signed APK on GitHub"
+            echo "  • F-Droid builds unsigned APK themselves from source"
+            echo "  • You never need to build unsigned APK yourself"
+            echo ""
+            echo -e "${GREEN}What should you use instead?${NC}"
+            echo "  • For ALL public distribution: ${YELLOW}./dev.sh release${NC}"
+            echo ""
+            echo -e "${BLUE}See FDROID_REPRODUCIBLE_BUILDS_EXPLAINED.md for details${NC}"
+            exit 1
             ;;
         "release")
             build_and_sign_release
@@ -1686,24 +941,15 @@ main() {
         "create-keystore")
             create_keystore
             ;;
-        "uninstall")
-            check_adb
-            check_device "auto"
-            uninstall_app
+        "populate-keystore-properties")
+            populate_keystore_properties
+            ;;
+        "validate-keystore-properties")
+            validate_keystore_properties
             ;;
         "emulator")
             check_adb
             start_emulator "$target"
-            ;;
-        "list-emulators")
-            list_emulators
-            ;;
-        "create-emulator")
-            local new_avd=$(create_android_15_pixel)
-            if [ -n "$new_avd" ]; then
-                log_success "Emulator created successfully!"
-                log_info "Start it with: ./dev.sh emulator $new_avd"
-            fi
             ;;
         "help"|"-h"|"--help")
             show_help

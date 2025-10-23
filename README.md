@@ -2,7 +2,9 @@
 
 **Privacy isn’t default. Take it back with De1984 Firewall and Package control.**
 
-A privacy-focused Firewall and Package Manager for Android devices.
+<a hreh="https://apt.izzysoft.de/packages/io.github.dorumrr.de1984" target="_blank"><img height="50" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"></a> <!-- <a hreh="https://f-droid.org/en/packages/io.github.dorumrr.de1984" target="_blank"><img height="50" src="https://f-droid.org/badge/get-it-on.png"></a> --> 
+
+<!-- [![SUPPORT DEVELOPMENT](https://img.shields.io/badge/SUPPORT%20DEVELOPMENT-DONATE-2E2E2E?style=for-the-badge&color=FFD700)](https://buymeacoffee.com/ossdev) -->
 
 ## 📸 Screenshots
 
@@ -13,10 +15,6 @@ A privacy-focused Firewall and Package Manager for Android devices.
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="120" alt="De1984 Packages Control by Doru Moraru" />
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="120" alt="De1984 Options by Doru Moraru" />
 </p>
-
-## 💖 Support Development
-
-> De1984 protects your privacy. You can protect its future: **[DONATE](https://buymeacoffee.com/ossdev)** ♥️
 
 ## ✨ Features
 
@@ -69,10 +67,11 @@ All contributions are **valued** and **appreciated**!
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📞 Support
+## 💖 Support Development
 
-- **Issues**: [GitHub Issues](https://github.com/dorumrr/de1984/issues)
-- **F-Droid**: [De1984 Firewall and Package Control](https://f-droid.org/en/packages/io.github.dorumrr.de1984/)
+De1984 protects your privacy. You can protect its future!
+
+[![DONATE](https://img.shields.io/badge/DONATE-FFD700?style=for-the-badge&logoColor=white)](https://buymeacoffee.com/ossdev)
 
 ---
 

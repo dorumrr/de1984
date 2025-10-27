@@ -53,15 +53,15 @@ class PermissionSetupViewModel constructor(
     private fun getBasicPermissionInfo(): List<PermissionInfo> {
         return listOf(
             PermissionInfo(
-                permission = "android.permission.INTERNET",
-                name = "Internet Access",
-                description = "Required for app updates and online features",
+                permission = "android.permission.ACCESS_NETWORK_STATE",
+                name = "Network State",
+                description = "Monitor network connectivity (WiFi/Mobile/Roaming)",
                 isGranted = true
             ),
             PermissionInfo(
-                permission = "android.permission.ACCESS_NETWORK_STATE",
-                name = "Network State",
-                description = "Check network connectivity status",
+                permission = "android.permission.ACCESS_WIFI_STATE",
+                name = "WiFi State",
+                description = "Detect WiFi network status",
                 isGranted = true
             ),
             PermissionInfo(

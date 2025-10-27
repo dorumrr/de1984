@@ -77,7 +77,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Privacy isn't default. Take it back with De1984 Firewall and package control."
+                    android:text="Privacy isn't default. Take it back with De1984 Firewall and full Package Control."
                     android:textSize="16sp"
                     android:textColor="?android:attr/textColorSecondary" />
 

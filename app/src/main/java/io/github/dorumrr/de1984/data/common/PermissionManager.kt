@@ -57,8 +57,7 @@ class PermissionManager(
     fun hasBasicPermissions(): Boolean {
         val requiredPermissions = listOf(
             Manifest.permission.ACCESS_NETWORK_STATE,
-            Manifest.permission.ACCESS_WIFI_STATE,
-            Manifest.permission.INTERNET
+            Manifest.permission.ACCESS_WIFI_STATE
         )
 
         val basicPermissionsGranted = requiredPermissions.all { permission ->

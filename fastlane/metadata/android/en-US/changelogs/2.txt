@@ -1,0 +1,5 @@
+De1984 Firewall release v1.0.1
+
+Features:
+• Removed redundant INTERNET permission
+• Minor fixes and performance improvements

@@ -204,13 +204,22 @@ start_emulator() {
             exit 1
         fi
 
-        log_success "Using emulator: $emulator_name"
+        # Check if it's a Pixel 9a
+        if [[ "$emulator_name" =~ [Pp]ixel.*9a ]]; then
+            log_success "Using Pixel 9a emulator: $emulator_name"
+        else
+            log_success "Using emulator: $emulator_name"
+            log_warn "Note: Pixel 9a emulator not found, using first available"
+        fi
     fi
 
-    log_info "Starting emulator (this may take 30-60 seconds)..."
+    log_info "Starting emulator fresh (this may take 30-60 seconds)..."
 
     # Start emulator in background with output redirected to /dev/null
-    "$emulator_cmd" -avd "$emulator_name" -no-snapshot-save -no-audio > /dev/null 2>&1 &
+    # -wipe-data: Start with fresh data (factory reset)
+    # -no-snapshot-save: Don't save state on exit
+    # -no-audio: Disable audio for faster startup
+    "$emulator_cmd" -avd "$emulator_name" -wipe-data -no-snapshot-save -no-audio > /dev/null 2>&1 &
     local emulator_pid=$!
 
     log_info "Emulator starting with PID: $emulator_pid"

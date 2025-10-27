@@ -64,7 +64,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     // Permission launcher for POST_NOTIFICATIONS
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+    ) { _ ->
         permissionViewModel.markNotificationPermissionRequested()
         permissionViewModel.refreshPermissions()
     }

@@ -64,4 +64,9 @@
     <string name="cd_filter_icon">Filter icon</string>
     <string name="cd_status_indicator">Status indicator</string>
     <string name="cd_navigation_icon">Navigation icon</string>
+
+    <!-- Footer / Branding -->
+    <string name="footer_tagline">Late nights for brighter days.\nCreated by Doru Moraru</string>
+    <string name="footer_author_name">Doru Moraru</string>
+    <string name="footer_author_url">https://github.com/dorumrr/de1984</string>
 </resources>

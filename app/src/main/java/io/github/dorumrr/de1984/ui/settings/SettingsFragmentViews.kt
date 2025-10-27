@@ -129,8 +129,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun setupFooterLink() {
-        val fullText = "Giving Privacy its due, by Doru Moraru"
-        val clickableText = "Doru Moraru"
+        val fullText = getString(io.github.dorumrr.de1984.R.string.footer_tagline)
+        val clickableText = getString(io.github.dorumrr.de1984.R.string.footer_author_name)
         val startIndex = fullText.indexOf(clickableText)
         val endIndex = startIndex + clickableText.length
 
@@ -138,7 +138,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         val clickableSpan = object : android.text.style.ClickableSpan() {
             override fun onClick(widget: View) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dorumrr/de1984"))
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(getString(io.github.dorumrr.de1984.R.string.footer_author_url)))
                 startActivity(intent)
             }
 

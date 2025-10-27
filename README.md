@@ -75,4 +75,4 @@ De1984 protects your privacy. You can protect its future!
 
 ---
 
-*Giving Privacy its due, by Doru Moraru*
+*Late nights for brighter days.*

@@ -47,8 +47,8 @@ class CreditsFragmentViews : BaseFragment<FragmentCreditsBinding>() {
     }
 
     private fun setupFooterLink() {
-        val fullText = "Giving Privacy its due, by Doru Moraru"
-        val clickableText = "Doru Moraru"
+        val fullText = getString(R.string.footer_tagline)
+        val clickableText = getString(R.string.footer_author_name)
         val startIndex = fullText.indexOf(clickableText)
         val endIndex = startIndex + clickableText.length
 
@@ -56,7 +56,7 @@ class CreditsFragmentViews : BaseFragment<FragmentCreditsBinding>() {
 
         val clickableSpan = object : android.text.style.ClickableSpan() {
             override fun onClick(widget: View) {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dorumrr/de1984"))
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.footer_author_url)))
                 startActivity(intent)
             }
 

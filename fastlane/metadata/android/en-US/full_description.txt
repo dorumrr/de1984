@@ -17,20 +17,9 @@ De1984 is a firewall and package manager for Android devices.
 - Zero tracking or analytics
 - No telemetry
 - Local-only data storage
-- 100% open source (MIT License)
-
-<b>MODERN DESIGN</b>
-
-- Material Design 3
-- Dark mode support
-- Clean, intuitive UI
-- Fast and responsive
-
-<b>FLOSS COMPLIANCE</b>
-
 - No proprietary libraries
 - No Google Play Services
-- No Firebase or analytics
+- 100% open source (MIT License)
 - Buildable from source
 
 <b>REQUIREMENTS</b>
@@ -41,7 +30,6 @@ De1984 is a firewall and package manager for Android devices.
 
 <b>PERMISSIONS</b>
 
-- INTERNET: For firewall functionality (VPN-based)
 - ACCESS_NETWORK_STATE: Monitor network connectivity
 - BIND_VPN_SERVICE: Create local VPN for firewall
 - QUERY_ALL_PACKAGES: View installed apps (optional)
@@ -53,4 +41,5 @@ Source code: https://github.com/dorumrr/de1984
 License: MIT  
 Issues: https://github.com/dorumrr/de1984/issues  
 
-Giving Privacy its due, by Doru Moraru
+Late Nights for brighter days.
+Created by Doru Moraru

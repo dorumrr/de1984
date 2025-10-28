@@ -104,23 +104,29 @@ class FirewallVpnService : VpnService() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand: action=${intent?.action}, wasExplicitlyStopped=$wasExplicitlyStopped")
+
         if (wasExplicitlyStopped && intent?.action != ACTION_START) {
+            Log.d(TAG, "Service was explicitly stopped and no START action - stopping self")
             stopSelf()
             return START_NOT_STICKY
         }
 
         when (intent?.action) {
             ACTION_START -> {
+                Log.d(TAG, "ACTION_START received - starting VPN")
                 wasExplicitlyStopped = false
                 startVpn()
                 return START_STICKY
             }
             ACTION_STOP -> {
+                Log.d(TAG, "ACTION_STOP received - stopping VPN")
                 wasExplicitlyStopped = true
                 stopVpn()
                 return START_NOT_STICKY
             }
             else -> {
+                Log.w(TAG, "Unknown action or null intent - stopping self")
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -185,6 +191,7 @@ class FirewallVpnService : VpnService() {
     }
 
     private fun startVpn() {
+        Log.d(TAG, "startVpn() called")
         vpnSetupJob?.cancel()
 
         isServiceActive = true
@@ -198,31 +205,39 @@ class FirewallVpnService : VpnService() {
             io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
             true
         ).apply()
+        Log.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=true")
 
         vpnSetupJob = serviceScope.launch {
             try {
+                Log.d(TAG, "Starting foreground service with notification")
                 startForeground(NOTIFICATION_ID, createNotification())
                 checkBatteryOptimization()
 
+                Log.d(TAG, "Building VPN interface")
                 vpnInterface = buildVpnInterface()
 
                 if (!isServiceActive) {
+                    Log.w(TAG, "Service became inactive during VPN setup")
                     vpnInterface?.close()
                     vpnInterface = null
                     return@launch
                 }
 
                 if (vpnInterface == null) {
+                    Log.w(TAG, "VPN interface is null - no apps to block or permission denied")
                     lastAppliedBlockedApps = emptySet()
                 } else {
+                    Log.d(TAG, "VPN interface established successfully")
                     startPacketDropping()
 
                     lastAppliedBlockedApps = getBlockedAppsForCurrentState()
+                    Log.d(TAG, "Blocking ${lastAppliedBlockedApps.size} apps")
                 }
 
                 lastAppliedNetworkType = currentNetworkType
                 lastAppliedScreenState = isScreenOn
             } catch (e: Exception) {
+                Log.e(TAG, "Error in startVpn", e)
                 if (isServiceActive) {
                     stopSelf()
                 }

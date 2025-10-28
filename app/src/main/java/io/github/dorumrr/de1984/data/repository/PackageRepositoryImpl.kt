@@ -43,7 +43,7 @@ class PackageRepositoryImpl(
                 Result.success(Unit)
             } else {
                 val action = if (enabled) "enable" else "disable"
-                val errorMessage = "Unable to $action package. Root access required for package management."
+                val errorMessage = "Unable to $action package. Shizuku or root access required for package management."
                 Result.failure(SecurityException(errorMessage))
             }
         } catch (e: Exception) {
@@ -70,7 +70,7 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val errorMessage = "Unable to uninstall package. Root access required for package management."
+                val errorMessage = "Unable to uninstall package. Shizuku or root access required for package management."
                 Result.failure(SecurityException(errorMessage))
             }
         } catch (e: Exception) {
@@ -84,7 +84,7 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val errorMessage = "Unable to force stop package. Root access required for package management."
+                val errorMessage = "Unable to force stop package. Shizuku or root access required for package management."
                 Result.failure(SecurityException(errorMessage))
             }
         } catch (e: Exception) {

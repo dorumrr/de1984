@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.core.graphics.drawable.toBitmap
+import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.model.PackageEntity
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
@@ -27,7 +28,8 @@ private data class BlockingState(
 
 class AndroidPackageDataSource(
     private val context: Context,
-    private val firewallRepository: FirewallRepository
+    private val firewallRepository: FirewallRepository,
+    private val shizukuManager: ShizukuManager
 ) : PackageDataSource {
 
     private val packageManager = context.packageManager
@@ -179,11 +181,39 @@ class AndroidPackageDataSource(
                 // PackageManager method failed
             }
 
+            // Try Shizuku
+            if (shizukuManager.isShizukuAvailable()) {
+                // Request permission if not granted yet
+                if (!shizukuManager.hasShizukuPermission) {
+                    shizukuManager.requestShizukuPermission()
+                    // Wait a bit for permission dialog
+                    kotlinx.coroutines.delay(500)
+                }
+
+                if (shizukuManager.hasShizukuPermission) {
+                    try {
+                        val command = if (enabled) {
+                            "pm enable $packageName"
+                        } else {
+                            "pm disable-user $packageName"
+                        }
+
+                        val (exitCode, _) = shizukuManager.executeShellCommand(command)
+                        if (exitCode == 0) {
+                            return@withContext true
+                        }
+                    } catch (e: Exception) {
+                        // Shizuku method failed
+                    }
+                }
+            }
+
+            // Try root shell
             try {
                 val command = if (enabled) {
                     "pm enable $packageName"
                 } else {
-                    "pm disable-user --user 0 $packageName"
+                    "pm disable-user $packageName"
                 }
 
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
@@ -194,23 +224,6 @@ class AndroidPackageDataSource(
                 }
             } catch (e: Exception) {
                 // Root shell method failed
-            }
-
-            try {
-                val command = if (enabled) {
-                    "pm enable $packageName"
-                } else {
-                    "pm disable-user --user 0 $packageName"
-                }
-
-                val process = Runtime.getRuntime().exec(command)
-                val exitCode = process.waitFor()
-
-                if (exitCode == 0) {
-                    return@withContext true
-                }
-            } catch (e: Exception) {
-                // Shell method failed
             }
 
             false
@@ -223,6 +236,29 @@ class AndroidPackageDataSource(
         }
 
         return withContext(Dispatchers.IO) {
+            // Try Shizuku
+            if (shizukuManager.isShizukuAvailable()) {
+                // Request permission if not granted yet
+                if (!shizukuManager.hasShizukuPermission) {
+                    shizukuManager.requestShizukuPermission()
+                    // Wait a bit for permission dialog
+                    kotlinx.coroutines.delay(500)
+                }
+
+                if (shizukuManager.hasShizukuPermission) {
+                    try {
+                        val command = "pm uninstall --user 0 $packageName"
+                        val (exitCode, _) = shizukuManager.executeShellCommand(command)
+                        if (exitCode == 0) {
+                            return@withContext true
+                        }
+                    } catch (e: Exception) {
+                        // Shizuku method failed
+                    }
+                }
+            }
+
+            // Try root shell
             try {
                 val command = "pm uninstall --user 0 $packageName"
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
@@ -233,18 +269,6 @@ class AndroidPackageDataSource(
                 }
             } catch (e: Exception) {
                 // Root shell method failed
-            }
-
-            try {
-                val command = "pm uninstall --user 0 $packageName"
-                val process = Runtime.getRuntime().exec(command)
-                val exitCode = process.waitFor()
-
-                if (exitCode == 0) {
-                    return@withContext true
-                }
-            } catch (e: Exception) {
-                // Shell method failed
             }
 
             false
@@ -257,6 +281,29 @@ class AndroidPackageDataSource(
         }
 
         return withContext(Dispatchers.IO) {
+            // Try Shizuku
+            if (shizukuManager.isShizukuAvailable()) {
+                // Request permission if not granted yet
+                if (!shizukuManager.hasShizukuPermission) {
+                    shizukuManager.requestShizukuPermission()
+                    // Wait a bit for permission dialog
+                    kotlinx.coroutines.delay(500)
+                }
+
+                if (shizukuManager.hasShizukuPermission) {
+                    try {
+                        val command = "am force-stop $packageName"
+                        val (exitCode, _) = shizukuManager.executeShellCommand(command)
+                        if (exitCode == 0) {
+                            return@withContext true
+                        }
+                    } catch (e: Exception) {
+                        // Shizuku method failed
+                    }
+                }
+            }
+
+            // Try root shell
             try {
                 val command = "am force-stop $packageName"
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
@@ -269,23 +316,12 @@ class AndroidPackageDataSource(
                 // Root shell method failed
             }
 
+            // Try ActivityManager (limited effectiveness)
             try {
                 val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
                 activityManager.killBackgroundProcesses(packageName)
             } catch (e: Exception) {
                 // ActivityManager method failed
-            }
-
-            try {
-                val command = "am force-stop $packageName"
-                val process = Runtime.getRuntime().exec(command)
-                val exitCode = process.waitFor()
-
-                if (exitCode == 0) {
-                    return@withContext true
-                }
-            } catch (e: Exception) {
-                // Shell method failed
             }
 
             false

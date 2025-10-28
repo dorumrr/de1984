@@ -85,6 +85,15 @@
             android:name=".data.service.PackageMonitoringService"
             android:exported="false" />
 
+        <!-- Shizuku provider for elevated privileges -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
         <!-- Boot receiver to restore firewall state after device reboot -->
         <receiver
             android:name=".data.receiver.BootReceiver"

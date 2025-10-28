@@ -1,1 +1,1 @@
-Privacy-focused firewall and package manager for Android
+Privacy-focused Firewall and Package Manager for Android devices

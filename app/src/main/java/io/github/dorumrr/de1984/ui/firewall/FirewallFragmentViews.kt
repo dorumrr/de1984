@@ -60,7 +60,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         SettingsViewModel.Factory(
             requireContext(),
             app.dependencies.permissionManager,
-            app.dependencies.rootManager
+            app.dependencies.rootManager,
+            app.dependencies.shizukuManager
         )
     }
 

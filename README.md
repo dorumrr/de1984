@@ -23,10 +23,11 @@
 - Block apps from accessing WiFi, Mobile Data, or Roaming
 - Per-app network control with granular permissions
 
-### 📦 Package Management (with root)
+### 📦 Package Management (with Shizuku or root)
 - Enable/disable users of system apps
 - Force stop running apps
 - Uninstall system and user apps
+- Works with Shizuku (no root required) or traditional root access
 
 ### 🔒 Privacy First
 - Zero tracking or analytics
@@ -37,7 +38,7 @@
 ## 📋 Requirements
 
 - **Android 8.0 (API 26) or higher**
-- Root access optional (required for package management features)
+- Shizuku or root access optional (required for package management features)
 - VPN permission (for firewall functionality)
 
 ## 🔐 Permissions
@@ -46,7 +47,7 @@
 - **ACCESS_NETWORK_STATE**: Monitor network connectivity
 - **BIND_VPN_SERVICE**: Create local VPN for firewall
 - **QUERY_ALL_PACKAGES**: View installed apps (optional)
-- **Root access**: For advanced package management (optional)
+- **Shizuku or root access**: For advanced package management (optional)
 
 ## 🤝 Contributing
 

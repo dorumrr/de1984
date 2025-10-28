@@ -12,5 +12,8 @@ class De1984Application : Application() {
 
         // Initialize dependencies
         dependencies = De1984Dependencies.getInstance(this)
+
+        // Register Shizuku listeners for lifecycle monitoring
+        dependencies.shizukuManager.registerListeners()
     }
 }

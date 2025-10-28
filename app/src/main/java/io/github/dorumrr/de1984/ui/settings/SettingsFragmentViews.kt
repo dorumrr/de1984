@@ -28,6 +28,7 @@ import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.PermissionInfo
 import io.github.dorumrr.de1984.data.common.RootStatus
+import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.databinding.FragmentSettingsBinding
 import io.github.dorumrr.de1984.databinding.PermissionTierSectionBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
@@ -52,7 +53,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         SettingsViewModel.Factory(
             requireContext(),
             app.dependencies.permissionManager,
-            app.dependencies.rootManager
+            app.dependencies.rootManager,
+            app.dependencies.shizukuManager
         )
     }
 
@@ -223,6 +225,11 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                         updateRootStatus(rootStatus)
                     }
                 }
+                launch {
+                    viewModel.shizukuStatus.collect { shizukuStatus ->
+                        updateShizukuStatus(shizukuStatus)
+                    }
+                }
             }
         }
     }
@@ -263,8 +270,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         setupPermissionTier(
             binding.permissionTierAdvanced,
             title = "Advanced Operations",
-            description = "Package management and system-level operations",
-            status = if (state.hasAdvancedPermissions) "Completed" else "Root Required",
+            description = "Package management and system-level operations (via Shizuku or root)",
+            status = if (state.hasAdvancedPermissions) "Completed" else "Shizuku or Root Required",
             isComplete = state.hasAdvancedPermissions,
             permissions = state.advancedPermissions,
             setupButtonText = "Grant Root Access",
@@ -383,6 +390,77 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             }
             RootStatus.CHECKING -> {
                 // Checking root status - hide everything during check
+                tierBinding.rootStatusContainer.visibility = View.GONE
+                tierBinding.rootingToolsContainer.visibility = View.GONE
+                tierBinding.setupButtonContainer.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun updateShizukuStatus(shizukuStatus: ShizukuStatus) {
+        val tierBinding = binding.permissionTierAdvanced
+
+        // Get theme-aware icon color
+        val typedValue = android.util.TypedValue()
+        requireContext().theme.resolveAttribute(android.R.attr.textColorSecondary, typedValue, true)
+        val iconColor = typedValue.data
+
+        // Only show Shizuku status if root is not available
+        val rootStatus = viewModel.rootStatus.value
+        if (rootStatus == RootStatus.ROOTED_WITH_PERMISSION) {
+            // Root is granted, don't show Shizuku status
+            return
+        }
+
+        when (shizukuStatus) {
+            ShizukuStatus.RUNNING_WITH_PERMISSION -> {
+                // Shizuku is granted - hide status section
+                tierBinding.rootStatusContainer.visibility = View.GONE
+                tierBinding.rootingToolsContainer.visibility = View.GONE
+                tierBinding.setupButtonContainer.visibility = View.GONE
+            }
+            ShizukuStatus.RUNNING_NO_PERMISSION -> {
+                // Shizuku is running but permission not granted
+                tierBinding.rootStatusContainer.visibility = View.VISIBLE
+                tierBinding.rootStatusIcon.setColorFilter(iconColor)
+                tierBinding.rootStatusTitle.text = Constants.ShizukuAccess.STATUS_DENIED
+                tierBinding.rootStatusDescription.text = Constants.ShizukuAccess.DESC_DENIED
+                tierBinding.rootStatusInstructions.visibility = View.GONE
+                tierBinding.rootingToolsContainer.visibility = View.GONE
+                tierBinding.setupButtonContainer.visibility = View.VISIBLE
+                tierBinding.setupButton.text = "Grant Shizuku Permission"
+                tierBinding.setupButton.setOnClickListener {
+                    viewModel.grantShizukuPermission()
+                }
+            }
+            ShizukuStatus.INSTALLED_NOT_RUNNING -> {
+                // Shizuku is installed but not running
+                tierBinding.rootStatusContainer.visibility = View.VISIBLE
+                tierBinding.rootStatusIcon.setColorFilter(iconColor)
+                tierBinding.rootStatusTitle.text = Constants.ShizukuAccess.STATUS_NOT_RUNNING
+                tierBinding.rootStatusDescription.text = Constants.ShizukuAccess.DESC_NOT_RUNNING
+                tierBinding.rootStatusInstructions.visibility = View.VISIBLE
+                tierBinding.rootStatusInstructions.text = "Start Shizuku app to enable package management"
+                tierBinding.rootingToolsContainer.visibility = View.GONE
+                tierBinding.setupButtonContainer.visibility = View.GONE
+            }
+            ShizukuStatus.NOT_INSTALLED -> {
+                // Shizuku is not installed - show download link
+                tierBinding.rootStatusContainer.visibility = View.VISIBLE
+                tierBinding.rootStatusIcon.setColorFilter(iconColor)
+                tierBinding.rootStatusTitle.text = Constants.ShizukuAccess.STATUS_NOT_AVAILABLE
+                tierBinding.rootStatusDescription.text = Constants.ShizukuAccess.DESC_NOT_AVAILABLE
+                tierBinding.rootStatusInstructions.visibility = View.VISIBLE
+                tierBinding.rootStatusInstructions.text = "Download Shizuku: ${Constants.ShizukuAccess.DOWNLOAD_URL}"
+                tierBinding.rootStatusInstructions.setOnClickListener {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.ShizukuAccess.DOWNLOAD_URL))
+                    startActivity(intent)
+                }
+                tierBinding.rootingToolsContainer.visibility = View.GONE
+                tierBinding.setupButtonContainer.visibility = View.GONE
+            }
+            ShizukuStatus.CHECKING -> {
+                // Checking Shizuku status - hide everything during check
                 tierBinding.rootStatusContainer.visibility = View.GONE
                 tierBinding.rootingToolsContainer.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE

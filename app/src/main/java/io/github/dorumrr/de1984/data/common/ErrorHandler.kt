@@ -60,7 +60,7 @@ class ErrorHandler {
     
     fun createRootRequiredError(operation: String): De1984Error.RootRequired {
         return De1984Error.RootRequired(
-            message = "Root access required for $operation",
+            message = "Shizuku or root access required for $operation",
             operation = operation
         )
     }

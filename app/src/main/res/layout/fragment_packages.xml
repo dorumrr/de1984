@@ -39,17 +39,31 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Root access required for package management"
+                android:text="Shizuku or root access required for package management"
                 android:textSize="14sp"
                 android:textColor="#E65100" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/dismiss_banner_button"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Dismiss"
-                android:textSize="12sp"
-                style="@style/Widget.Material3.Button.TextButton" />
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/grant_permission_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Grant Permission"
+                    android:textSize="12sp"
+                    style="@style/Widget.Material3.Button.TextButton" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/dismiss_banner_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Dismiss"
+                    android:textSize="12sp"
+                    style="@style/Widget.Material3.Button.TextButton" />
+            </LinearLayout>
 
         </LinearLayout>
 

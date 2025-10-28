@@ -134,6 +134,32 @@ object Constants {
 3. Restart the app to use advanced operations"""
     }
 
+    object ShizukuAccess {
+        const val STATUS_GRANTED = "Shizuku: Granted"
+        const val STATUS_DENIED = "Shizuku: Denied"
+        const val STATUS_NOT_AVAILABLE = "Shizuku: Not Installed"
+        const val STATUS_NOT_RUNNING = "Shizuku: Not Running"
+        const val STATUS_CHECKING = "Shizuku: Checking..."
+
+        const val DESC_GRANTED = "Advanced operations are available via Shizuku"
+        const val DESC_DENIED = "Shizuku permission was denied. Tap 'Grant Shizuku Permission' to try again."
+        const val DESC_NOT_AVAILABLE = "Shizuku is not installed. Install Shizuku to enable package management without root."
+        const val DESC_NOT_RUNNING = "Shizuku is installed but not running. Start Shizuku to enable package management."
+        const val DESC_CHECKING = "Please wait..."
+
+        const val DOWNLOAD_URL = "https://shizuku.rikka.app/download/"
+        const val GUIDE_URL = "https://shizuku.rikka.app/guide/setup/"
+
+        const val SETUP_INSTRUCTIONS = """To enable package management with Shizuku:
+
+1. Install Shizuku from the link below
+2. Start Shizuku (requires ADB or root)
+3. Grant Shizuku permission to De1984
+4. Use advanced package operations"""
+
+        const val WHAT_IS_SHIZUKU = "Shizuku allows apps to use system APIs with elevated privileges (ADB or root). It's a safer alternative to traditional root access for package management."
+    }
+
     object Firewall {
         const val STATE_BLOCKED = "Blocked"
         const val STATE_ALLOWED = "Allowed"

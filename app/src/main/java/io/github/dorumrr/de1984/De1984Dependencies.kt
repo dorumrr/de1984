@@ -5,6 +5,7 @@ import androidx.room.Room
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.common.RootManager
+import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.database.De1984Database
 import io.github.dorumrr.de1984.data.database.dao.FirewallRuleDao
 import io.github.dorumrr.de1984.data.datasource.AndroidPackageDataSource
@@ -53,12 +54,16 @@ class De1984Dependencies(private val context: Context) {
         RootManager(context)
     }
 
+    val shizukuManager: ShizukuManager by lazy {
+        ShizukuManager(context)
+    }
+
     val errorHandler: ErrorHandler by lazy {
         ErrorHandler()
     }
 
     val permissionManager: PermissionManager by lazy {
-        PermissionManager(context, rootManager)
+        PermissionManager(context, rootManager, shizukuManager)
     }
 
     val superuserBannerState: SuperuserBannerState by lazy {
@@ -76,7 +81,7 @@ class De1984Dependencies(private val context: Context) {
     // Note: PackageDataSource depends on FirewallRepository (circular dependency)
     // We use lazy initialization to break the cycle
     val packageDataSource: PackageDataSource by lazy {
-        AndroidPackageDataSource(context, firewallRepository)
+        AndroidPackageDataSource(context, firewallRepository, shizukuManager)
     }
 
     val packageRepository: PackageRepository by lazy {

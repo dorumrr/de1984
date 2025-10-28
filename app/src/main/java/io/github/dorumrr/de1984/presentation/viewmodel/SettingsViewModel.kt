@@ -10,6 +10,8 @@ import io.github.dorumrr.de1984.BuildConfig
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.RootStatus
+import io.github.dorumrr.de1984.data.common.ShizukuManager
+import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 
 import io.github.dorumrr.de1984.utils.Constants
@@ -22,13 +24,15 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val context: Context,
     private val permissionManager: PermissionManager,
-    private val rootManager: RootManager
+    private val rootManager: RootManager,
+    private val shizukuManager: ShizukuManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     val rootStatus: StateFlow<RootStatus> = rootManager.rootStatus
+    val shizukuStatus: StateFlow<ShizukuStatus> = shizukuManager.shizukuStatus
 
 
     
@@ -37,6 +41,7 @@ class SettingsViewModel(
         loadSystemInfo()
         cleanupOrphanedPreferences()
         requestRootPermission() // Check root status on initialization
+        requestShizukuPermission() // Check Shizuku status on initialization
     }
 
 
@@ -52,6 +57,16 @@ class SettingsViewModel(
 
     fun markRootPermissionRequested() {
         rootManager.markRootPermissionRequested()
+    }
+
+    fun requestShizukuPermission() {
+        viewModelScope.launch {
+            shizukuManager.checkShizukuStatus()
+        }
+    }
+
+    fun grantShizukuPermission() {
+        shizukuManager.requestShizukuPermission()
     }
     
     private fun loadSettings() {
@@ -214,7 +229,8 @@ class SettingsViewModel(
     class Factory(
         private val context: Context,
         private val permissionManager: PermissionManager,
-        private val rootManager: RootManager
+        private val rootManager: RootManager,
+        private val shizukuManager: ShizukuManager
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -222,7 +238,8 @@ class SettingsViewModel(
                 return SettingsViewModel(
                     context,
                     permissionManager,
-                    rootManager
+                    rootManager,
+                    shizukuManager
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")

@@ -1,0 +1,5 @@
+De1984 Firewall release v1.1.0
+
+Features:
+• Added Shizuku support for package management (no root required!)
+• Minor fixes and performance improvements

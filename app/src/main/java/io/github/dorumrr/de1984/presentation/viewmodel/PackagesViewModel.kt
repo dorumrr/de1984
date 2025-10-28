@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.dorumrr.de1984.data.common.RootManager
+import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.usecase.GetPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManagePackageUseCase
@@ -22,7 +23,8 @@ class PackagesViewModel(
     private val getPackagesUseCase: GetPackagesUseCase,
     private val managePackageUseCase: ManagePackageUseCase,
     private val superuserBannerState: SuperuserBannerState,
-    private val rootManager: RootManager
+    private val rootManager: RootManager,
+    private val shizukuManager: ShizukuManager
 ) : ViewModel() {
 
     private val TAG = "PackagesViewModel"
@@ -45,6 +47,15 @@ class PackagesViewModel(
 
     fun checkRootAccess() {
         viewModelScope.launch {
+            // Check Shizuku first (preferred method)
+            shizukuManager.checkShizukuStatus()
+
+            // If Shizuku is available but permission not granted, request it
+            if (shizukuManager.isShizukuAvailable() && !shizukuManager.hasShizukuPermission) {
+                shizukuManager.requestShizukuPermission()
+            }
+
+            // Also check root as fallback
             rootManager.checkRootStatus()
         }
     }
@@ -197,7 +208,8 @@ class PackagesViewModel(
         private val getPackagesUseCase: GetPackagesUseCase,
         private val managePackageUseCase: ManagePackageUseCase,
         private val superuserBannerState: SuperuserBannerState,
-        private val rootManager: RootManager
+        private val rootManager: RootManager,
+        private val shizukuManager: ShizukuManager
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -206,7 +218,8 @@ class PackagesViewModel(
                     getPackagesUseCase,
                     managePackageUseCase,
                     superuserBannerState,
-                    rootManager
+                    rootManager,
+                    shizukuManager
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")

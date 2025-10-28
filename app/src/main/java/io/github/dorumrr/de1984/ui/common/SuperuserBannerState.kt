@@ -38,7 +38,8 @@ class SuperuserBannerState {
 
     fun shouldShowBannerForError(error: Throwable?): Boolean {
         return error is SecurityException &&
-               (error.message?.contains("Root access required", ignoreCase = true) == true ||
+               (error.message?.contains("Shizuku", ignoreCase = true) == true ||
+                error.message?.contains("Root access required", ignoreCase = true) == true ||
                 error.message?.contains("superuser", ignoreCase = true) == true)
     }
 }

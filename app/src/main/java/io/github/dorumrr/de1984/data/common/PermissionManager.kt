@@ -20,7 +20,8 @@ data class PermissionInfo(
 
 class PermissionManager(
     private val context: Context,
-    private val rootManager: RootManager
+    private val rootManager: RootManager,
+    private val shizukuManager: ShizukuManager
 ) {
 
     companion object {
@@ -71,6 +72,10 @@ class PermissionManager(
     
     fun hasRootAccess(): Boolean {
         return rootManager.hasRootPermission
+    }
+
+    fun hasShizukuAccess(): Boolean {
+        return shizukuManager.hasShizukuPermission
     }
     
     fun hasPackageQueryPermission(): Boolean {
@@ -126,8 +131,9 @@ class PermissionManager(
         return SystemCapabilities(
             hasBasicPermissions = hasBasicPermissions(),
             hasPackageQuery = hasPackageQueryPermission(),
+            hasShizukuAccess = hasShizukuAccess(),
             hasRootAccess = hasRootAccess(),
-            canManagePackages = hasRootAccess()
+            canManagePackages = hasShizukuAccess() || hasRootAccess()
         )
     }
 
@@ -171,12 +177,14 @@ class PermissionManager(
 data class SystemCapabilities(
     val hasBasicPermissions: Boolean,
     val hasPackageQuery: Boolean,
+    val hasShizukuAccess: Boolean,
     val hasRootAccess: Boolean,
     val canManagePackages: Boolean
 ) {
     val overallCapabilityLevel: CapabilityLevel
         get() = when {
             hasRootAccess -> CapabilityLevel.FULL_ROOT
+            hasShizukuAccess -> CapabilityLevel.FULL_SHIZUKU
             hasBasicPermissions -> CapabilityLevel.LIMITED
             else -> CapabilityLevel.MINIMAL
         }
@@ -185,5 +193,6 @@ data class SystemCapabilities(
 enum class CapabilityLevel {
     MINIMAL,
     LIMITED,
+    FULL_SHIZUKU,
     FULL_ROOT
 }

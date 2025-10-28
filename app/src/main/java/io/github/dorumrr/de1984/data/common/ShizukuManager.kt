@@ -1,0 +1,319 @@
+package io.github.dorumrr.de1984.data.common
+
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.IBinder
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+import rikka.shizuku.Shizuku
+
+/**
+ * Manages Shizuku integration for elevated privileges without root
+ * Handles detection, permission management, and command execution via Shizuku
+ */
+class ShizukuManager(private val context: Context) {
+
+    companion object {
+        private const val TAG = "ShizukuManager"
+        private const val SHIZUKU_PACKAGE_NAME = "moe.shizuku.privileged.api"
+        private const val REQUEST_CODE_PERMISSION = 1001
+    }
+
+    private val _shizukuStatus = MutableStateFlow(ShizukuStatus.CHECKING)
+    val shizukuStatus: StateFlow<ShizukuStatus> = _shizukuStatus.asStateFlow()
+
+    private var hasCheckedOnce = false
+    private var listenersRegistered = false
+
+    val hasShizukuPermission: Boolean
+        get() = _shizukuStatus.value == ShizukuStatus.RUNNING_WITH_PERMISSION
+
+    // Binder death listener - detects when Shizuku service dies
+    private val binderDeathRecipient = IBinder.DeathRecipient {
+        // Shizuku service died, update status
+        _shizukuStatus.value = ShizukuStatus.INSTALLED_NOT_RUNNING
+    }
+
+    // Permission result listener - handles permission changes
+    private val permissionResultListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        if (requestCode == REQUEST_CODE_PERMISSION) {
+            if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                _shizukuStatus.value = ShizukuStatus.RUNNING_WITH_PERMISSION
+            } else {
+                _shizukuStatus.value = ShizukuStatus.RUNNING_NO_PERMISSION
+            }
+        }
+    }
+
+    // Binder received/dead listeners - monitor Shizuku service lifecycle
+    private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
+        // Shizuku binder received, check status
+        checkShizukuStatusSync()
+    }
+
+    private val binderDeadListener = Shizuku.OnBinderDeadListener {
+        // Shizuku binder died
+        _shizukuStatus.value = ShizukuStatus.INSTALLED_NOT_RUNNING
+    }
+
+    /**
+     * Check Shizuku status (installation, running state, permission)
+     */
+    suspend fun checkShizukuStatus() {
+        val currentStatus = _shizukuStatus.value
+
+        // Only skip check if we have definitive permission
+        if (hasCheckedOnce && currentStatus == ShizukuStatus.RUNNING_WITH_PERMISSION) {
+            return
+        }
+
+        if (!hasCheckedOnce) {
+            _shizukuStatus.value = ShizukuStatus.CHECKING
+        }
+
+        val newStatus = checkShizukuStatusInternal()
+        _shizukuStatus.value = newStatus
+        hasCheckedOnce = true
+    }
+
+    /**
+     * Synchronous status check (for listeners)
+     */
+    private fun checkShizukuStatusSync() {
+        val newStatus = when {
+            !isShizukuInstalled() -> ShizukuStatus.NOT_INSTALLED
+            !isShizukuRunning() -> ShizukuStatus.INSTALLED_NOT_RUNNING
+            !checkShizukuPermissionSync() -> ShizukuStatus.RUNNING_NO_PERMISSION
+            else -> ShizukuStatus.RUNNING_WITH_PERMISSION
+        }
+        _shizukuStatus.value = newStatus
+    }
+
+    private suspend fun checkShizukuStatusInternal(): ShizukuStatus = withContext(Dispatchers.IO) {
+        try {
+            // Check if Shizuku is installed
+            val installed = isShizukuInstalled()
+            Log.d(TAG, "checkShizukuStatusInternal: installed=$installed")
+            if (!installed) {
+                return@withContext ShizukuStatus.NOT_INSTALLED
+            }
+
+            // Check if Shizuku is running
+            val running = isShizukuRunning()
+            Log.d(TAG, "checkShizukuStatusInternal: running=$running")
+            if (!running) {
+                return@withContext ShizukuStatus.INSTALLED_NOT_RUNNING
+            }
+
+            // Check permission
+            val hasPermission = checkShizukuPermissionSync()
+            Log.d(TAG, "checkShizukuStatusInternal: hasPermission=$hasPermission")
+            if (!hasPermission) {
+                return@withContext ShizukuStatus.RUNNING_NO_PERMISSION
+            }
+
+            ShizukuStatus.RUNNING_WITH_PERMISSION
+        } catch (e: Exception) {
+            Log.e(TAG, "checkShizukuStatusInternal: Error checking status", e)
+            ShizukuStatus.NOT_INSTALLED
+        }
+    }
+
+    /**
+     * Check if Shizuku app is installed
+     */
+    fun isShizukuInstalled(): Boolean {
+        return try {
+            context.packageManager.getPackageInfo(SHIZUKU_PACKAGE_NAME, 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Check if Shizuku service is running
+     */
+    fun isShizukuRunning(): Boolean {
+        return try {
+            Shizuku.pingBinder()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Check if Shizuku is available (installed and running)
+     */
+    fun isShizukuAvailable(): Boolean {
+        return isShizukuInstalled() && isShizukuRunning()
+    }
+
+    /**
+     * Check Shizuku permission (synchronous)
+     */
+    private fun checkShizukuPermissionSync(): Boolean {
+        return try {
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Request Shizuku permission
+     */
+    fun requestShizukuPermission() {
+        try {
+            Log.d(TAG, "requestShizukuPermission: isShizukuRunning=${isShizukuRunning()}")
+            if (isShizukuRunning()) {
+                Log.d(TAG, "requestShizukuPermission: Requesting permission...")
+                Shizuku.requestPermission(REQUEST_CODE_PERMISSION)
+            } else {
+                Log.w(TAG, "requestShizukuPermission: Shizuku is not running")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "requestShizukuPermission: Failed to request permission", e)
+        }
+    }
+
+    /**
+     * Get Shizuku version
+     */
+    fun getShizukuVersion(): Int {
+        return try {
+            if (isShizukuRunning()) {
+                Shizuku.getVersion()
+            } else {
+                -1
+            }
+        } catch (e: Exception) {
+            -1
+        }
+    }
+
+    /**
+     * Execute shell command with Shizuku privileges
+     * Uses reflection to access Shizuku.newProcess() since it's private
+     */
+    suspend fun executeShellCommand(command: String): Pair<Int, String> = withContext(Dispatchers.IO) {
+        if (!hasShizukuPermission) {
+            Log.w(TAG, "executeShellCommand: No Shizuku permission")
+            return@withContext Pair(-1, "No Shizuku permission")
+        }
+
+        try {
+            Log.d(TAG, "executeShellCommand: Executing command: $command")
+
+            // Use reflection to access private Shizuku.newProcess() method
+            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+            newProcessMethod.isAccessible = true
+
+            // Execute command using sh -c to handle complex commands
+            val process = newProcessMethod.invoke(
+                null,
+                arrayOf("sh", "-c", command),
+                null,
+                null
+            ) as Process
+
+            // Read output and error streams
+            val output = StringBuilder()
+            val error = StringBuilder()
+
+            // Read output stream
+            process.inputStream.bufferedReader().use { reader ->
+                reader.forEachLine { line ->
+                    output.append(line).append("\n")
+                }
+            }
+
+            // Read error stream
+            process.errorStream.bufferedReader().use { reader ->
+                reader.forEachLine { line ->
+                    error.append(line).append("\n")
+                }
+            }
+
+            // Wait for process to complete with timeout
+            val exitCode = kotlinx.coroutines.withTimeoutOrNull(5000) {
+                process.waitFor()
+            } ?: run {
+                Log.w(TAG, "executeShellCommand: Command timed out, destroying process")
+                process.destroy()
+                -1
+            }
+
+            val outputStr = output.toString().trim()
+            val errorStr = error.toString().trim()
+
+            Log.d(TAG, "executeShellCommand: exitCode=$exitCode, output='$outputStr', error='$errorStr'")
+
+            return@withContext Pair(exitCode, if (outputStr.isNotEmpty()) outputStr else errorStr)
+        } catch (e: Exception) {
+            Log.e(TAG, "executeShellCommand: Failed to execute command", e)
+            return@withContext Pair(-1, "Shizuku command execution failed: ${e.message}")
+        }
+    }
+
+    /**
+     * Register Shizuku listeners
+     * Call this when the app starts or when you need to monitor Shizuku
+     */
+    fun registerListeners() {
+        if (listenersRegistered) {
+            return
+        }
+
+        try {
+            Shizuku.addRequestPermissionResultListener(permissionResultListener)
+            Shizuku.addBinderReceivedListener(binderReceivedListener)
+            Shizuku.addBinderDeadListener(binderDeadListener)
+            listenersRegistered = true
+        } catch (e: Exception) {
+            // Failed to register listeners
+        }
+    }
+
+    /**
+     * Unregister Shizuku listeners
+     * Call this when the app is destroyed or when you no longer need to monitor Shizuku
+     */
+    fun unregisterListeners() {
+        if (!listenersRegistered) {
+            return
+        }
+
+        try {
+            Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+            Shizuku.removeBinderReceivedListener(binderReceivedListener)
+            Shizuku.removeBinderDeadListener(binderDeadListener)
+            listenersRegistered = false
+        } catch (e: Exception) {
+            // Failed to unregister listeners
+        }
+    }
+}
+
+/**
+ * Shizuku status enum
+ */
+enum class ShizukuStatus {
+    CHECKING,
+    NOT_INSTALLED,
+    INSTALLED_NOT_RUNNING,
+    RUNNING_NO_PERMISSION,
+    RUNNING_WITH_PERMISSION
+}
+

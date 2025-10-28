@@ -39,7 +39,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             getPackagesUseCase = app.dependencies.provideGetPackagesUseCase(),
             managePackageUseCase = app.dependencies.provideManagePackageUseCase(),
             superuserBannerState = app.dependencies.superuserBannerState,
-            rootManager = app.dependencies.rootManager
+            rootManager = app.dependencies.rootManager,
+            shizukuManager = app.dependencies.shizukuManager
         )
     }
 
@@ -48,7 +49,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         SettingsViewModel.Factory(
             requireContext(),
             app.dependencies.permissionManager,
-            app.dependencies.rootManager
+            app.dependencies.rootManager,
+            app.dependencies.shizukuManager
         )
     }
 
@@ -228,6 +230,13 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun setupRootBanner() {
+        binding.grantPermissionButton.setOnClickListener {
+            // Try Shizuku first, then root
+            settingsViewModel.grantShizukuPermission()
+            // If Shizuku is not available, request root
+            settingsViewModel.requestRootPermission()
+        }
+
         binding.dismissBannerButton.setOnClickListener {
             viewModel.dismissRootBanner()
             binding.rootBanner.visibility = View.GONE

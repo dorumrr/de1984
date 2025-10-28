@@ -64,7 +64,8 @@ class MainActivity : AppCompatActivity() {
         SettingsViewModel.Factory(
             context = applicationContext,
             permissionManager = deps.permissionManager,
-            rootManager = deps.rootManager
+            rootManager = deps.rootManager,
+            shizukuManager = deps.shizukuManager
         )
     }
 
@@ -388,6 +389,12 @@ class MainActivity : AppCompatActivity() {
                 ContextCompat.getColor(this, android.R.color.black)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Unregister Shizuku listeners to prevent memory leaks
+        (application as De1984Application).dependencies.shizukuManager.unregisterListeners()
     }
 
     enum class Tab {

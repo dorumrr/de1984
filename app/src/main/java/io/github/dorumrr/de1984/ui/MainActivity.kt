@@ -92,10 +92,9 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            val batteryOptIntent = firewallViewModel.onVpnPermissionGranted()
-            if (batteryOptIntent != null) {
-                batteryOptimizationLauncher.launch(batteryOptIntent)
-            }
+            // Start firewall after VPN permission is granted
+            // Battery optimization will be requested automatically via shouldRequestBatteryOptimization flag
+            firewallViewModel.onVpnPermissionGranted()
         } else {
             firewallViewModel.onVpnPermissionDenied()
         }

@@ -352,9 +352,10 @@ class FirewallViewModel(
         }
     }
 
-    fun onVpnPermissionGranted(): Intent? {
+    fun onVpnPermissionGranted() {
+        // Start firewall after VPN permission is granted
+        // Battery optimization will be requested automatically by startFirewall()
         startFirewall()
-        return permissionManager.createBatteryOptimizationIntent()
     }
 
     fun onVpnPermissionDenied() {

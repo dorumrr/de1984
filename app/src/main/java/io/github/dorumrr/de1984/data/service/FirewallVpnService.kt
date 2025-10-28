@@ -373,9 +373,25 @@ class FirewallVpnService : VpnService() {
                 return null
             }
 
+            // Check if VPN permission is granted
             val prepareIntent = VpnService.prepare(this@FirewallVpnService)
             if (prepareIntent != null) {
-                return@buildVpnInterface null
+                // VPN permission not granted - stop the service and update firewall state
+                Log.e(TAG, "VPN permission not granted - cannot establish VPN interface")
+
+                // Update SharedPreferences to indicate firewall is disabled
+                val prefs = getSharedPreferences(
+                    io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
+                    Context.MODE_PRIVATE
+                )
+                prefs.edit()
+                    .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_FIREWALL_ENABLED, false)
+                    .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING, false)
+                    .apply()
+
+                // Stop the service
+                stopSelf()
+                return null
             }
 
             val vpn = builder.establish()

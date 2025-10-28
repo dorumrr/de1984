@@ -33,6 +33,7 @@ import io.github.dorumrr.de1984.databinding.FragmentSettingsBinding
 import io.github.dorumrr.de1984.databinding.PermissionTierSectionBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
+import io.github.dorumrr.de1984.ui.common.PrivilegedAccessDialog
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.launch
@@ -282,7 +283,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         val buttonText = if (shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION) {
             "Grant Shizuku Permission"
         } else {
-            "Grant Root Access"
+            "Grant Privileged Access"
         }
 
         setupPermissionTier(
@@ -398,7 +399,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     tierBinding.rootStatusContainer.visibility = View.GONE
                     tierBinding.rootingToolsContainer.visibility = View.GONE
                     tierBinding.setupButtonContainer.visibility = View.VISIBLE
-                    tierBinding.setupButton.text = "Grant Root Access"
+                    tierBinding.setupButton.text = "Grant Privileged Access"
                     tierBinding.setupButton.setOnClickListener {
                         handleRootAccessRequest()
                     }
@@ -577,9 +578,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // Mark that we've requested root permission
         viewModel.markRootPermissionRequested()
 
-        var resultMessage = "🔄 Testing root access...\n\nPlease grant permission in the popup dialog."
+        var resultMessage = "🔄 Testing privileged access...\n\nPlease grant permission in the popup dialog if prompted."
         val dialog = AlertDialog.Builder(requireContext())
-            .setTitle("Root Access Test")
+            .setTitle("Privileged Access")
             .setMessage(resultMessage)
             .setCancelable(true)
             .setNegativeButton("Cancel") { d, _ -> d.dismiss() }
@@ -589,7 +590,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 resultMessage = testRootAccess()
-                if (dialog.isShowing) {
+
+                // Check if we should show the reusable privileged access dialog
+                if (resultMessage == "NO_PRIVILEGED_ACCESS") {
+                    dialog.dismiss()
+                    PrivilegedAccessDialog.showRequiredDialog(requireContext())
+                } else if (dialog.isShowing) {
                     // Use Html.fromHtml to support bold text
                     val formattedMessage = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
                         android.text.Html.fromHtml(resultMessage, android.text.Html.FROM_HTML_MODE_LEGACY)
@@ -636,10 +642,11 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 val output = process.inputStream.bufferedReader().readText()
                 "✅ Root Access Granted!\n\nYour device is rooted and De1984 has been granted superuser permission.\n\nOutput: $output"
             } else {
-                "❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission.\n\nTo grant access:\n• Try clicking \"Grant Root Access\" again and approve the prompt\n• If the permission prompt doesn't appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)"
+                "❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission.\n\nTo grant access:\n• Try clicking \"Grant Privileged Access\" again and approve the prompt\n• If the permission prompt doesn't appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)"
             }
         } catch (e: Exception) {
-            "❌ Your device does not appear to be rooted. Root access is required for advanced package management features."
+            // Return a marker that we'll use to show the reusable dialog
+            "NO_PRIVILEGED_ACCESS"
         }
     }
 

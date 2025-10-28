@@ -24,6 +24,7 @@ import io.github.dorumrr.de1984.presentation.viewmodel.PackagesViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 import io.github.dorumrr.de1984.ui.common.FilterChipsHelper
+import io.github.dorumrr.de1984.ui.common.PrivilegedAccessDialog
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
 import kotlinx.coroutines.launch
@@ -445,11 +446,17 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun showError(message: String) {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Error")
-            .setMessage(message)
-            .setPositiveButton("OK", null)
-            .show()
+        // Check if this is a privileged access error
+        if (message.contains("Shizuku or root access required", ignoreCase = true)) {
+            PrivilegedAccessDialog.showRequiredDialog(requireContext())
+        } else {
+            // Show generic error dialog
+            AlertDialog.Builder(requireContext())
+                .setTitle("Error")
+                .setMessage(message)
+                .setPositiveButton("OK", null)
+                .show()
+        }
     }
 }
 

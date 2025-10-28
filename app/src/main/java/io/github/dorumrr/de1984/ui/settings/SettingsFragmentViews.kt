@@ -591,10 +591,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             try {
                 resultMessage = testRootAccess()
 
-                // Check if we should show the reusable privileged access dialog
+                // Check if we should show the reusable privileged access dialogs
                 if (resultMessage == "NO_PRIVILEGED_ACCESS") {
                     dialog.dismiss()
                     PrivilegedAccessDialog.showRequiredDialog(requireContext())
+                } else if (resultMessage == "ROOT_ACCESS_DENIED") {
+                    dialog.dismiss()
+                    PrivilegedAccessDialog.showRootDeniedDialog(requireContext()) {
+                        // Refresh permissions and root status after dismissing
+                        permissionViewModel.refreshPermissions()
+                        viewModel.requestRootPermission()
+                    }
                 } else if (dialog.isShowing) {
                     // Use Html.fromHtml to support bold text
                     val formattedMessage = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
@@ -642,7 +649,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 val output = process.inputStream.bufferedReader().readText()
                 "✅ Root Access Granted!\n\nYour device is rooted and De1984 has been granted superuser permission.\n\nOutput: $output"
             } else {
-                "❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission.\n\nTo grant access:\n• Try clicking \"Grant Privileged Access\" again and approve the prompt\n• If the permission prompt doesn't appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)"
+                // Return a marker that we'll use to show the reusable dialog
+                "ROOT_ACCESS_DENIED"
             }
         } catch (e: Exception) {
             // Return a marker that we'll use to show the reusable dialog

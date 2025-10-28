@@ -10,6 +10,7 @@ import io.github.dorumrr.de1984.data.database.De1984Database
 import io.github.dorumrr.de1984.data.database.dao.FirewallRuleDao
 import io.github.dorumrr.de1984.data.datasource.AndroidPackageDataSource
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
+import io.github.dorumrr.de1984.data.firewall.FirewallManager
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
 import io.github.dorumrr.de1984.data.monitor.ScreenStateMonitor
 import io.github.dorumrr.de1984.data.repository.FirewallRepositoryImpl
@@ -106,6 +107,18 @@ class De1984Dependencies(private val context: Context) {
 
     val networkStateMonitor: NetworkStateMonitor by lazy {
         NetworkStateMonitor(context)
+    }
+
+    val firewallManager: FirewallManager by lazy {
+        FirewallManager(
+            context = context,
+            rootManager = rootManager,
+            shizukuManager = shizukuManager,
+            errorHandler = errorHandler,
+            firewallRepository = firewallRepository,
+            networkStateMonitor = networkStateMonitor,
+            screenStateMonitor = screenStateMonitor
+        )
     }
 
     // =============================================================================================

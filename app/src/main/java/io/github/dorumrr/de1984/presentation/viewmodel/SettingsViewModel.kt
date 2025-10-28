@@ -3,6 +3,7 @@ package io.github.dorumrr.de1984.presentation.viewmodel
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -12,27 +13,39 @@ import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
+import io.github.dorumrr.de1984.data.firewall.FirewallManager
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
+import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.FirewallMode
+import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val context: Context,
     private val permissionManager: PermissionManager,
     private val rootManager: RootManager,
-    private val shizukuManager: ShizukuManager
+    private val shizukuManager: ShizukuManager,
+    private val firewallManager: FirewallManager,
+    private val firewallRepository: FirewallRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "SettingsViewModel"
+    }
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     val rootStatus: StateFlow<RootStatus> = rootManager.rootStatus
     val shizukuStatus: StateFlow<ShizukuStatus> = shizukuManager.shizukuStatus
+    val activeBackendType: StateFlow<FirewallBackendType?> = firewallManager.activeBackendType
 
 
     
@@ -73,6 +86,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
 
+            val firewallModeString = prefs.getString(
+                Constants.Settings.KEY_FIREWALL_MODE,
+                Constants.Settings.DEFAULT_FIREWALL_MODE
+            ) ?: Constants.Settings.DEFAULT_FIREWALL_MODE
+
             _uiState.value = _uiState.value.copy(
                 autoRefresh = prefs.getBoolean("auto_refresh", true),
                 showSystemApps = prefs.getBoolean("show_system_apps", false),
@@ -83,8 +101,8 @@ class SettingsViewModel(
                     Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                     Constants.Settings.DEFAULT_FIREWALL_POLICY
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY,
-                newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS)
-
+                newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS),
+                firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO
             )
         }
     }
@@ -159,13 +177,73 @@ class SettingsViewModel(
         saveSetting(Constants.Settings.KEY_SHOW_APP_ICONS, show)
     }
 
-    fun setDefaultFirewallPolicy(policy: String) {
-        _uiState.value = _uiState.value.copy(defaultFirewallPolicy = policy)
-        saveSetting(Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY, policy)
+    /**
+     * Request to change the default firewall policy.
+     * This will trigger a confirmation dialog in the UI.
+     */
+    fun requestDefaultFirewallPolicyChange(newPolicy: String) {
+        val oldPolicy = _uiState.value.defaultFirewallPolicy
+
+        // If policy is the same, do nothing
+        if (oldPolicy == newPolicy) {
+            return
+        }
+
+        // Check if VPN is active when switching to Block All with iptables mode
+        val isBlockAll = newPolicy == Constants.Settings.POLICY_BLOCK_ALL
+        val isIptablesMode = firewallManager.activeBackendType.value == FirewallBackendType.IPTABLES
+        val showVpnWarning = isBlockAll && isIptablesMode && firewallManager.isVpnActive()
+
+        // Set pending policy change to trigger confirmation dialog
+        _uiState.value = _uiState.value.copy(
+            pendingPolicyChange = newPolicy,
+            showVpnWarning = showVpnWarning
+        )
+    }
+
+    /**
+     * Confirm the policy change and reset all rules.
+     */
+    fun confirmDefaultFirewallPolicyChange() {
+        val newPolicy = _uiState.value.pendingPolicyChange ?: return
 
         viewModelScope.launch {
-            restartFirewallIfRunning()
+            try {
+                Log.d(TAG, "Changing default policy to: $newPolicy (resetting all rules)")
+
+                // Delete all existing rules
+                firewallRepository.deleteAllRules()
+
+                // Update the policy
+                _uiState.value = _uiState.value.copy(
+                    defaultFirewallPolicy = newPolicy,
+                    pendingPolicyChange = null,
+                    showVpnWarning = false
+                )
+                saveSetting(Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY, newPolicy)
+
+                // Restart firewall if running to apply the new policy
+                restartFirewallIfRunning()
+
+                Log.d(TAG, "Policy changed successfully, all rules reset")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to change policy", e)
+                _uiState.value = _uiState.value.copy(
+                    pendingPolicyChange = null,
+                    showVpnWarning = false
+                )
+            }
         }
+    }
+
+    /**
+     * Cancel the pending policy change.
+     */
+    fun cancelDefaultFirewallPolicyChange() {
+        _uiState.value = _uiState.value.copy(
+            pendingPolicyChange = null,
+            showVpnWarning = false
+        )
     }
 
     fun setNewAppNotifications(enabled: Boolean) {
@@ -173,20 +251,49 @@ class SettingsViewModel(
         saveSetting(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, enabled)
     }
 
+    fun setFirewallMode(mode: FirewallMode) {
+        _uiState.value = _uiState.value.copy(firewallMode = mode)
+        firewallManager.setMode(mode)
+
+        // Restart firewall if running to apply new mode
+        viewModelScope.launch {
+            if (firewallManager.isActive()) {
+                restartFirewallIfRunning()
+            }
+        }
+    }
+
+    fun checkIptablesAvailability(callback: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val available = firewallManager.isIptablesAvailable()
+            callback(available)
+        }
+    }
+
     private suspend fun restartFirewallIfRunning() {
         try {
-            val stopIntent = Intent(context, FirewallVpnService::class.java).apply {
-                action = FirewallVpnService.ACTION_STOP
-            }
-            context.startService(stopIntent)
+            // Check if firewall is actually running before restarting
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val isFirewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
 
+            if (!isFirewallEnabled) {
+                Log.d(TAG, "Firewall not running, skipping restart")
+                return
+            }
+
+            Log.d(TAG, "Restarting firewall due to settings change")
+
+            // Stop current firewall (whatever backend is running)
+            firewallManager.stopFirewall()
+
+            // Wait a bit for cleanup
             delay(500)
 
-            val startIntent = Intent(context, FirewallVpnService::class.java).apply {
-                action = FirewallVpnService.ACTION_START
-            }
-            context.startService(startIntent)
+            // Start firewall with new mode (explicitly pass the mode to avoid race conditions)
+            val newMode = _uiState.value.firewallMode
+            firewallManager.startFirewall(newMode)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to restart firewall", e)
         }
     }
 
@@ -230,7 +337,9 @@ class SettingsViewModel(
         private val context: Context,
         private val permissionManager: PermissionManager,
         private val rootManager: RootManager,
-        private val shizukuManager: ShizukuManager
+        private val shizukuManager: ShizukuManager,
+        private val firewallManager: FirewallManager,
+        private val firewallRepository: FirewallRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -239,7 +348,9 @@ class SettingsViewModel(
                     context,
                     permissionManager,
                     rootManager,
-                    shizukuManager
+                    shizukuManager,
+                    firewallManager,
+                    firewallRepository
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
@@ -254,6 +365,7 @@ data class SettingsUiState(
     val showAppIcons: Boolean = true,
     val defaultFirewallPolicy: String = Constants.Settings.DEFAULT_FIREWALL_POLICY,
     val newAppNotifications: Boolean = Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS,
+    val firewallMode: FirewallMode = FirewallMode.AUTO,
 
     val refreshInterval: Int = 30,
 
@@ -273,7 +385,13 @@ data class SettingsUiState(
 
     val hasBasicPermissions: Boolean = true,
     val hasEnhancedPermissions: Boolean = false,
-    val hasAdvancedPermissions: Boolean = false
+    val hasAdvancedPermissions: Boolean = false,
+
+    // Pending policy change (triggers confirmation dialog)
+    val pendingPolicyChange: String? = null,
+
+    // VPN warning when switching to Block All with active VPN
+    val showVpnWarning: Boolean = false
 )
 
 data class SystemInfo(

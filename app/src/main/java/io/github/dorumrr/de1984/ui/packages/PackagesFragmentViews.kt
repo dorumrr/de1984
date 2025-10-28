@@ -51,7 +51,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             requireContext(),
             app.dependencies.permissionManager,
             app.dependencies.rootManager,
-            app.dependencies.shizukuManager
+            app.dependencies.shizukuManager,
+            app.dependencies.firewallManager,
+            app.dependencies.firewallRepository
         )
     }
 

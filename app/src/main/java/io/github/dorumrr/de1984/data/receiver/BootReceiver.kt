@@ -4,8 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.utils.Constants
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -33,18 +38,50 @@ class BootReceiver : BroadcastReceiver() {
             val wasEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, Constants.Settings.DEFAULT_FIREWALL_ENABLED)
 
             if (wasEnabled) {
-                val serviceIntent = Intent(context, FirewallVpnService::class.java).apply {
-                    action = FirewallVpnService.ACTION_START
+                Log.d(TAG, "Restoring firewall state (was enabled)")
+
+                // Get FirewallManager from application
+                val app = context.applicationContext as? De1984Application
+                if (app != null) {
+                    val firewallManager = app.dependencies.firewallManager
+
+                    // Use goAsync() to keep receiver alive while coroutine runs
+                    val pendingResult = goAsync()
+
+                    // Use coroutine to start firewall asynchronously
+                    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+                    scope.launch {
+                        try {
+                            val result = firewallManager.startFirewall()
+                            result.onSuccess { backendType ->
+                                Log.d(TAG, "Firewall restored successfully with backend: $backendType")
+                            }.onFailure { error ->
+                                Log.e(TAG, "Failed to restore firewall: ${error.message}")
+                            }
+                        } finally {
+                            // Signal that async work is complete
+                            pendingResult.finish()
+                        }
+                    }
+                } else {
+                    Log.e(TAG, "Failed to get De1984Application instance")
+
+                    // Fallback to VPN service for backward compatibility
+                    val serviceIntent = Intent(context, FirewallVpnService::class.java).apply {
+                        action = FirewallVpnService.ACTION_START
+                    }
+
+                    try {
+                        context.startService(serviceIntent)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to start firewall service", e)
+                    }
                 }
-                
-                try {
-                    context.startService(serviceIntent)
-                } catch (e: Exception) {
-                    // Failed to start firewall service
-                }
+            } else {
+                Log.d(TAG, "Firewall was not enabled, skipping restore")
             }
         } catch (e: Exception) {
-            // Error restoring firewall state
+            Log.e(TAG, "Error restoring firewall state", e)
         }
     }
 }

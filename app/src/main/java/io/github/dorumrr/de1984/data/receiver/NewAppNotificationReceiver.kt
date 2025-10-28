@@ -36,28 +36,36 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
             }
             
             dismissNotification(context, packageName)
-            
+
+            // Use goAsync() to keep receiver alive while coroutine runs
+            val pendingResult = goAsync()
+
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             scope.launch {
-                when (action) {
-                    NewAppNotificationManager.ACTION_BLOCK_ALL -> {
-                        handleBlockAll(context, packageName, manageNetworkAccessUseCase)
+                try {
+                    when (action) {
+                        NewAppNotificationManager.ACTION_BLOCK_ALL -> {
+                            handleBlockAll(context, packageName, manageNetworkAccessUseCase)
+                        }
+                        NewAppNotificationManager.ACTION_BLOCK_WIFI -> {
+                            handleBlockWifi(context, packageName, manageNetworkAccessUseCase)
+                        }
+                        NewAppNotificationManager.ACTION_BLOCK_MOBILE -> {
+                            handleBlockMobile(context, packageName, manageNetworkAccessUseCase)
+                        }
+                        NewAppNotificationManager.ACTION_ALLOW_ALL -> {
+                            handleAllowAll(context, packageName, manageNetworkAccessUseCase)
+                        }
+                        NewAppNotificationManager.ACTION_ALLOW_WIFI -> {
+                            handleAllowWifi(context, packageName, manageNetworkAccessUseCase)
+                        }
+                        NewAppNotificationManager.ACTION_ALLOW_MOBILE -> {
+                            handleAllowMobile(context, packageName, manageNetworkAccessUseCase)
+                        }
                     }
-                    NewAppNotificationManager.ACTION_BLOCK_WIFI -> {
-                        handleBlockWifi(context, packageName, manageNetworkAccessUseCase)
-                    }
-                    NewAppNotificationManager.ACTION_BLOCK_MOBILE -> {
-                        handleBlockMobile(context, packageName, manageNetworkAccessUseCase)
-                    }
-                    NewAppNotificationManager.ACTION_ALLOW_ALL -> {
-                        handleAllowAll(context, packageName, manageNetworkAccessUseCase)
-                    }
-                    NewAppNotificationManager.ACTION_ALLOW_WIFI -> {
-                        handleAllowWifi(context, packageName, manageNetworkAccessUseCase)
-                    }
-                    NewAppNotificationManager.ACTION_ALLOW_MOBILE -> {
-                        handleAllowMobile(context, packageName, manageNetworkAccessUseCase)
-                    }
+                } finally {
+                    // Signal that async work is complete
+                    pendingResult.finish()
                 }
             }
 

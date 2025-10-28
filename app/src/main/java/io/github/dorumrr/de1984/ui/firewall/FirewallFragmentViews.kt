@@ -51,7 +51,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             app.dependencies.provideGetNetworkPackagesUseCase(),
             app.dependencies.provideManageNetworkAccessUseCase(),
             app.dependencies.superuserBannerState,
-            app.dependencies.permissionManager
+            app.dependencies.permissionManager,
+            app.dependencies.firewallManager
         )
     }
 
@@ -61,7 +62,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             requireContext(),
             app.dependencies.permissionManager,
             app.dependencies.rootManager,
-            app.dependencies.shizukuManager
+            app.dependencies.shizukuManager,
+            app.dependencies.firewallManager,
+            app.dependencies.firewallRepository
         )
     }
 

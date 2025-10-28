@@ -55,7 +55,8 @@ class MainActivity : AppCompatActivity() {
             getNetworkPackagesUseCase = deps.provideGetNetworkPackagesUseCase(),
             manageNetworkAccessUseCase = deps.provideManageNetworkAccessUseCase(),
             superuserBannerState = deps.superuserBannerState,
-            permissionManager = deps.permissionManager
+            permissionManager = deps.permissionManager,
+            firewallManager = deps.firewallManager
         )
     }
 
@@ -65,7 +66,9 @@ class MainActivity : AppCompatActivity() {
             context = applicationContext,
             permissionManager = deps.permissionManager,
             rootManager = deps.rootManager,
-            shizukuManager = deps.shizukuManager
+            shizukuManager = deps.shizukuManager,
+            firewallManager = deps.firewallManager,
+            firewallRepository = deps.firewallRepository
         )
     }
 
@@ -321,6 +324,15 @@ class MainActivity : AppCompatActivity() {
             firewallViewModel.uiState.collect { state ->
                 // Update custom switch appearance
                 updateSwitchAppearance(state.isFirewallEnabled)
+
+                // Request battery optimization if needed
+                if (state.shouldRequestBatteryOptimization) {
+                    firewallViewModel.clearBatteryOptimizationRequest()
+                    val batteryOptIntent = permissionManager.createBatteryOptimizationIntent()
+                    if (batteryOptIntent != null) {
+                        batteryOptimizationLauncher.launch(batteryOptIntent)
+                    }
+                }
             }
         }
     }

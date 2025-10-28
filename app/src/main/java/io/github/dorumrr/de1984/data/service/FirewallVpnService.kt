@@ -140,6 +140,15 @@ class FirewallVpnService : VpnService() {
         super.onDestroy()
     }
 
+    override fun onRevoke() {
+        // Called when VPN permission is revoked (e.g., user starts another VPN app)
+        Log.w(TAG, "VPN permission revoked by system")
+        wasExplicitlyStopped = true
+        stopVpn()
+        stopSelf()
+        super.onRevoke()
+    }
+
     private fun isBatteryOptimizationDisabled(): Boolean {
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
         return powerManager.isIgnoringBatteryOptimizations(packageName)
@@ -179,6 +188,16 @@ class FirewallVpnService : VpnService() {
         vpnSetupJob?.cancel()
 
         isServiceActive = true
+
+        // Update SharedPreferences to indicate VPN service is running
+        val prefs = getSharedPreferences(
+            io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        prefs.edit().putBoolean(
+            io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
+            true
+        ).apply()
 
         vpnSetupJob = serviceScope.launch {
             try {
@@ -301,15 +320,34 @@ class FirewallVpnService : VpnService() {
 
         for (appInfo in allPackages) {
             val packageName = appInfo.packageName
+
+            // Never block our own app
+            if (io.github.dorumrr.de1984.utils.Constants.App.isOwnApp(packageName)) {
+                continue
+            }
+
             val rule = rulesMap[packageName]
 
             val shouldBlock = if (rule != null && rule.enabled) {
-                when {
+                val blockResult = when {
                     !isScreenOn && rule.blockWhenScreenOff -> true
                     rule.isBlockedOn(currentNetworkType) -> true
                     else -> false
                 }
+
+                // Debug logging for specific packages
+                if (packageName.contains("duckduckgo", ignoreCase = true)) {
+                    Log.d(TAG, "DEBUG VPN: $packageName - Has rule, shouldBlock=$blockResult")
+                    Log.d(TAG, "  Rule: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming}, enabled=${rule.enabled}")
+                    Log.d(TAG, "  isBlockedOn($currentNetworkType)=${rule.isBlockedOn(currentNetworkType)}")
+                }
+
+                blockResult
             } else {
+                // Debug logging for specific packages
+                if (packageName.contains("duckduckgo", ignoreCase = true)) {
+                    Log.d(TAG, "DEBUG VPN: $packageName - No rule, applying default policy (isBlockAllDefault=$isBlockAllDefault)")
+                }
                 isBlockAllDefault
             }
 
@@ -380,6 +418,13 @@ class FirewallVpnService : VpnService() {
 
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
+
+                // Never block our own app
+                if (io.github.dorumrr.de1984.utils.Constants.App.isOwnApp(packageName)) {
+                    allowedCount++
+                    return@forEach
+                }
+
                 val rule = rulesMap[packageName]
 
                 val shouldBlock = if (rule != null && rule.enabled) {
@@ -422,6 +467,17 @@ class FirewallVpnService : VpnService() {
     
     private fun stopVpn() {
         isServiceActive = false
+
+        // Update SharedPreferences to indicate VPN service is stopped
+        val prefs = getSharedPreferences(
+            io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        prefs.edit().putBoolean(
+            io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
+            false
+        ).apply()
+
         vpnSetupJob?.cancel()
         vpnSetupJob = null
         packetForwardingJob?.cancel()

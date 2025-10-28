@@ -8,7 +8,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.github.dorumrr.de1984.data.firewall.FirewallManager
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
+import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.FirewallFilterState
 import io.github.dorumrr.de1984.domain.usecase.GetNetworkPackagesUseCase
@@ -29,7 +31,8 @@ class FirewallViewModel(
     private val getNetworkPackagesUseCase: GetNetworkPackagesUseCase,
     private val manageNetworkAccessUseCase: ManageNetworkAccessUseCase,
     private val superuserBannerState: SuperuserBannerState,
-    private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager
+    private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager,
+    private val firewallManager: FirewallManager
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(FirewallUiState())
@@ -284,30 +287,69 @@ class FirewallViewModel(
     }
 
     fun startFirewall(): Intent? {
-        val prepareIntent = VpnService.prepare(getApplication())
+        // Check if VPN permission is needed BEFORE starting firewall
+        val mode = firewallManager.getCurrentMode()
+        val needsVpnPermission = mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN ||
+            (mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO &&
+             !rootManager.hasRootPermission && !shizukuManager.hasShizukuPermission)
 
-        if (prepareIntent == null) {
-            val intent = Intent(getApplication(), FirewallVpnService::class.java).apply {
-                action = FirewallVpnService.ACTION_START
+        if (needsVpnPermission) {
+            // VPN mode - check permission first
+            val prepareIntent = VpnService.prepare(getApplication())
+            if (prepareIntent != null) {
+                // Permission not granted yet - return intent to request it
+                return prepareIntent
             }
-            getApplication<Application>().startService(intent)
-
-            _uiState.value = _uiState.value.copy(isFirewallEnabled = true)
-            saveFirewallState(true)
-            return null
-        } else {
-            return prepareIntent
+            // Permission already granted - continue to start firewall
         }
+
+        // Start firewall (either iptables mode or VPN with permission already granted)
+        viewModelScope.launch {
+            val result = firewallManager.startFirewall()
+
+            result.onSuccess { _ ->
+                _uiState.value = _uiState.value.copy(isFirewallEnabled = true)
+                saveFirewallState(true)
+
+                // Request battery optimization exemption after firewall starts successfully
+                // This is important for both VPN and iptables modes to prevent service from being killed
+                requestBatteryOptimizationIfNeeded()
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isFirewallEnabled = false,
+                    error = error.message
+                )
+            }
+        }
+
+        return null
+    }
+
+    private fun requestBatteryOptimizationIfNeeded() {
+        // Check if battery optimization is already disabled
+        if (permissionManager.isBatteryOptimizationDisabled()) {
+            return
+        }
+
+        // Trigger battery optimization request via MainActivity
+        // This is done by setting a flag that MainActivity will observe
+        _uiState.value = _uiState.value.copy(
+            shouldRequestBatteryOptimization = true
+        )
+    }
+
+    fun clearBatteryOptimizationRequest() {
+        _uiState.value = _uiState.value.copy(
+            shouldRequestBatteryOptimization = false
+        )
     }
 
     fun stopFirewall() {
-        val intent = Intent(getApplication(), FirewallVpnService::class.java).apply {
-            action = FirewallVpnService.ACTION_STOP
+        viewModelScope.launch {
+            firewallManager.stopFirewall()
+            _uiState.value = _uiState.value.copy(isFirewallEnabled = false)
+            saveFirewallState(false)
         }
-        getApplication<Application>().startService(intent)
-
-        _uiState.value = _uiState.value.copy(isFirewallEnabled = false)
-        saveFirewallState(false)
     }
 
     fun onVpnPermissionGranted(): Intent? {
@@ -320,6 +362,9 @@ class FirewallViewModel(
         saveFirewallState(false)
     }
 
+    private val rootManager = (getApplication<Application>() as io.github.dorumrr.de1984.De1984Application).dependencies.rootManager
+    private val shizukuManager = (getApplication<Application>() as io.github.dorumrr.de1984.De1984Application).dependencies.shizukuManager
+
     fun setSearchQuery(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
     }
@@ -329,7 +374,8 @@ class FirewallViewModel(
         private val getNetworkPackagesUseCase: GetNetworkPackagesUseCase,
         private val manageNetworkAccessUseCase: ManageNetworkAccessUseCase,
         private val superuserBannerState: SuperuserBannerState,
-        private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager
+        private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager,
+        private val firewallManager: FirewallManager
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -339,7 +385,8 @@ class FirewallViewModel(
                     getNetworkPackagesUseCase,
                     manageNetworkAccessUseCase,
                     superuserBannerState,
-                    permissionManager
+                    permissionManager,
+                    firewallManager
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
@@ -355,7 +402,8 @@ data class FirewallUiState(
     val isRenderingUI: Boolean = false,
     val error: String? = null,
     val isFirewallEnabled: Boolean = false,
-    val defaultFirewallPolicy: String = Constants.Settings.DEFAULT_FIREWALL_POLICY
+    val defaultFirewallPolicy: String = Constants.Settings.DEFAULT_FIREWALL_POLICY,
+    val shouldRequestBatteryOptimization: Boolean = false
 ) {
     val isLoading: Boolean get() = isLoadingData || isRenderingUI
 }

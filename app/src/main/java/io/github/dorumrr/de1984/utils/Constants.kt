@@ -41,6 +41,16 @@ object Constants {
             const val FIREWALL_START_MESSAGE = "Welcome to De1984! Would you like to start the firewall now to protect your privacy?"
             const val FIREWALL_START_CONFIRM = "Start Firewall"
             const val FIREWALL_START_SKIP = "Later"
+
+            // Policy change dialog
+            const val POLICY_CHANGE_TITLE = "Change Default Policy?"
+            const val POLICY_CHANGE_CONFIRM = "Change Policy"
+            const val POLICY_CHANGE_CANCEL = "Cancel"
+
+            // VPN warning
+            const val VPN_WARNING_EMOJI = "⚠️"
+            const val VPN_WARNING_TITLE = "WARNING: A VPN is currently active!"
+            const val VPN_WARNING_MESSAGE = "Please allow your VPN app in the firewall to avoid connectivity issues."
         }
         const val BADGE_PADDING_HORIZONTAL = 8
         const val BADGE_PADDING_VERTICAL = 4
@@ -85,15 +95,22 @@ object Constants {
         const val KEY_SHOW_APP_ICONS = "show_app_icons"
         const val KEY_DEFAULT_FIREWALL_POLICY = "default_firewall_policy"
         const val KEY_FIREWALL_ENABLED = "firewall_enabled"
+        const val KEY_VPN_SERVICE_RUNNING = "vpn_service_running"  // Tracks if VPN service is actually running
         const val KEY_NEW_APP_NOTIFICATIONS = "new_app_notifications"
+        const val KEY_FIREWALL_MODE = "firewall_mode"
 
         const val POLICY_BLOCK_ALL = "block_all"
         const val POLICY_ALLOW_ALL = "allow_all"
+
+        const val MODE_AUTO = "auto"
+        const val MODE_VPN = "vpn"
+        const val MODE_IPTABLES = "iptables"
 
         const val DEFAULT_SHOW_APP_ICONS = true
         const val DEFAULT_FIREWALL_POLICY = POLICY_ALLOW_ALL
         const val DEFAULT_FIREWALL_ENABLED = false
         const val DEFAULT_NEW_APP_NOTIFICATIONS = true
+        const val DEFAULT_FIREWALL_MODE = MODE_AUTO
 
     }
 

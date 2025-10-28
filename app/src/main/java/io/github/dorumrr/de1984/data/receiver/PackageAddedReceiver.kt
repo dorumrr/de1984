@@ -36,6 +36,9 @@ class PackageAddedReceiver : BroadcastReceiver() {
                 return
             }
 
+            // Use goAsync() to keep receiver alive while coroutine runs
+            val pendingResult = goAsync()
+
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             scope.launch {
                 try {
@@ -45,6 +48,9 @@ class PackageAddedReceiver : BroadcastReceiver() {
                         }
                 } catch (e: Exception) {
                     // Error processing new app
+                } finally {
+                    // Signal that async work is complete
+                    pendingResult.finish()
                 }
             }
 

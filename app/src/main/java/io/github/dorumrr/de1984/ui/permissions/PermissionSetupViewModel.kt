@@ -31,7 +31,7 @@ class PermissionSetupViewModel constructor(
             _uiState.value = _uiState.value.copy(
                 hasBasicPermissions = permissionManager.hasBasicPermissions(),
                 hasEnhancedPermissions = true,
-                hasAdvancedPermissions = permissionManager.hasRootAccess() || permissionManager.hasSystemPermissions(),
+                hasAdvancedPermissions = permissionManager.hasRootAccess() || permissionManager.hasShizukuAccess() || permissionManager.hasSystemPermissions(),
                 hasBatteryOptimizationExemption = permissionManager.isBatteryOptimizationDisabled(),
                 basicPermissions = basicPermissions,
                 enhancedPermissions = emptyList(),
@@ -79,24 +79,27 @@ class PermissionSetupViewModel constructor(
 
     private fun getAdvancedPermissionInfo(): List<PermissionInfo> {
         val hasRoot = permissionManager.hasRootAccess()
+        val hasShizuku = permissionManager.hasShizukuAccess()
+        val hasAdvanced = hasRoot || hasShizuku || permissionManager.hasSystemPermissions()
+
         return listOf(
             PermissionInfo(
                 permission = "android.permission.WRITE_SECURE_SETTINGS",
                 name = "Modify System Settings",
                 description = "Change system-level security settings",
-                isGranted = hasRoot || permissionManager.hasSystemPermissions()
+                isGranted = hasAdvanced
             ),
             PermissionInfo(
                 permission = "android.permission.CHANGE_COMPONENT_ENABLED_STATE",
                 name = "Enable/Disable Components",
                 description = "Enable or disable app components",
-                isGranted = hasRoot || permissionManager.hasSystemPermissions()
+                isGranted = hasAdvanced
             ),
             PermissionInfo(
-                permission = "Root Access",
+                permission = "Superuser Access",
                 name = "Superuser Access",
                 description = "Full system access for advanced operations",
-                isGranted = hasRoot
+                isGranted = hasAdvanced
             )
         )
     }

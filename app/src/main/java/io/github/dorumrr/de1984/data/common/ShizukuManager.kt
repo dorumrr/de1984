@@ -3,7 +3,6 @@ package io.github.dorumrr.de1984.data.common
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.IBinder
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +17,6 @@ import rikka.shizuku.Shizuku
 class ShizukuManager(private val context: Context) {
 
     companion object {
-        private const val TAG = "ShizukuManager"
         private const val SHIZUKU_PACKAGE_NAME = "moe.shizuku.privileged.api"
         private const val REQUEST_CODE_PERMISSION = 1001
     }
@@ -97,28 +95,24 @@ class ShizukuManager(private val context: Context) {
         try {
             // Check if Shizuku is installed
             val installed = isShizukuInstalled()
-            Log.d(TAG, "checkShizukuStatusInternal: installed=$installed")
             if (!installed) {
                 return@withContext ShizukuStatus.NOT_INSTALLED
             }
 
             // Check if Shizuku is running
             val running = isShizukuRunning()
-            Log.d(TAG, "checkShizukuStatusInternal: running=$running")
             if (!running) {
                 return@withContext ShizukuStatus.INSTALLED_NOT_RUNNING
             }
 
             // Check permission
             val hasPermission = checkShizukuPermissionSync()
-            Log.d(TAG, "checkShizukuStatusInternal: hasPermission=$hasPermission")
             if (!hasPermission) {
                 return@withContext ShizukuStatus.RUNNING_NO_PERMISSION
             }
 
             ShizukuStatus.RUNNING_WITH_PERMISSION
         } catch (e: Exception) {
-            Log.e(TAG, "checkShizukuStatusInternal: Error checking status", e)
             ShizukuStatus.NOT_INSTALLED
         }
     }
@@ -171,15 +165,11 @@ class ShizukuManager(private val context: Context) {
      */
     fun requestShizukuPermission() {
         try {
-            Log.d(TAG, "requestShizukuPermission: isShizukuRunning=${isShizukuRunning()}")
             if (isShizukuRunning()) {
-                Log.d(TAG, "requestShizukuPermission: Requesting permission...")
                 Shizuku.requestPermission(REQUEST_CODE_PERMISSION)
-            } else {
-                Log.w(TAG, "requestShizukuPermission: Shizuku is not running")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "requestShizukuPermission: Failed to request permission", e)
+            // Failed to request permission
         }
     }
 
@@ -204,12 +194,10 @@ class ShizukuManager(private val context: Context) {
      */
     suspend fun executeShellCommand(command: String): Pair<Int, String> = withContext(Dispatchers.IO) {
         if (!hasShizukuPermission) {
-            Log.w(TAG, "executeShellCommand: No Shizuku permission")
             return@withContext Pair(-1, "No Shizuku permission")
         }
 
         try {
-            Log.d(TAG, "executeShellCommand: Executing command: $command")
 
             // Use reflection to access private Shizuku.newProcess() method
             val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
@@ -250,7 +238,6 @@ class ShizukuManager(private val context: Context) {
             val exitCode = kotlinx.coroutines.withTimeoutOrNull(5000) {
                 process.waitFor()
             } ?: run {
-                Log.w(TAG, "executeShellCommand: Command timed out, destroying process")
                 process.destroy()
                 -1
             }
@@ -258,11 +245,8 @@ class ShizukuManager(private val context: Context) {
             val outputStr = output.toString().trim()
             val errorStr = error.toString().trim()
 
-            Log.d(TAG, "executeShellCommand: exitCode=$exitCode, output='$outputStr', error='$errorStr'")
-
             return@withContext Pair(exitCode, if (outputStr.isNotEmpty()) outputStr else errorStr)
         } catch (e: Exception) {
-            Log.e(TAG, "executeShellCommand: Failed to execute command", e)
             return@withContext Pair(-1, "Shizuku command execution failed: ${e.message}")
         }
     }

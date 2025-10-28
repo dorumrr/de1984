@@ -223,11 +223,21 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 launch {
                     viewModel.rootStatus.collect { rootStatus ->
                         updateRootStatus(rootStatus)
+
+                        // Refresh permissions when root permission is granted
+                        if (rootStatus == RootStatus.ROOTED_WITH_PERMISSION) {
+                            permissionViewModel.refreshPermissions()
+                        }
                     }
                 }
                 launch {
                     viewModel.shizukuStatus.collect { shizukuStatus ->
                         updateShizukuStatus(shizukuStatus)
+
+                        // Refresh permissions when Shizuku permission is granted
+                        if (shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION) {
+                            permissionViewModel.refreshPermissions()
+                        }
                     }
                 }
             }
@@ -267,6 +277,14 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // Show button only if root permission hasn't been requested yet
         val showRootButton = !viewModel.hasRequestedRootPermission() && !state.hasAdvancedPermissions
 
+        // Determine button text based on what's available
+        val shizukuStatus = viewModel.shizukuStatus.value
+        val buttonText = if (shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION) {
+            "Grant Shizuku Permission"
+        } else {
+            "Grant Root Access"
+        }
+
         setupPermissionTier(
             binding.permissionTierAdvanced,
             title = "Advanced Operations",
@@ -274,7 +292,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             status = if (state.hasAdvancedPermissions) "Completed" else "Shizuku or Root Required",
             isComplete = state.hasAdvancedPermissions,
             permissions = state.advancedPermissions,
-            setupButtonText = "Grant Root Access",
+            setupButtonText = buttonText,
             onSetupClick = if (showRootButton) {
                 { handleRootAccessRequest() }
             } else null
@@ -346,6 +364,11 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         requireContext().theme.resolveAttribute(android.R.attr.textColorSecondary, typedValue, true)
         val iconColor = typedValue.data
 
+        // Check if Shizuku is available - if so, prioritize Shizuku over root
+        val shizukuStatus = viewModel.shizukuStatus.value
+        val shizukuAvailable = shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION ||
+                               shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION
+
         when (rootStatus) {
             RootStatus.ROOTED_WITH_PERMISSION -> {
                 // Root is granted - hide root status section entirely
@@ -354,6 +377,11 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             RootStatus.ROOTED_NO_PERMISSION -> {
+                // Don't show root UI if Shizuku is available
+                if (shizukuAvailable) {
+                    return
+                }
+
                 // Device is rooted but permission not granted
                 if (viewModel.hasRequestedRootPermission()) {
                     // User already tried and denied - show instructions, hide button
@@ -371,9 +399,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     tierBinding.rootingToolsContainer.visibility = View.GONE
                     tierBinding.setupButtonContainer.visibility = View.VISIBLE
                     tierBinding.setupButton.text = "Grant Root Access"
+                    tierBinding.setupButton.setOnClickListener {
+                        handleRootAccessRequest()
+                    }
                 }
             }
             RootStatus.NOT_ROOTED -> {
+                // Don't show root UI if Shizuku is available
+                if (shizukuAvailable) {
+                    return
+                }
+
                 // Device is not rooted - show message and rooting tools
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusIcon.setColorFilter(iconColor)
@@ -525,6 +561,13 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun handleRootAccessRequest() {
+        // Check if Shizuku is available - if so, request Shizuku permission instead
+        val shizukuStatus = viewModel.shizukuStatus.value
+        if (shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION) {
+            viewModel.grantShizukuPermission()
+            return
+        }
+
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastRootTestTime < 1000) {
             return

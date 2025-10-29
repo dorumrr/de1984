@@ -222,10 +222,10 @@ object Constants {
         const val LABEL_ABOUT = "About"
 
         // Toolbar Titles (uppercase for consistency)
-        const val TITLE_FIREWALL = "De1984 • Firewall"
-        const val TITLE_PACKAGES = "De1984 • Packages"
-        const val TITLE_SETTINGS = "De1984 • Settings"
-        const val TITLE_ABOUT = "De1984 • About"
+        const val TITLE_FIREWALL = "De1984 FIREWALL"
+        const val TITLE_PACKAGES = "De1984 PACKAGES"
+        const val TITLE_SETTINGS = "De1984 SETTINGS"
+        const val TITLE_ABOUT = "De1984 ABOUT"
 
         // Firewall Toggle Button Text
         const val BUTTON_TEXT_ON = "ON"

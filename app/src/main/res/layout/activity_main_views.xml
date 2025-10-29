@@ -48,14 +48,14 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginStart="3dp">
+                    android:layout_marginStart="0dp">
 
                     <!-- App Logo -->
                     <ImageView
                         android:id="@+id/app_logo"
                         android:layout_width="32dp"
                         android:layout_height="32dp"
-                        android:layout_marginEnd="10dp"
+                        android:layout_marginEnd="4dp"
                         android:src="@drawable/de1984_logo"
                         android:contentDescription="De1984 Logo" />
 

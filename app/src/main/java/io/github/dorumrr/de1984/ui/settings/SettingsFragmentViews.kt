@@ -224,6 +224,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     viewModel.rootStatus.collect { rootStatus ->
                         updateRootStatus(rootStatus)
 
+                        // Refresh permission tiers to update button visibility
+                        updatePermissionTiers(permissionViewModel.uiState.value)
+
                         // Refresh permissions when root permission is granted
                         if (rootStatus == RootStatus.ROOTED_WITH_PERMISSION) {
                             permissionViewModel.refreshPermissions()
@@ -233,6 +236,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 launch {
                     viewModel.shizukuStatus.collect { shizukuStatus ->
                         updateShizukuStatus(shizukuStatus)
+
+                        // Refresh permission tiers to update button visibility
+                        updatePermissionTiers(permissionViewModel.uiState.value)
 
                         // Refresh permissions when Shizuku permission is granted
                         if (shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION) {
@@ -274,11 +280,24 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         )
 
         // Setup Advanced Tier
-        // Show button only if root permission hasn't been requested yet
-        val showRootButton = !viewModel.hasRequestedRootPermission() && !state.hasAdvancedPermissions
+        // Only show button when there's actually something to grant
+        val shizukuStatus = viewModel.shizukuStatus.value
+        val rootStatus = viewModel.rootStatus.value
+
+        val canActuallyGrantPermission = when {
+            // Can grant Shizuku permission (Shizuku is running but no permission)
+            shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION -> true
+
+            // Can grant root permission (device is rooted but no permission)
+            rootStatus == RootStatus.ROOTED_NO_PERMISSION -> true
+
+            // Nothing to grant - either not installed/not running, or already has permission
+            else -> false
+        }
+
+        val showRootButton = canActuallyGrantPermission && !state.hasAdvancedPermissions
 
         // Determine button text based on what's available
-        val shizukuStatus = viewModel.shizukuStatus.value
         val buttonText = if (shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION) {
             "Grant Shizuku Permission"
         } else {

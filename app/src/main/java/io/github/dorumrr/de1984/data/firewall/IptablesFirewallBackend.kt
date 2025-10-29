@@ -56,7 +56,8 @@ class IptablesFirewallBackend(
     
     override suspend fun start(): Result<Unit> = mutex.withLock {
         return try {
-            Log.d(TAG, "Starting iptables firewall backend")
+            Log.d(TAG, "=== Starting iptables firewall backend ===")
+            Log.d(TAG, "iptables backend does NOT show VPN key icon - uses iptables rules")
 
             // Check availability first
             checkAvailability().getOrElse { error ->
@@ -69,7 +70,7 @@ class IptablesFirewallBackend(
             }
 
             isActiveState = true
-            Log.d(TAG, "iptables firewall backend started successfully")
+            Log.d(TAG, "✅ iptables firewall backend started successfully - NO VPN KEY ICON")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start iptables firewall", e)
@@ -223,6 +224,12 @@ class IptablesFirewallBackend(
             }
 
             Log.d(TAG, "Rules applied successfully: ${blockedUids.size} apps blocked")
+
+            // Verify rules are actually in iptables
+            Log.d(TAG, "=== Verifying iptables rules ===")
+            val (listExitCode, listOutput) = executeCommand("$IPTABLES -L $CHAIN_OUTPUT -n -v")
+            Log.d(TAG, "Current iptables rules:\n$listOutput")
+
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply rules", e)
@@ -249,6 +256,24 @@ class IptablesFirewallBackend(
                 Log.d(TAG, "No root or Shizuku access - iptables not available")
                 val error = errorHandler.createRootRequiredError("iptables firewall")
                 return Result.failure(error)
+            }
+
+            // If using Shizuku, check if it's running in root mode
+            if (hasShizuku && !hasRoot) {
+                val shizukuUid = shizukuManager.getShizukuUid()
+                val isRootMode = shizukuManager.isShizukuRootMode()
+                Log.d(TAG, "Shizuku UID: $shizukuUid, isRootMode: $isRootMode")
+
+                if (!isRootMode) {
+                    Log.e(TAG, "❌ Shizuku is running in ADB mode (UID $shizukuUid), not root mode!")
+                    Log.e(TAG, "❌ iptables requires Shizuku to be started with ROOT, not ADB")
+                    val error = errorHandler.createUnsupportedDeviceError(
+                        operation = "iptables firewall",
+                        reason = "Shizuku must be started with ROOT privileges (not ADB) to use iptables firewall. Please restart Shizuku with root mode."
+                    )
+                    return Result.failure(error)
+                }
+                Log.d(TAG, "✅ Shizuku is running in ROOT mode - can use iptables")
             }
 
             Log.d(TAG, "Has access, checking iptables binary...")
@@ -332,14 +357,27 @@ class IptablesFirewallBackend(
      */
     private suspend fun blockApp(uid: Int): Result<Unit> {
         return try {
+            Log.d(TAG, "=== Blocking UID $uid ===")
+
             // IPv4: Block OUTPUT for this UID
-            executeCommand("$IPTABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP")
+            val ipv4Command = "$IPTABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP"
+            Log.d(TAG, "Executing IPv4 command: $ipv4Command")
+            val (ipv4ExitCode, ipv4Output) = executeCommand(ipv4Command)
+            Log.d(TAG, "IPv4 result: exitCode=$ipv4ExitCode, output='$ipv4Output'")
 
             // IPv6: Block OUTPUT for this UID
-            executeCommand("$IP6TABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP")
+            val ipv6Command = "$IP6TABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP"
+            Log.d(TAG, "Executing IPv6 command: $ipv6Command")
+            val (ipv6ExitCode, ipv6Output) = executeCommand(ipv6Command)
+            Log.d(TAG, "IPv6 result: exitCode=$ipv6ExitCode, output='$ipv6Output'")
 
-            blockedUids.add(uid)
-            Log.d(TAG, "Blocked UID $uid")
+            if (ipv4ExitCode == 0 && ipv6ExitCode == 0) {
+                blockedUids.add(uid)
+                Log.d(TAG, "✅ Successfully blocked UID $uid (IPv4 and IPv6)")
+            } else {
+                Log.e(TAG, "❌ Failed to block UID $uid - IPv4 exitCode=$ipv4ExitCode, IPv6 exitCode=$ipv6ExitCode")
+                return Result.failure(Exception("Failed to block UID $uid"))
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to block UID $uid", e)
@@ -400,5 +438,7 @@ class IptablesFirewallBackend(
             Pair(-1, "No root or Shizuku access")
         }
     }
+
+    override fun supportsGranularControl(): Boolean = true  // Supports WiFi/Mobile/Roaming separately
 }
 

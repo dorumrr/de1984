@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuBinderWrapper
+import rikka.shizuku.SystemServiceHelper
 
 /**
  * Manages Shizuku integration for elevated privileges without root
@@ -44,10 +46,12 @@ class ShizukuManager(private val context: Context) {
         Log.d(TAG, "requestCode: $requestCode, grantResult: $grantResult")
         if (requestCode == REQUEST_CODE_PERMISSION) {
             if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "Shizuku permission GRANTED - updating status to RUNNING_WITH_PERMISSION")
+                Log.d(TAG, "✅ Shizuku permission GRANTED - updating status to RUNNING_WITH_PERMISSION")
+                Log.d(TAG, "✅ hasShizukuPermission will now return TRUE")
                 _shizukuStatus.value = ShizukuStatus.RUNNING_WITH_PERMISSION
             } else {
-                Log.d(TAG, "Shizuku permission DENIED - updating status to RUNNING_NO_PERMISSION")
+                Log.d(TAG, "❌ Shizuku permission DENIED - updating status to RUNNING_NO_PERMISSION")
+                Log.d(TAG, "❌ hasShizukuPermission will now return FALSE")
                 _shizukuStatus.value = ShizukuStatus.RUNNING_NO_PERMISSION
             }
         }
@@ -213,6 +217,29 @@ class ShizukuManager(private val context: Context) {
     }
 
     /**
+     * Get Shizuku UID to determine if running in root mode (UID 0) or ADB mode (UID 2000)
+     */
+    fun getShizukuUid(): Int {
+        return try {
+            if (isShizukuRunning()) {
+                Shizuku.getUid()
+            } else {
+                -1
+            }
+        } catch (e: Exception) {
+            -1
+        }
+    }
+
+    /**
+     * Check if Shizuku is running in root mode (UID 0)
+     * Returns true if Shizuku has root privileges, false if running in ADB mode (UID 2000)
+     */
+    fun isShizukuRootMode(): Boolean {
+        return getShizukuUid() == 0
+    }
+
+    /**
      * Execute shell command with Shizuku privileges
      * Uses reflection to access Shizuku.newProcess() since it's private
      */
@@ -310,6 +337,36 @@ class ShizukuManager(private val context: Context) {
             listenersRegistered = false
         } catch (e: Exception) {
             // Failed to unregister listeners
+        }
+    }
+
+    /**
+     * Get system service binder via Shizuku for accessing system services
+     * This enables access to hidden system APIs like NetworkPolicyManager
+     *
+     * @param serviceName The name of the system service (e.g., "netpolicy", "package")
+     * @return IBinder wrapped with ShizukuBinderWrapper, or null if failed
+     */
+    suspend fun getSystemServiceBinder(serviceName: String): IBinder? = withContext(Dispatchers.IO) {
+        if (!hasShizukuPermission) {
+            Log.e(TAG, "Cannot get system service binder: No Shizuku permission")
+            return@withContext null
+        }
+
+        try {
+            Log.d(TAG, "Getting system service binder for: $serviceName")
+            val serviceBinder = SystemServiceHelper.getSystemService(serviceName)
+            if (serviceBinder == null) {
+                Log.e(TAG, "Failed to get system service: $serviceName (service returned null)")
+                return@withContext null
+            }
+
+            val wrappedBinder = ShizukuBinderWrapper(serviceBinder)
+            Log.d(TAG, "✅ Successfully got system service binder for: $serviceName")
+            return@withContext wrappedBinder
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get system service binder: $serviceName", e)
+            return@withContext null
         }
     }
 }

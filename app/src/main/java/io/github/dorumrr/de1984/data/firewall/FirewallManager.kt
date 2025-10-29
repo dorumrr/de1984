@@ -125,9 +125,11 @@ class FirewallManager(
             currentBackend = backend
             _activeBackendType.value = backend.getType()
 
-            // Start monitoring for iptables backend only
+            // Start monitoring for iptables, ConnectivityManager, and NetworkPolicyManager backends
             // (VPN backend monitors internally)
-            if (backend.getType() == FirewallBackendType.IPTABLES) {
+            if (backend.getType() == FirewallBackendType.IPTABLES ||
+                backend.getType() == FirewallBackendType.CONNECTIVITY_MANAGER ||
+                backend.getType() == FirewallBackendType.NETWORK_POLICY_MANAGER) {
                 startMonitoring()
             }
 
@@ -187,7 +189,17 @@ class FirewallManager(
     fun getActiveBackendType(): FirewallBackendType? {
         return currentBackend?.getType()
     }
-    
+
+    /**
+     * Check if the currently active backend supports granular control.
+     * Returns true for iptables (can block WiFi/Mobile/Roaming separately).
+     * Returns false for ConnectivityManager/VPN (all-or-nothing blocking).
+     * Returns true if no backend is active (default to showing granular UI).
+     */
+    fun supportsGranularControl(): Boolean {
+        return currentBackend?.supportsGranularControl() ?: true
+    }
+
     /**
      * Check if iptables backend is available.
      */
@@ -202,21 +214,40 @@ class FirewallManager(
     private suspend fun selectBackend(mode: FirewallMode): Result<FirewallBackend> {
         return try {
             Log.d(TAG, "=== selectBackend() called with mode: $mode ===")
+            Log.d(TAG, "Current permission status:")
+            Log.d(TAG, "  - Root: hasPermission=${rootManager.hasRootPermission}, status=${rootManager.rootStatus.value}")
+            Log.d(TAG, "  - Shizuku: hasPermission=${shizukuManager.hasShizukuPermission}, status=${shizukuManager.shizukuStatus.value}")
+
             val backend = when (mode) {
                 FirewallMode.AUTO -> {
-                    Log.d(TAG, "AUTO mode: Checking iptables availability...")
-                    // Try iptables first if available, fallback to VPN
+                    Log.d(TAG, "AUTO mode: Checking backend availability (priority: iptables > ConnectivityManager > VPN)...")
+
+                    // 1. Try iptables (requires root or Shizuku root mode)
                     val iptablesBackend = IptablesFirewallBackend(
                         context, rootManager, shizukuManager, errorHandler
                     )
-
-                    val availabilityResult = iptablesBackend.checkAvailability()
-                    if (availabilityResult.isSuccess) {
-                        Log.d(TAG, "AUTO mode: iptables is available - Selected iptables backend")
+                    val iptablesAvailable = iptablesBackend.checkAvailability()
+                    if (iptablesAvailable.isSuccess) {
+                        Log.d(TAG, "✅ AUTO mode: iptables is available (root) - Selected iptables backend (NO VPN KEY ICON)")
                         iptablesBackend
                     } else {
-                        Log.d(TAG, "AUTO mode: iptables not available (${availabilityResult.exceptionOrNull()?.message}) - using VPN backend")
-                        VpnFirewallBackend(context)
+                        Log.d(TAG, "❌ AUTO mode: iptables not available (${iptablesAvailable.exceptionOrNull()?.message})")
+
+                        // 2. Try ConnectivityManager (requires Shizuku + Android 13+)
+                        val cmBackend = ConnectivityManagerFirewallBackend(
+                            context, shizukuManager, errorHandler
+                        )
+                        val cmAvailable = cmBackend.checkAvailability()
+                        if (cmAvailable.isSuccess) {
+                            Log.d(TAG, "✅ AUTO mode: ConnectivityManager is available (Shizuku + Android 13+) - Selected ConnectivityManager backend (NO VPN KEY ICON)")
+                            cmBackend
+                        } else {
+                            Log.d(TAG, "❌ AUTO mode: ConnectivityManager not available (${cmAvailable.exceptionOrNull()?.message})")
+
+                            // 3. Fall back to VPN (always works)
+                            Log.d(TAG, "⚠️  AUTO mode: Using VPN backend as fallback (WILL SHOW VPN KEY ICON)")
+                            VpnFirewallBackend(context)
+                        }
                     }
                 }
 
@@ -240,9 +271,55 @@ class FirewallManager(
                     Log.d(TAG, "IPTABLES mode: Selected iptables backend")
                     iptablesBackend
                 }
+
+                FirewallMode.CONNECTIVITY_MANAGER -> {
+                    Log.d(TAG, "CONNECTIVITY_MANAGER mode: Checking ConnectivityManager availability...")
+                    val cmBackend = ConnectivityManagerFirewallBackend(
+                        context, shizukuManager, errorHandler
+                    )
+
+                    // Check availability
+                    cmBackend.checkAvailability().getOrElse { error ->
+                        Log.e(TAG, "CONNECTIVITY_MANAGER mode: Backend not available - ${error.message}")
+                        return Result.failure(error)
+                    }
+
+                    Log.d(TAG, "CONNECTIVITY_MANAGER mode: Selected ConnectivityManager backend")
+                    cmBackend
+                }
+
+                FirewallMode.NETWORK_POLICY_MANAGER -> {
+                    Log.d(TAG, "NETWORK_POLICY_MANAGER mode: Checking NetworkPolicyManager availability...")
+                    val npmBackend = NetworkPolicyManagerFirewallBackend(
+                        context, shizukuManager, errorHandler
+                    )
+
+                    // Check availability
+                    npmBackend.checkAvailability().getOrElse { error ->
+                        Log.e(TAG, "NETWORK_POLICY_MANAGER mode: Backend not available - ${error.message}")
+                        return Result.failure(error)
+                    }
+
+                    Log.d(TAG, "NETWORK_POLICY_MANAGER mode: Selected NetworkPolicyManager backend")
+                    npmBackend
+                }
             }
 
-            Log.d(TAG, "Backend selected successfully: ${backend.getType()}")
+            Log.d(TAG, "=== Backend selected successfully: ${backend.getType()} ===")
+            when (backend.getType()) {
+                FirewallBackendType.VPN -> {
+                    Log.d(TAG, "⚠️  VPN backend will show VPN KEY ICON in status bar")
+                }
+                FirewallBackendType.IPTABLES -> {
+                    Log.d(TAG, "✅ iptables backend will NOT show VPN key icon (root)")
+                }
+                FirewallBackendType.CONNECTIVITY_MANAGER -> {
+                    Log.d(TAG, "✅ ConnectivityManager backend will NOT show VPN key icon (Shizuku + Android 13+)")
+                }
+                FirewallBackendType.NETWORK_POLICY_MANAGER -> {
+                    Log.d(TAG, "✅ NetworkPolicyManager backend will NOT show VPN key icon (Shizuku)")
+                }
+            }
             Result.success(backend)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to select backend", e)
@@ -253,10 +330,10 @@ class FirewallManager(
     
     /**
      * Start monitoring network and screen state changes.
-     * Only used for iptables backend (VPN backend monitors internally).
+     * Used for iptables and NetworkPolicyManager backends (VPN backend monitors internally).
      */
     private fun startMonitoring() {
-        Log.d(TAG, "Starting state monitoring for iptables backend")
+        Log.d(TAG, "Starting state monitoring for ${currentBackend?.getType()} backend")
         
         monitoringJob?.cancel()
         monitoringJob = scope.launch {
@@ -316,7 +393,7 @@ class FirewallManager(
     private suspend fun applyRules() {
         val backend = currentBackend ?: return
 
-        if (backend.getType() != FirewallBackendType.IPTABLES) {
+        if (backend.getType() == FirewallBackendType.VPN) {
             // VPN backend handles rules internally
             return
         }

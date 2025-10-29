@@ -14,16 +14,17 @@ import io.github.dorumrr.de1984.domain.model.NetworkType
 
 /**
  * VPN-based firewall backend.
- * 
+ *
  * Wraps the existing FirewallVpnService implementation.
  * Uses Android VpnService API with inverted logic (addAllowedApplication to block).
- * 
+ *
  * Features:
  * - No root required
  * - Per-app blocking
- * - Network type-specific rules (WiFi/Mobile/Roaming)
+ * - Granular network type-specific rules (WiFi/Mobile/Roaming)
  * - Screen state-specific rules
- * 
+ * - Automatically reconfigures when network type changes
+ *
  * Limitations:
  * - Occupies VPN slot (cannot use real VPN alongside)
  * - Requires VPN permission from user
@@ -38,13 +39,14 @@ class VpnFirewallBackend(
     
     override suspend fun start(): Result<Unit> {
         return try {
-            Log.d(TAG, "Starting VPN firewall backend")
-            
+            Log.d(TAG, "=== Starting VPN firewall backend ===")
+            Log.d(TAG, "WARNING: VPN backend will show VPN key icon in status bar")
+
             val intent = Intent(context, FirewallVpnService::class.java).apply {
                 action = FirewallVpnService.ACTION_START
             }
             context.startService(intent)
-            
+
             Log.d(TAG, "VPN firewall backend start requested")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -119,11 +121,13 @@ class VpnFirewallBackend(
     }
     
     override fun getType(): FirewallBackendType = FirewallBackendType.VPN
-    
+
     override suspend fun checkAvailability(): Result<Unit> {
         // VPN is always available on Android (no special requirements)
         // User just needs to grant VPN permission when starting
         return Result.success(Unit)
     }
+
+    override fun supportsGranularControl(): Boolean = true  // Supports WiFi/Mobile/Roaming granular control
 }
 

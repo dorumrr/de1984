@@ -20,7 +20,8 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.switchmaterial.SwitchMaterial
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
-import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionBinding
+import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionGranularBinding
+import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionSimpleBinding
 import io.github.dorumrr.de1984.databinding.FragmentFirewallBinding
 import io.github.dorumrr.de1984.databinding.NetworkTypeToggleBinding
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
@@ -311,7 +312,23 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
     private fun showPackageActionSheet(pkg: NetworkPackage) {
         val dialog = BottomSheetDialog(requireContext())
-        val binding = BottomSheetPackageActionBinding.inflate(layoutInflater)
+
+        // Get FirewallManager from application dependencies
+        val app = requireActivity().application as De1984Application
+        val firewallManager = app.dependencies.firewallManager
+
+        // Check if current backend supports granular control
+        val supportsGranular = firewallManager.supportsGranularControl()
+
+        if (supportsGranular) {
+            showGranularControlSheet(dialog, pkg)
+        } else {
+            showSimpleControlSheet(dialog, pkg)
+        }
+    }
+
+    private fun showGranularControlSheet(dialog: BottomSheetDialog, pkg: NetworkPackage) {
+        val binding = BottomSheetPackageActionGranularBinding.inflate(layoutInflater)
 
         // Check if device has cellular capability
         val telephonyManager = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
@@ -416,6 +433,98 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 }
             )
         }
+
+        // Show VPN limitation message if using VPN backend
+        val app = requireActivity().application as De1984Application
+        val firewallManager = app.dependencies.firewallManager
+        val backendType = firewallManager.getActiveBackendType()
+
+        if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
+            binding.infoMessage.visibility = View.VISIBLE
+            binding.infoMessage.text = "Using VPN-based firewall because your device is not rooted or doesn't have Shizuku. You cannot use another VPN app while De1984 firewall is active."
+        } else {
+            binding.infoMessage.visibility = View.GONE
+        }
+
+        dialog.setContentView(binding.root)
+        dialog.show()
+    }
+
+    private fun showSimpleControlSheet(dialog: BottomSheetDialog, pkg: NetworkPackage) {
+        val binding = BottomSheetPackageActionSimpleBinding.inflate(layoutInflater)
+
+        // Setup header
+        try {
+            val pm = requireContext().packageManager
+            val appInfo = pm.getApplicationInfo(pkg.packageName, 0)
+            val icon = pm.getApplicationIcon(appInfo)
+            binding.actionSheetAppIcon.setImageDrawable(icon)
+        } catch (e: Exception) {
+            binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
+        }
+        binding.actionSheetAppName.text = pkg.name
+        binding.actionSheetPackageName.text = pkg.packageName
+
+        // Set appropriate info message based on backend type
+        val app = requireActivity().application as De1984Application
+        val firewallManager = app.dependencies.firewallManager
+        val backendType = firewallManager.getActiveBackendType()
+
+        val infoMessage = when (backendType) {
+            io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER -> {
+                "This blocks all network types (WiFi, Mobile, Roaming).\n\n" +
+                "Your device uses a system-level firewall (Android 13+) that doesn't support per-network blocking. " +
+                "For granular control, root access is required."
+            }
+            else -> {
+                "This blocks all network types (WiFi, Mobile, Roaming)."
+            }
+        }
+        binding.infoMessage.text = infoMessage
+
+        // Flag to prevent infinite recursion when updating switch programmatically
+        var isUpdatingProgrammatically = false
+
+        // Function to update UI toggle based on current package state
+        fun updateToggleFromPackage(currentPkg: NetworkPackage) {
+            isUpdatingProgrammatically = true
+
+            // For all-or-nothing backends, check if ANY network is blocked
+            val isBlocked = currentPkg.wifiBlocked || currentPkg.mobileBlocked || currentPkg.roamingBlocked
+            binding.internetToggle.toggleSwitch.isChecked = isBlocked
+            updateSwitchColors(binding.internetToggle.toggleSwitch, isBlocked)
+
+            isUpdatingProgrammatically = false
+        }
+
+        // Initial setup of toggle
+        updateToggleFromPackage(pkg)
+
+        // Observe package changes to update UI when ViewModel makes changes
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.uiState.collect { state ->
+                val updatedPkg = state.packages.find { it.packageName == pkg.packageName }
+                if (updatedPkg != null && !isUpdatingProgrammatically) {
+                    updateToggleFromPackage(updatedPkg)
+                }
+            }
+        }
+
+        // Setup single "Block Internet" toggle
+        setupNetworkToggle(
+            binding = binding.internetToggle,
+            label = "Block Internet",
+            isBlocked = pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked,
+            enabled = true,
+            onToggle = { blocked ->
+                if (isUpdatingProgrammatically) return@setupNetworkToggle
+
+                // Block/unblock ALL networks at once
+                viewModel.setWifiBlocking(pkg.packageName, blocked)
+                viewModel.setMobileBlocking(pkg.packageName, blocked)
+                viewModel.setRoamingBlocking(pkg.packageName, blocked)
+            }
+        )
 
         dialog.setContentView(binding.root)
         dialog.show()

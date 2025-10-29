@@ -326,6 +326,29 @@
 -allowaccessmodification
 
 # ================================================================================================
+# FIREWALL BACKENDS (REFLECTION-BASED)
+# ================================================================================================
+
+# ConnectivityManager firewall backend uses shell commands, no reflection needed
+
+# Keep NetworkPolicyManager classes for reflection (hidden Android API)
+# Used by NetworkPolicyManagerFirewallBackend to access system service via Shizuku
+-keep class android.net.INetworkPolicyManager { *; }
+-keep class android.net.INetworkPolicyManager$** { *; }
+-keepclassmembers class android.net.INetworkPolicyManager {
+    public static ** asInterface(android.os.IBinder);
+    public void setUidPolicy(int, int);
+    public int getUidPolicy(int);
+}
+
+# Keep Shizuku binder wrapper classes
+-keep class rikka.shizuku.ShizukuBinderWrapper { *; }
+-keep class rikka.shizuku.SystemServiceHelper { *; }
+-keepclassmembers class rikka.shizuku.SystemServiceHelper {
+    public static android.os.IBinder getSystemService(java.lang.String);
+}
+
+# ================================================================================================
 # WARNING SUPPRESSION (ONLY FOR KNOWN SAFE WARNINGS)
 # ================================================================================================
 

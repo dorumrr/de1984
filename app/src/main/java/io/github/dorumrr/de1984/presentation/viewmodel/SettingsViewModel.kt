@@ -178,10 +178,10 @@ class SettingsViewModel(
     }
 
     /**
-     * Request to change the default firewall policy.
-     * This will trigger a confirmation dialog in the UI.
+     * Change the default firewall policy.
+     * Rules are preserved and interpreted based on the new policy.
      */
-    fun requestDefaultFirewallPolicyChange(newPolicy: String) {
+    fun setDefaultFirewallPolicy(newPolicy: String) {
         val oldPolicy = _uiState.value.defaultFirewallPolicy
 
         // If policy is the same, do nothing
@@ -189,61 +189,24 @@ class SettingsViewModel(
             return
         }
 
-        // Check if VPN is active when switching to Block All with iptables mode
-        val isBlockAll = newPolicy == Constants.Settings.POLICY_BLOCK_ALL
-        val isIptablesMode = firewallManager.activeBackendType.value == FirewallBackendType.IPTABLES
-        val showVpnWarning = isBlockAll && isIptablesMode && firewallManager.isVpnActive()
-
-        // Set pending policy change to trigger confirmation dialog
-        _uiState.value = _uiState.value.copy(
-            pendingPolicyChange = newPolicy,
-            showVpnWarning = showVpnWarning
-        )
-    }
-
-    /**
-     * Confirm the policy change and reset all rules.
-     */
-    fun confirmDefaultFirewallPolicyChange() {
-        val newPolicy = _uiState.value.pendingPolicyChange ?: return
-
         viewModelScope.launch {
             try {
-                Log.d(TAG, "Changing default policy to: $newPolicy (resetting all rules)")
+                Log.d(TAG, "Changing default policy to: $newPolicy (rules preserved with inverted semantics)")
 
-                // Delete all existing rules
-                firewallRepository.deleteAllRules()
-
-                // Update the policy
+                // Update the policy - rules are preserved and interpreted based on new policy
                 _uiState.value = _uiState.value.copy(
-                    defaultFirewallPolicy = newPolicy,
-                    pendingPolicyChange = null,
-                    showVpnWarning = false
+                    defaultFirewallPolicy = newPolicy
                 )
                 saveSetting(Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY, newPolicy)
 
-                // Restart firewall if running to apply the new policy
+                // Restart firewall if running to apply the new policy interpretation
                 restartFirewallIfRunning()
 
-                Log.d(TAG, "Policy changed successfully, all rules reset")
+                Log.d(TAG, "Policy changed successfully, rules preserved")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to change policy", e)
-                _uiState.value = _uiState.value.copy(
-                    pendingPolicyChange = null,
-                    showVpnWarning = false
-                )
             }
         }
-    }
-
-    /**
-     * Cancel the pending policy change.
-     */
-    fun cancelDefaultFirewallPolicyChange() {
-        _uiState.value = _uiState.value.copy(
-            pendingPolicyChange = null,
-            showVpnWarning = false
-        )
     }
 
     fun setNewAppNotifications(enabled: Boolean) {
@@ -385,13 +348,7 @@ data class SettingsUiState(
 
     val hasBasicPermissions: Boolean = true,
     val hasEnhancedPermissions: Boolean = false,
-    val hasAdvancedPermissions: Boolean = false,
-
-    // Pending policy change (triggers confirmation dialog)
-    val pendingPolicyChange: String? = null,
-
-    // VPN warning when switching to Block All with active VPN
-    val showVpnWarning: Boolean = false
+    val hasAdvancedPermissions: Boolean = false
 )
 
 data class SystemInfo(

@@ -51,8 +51,16 @@ class GetNetworkPackagesUseCase constructor(
         return if (filterState.networkState != null) {
             baseFlow.map { packages ->
                 when (filterState.networkState.lowercase()) {
-                    "allowed" -> packages.filter { !it.isNetworkBlocked }
-                    "blocked" -> packages.filter { it.isNetworkBlocked }
+                    // "Allowed" filter: Show apps that are allowed on ANY network
+                    // This includes fully allowed apps AND partially blocked apps (allowed on some networks)
+                    "allowed" -> packages.filter { pkg ->
+                        !pkg.wifiBlocked || !pkg.mobileBlocked || !pkg.roamingBlocked
+                    }
+                    // "Blocked" filter: Show apps that are blocked on ANY network
+                    // This includes fully blocked apps AND partially blocked apps (blocked on some networks)
+                    "blocked" -> packages.filter { pkg ->
+                        pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked
+                    }
                     else -> packages
                 }
             }

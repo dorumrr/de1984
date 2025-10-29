@@ -115,7 +115,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             } else {
                 Constants.Settings.POLICY_ALLOW_ALL
             }
-            viewModel.requestDefaultFirewallPolicyChange(policy)
+            viewModel.setDefaultFirewallPolicy(policy)
+            updateFirewallPolicyDescription(isChecked)
         }
 
         // Show app icons switch
@@ -188,14 +189,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             } else {
                 Constants.Settings.POLICY_ALLOW_ALL
             }
-            viewModel.requestDefaultFirewallPolicyChange(policy)
+            viewModel.setDefaultFirewallPolicy(policy)
+            updateFirewallPolicyDescription(isChecked)
         }
         updateFirewallPolicyDescription(binding.firewallPolicySwitch.isChecked)
-
-        // Show confirmation dialog if there's a pending policy change
-        state.pendingPolicyChange?.let { newPolicy ->
-            showPolicyChangeConfirmationDialog(newPolicy)
-        }
 
         binding.showAppIconsSwitch.setOnCheckedChangeListener(null)
         binding.showAppIconsSwitch.isChecked = state.showAppIcons
@@ -218,80 +215,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         }
     }
 
-    private fun showPolicyChangeConfirmationDialog(newPolicy: String) {
-        val isBlockAll = newPolicy == Constants.Settings.POLICY_BLOCK_ALL
-        val policyName = if (isBlockAll) "Block All" else "Allow All"
-        val defaultState = if (isBlockAll) "blocked" else "allowed"
-        val showVpnWarning = viewModel.uiState.value.showVpnWarning
 
-        // Build message with VPN warning if needed
-        val message = buildString {
-            append("Switching to \"$policyName\" will reset all firewall rules.\n\n")
-            append("All apps will be $defaultState by default.\n\n")
-
-            if (showVpnWarning) {
-                append("${Constants.UI.Dialogs.VPN_WARNING_EMOJI} ${Constants.UI.Dialogs.VPN_WARNING_TITLE}\n\n")
-                append("${Constants.UI.Dialogs.VPN_WARNING_MESSAGE}\n\n")
-            }
-
-            append("You can then configure individual apps as needed.")
-        }
-
-        // Create custom view for the dialog to support colored text
-        val messageView = TextView(requireContext()).apply {
-            text = if (showVpnWarning) {
-                // Use SpannableString to color the warning text red
-                val fullText = message
-                val warningStart = fullText.indexOf(Constants.UI.Dialogs.VPN_WARNING_EMOJI)
-                val warningEnd = fullText.indexOf("You can then configure")
-
-                android.text.SpannableString(fullText).apply {
-                    if (warningStart >= 0 && warningEnd > warningStart) {
-                        setSpan(
-                            android.text.style.ForegroundColorSpan(
-                                ContextCompat.getColor(requireContext(), R.color.error_red)
-                            ),
-                            warningStart,
-                            warningEnd,
-                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                        )
-                    }
-                }
-            } else {
-                message
-            }
-            // Use Constants for padding
-            val paddingHorizontal = (Constants.UI.SPACING_LARGE * resources.displayMetrics.density).toInt()
-            val paddingVertical = (Constants.UI.SPACING_MEDIUM * resources.displayMetrics.density).toInt()
-            setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, 0)
-            textSize = 16f
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(Constants.UI.Dialogs.POLICY_CHANGE_TITLE)
-            .setView(messageView)
-            .setPositiveButton(Constants.UI.Dialogs.POLICY_CHANGE_CONFIRM) { _, _ ->
-                viewModel.confirmDefaultFirewallPolicyChange()
-                updateFirewallPolicyDescription(isBlockAll)
-            }
-            .setNegativeButton(Constants.UI.Dialogs.POLICY_CHANGE_CANCEL) { _, _ ->
-                viewModel.cancelDefaultFirewallPolicyChange()
-                // Revert the switch to the current policy
-                binding.firewallPolicySwitch.setOnCheckedChangeListener(null)
-                binding.firewallPolicySwitch.isChecked =
-                    viewModel.uiState.value.defaultFirewallPolicy == Constants.Settings.POLICY_BLOCK_ALL
-                binding.firewallPolicySwitch.setOnCheckedChangeListener { _, isChecked ->
-                    val policy = if (isChecked) {
-                        Constants.Settings.POLICY_BLOCK_ALL
-                    } else {
-                        Constants.Settings.POLICY_ALLOW_ALL
-                    }
-                    viewModel.requestDefaultFirewallPolicyChange(policy)
-                }
-            }
-            .setCancelable(false)
-            .show()
-    }
 
     private fun observePermissionState() {
         viewLifecycleOwner.lifecycleScope.launch {

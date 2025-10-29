@@ -59,6 +59,7 @@ class AndroidPackageDataSource(
                         val rule = rulesByPackage[appInfo.packageName]
 
                         val blockingState = if (rule != null && rule.enabled) {
+                            // Has explicit rule - use it as-is (absolute blocking state)
                             BlockingState(
                                 isNetworkBlocked = rule.wifiBlocked || rule.mobileBlocked,
                                 wifiBlocked = rule.wifiBlocked,
@@ -66,6 +67,7 @@ class AndroidPackageDataSource(
                                 roamingBlocked = rule.blockWhenRoaming
                             )
                         } else {
+                            // No explicit rule - use default policy
                             BlockingState(
                                 isNetworkBlocked = isBlockAllDefault,
                                 wifiBlocked = isBlockAllDefault,
@@ -118,6 +120,7 @@ class AndroidPackageDataSource(
                 val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
                 val blockingState = if (rule != null && rule.enabled) {
+                    // Has explicit rule - use it as-is (absolute blocking state)
                     BlockingState(
                         isNetworkBlocked = rule.wifiBlocked || rule.mobileBlocked,
                         wifiBlocked = rule.wifiBlocked,
@@ -125,6 +128,7 @@ class AndroidPackageDataSource(
                         roamingBlocked = rule.blockWhenRoaming
                     )
                 } else {
+                    // No explicit rule - use default policy
                     BlockingState(
                         isNetworkBlocked = isBlockAllDefault,
                         wifiBlocked = isBlockAllDefault,

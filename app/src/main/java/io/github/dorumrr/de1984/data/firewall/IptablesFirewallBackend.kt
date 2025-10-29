@@ -163,30 +163,17 @@ class IptablesFirewallBackend(
                     val rulesForUid = rulesByUid[uid]
 
                     val shouldBlock = if (rulesForUid != null && rulesForUid.isNotEmpty()) {
-                        // Has explicit rules - check if ANY rule says to block (most restrictive)
-                        val blockResult = rulesForUid.any { rule ->
+                        // Has explicit rules - use as-is (absolute blocking state)
+                        // Check if ANY rule says to block (most restrictive)
+                        rulesForUid.any { rule ->
                             when {
                                 !screenOn && rule.blockWhenScreenOff -> true
                                 rule.isBlockedOn(networkType) -> true
                                 else -> false
                             }
                         }
-
-                        // Debug logging for specific packages
-                        if (packageName.contains("duckduckgo", ignoreCase = true)) {
-                            Log.d(TAG, "DEBUG: $packageName - Has rules: ${rulesForUid.size}, shouldBlock=$blockResult")
-                            rulesForUid.forEach { rule ->
-                                Log.d(TAG, "  Rule: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming}, enabled=${rule.enabled}")
-                                Log.d(TAG, "  isBlockedOn($networkType)=${rule.isBlockedOn(networkType)}")
-                            }
-                        }
-
-                        blockResult
                     } else {
                         // No rule - apply default policy (block all)
-                        if (packageName.contains("duckduckgo", ignoreCase = true)) {
-                            Log.d(TAG, "DEBUG: $packageName - No rules, applying default policy (block all)")
-                        }
                         true
                     }
 
@@ -199,6 +186,7 @@ class IptablesFirewallBackend(
                 // For shared UIDs, block if ANY app with that UID should be blocked
                 for ((uid, rulesForUid) in rulesByUid) {
                     val shouldBlock = rulesForUid.any { rule ->
+                        // Has explicit rule - use as-is (absolute blocking state)
                         when {
                             // Screen off blocking takes precedence
                             !screenOn && rule.blockWhenScreenOff -> true

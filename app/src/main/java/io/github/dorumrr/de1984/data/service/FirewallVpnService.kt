@@ -350,26 +350,14 @@ class FirewallVpnService : VpnService() {
             val rule = rulesMap[packageName]
 
             val shouldBlock = if (rule != null && rule.enabled) {
-                val blockResult = when {
+                // Has explicit rule - use it as-is (absolute blocking state)
+                when {
                     !isScreenOn && rule.blockWhenScreenOff -> true
                     rule.isBlockedOn(currentNetworkType) -> true
                     else -> false
                 }
-
-                // Debug logging for Chrome
-                if (packageName.contains("chrome", ignoreCase = true)) {
-                    Log.d(TAG, "DEBUG VPN: $packageName - Has rule, shouldBlock=$blockResult")
-                    Log.d(TAG, "  Rule: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming}, enabled=${rule.enabled}")
-                    Log.d(TAG, "  isBlockedOn($currentNetworkType)=${rule.isBlockedOn(currentNetworkType)}")
-                    Log.d(TAG, "  currentNetworkType=$currentNetworkType, isScreenOn=$isScreenOn")
-                }
-
-                blockResult
             } else {
-                // Debug logging for Chrome
-                if (packageName.contains("chrome", ignoreCase = true)) {
-                    Log.d(TAG, "DEBUG VPN: $packageName - No rule, applying default policy (isBlockAllDefault=$isBlockAllDefault)")
-                }
+                // No rule - apply default policy
                 isBlockAllDefault
             }
 
@@ -467,6 +455,7 @@ class FirewallVpnService : VpnService() {
                 val rule = rulesMap[packageName]
 
                 val shouldBlock = if (rule != null && rule.enabled) {
+                    // Has explicit rule - use it as-is (absolute blocking state)
                     when {
                         !isScreenOn && rule.blockWhenScreenOff -> {
                             true

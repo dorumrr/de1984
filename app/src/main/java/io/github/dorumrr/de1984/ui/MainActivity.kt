@@ -353,34 +353,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onFirewallToggleChanged(enabled: Boolean) {
-        Log.d(TAG, "=== onFirewallToggleChanged: enabled=$enabled ===")
         if (enabled) {
             val prepareIntent = firewallViewModel.startFirewall()
             if (prepareIntent != null) {
-                Log.d(TAG, "VPN permission required - launching permission request")
                 vpnPermissionLauncher.launch(prepareIntent)
-            } else {
-                Log.d(TAG, "No VPN permission required - firewall starting")
             }
         } else {
-            Log.d(TAG, "Stopping firewall")
             firewallViewModel.stopFirewall()
         }
     }
 
     private fun showFirewallStartDialog() {
-        Log.d(TAG, "=== showFirewallStartDialog ===")
         MaterialAlertDialogBuilder(this)
             .setTitle(Constants.UI.Dialogs.FIREWALL_START_TITLE)
             .setMessage(Constants.UI.Dialogs.FIREWALL_START_MESSAGE)
             .setPositiveButton(Constants.UI.Dialogs.FIREWALL_START_CONFIRM) { _, _ ->
-                Log.d(TAG, "User confirmed firewall start dialog")
                 val prepareIntent = firewallViewModel.startFirewall()
                 if (prepareIntent != null) {
-                    Log.d(TAG, "VPN permission required - launching permission request")
                     vpnPermissionLauncher.launch(prepareIntent)
-                } else {
-                    Log.d(TAG, "No VPN permission required - firewall starting")
                 }
             }
             .setNegativeButton(Constants.UI.Dialogs.FIREWALL_START_SKIP, null)

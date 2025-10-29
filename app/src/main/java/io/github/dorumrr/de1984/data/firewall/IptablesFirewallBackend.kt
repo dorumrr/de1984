@@ -240,29 +240,22 @@ class IptablesFirewallBackend(
             val hasShizuku = shizukuManager.hasShizukuPermission
             val hasAccess = hasRoot || hasShizuku
 
-            Log.d(TAG, "checkAvailability: hasRoot=$hasRoot, hasShizuku=$hasShizuku")
-
             if (!hasAccess) {
                 val error = errorHandler.createRootRequiredError("iptables firewall")
-                Log.d(TAG, "checkAvailability: FAILED - no root or Shizuku")
                 return Result.failure(error)
             }
 
             // If using Shizuku, check if it's running in root mode
             if (hasShizuku && !hasRoot) {
-                val shizukuUid = shizukuManager.getShizukuUid()
                 val isRootMode = shizukuManager.isShizukuRootMode()
-                Log.d(TAG, "Shizuku UID: $shizukuUid, isRootMode: $isRootMode")
 
                 if (!isRootMode) {
-                    Log.d(TAG, "checkAvailability: FAILED - Shizuku in ADB mode, not root mode")
                     val error = errorHandler.createUnsupportedDeviceError(
                         operation = "iptables firewall",
                         reason = "Shizuku must be started with ROOT privileges (not ADB) to use iptables firewall"
                     )
                     return Result.failure(error)
                 }
-                Log.d(TAG, "checkAvailability: Shizuku is in ROOT mode")
             }
 
             // Check if iptables is available

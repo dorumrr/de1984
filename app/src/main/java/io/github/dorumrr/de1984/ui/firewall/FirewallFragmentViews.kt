@@ -473,7 +473,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val infoMessage = when (backendType) {
             io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER -> {
                 "This blocks all network types (WiFi, Mobile, Roaming).\n\n" +
-                "Your device uses a system-level firewall (Android 13+) that doesn't support per-network blocking. " +
+                "Your device uses a system-level firewall that doesn't support per-network blocking. " +
                 "For granular control, root access is required."
             }
             else -> {

@@ -306,13 +306,6 @@ class FirewallViewModel(
         val mode = firewallManager.getCurrentMode()
         val hasRoot = rootManager.hasRootPermission
         val hasShizuku = shizukuManager.hasShizukuPermission
-        val rootStatus = rootManager.rootStatus.value
-        val shizukuStatus = shizukuManager.shizukuStatus.value
-
-        Log.d(TAG, "=== startFirewall() called ===")
-        Log.d(TAG, "Firewall mode: $mode")
-        Log.d(TAG, "Root status: $rootStatus, hasRootPermission: $hasRoot")
-        Log.d(TAG, "Shizuku status: $shizukuStatus, hasShizukuPermission: $hasShizuku")
 
         // Determine if VPN backend will be used
         val needsVpnPermission = when (mode) {
@@ -324,9 +317,7 @@ class FirewallViewModel(
                 // AUTO mode: check if iptables or ConnectivityManager will be available
                 val canUseIptables = hasRoot || (hasShizuku && shizukuManager.isShizukuRootMode())
                 val canUseConnectivityManager = hasShizuku && android.os.Build.VERSION.SDK_INT >= 33
-                val willUseVpn = !canUseIptables && !canUseConnectivityManager
-                Log.d(TAG, "AUTO mode: canUseIptables=$canUseIptables, canUseConnectivityManager=$canUseConnectivityManager, willUseVpn=$willUseVpn")
-                willUseVpn
+                !canUseIptables && !canUseConnectivityManager
             }
             else -> {
                 // IPTABLES, CONNECTIVITY_MANAGER, or other explicit modes don't need VPN
@@ -334,12 +325,9 @@ class FirewallViewModel(
             }
         }
 
-        Log.d(TAG, "needsVpnPermission: $needsVpnPermission")
-
         if (needsVpnPermission) {
             // VPN mode - check permission first
             val prepareIntent = VpnService.prepare(getApplication())
-            Log.d(TAG, "VPN prepareIntent: ${if (prepareIntent != null) "NEEDS PERMISSION" else "ALREADY GRANTED"}")
             if (prepareIntent != null) {
                 // Permission not granted yet - return intent to request it
                 return prepareIntent

@@ -103,6 +103,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             startActivity(intent)
         }
 
+        // Contribute link
+        binding.contributeLink.setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dorumrr/de1984"))
+            startActivity(intent)
+        }
+
         // Firewall policy switch
         binding.firewallPolicySwitch.setOnCheckedChangeListener { _, isChecked ->
             val policy = if (isChecked) {

@@ -20,14 +20,14 @@
         android:label="Settings">
 
         <action
-            android:id="@+id/action_settings_to_credits"
-            app:destination="@id/creditsFragment" />
+            android:id="@+id/action_settings_to_about"
+            app:destination="@id/aboutFragment" />
     </fragment>
 
     <fragment
-        android:id="@+id/creditsFragment"
-        android:name="io.github.dorumrr.de1984.ui.credits.CreditsFragmentViews"
-        android:label="Credits" />
+        android:id="@+id/aboutFragment"
+        android:name="io.github.dorumrr.de1984.ui.about.AboutFragmentViews"
+        android:label="@string/nav_about" />
 
 </navigation>
 

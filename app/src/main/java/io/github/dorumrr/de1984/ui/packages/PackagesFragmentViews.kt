@@ -24,11 +24,15 @@ import io.github.dorumrr.de1984.presentation.viewmodel.PackagesViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 import io.github.dorumrr.de1984.ui.common.FilterChipsHelper
-import io.github.dorumrr.de1984.ui.common.PrivilegedAccessDialog
+import io.github.dorumrr.de1984.ui.common.PermissionSetupDialog
+import io.github.dorumrr.de1984.ui.common.StandardDialog
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
 import kotlinx.coroutines.launch
 import androidx.core.widget.addTextChangedListener
+import io.github.dorumrr.de1984.data.common.RootStatus
+import io.github.dorumrr.de1984.data.common.ShizukuStatus
+import io.github.dorumrr.de1984.ui.MainActivity
 
 class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
@@ -62,6 +66,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     private var currentStateFilter: String? = null
     private var lastSubmittedPackages: List<Package> = emptyList()
 
+
+
     override fun getViewBinding(
         inflater: LayoutInflater,
         container: ViewGroup?
@@ -85,7 +91,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         setupRecyclerView()
         setupFilterChips()
         setupSearchBox()
-        setupRootBanner()
+        setupPermissionDialog()
         observeUiState()
         observeSettings()
 
@@ -233,25 +239,94 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         )
     }
 
-    private fun setupRootBanner() {
-        binding.grantPermissionButton.setOnClickListener {
-            // Try Shizuku first, then root
-            settingsViewModel.grantShizukuPermission()
-            // If Shizuku is not available, request root
-            settingsViewModel.requestRootPermission()
-        }
+    private fun setupPermissionDialog() {
+        Log.d(TAG, "setupPermissionDialog called")
+        // Observe privileged access status and show modal dialog when needed
+        observePrivilegedAccessStatus()
+    }
 
-        binding.dismissBannerButton.setOnClickListener {
-            viewModel.dismissRootBanner()
-            binding.rootBanner.visibility = View.GONE
+    private fun observePrivilegedAccessStatus() {
+        Log.d(TAG, "observePrivilegedAccessStatus called")
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                Log.d(TAG, "Starting privileged access status observation")
+                // Combine both status flows to determine banner state
+                launch {
+                    viewModel.rootManager.rootStatus.collect { rootStatus ->
+                        Log.d(TAG, "Root status changed: $rootStatus")
+                        updateBannerContent(rootStatus, viewModel.shizukuManager.shizukuStatus.value)
+                    }
+                }
+                launch {
+                    viewModel.shizukuManager.shizukuStatus.collect { shizukuStatus ->
+                        Log.d(TAG, "Shizuku status changed: $shizukuStatus")
+                        updateBannerContent(viewModel.rootManager.rootStatus.value, shizukuStatus)
+                    }
+                }
+            }
         }
+    }
+
+    private fun updateBannerContent(rootStatus: RootStatus, shizukuStatus: ShizukuStatus) {
+        Log.d(TAG, "updateBannerContent: rootStatus=$rootStatus, shizukuStatus=$shizukuStatus")
+        // This method is now used to trigger the modal dialog when needed
+        // The actual dialog showing is handled by observeUiState when showRootBanner becomes true
+    }
+
+
+
+    private fun navigateToSettings() {
+        // Navigate to Settings screen using bottom navigation
+        requireActivity().findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottom_navigation)
+            ?.selectedItemId = R.id.settingsFragment
+    }
+
+    private fun attemptPermissionGrant() {
+        // Try Shizuku first, then root (existing logic)
+        settingsViewModel.grantShizukuPermission()
+        // If Shizuku is not available, request root
+        settingsViewModel.requestRootPermission()
+    }
+
+    private fun showPermissionSetupDialog() {
+        Log.d(TAG, "showPermissionSetupDialog called")
+
+        val rootStatus = viewModel.rootManager.rootStatus.value
+        val shizukuStatus = viewModel.shizukuManager.shizukuStatus.value
+
+        PermissionSetupDialog.showPackageManagementDialog(
+            context = requireContext(),
+            rootStatus = rootStatus,
+            shizukuStatus = shizukuStatus,
+            onGrantClick = {
+                attemptPermissionGrant()
+            },
+            onSettingsClick = {
+                navigateToSettings()
+            },
+            onDismiss = {
+                viewModel.dismissRootBanner()
+            }
+        )
     }
 
     private fun observeUiState() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect { state ->
-                    updateUI(state)
+                // Observe UI state
+                launch {
+                    viewModel.uiState.collect { state ->
+                        updateUI(state)
+                    }
+                }
+
+                // Observe banner visibility and show modal dialog
+                launch {
+                    viewModel.showRootBanner.collect { showBanner ->
+                        if (showBanner) {
+                            showPermissionSetupDialog()
+                        }
+                    }
                 }
             }
         }
@@ -301,16 +376,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             viewModel.setUIReady()
         }
 
-        // Show root banner if needed - observe StateFlow
-        lifecycleScope.launch {
-            viewModel.showRootBanner.collect { showBanner ->
-                binding.rootBanner.visibility = if (showBanner) {
-                    View.VISIBLE
-                } else {
-                    View.GONE
-                }
-            }
-        }
+
 
         // Show error if any
         state.error?.let { error ->
@@ -391,74 +457,70 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     private fun showForceStopConfirmation(pkg: Package) {
         val isSystemPackage = pkg.type == PackageType.SYSTEM
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Force Stop ${pkg.name}?")
-            .setMessage(
-                if (isSystemPackage) {
-                    "⚠️ This is a system package. Force stopping it may cause system instability.\n\nAre you sure you want to continue?"
-                } else {
-                    "This will immediately stop all processes for ${pkg.name}.\n\nAre you sure?"
-                }
-            )
-            .setPositiveButton("Force Stop") { _, _ ->
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = "Force Stop ${pkg.name}?",
+            message = if (isSystemPackage) {
+                "⚠️ This is a system package. Force stopping it may cause system instability.\n\nAre you sure you want to continue?"
+            } else {
+                "This will immediately stop all processes for ${pkg.name}.\n\nAre you sure?"
+            },
+            confirmButtonText = "Force Stop",
+            onConfirm = {
                 viewModel.forceStopPackage(pkg.packageName)
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        )
     }
 
     private fun showEnableDisableConfirmation(pkg: Package, enable: Boolean) {
         val action = if (enable) "Enable" else "Disable"
         val isSystemPackage = pkg.type == PackageType.SYSTEM
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("$action ${pkg.name}?")
-            .setMessage(
-                if (isSystemPackage && !enable) {
-                    "⚠️ This is a system package. Disabling it may cause system instability or prevent other apps from working.\n\nAre you sure you want to continue?"
-                } else if (enable) {
-                    "This will allow ${pkg.name} to run normally.\n\nAre you sure?"
-                } else {
-                    "This will prevent ${pkg.name} from running.\n\nAre you sure?"
-                }
-            )
-            .setPositiveButton(action) { _, _ ->
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = "$action ${pkg.name}?",
+            message = if (isSystemPackage && !enable) {
+                "⚠️ This is a system package. Disabling it may cause system instability or prevent other apps from working.\n\nAre you sure you want to continue?"
+            } else if (enable) {
+                "This will allow ${pkg.name} to run normally.\n\nAre you sure?"
+            } else {
+                "This will prevent ${pkg.name} from running.\n\nAre you sure?"
+            },
+            confirmButtonText = action,
+            onConfirm = {
                 viewModel.setPackageEnabled(pkg.packageName, enable)
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        )
     }
 
     private fun showUninstallConfirmation(pkg: Package) {
         val isSystemPackage = pkg.type == PackageType.SYSTEM
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Uninstall ${pkg.name}?")
-            .setMessage(
-                if (isSystemPackage) {
-                    "⚠️ DANGER: This is a system package. Uninstalling it may brick your device or cause severe system instability.\n\nThis action cannot be easily undone.\n\nAre you absolutely sure?"
-                } else {
-                    "This will remove ${pkg.name} from your device.\n\nAre you sure?"
-                }
-            )
-            .setPositiveButton("Uninstall") { _, _ ->
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = "Uninstall ${pkg.name}?",
+            message = if (isSystemPackage) {
+                "⚠️ DANGER: This is a system package. Uninstalling it may brick your device or cause severe system instability.\n\nThis action cannot be easily undone.\n\nAre you absolutely sure?"
+            } else {
+                "This will remove ${pkg.name} from your device.\n\nAre you sure?"
+            },
+            confirmButtonText = "Uninstall",
+            onConfirm = {
                 viewModel.uninstallPackage(pkg.packageName)
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        )
     }
 
     private fun showError(message: String) {
         // Check if this is a privileged access error
         if (message.contains("Shizuku or root access required", ignoreCase = true)) {
-            PrivilegedAccessDialog.showRequiredDialog(requireContext())
+            StandardDialog.showNoAccessDialog(requireContext())
         } else {
             // Show generic error dialog
-            AlertDialog.Builder(requireContext())
-                .setTitle("Error")
-                .setMessage(message)
-                .setPositiveButton("OK", null)
-                .show()
+            StandardDialog.showError(
+                context = requireContext(),
+                message = message
+            )
         }
     }
 }

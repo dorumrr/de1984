@@ -213,23 +213,35 @@ object Constants {
         const val DESTINATION_FIREWALL = "firewall"
         const val DESTINATION_PACKAGES = "packages"
         const val DESTINATION_SETTINGS = "settings"
-        const val DESTINATION_CREDITS = "credits"
+        const val DESTINATION_ABOUT = "about"
 
         // Navigation Labels
         const val LABEL_FIREWALL = "Firewall"
         const val LABEL_PACKAGES = "Packages"
         const val LABEL_SETTINGS = "Settings"
-        const val LABEL_CREDITS = "Credits"
+        const val LABEL_ABOUT = "About"
 
         // Toolbar Titles (uppercase for consistency)
         const val TITLE_FIREWALL = "FIREWALL"
         const val TITLE_PACKAGES = "PACKAGES"
         const val TITLE_SETTINGS = "SETTINGS"
-        const val TITLE_CREDITS = "CREDITS"
+        const val TITLE_ABOUT = "ABOUT"
 
         // Firewall Toggle Button Text
         const val BUTTON_TEXT_ON = "ON"
         const val BUTTON_TEXT_OFF = "OFF"
+    }
+
+    object PrivilegedAccessBanner {
+        // Banner Messages - Context-aware based on actual device capabilities
+        const val MESSAGE_NO_ACCESS_AVAILABLE = "No privileged access available. Install Shizuku or root your device to enable package management."
+        const val MESSAGE_SHIZUKU_NOT_RUNNING = "Shizuku is installed but not running. Start Shizuku or root your device to enable package management."
+        const val MESSAGE_PERMISSION_REQUIRED = "Shizuku or root access required for package management"
+
+        // Button Text
+        const val BUTTON_GO_TO_SETTINGS = "Go to Settings"
+        const val BUTTON_GRANT = "Grant"
+        const val BUTTON_DISMISS = "Dismiss"
     }
 
 }

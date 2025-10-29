@@ -1,4 +1,4 @@
-package io.github.dorumrr.de1984.ui.credits
+package io.github.dorumrr.de1984.ui.about
 
 import android.content.Intent
 import android.net.Uri
@@ -8,24 +8,20 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import io.github.dorumrr.de1984.R
-import io.github.dorumrr.de1984.databinding.FragmentCreditsBinding
+import io.github.dorumrr.de1984.databinding.FragmentAboutBinding
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 
 /**
- * Credits screen showing libraries used in the app
+ * About Fragment - Shows app information, dependencies, and contribution links
+ * Following RULES.md: Uses constants, proper naming, and Material Design 3
  */
-class CreditsFragmentViews : BaseFragment<FragmentCreditsBinding>() {
+class AboutFragmentViews : BaseFragment<FragmentAboutBinding>() {
 
     override fun getViewBinding(
         inflater: LayoutInflater,
         container: ViewGroup?
-    ): FragmentCreditsBinding {
-        return FragmentCreditsBinding.inflate(inflater, container, false)
-    }
-
-    override fun scrollToTop() {
-        // Only scroll if binding is available (fragment view is created)
-        _binding?.root?.scrollTo(0, 0)
+    ): FragmentAboutBinding {
+        return FragmentAboutBinding.inflate(inflater, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -78,5 +74,9 @@ class CreditsFragmentViews : BaseFragment<FragmentCreditsBinding>() {
         binding.footerText.text = spannableString
         binding.footerText.movementMethod = android.text.method.LinkMovementMethod.getInstance()
     }
-}
 
+    override fun scrollToTop() {
+        // Only scroll if binding is available (fragment view is created)
+        _binding?.scrollView?.scrollTo(0, 0)
+    }
+}

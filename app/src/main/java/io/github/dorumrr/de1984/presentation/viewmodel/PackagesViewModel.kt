@@ -23,8 +23,8 @@ class PackagesViewModel(
     private val getPackagesUseCase: GetPackagesUseCase,
     private val managePackageUseCase: ManagePackageUseCase,
     private val superuserBannerState: SuperuserBannerState,
-    private val rootManager: RootManager,
-    private val shizukuManager: ShizukuManager
+    val rootManager: RootManager,
+    val shizukuManager: ShizukuManager
 ) : ViewModel() {
 
     private val TAG = "PackagesViewModel"

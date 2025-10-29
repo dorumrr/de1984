@@ -33,19 +33,13 @@ import io.github.dorumrr.de1984.databinding.FragmentSettingsBinding
 import io.github.dorumrr.de1984.databinding.PermissionTierSectionBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
-import io.github.dorumrr.de1984.ui.common.PrivilegedAccessDialog
+import io.github.dorumrr.de1984.ui.common.StandardDialog
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.launch
 
 /**
  * Settings Fragment using XML Views
- * 
- * Features:
- * - App info with version and donate button
- * - Options: Firewall policy, Show icons, New app notifications
- * - Permissions setup (placeholder for now)
- * - Credits navigation
  */
 class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
@@ -487,17 +481,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
             ShizukuStatus.NOT_INSTALLED -> {
-                // Shizuku is not installed - show download link
-                tierBinding.rootStatusContainer.visibility = View.VISIBLE
-                tierBinding.rootStatusIcon.setColorFilter(iconColor)
-                tierBinding.rootStatusTitle.text = Constants.ShizukuAccess.STATUS_NOT_AVAILABLE
-                tierBinding.rootStatusDescription.text = Constants.ShizukuAccess.DESC_NOT_AVAILABLE
-                tierBinding.rootStatusInstructions.visibility = View.VISIBLE
-                tierBinding.rootStatusInstructions.text = "Download Shizuku: ${Constants.ShizukuAccess.DOWNLOAD_URL}"
-                tierBinding.rootStatusInstructions.setOnClickListener {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.ShizukuAccess.DOWNLOAD_URL))
-                    startActivity(intent)
-                }
+                // Shizuku is not installed - hide card, user will learn about Shizuku when they tap "Grant Privileged Access"
+                tierBinding.rootStatusContainer.visibility = View.GONE
                 tierBinding.rootingToolsContainer.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
@@ -599,10 +584,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 // Check if we should show the reusable privileged access dialogs
                 if (resultMessage == "NO_PRIVILEGED_ACCESS") {
                     dialog.dismiss()
-                    PrivilegedAccessDialog.showRequiredDialog(requireContext())
+                    StandardDialog.showNoAccessDialog(requireContext())
                 } else if (resultMessage == "ROOT_ACCESS_DENIED") {
                     dialog.dismiss()
-                    PrivilegedAccessDialog.showRootDeniedDialog(requireContext()) {
+                    StandardDialog.showRootDeniedDialog(requireContext()) {
                         // Refresh permissions and root status after dismissing
                         permissionViewModel.refreshPermissions()
                         viewModel.requestRootPermission()

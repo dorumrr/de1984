@@ -306,6 +306,116 @@ class PackagesFragmentViews : BaseFragment() {
 ### Core Design Philosophy
 **CONSISTENT USER EXPERIENCE** across all sections. Every UI element should follow established patterns to create a cohesive, professional, and intuitive interface.
 
+### Reusable Dialog Components
+
+**Principle**: ALL dialogs must use one of the two standardized reusable dialog components for consistency.
+
+#### Component 1: StandardDialog (Simple Dialogs)
+
+**Purpose**: For simple dialogs with title, message, and buttons.
+
+**Use Cases**:
+- ✅ Confirmation dialogs (e.g., "Are you sure?")
+- ✅ Error messages
+- ✅ Information messages
+- ✅ Welcome/onboarding dialogs
+- ✅ Simple alerts
+
+**Implementation**:
+```kotlin
+// Single button (info/error)
+StandardDialog.showInfo(
+    context = context,
+    title = "Title",
+    message = "Message",
+    onDismiss = { /* optional */ }
+)
+
+StandardDialog.showError(
+    context = context,
+    message = "Error message",
+    onDismiss = { /* optional */ }
+)
+
+// Two buttons (confirmation)
+StandardDialog.showConfirmation(
+    context = context,
+    title = "Confirm Action?",
+    message = "Are you sure?",
+    confirmButtonText = "Confirm",
+    onConfirm = { /* action */ },
+    cancelButtonText = "Cancel"
+)
+
+// Generic (full control)
+StandardDialog.show(
+    context = context,
+    title = "Title",
+    message = "Message",
+    positiveButtonText = "OK",
+    onPositiveClick = { /* action */ },
+    negativeButtonText = "Cancel", // optional
+    onNegativeClick = { /* action */ } // optional
+)
+```
+
+**Styling**: Material Design 3 with `MaterialAlertDialogBuilder`, consistent fonts and spacing.
+
+#### Component 2: PermissionSetupDialog (Complex Permission Flows)
+
+**Purpose**: For complex permission setup flows with status badges, descriptions, and action buttons.
+
+**Use Cases**:
+- ✅ Permission setup dialogs (root, Shizuku)
+- ✅ Feature onboarding with status indicators
+- ✅ Multi-step setup flows
+- ✅ Dialogs requiring status badges and detailed descriptions
+
+**Implementation**:
+```kotlin
+// Generic
+PermissionSetupDialog.show(
+    context = context,
+    title = "Privileged Access",
+    tierTitle = "Package Management",
+    description = "Description text",
+    status = "Setup Required",
+    buttonText = "Grant Permission",
+    onButtonClick = { /* action */ }
+)
+
+// Convenience method for package management
+PermissionSetupDialog.showPackageManagementDialog(
+    context = context,
+    rootStatus = rootStatus,
+    shizukuStatus = shizukuStatus,
+    onGrantClick = { /* grant action */ },
+    onSettingsClick = { /* settings action */ }
+)
+```
+
+**Styling**: Custom layout with title, status badge, description, and Material3 button.
+
+#### When to Use Which Component
+
+| Dialog Type | Component | Reason |
+|-------------|-----------|--------|
+| Confirmation (Force Stop, Uninstall) | `StandardDialog` | Simple yes/no decision |
+| Error messages | `StandardDialog` | Simple message display |
+| Info messages | `StandardDialog` | Simple message display |
+| Welcome dialogs | `StandardDialog` | Simple two-button choice |
+| Permission setup | `PermissionSetupDialog` | Complex status and setup flow |
+| Feature onboarding | `PermissionSetupDialog` | Needs status indicators |
+
+#### DO NOT Use
+
+- ❌ `AlertDialog.Builder` directly (use `StandardDialog` instead)
+- ❌ `MaterialAlertDialogBuilder` directly (use `StandardDialog` instead)
+- ❌ Custom dialog implementations (use one of the two components)
+- ❌ `BottomSheetDialog` for simple confirmations (use `StandardDialog`)
+
+**Exception**: `BottomSheetDialog` is appropriate for action sheets with multiple actions (e.g., package actions in Firewall and Packages screens).
+
 ## 🌐 Cross-Platform Compatibility (CRITICAL)
 
 > **Universal Principle** - Applicable to all Android projects
@@ -751,6 +861,12 @@ binding.icon.layoutParams.height = Constants.UI.ICON_SIZE_MEDIUM.dp
 - [ ] Constants properly organized in `Constants.kt`
 - [ ] Type safety maintained (enums over strings)
 - [ ] Confirmation dialogs for dangerous operations
+
+### UI Components
+- [ ] All dialogs use `StandardDialog` or `PermissionSetupDialog` (no direct `AlertDialog.Builder` or `MaterialAlertDialogBuilder`)
+- [ ] Simple dialogs (confirmations, errors, info) use `StandardDialog`
+- [ ] Complex permission flows use `PermissionSetupDialog`
+- [ ] Action sheets use `BottomSheetDialog` (not dialogs)
 
 ---
 

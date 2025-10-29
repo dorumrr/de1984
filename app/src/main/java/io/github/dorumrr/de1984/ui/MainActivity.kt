@@ -25,7 +25,7 @@ import io.github.dorumrr.de1984.data.service.PackageMonitoringService
 import io.github.dorumrr.de1984.databinding.ActivityMainViewsBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
-import io.github.dorumrr.de1984.ui.credits.CreditsFragmentViews
+import io.github.dorumrr.de1984.ui.about.AboutFragmentViews
 import io.github.dorumrr.de1984.ui.firewall.FirewallFragmentViews
 import io.github.dorumrr.de1984.ui.packages.PackagesFragmentViews
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
@@ -35,7 +35,6 @@ import kotlinx.coroutines.launch
 
 /**
  * Main activity for De1984 app
- * Manages navigation between Firewall, Packages, Settings, and Credits screens using Material Design 3 bottom navigation
  */
 class MainActivity : AppCompatActivity() {
 
@@ -209,8 +208,8 @@ class MainActivity : AppCompatActivity() {
                     loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
                     true
                 }
-                R.id.creditsFragment -> {
-                    loadFragment(CreditsFragmentViews(), Tab.CREDITS)
+                R.id.aboutFragment -> {
+                    loadFragment(AboutFragmentViews(), Tab.ABOUT)
                     true
                 }
                 else -> false
@@ -246,7 +245,7 @@ class MainActivity : AppCompatActivity() {
             Tab.FIREWALL -> R.id.firewallFragment
             Tab.APPS -> R.id.packagesFragment
             Tab.SETTINGS -> R.id.settingsFragment
-            Tab.CREDITS -> R.id.creditsFragment
+            Tab.ABOUT -> R.id.aboutFragment
         }
 
         // Temporarily remove listener to avoid triggering navigation
@@ -268,8 +267,8 @@ class MainActivity : AppCompatActivity() {
                     loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
                     true
                 }
-                R.id.creditsFragment -> {
-                    loadFragment(CreditsFragmentViews(), Tab.CREDITS)
+                R.id.aboutFragment -> {
+                    loadFragment(AboutFragmentViews(), Tab.ABOUT)
                     true
                 }
                 else -> false
@@ -302,8 +301,8 @@ class MainActivity : AppCompatActivity() {
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
-            Tab.CREDITS -> {
-                binding.toolbarTitle.text = Constants.Navigation.TITLE_CREDITS
+            Tab.ABOUT -> {
+                binding.toolbarTitle.text = Constants.Navigation.TITLE_ABOUT
                 binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
@@ -383,7 +382,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     enum class Tab {
-        FIREWALL, APPS, SETTINGS, CREDITS
+        FIREWALL, APPS, SETTINGS, ABOUT
     }
 }
 

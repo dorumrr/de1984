@@ -9,65 +9,7 @@
     android:focusable="true"
     android:focusableInTouchMode="true">
 
-    <!-- Root Access Banner -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/root_banner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:visibility="gone"
-        app:cardBackgroundColor="#FFF3E0"
-        app:cardElevation="2dp"
-        app:cardCornerRadius="8dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:gravity="center_vertical">
-
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="8dp"
-                android:src="@drawable/ic_warning"
-                android:contentDescription="Warning icon"
-                app:tint="#E65100" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Shizuku or root access required for package management"
-                android:textSize="14sp"
-                android:textColor="#E65100" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/grant_permission_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Grant Permission"
-                    android:textSize="12sp"
-                    style="@style/Widget.Material3.Button.TextButton" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/dismiss_banner_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Dismiss"
-                    android:textSize="12sp"
-                    style="@style/Widget.Material3.Button.TextButton" />
-            </LinearLayout>
-
-        </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
 
     <!-- Filter Chips - Edge to Edge -->
     <HorizontalScrollView

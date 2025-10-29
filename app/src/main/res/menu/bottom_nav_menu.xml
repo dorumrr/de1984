@@ -16,8 +16,8 @@
         android:title="Settings" />
 
     <item
-        android:id="@+id/creditsFragment"
+        android:id="@+id/aboutFragment"
         android:icon="@drawable/ic_info"
-        android:title="Credits" />
+        android:title="@string/nav_about" />
 </menu>
 

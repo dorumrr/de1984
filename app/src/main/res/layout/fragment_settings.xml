@@ -77,7 +77,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Privacy isn't default. Take it back with De1984 Firewall and full Package Control."
+                    android:text="Privacy isn't the default. Take it back with De1984 Firewall and Package Control. A truly free and open-source project made with ♥️ for privacy. Consider donating to support its development if you find it useful."
                     android:textSize="16sp"
                     android:textColor="?android:attr/textColorSecondary" />
 
@@ -398,14 +398,13 @@
                     android:text="Help improve De1984 Firewall and Package Control by contributing code, reporting bugs, or suggesting features."
                     android:textSize="14sp"
                     android:textColor="?android:attr/textColorSecondary"
-                    android:gravity="center"
-                    android:layout_marginBottom="16dp" />
+                    android:gravity="center" />
 
                 <TextView
                     android:id="@+id/contribute_link"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="8dp"
                     android:text="Contribute on GitHub →"
                     android:textSize="16sp"
                     android:textStyle="bold"

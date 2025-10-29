@@ -42,5 +42,5 @@ Source code: https://github.com/dorumrr/de1984
 License: MIT  
 Issues: https://github.com/dorumrr/de1984/issues  
 
-Late Nights for brighter days.
+Late nights for brighter days.
 Created by Doru Moraru

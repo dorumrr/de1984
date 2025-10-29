@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.net.VpnService
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -34,6 +35,10 @@ class FirewallViewModel(
     private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager,
     private val firewallManager: FirewallManager
 ) : AndroidViewModel(application) {
+
+    companion object {
+        private const val TAG = "FirewallViewModel"
+    }
 
     private val _uiState = MutableStateFlow(FirewallUiState())
     val uiState: StateFlow<FirewallUiState> = _uiState.asStateFlow()
@@ -299,13 +304,26 @@ class FirewallViewModel(
     fun startFirewall(): Intent? {
         // Check if VPN permission is needed BEFORE starting firewall
         val mode = firewallManager.getCurrentMode()
+        val hasRoot = rootManager.hasRootPermission
+        val hasShizuku = shizukuManager.hasShizukuPermission
+        val rootStatus = rootManager.rootStatus.value
+        val shizukuStatus = shizukuManager.shizukuStatus.value
+
+        Log.d(TAG, "=== startFirewall() called ===")
+        Log.d(TAG, "Firewall mode: $mode")
+        Log.d(TAG, "Root status: $rootStatus, hasRootPermission: $hasRoot")
+        Log.d(TAG, "Shizuku status: $shizukuStatus, hasShizukuPermission: $hasShizuku")
+
         val needsVpnPermission = mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN ||
             (mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO &&
-             !rootManager.hasRootPermission && !shizukuManager.hasShizukuPermission)
+             !hasRoot && !hasShizuku)
+
+        Log.d(TAG, "needsVpnPermission: $needsVpnPermission")
 
         if (needsVpnPermission) {
             // VPN mode - check permission first
             val prepareIntent = VpnService.prepare(getApplication())
+            Log.d(TAG, "VPN prepareIntent: ${if (prepareIntent != null) "NEEDS PERMISSION" else "ALREADY GRANTED"}")
             if (prepareIntent != null) {
                 // Permission not granted yet - return intent to request it
                 return prepareIntent

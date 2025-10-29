@@ -50,15 +50,19 @@ class SettingsViewModel(
 
     
     init {
+        Log.d(TAG, "=== SettingsViewModel init ===")
         loadSettings()
         loadSystemInfo()
         cleanupOrphanedPreferences()
+        Log.d(TAG, "Requesting root permission check...")
         requestRootPermission() // Check root status on initialization
+        Log.d(TAG, "Requesting Shizuku permission check...")
         requestShizukuPermission() // Check Shizuku status on initialization
     }
 
 
     fun requestRootPermission() {
+        Log.d(TAG, "requestRootPermission() called")
         viewModelScope.launch {
             rootManager.checkRootStatus()
         }
@@ -73,8 +77,17 @@ class SettingsViewModel(
     }
 
     fun requestShizukuPermission() {
+        Log.d(TAG, "requestShizukuPermission() called")
         viewModelScope.launch {
             shizukuManager.checkShizukuStatus()
+
+            // Auto-request Shizuku permission if running but not granted (like we do for root)
+            val status = shizukuManager.shizukuStatus.value
+            Log.d(TAG, "Shizuku status after check: $status")
+            if (status == ShizukuStatus.RUNNING_NO_PERMISSION) {
+                Log.d(TAG, "Shizuku is running but no permission - auto-requesting permission")
+                shizukuManager.requestShizukuPermission()
+            }
         }
     }
 

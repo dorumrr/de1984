@@ -237,18 +237,28 @@ class IptablesFirewallBackend(
     
     override suspend fun checkAvailability(): Result<Unit> {
         return try {
+            Log.d(TAG, "=== IptablesFirewallBackend.checkAvailability() ===")
             // Check if we have root or Shizuku access
-            val hasAccess = rootManager.hasRootPermission || shizukuManager.hasShizukuPermission
-            
+            val hasRoot = rootManager.hasRootPermission
+            val hasShizuku = shizukuManager.hasShizukuPermission
+            val hasAccess = hasRoot || hasShizuku
+
+            Log.d(TAG, "hasRootPermission: $hasRoot, hasShizukuPermission: $hasShizuku, hasAccess: $hasAccess")
+
             if (!hasAccess) {
+                Log.d(TAG, "No root or Shizuku access - iptables not available")
                 val error = errorHandler.createRootRequiredError("iptables firewall")
                 return Result.failure(error)
             }
-            
+
+            Log.d(TAG, "Has access, checking iptables binary...")
             // Check if iptables is available
             val (exitCode, output) = executeCommand("$IPTABLES --version")
-            
+
+            Log.d(TAG, "iptables --version: exitCode=$exitCode, output=$output")
+
             if (exitCode != 0) {
+                Log.d(TAG, "iptables binary not available on device")
                 val error = errorHandler.createUnsupportedDeviceError(
                     operation = "iptables firewall",
                     reason = "iptables not available on this device"

@@ -201,43 +201,48 @@ class FirewallManager(
      */
     private suspend fun selectBackend(mode: FirewallMode): Result<FirewallBackend> {
         return try {
+            Log.d(TAG, "=== selectBackend() called with mode: $mode ===")
             val backend = when (mode) {
                 FirewallMode.AUTO -> {
+                    Log.d(TAG, "AUTO mode: Checking iptables availability...")
                     // Try iptables first if available, fallback to VPN
                     val iptablesBackend = IptablesFirewallBackend(
                         context, rootManager, shizukuManager, errorHandler
                     )
-                    
-                    if (iptablesBackend.checkAvailability().isSuccess) {
-                        Log.d(TAG, "AUTO mode: Selected iptables backend")
+
+                    val availabilityResult = iptablesBackend.checkAvailability()
+                    if (availabilityResult.isSuccess) {
+                        Log.d(TAG, "AUTO mode: iptables is available - Selected iptables backend")
                         iptablesBackend
                     } else {
-                        Log.d(TAG, "AUTO mode: iptables not available, using VPN backend")
+                        Log.d(TAG, "AUTO mode: iptables not available (${availabilityResult.exceptionOrNull()?.message}) - using VPN backend")
                         VpnFirewallBackend(context)
                     }
                 }
-                
+
                 FirewallMode.VPN -> {
                     Log.d(TAG, "VPN mode: Selected VPN backend")
                     VpnFirewallBackend(context)
                 }
-                
+
                 FirewallMode.IPTABLES -> {
+                    Log.d(TAG, "IPTABLES mode: Checking iptables availability...")
                     val iptablesBackend = IptablesFirewallBackend(
                         context, rootManager, shizukuManager, errorHandler
                     )
-                    
+
                     // Check availability
                     iptablesBackend.checkAvailability().getOrElse { error ->
-                        Log.e(TAG, "IPTABLES mode: Backend not available")
+                        Log.e(TAG, "IPTABLES mode: Backend not available - ${error.message}")
                         return Result.failure(error)
                     }
-                    
+
                     Log.d(TAG, "IPTABLES mode: Selected iptables backend")
                     iptablesBackend
                 }
             }
-            
+
+            Log.d(TAG, "Backend selected successfully: ${backend.getType()}")
             Result.success(backend)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to select backend", e)

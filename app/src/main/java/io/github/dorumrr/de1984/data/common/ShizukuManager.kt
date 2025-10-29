@@ -3,6 +3,7 @@ package io.github.dorumrr.de1984.data.common
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.IBinder
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ import rikka.shizuku.Shizuku
 class ShizukuManager(private val context: Context) {
 
     companion object {
+        private const val TAG = "ShizukuManager"
         private const val SHIZUKU_PACKAGE_NAME = "moe.shizuku.privileged.api"
         private const val REQUEST_CODE_PERMISSION = 1001
     }
@@ -38,10 +40,14 @@ class ShizukuManager(private val context: Context) {
 
     // Permission result listener - handles permission changes
     private val permissionResultListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        Log.d(TAG, "=== Shizuku permission result received ===")
+        Log.d(TAG, "requestCode: $requestCode, grantResult: $grantResult")
         if (requestCode == REQUEST_CODE_PERMISSION) {
             if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Shizuku permission GRANTED - updating status to RUNNING_WITH_PERMISSION")
                 _shizukuStatus.value = ShizukuStatus.RUNNING_WITH_PERMISSION
             } else {
+                Log.d(TAG, "Shizuku permission DENIED - updating status to RUNNING_NO_PERMISSION")
                 _shizukuStatus.value = ShizukuStatus.RUNNING_NO_PERMISSION
             }
         }
@@ -64,18 +70,24 @@ class ShizukuManager(private val context: Context) {
     suspend fun checkShizukuStatus() {
         val currentStatus = _shizukuStatus.value
 
+        Log.d(TAG, "=== checkShizukuStatus() called ===")
+        Log.d(TAG, "Current status: $currentStatus, hasCheckedOnce: $hasCheckedOnce")
+
         // Only skip check if we have definitive permission
         if (hasCheckedOnce && currentStatus == ShizukuStatus.RUNNING_WITH_PERMISSION) {
+            Log.d(TAG, "Skipping check - already have permission")
             return
         }
 
         if (!hasCheckedOnce) {
             _shizukuStatus.value = ShizukuStatus.CHECKING
+            Log.d(TAG, "First check - setting status to CHECKING")
         }
 
         val newStatus = checkShizukuStatusInternal()
         _shizukuStatus.value = newStatus
         hasCheckedOnce = true
+        Log.d(TAG, "Shizuku status check complete: $newStatus")
     }
 
     /**
@@ -93,26 +105,34 @@ class ShizukuManager(private val context: Context) {
 
     private suspend fun checkShizukuStatusInternal(): ShizukuStatus = withContext(Dispatchers.IO) {
         try {
+            Log.d(TAG, "Checking if Shizuku is installed...")
             // Check if Shizuku is installed
             val installed = isShizukuInstalled()
             if (!installed) {
+                Log.d(TAG, "Shizuku is NOT_INSTALLED")
                 return@withContext ShizukuStatus.NOT_INSTALLED
             }
 
+            Log.d(TAG, "Shizuku is installed, checking if running...")
             // Check if Shizuku is running
             val running = isShizukuRunning()
             if (!running) {
+                Log.d(TAG, "Shizuku is INSTALLED_NOT_RUNNING")
                 return@withContext ShizukuStatus.INSTALLED_NOT_RUNNING
             }
 
+            Log.d(TAG, "Shizuku is running, checking permission...")
             // Check permission
             val hasPermission = checkShizukuPermissionSync()
             if (!hasPermission) {
+                Log.d(TAG, "Shizuku is RUNNING_NO_PERMISSION")
                 return@withContext ShizukuStatus.RUNNING_NO_PERMISSION
             }
 
+            Log.d(TAG, "Shizuku is RUNNING_WITH_PERMISSION")
             ShizukuStatus.RUNNING_WITH_PERMISSION
         } catch (e: Exception) {
+            Log.e(TAG, "Exception during Shizuku check: ${e.message}", e)
             ShizukuStatus.NOT_INSTALLED
         }
     }
@@ -165,11 +185,15 @@ class ShizukuManager(private val context: Context) {
      */
     fun requestShizukuPermission() {
         try {
+            Log.d(TAG, "requestShizukuPermission() called")
             if (isShizukuRunning()) {
+                Log.d(TAG, "Shizuku is running - requesting permission via Shizuku.requestPermission()")
                 Shizuku.requestPermission(REQUEST_CODE_PERMISSION)
+            } else {
+                Log.d(TAG, "Shizuku is not running - cannot request permission")
             }
         } catch (e: Exception) {
-            // Failed to request permission
+            Log.e(TAG, "Failed to request Shizuku permission: ${e.message}", e)
         }
     }
 

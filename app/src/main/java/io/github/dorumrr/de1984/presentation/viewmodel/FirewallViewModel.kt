@@ -177,19 +177,24 @@ class FirewallViewModel(
                     pkg.copy(mobileBlocked = blocked, roamingBlocked = true)
                 }
 
-                // Persist both changes
-                manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
-                    .onSuccess {
-                        manageNetworkAccessUseCase.setRoamingBlocking(packageName, true)
+                // Persist both changes atomically - both must succeed or both fail
+                val mobileResult = manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
+                val roamingResult = manageNetworkAccessUseCase.setRoamingBlocking(packageName, true)
+
+                // Check if both operations succeeded
+                if (mobileResult.isSuccess && roamingResult.isSuccess) {
+                    // Both succeeded - optimistic update already applied, no need to reload
+                } else {
+                    // At least one failed - revert by reloading
+                    loadNetworkPackages()
+                    val error = mobileResult.exceptionOrNull() ?: roamingResult.exceptionOrNull()
+                    if (error != null && superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
                     }
-                    .onFailure { error ->
-                        // Revert on failure by reloading
-                        loadNetworkPackages()
-                        if (superuserBannerState.shouldShowBannerForError(error)) {
-                            superuserBannerState.showSuperuserRequiredBanner()
-                        }
-                        _uiState.value = _uiState.value.copy(error = error.message)
-                    }
+                    _uiState.value = _uiState.value.copy(
+                        error = "Failed to block mobile data: ${error?.message ?: "Unknown error"}"
+                    )
+                }
             } else {
                 // Mobile is being enabled - only update mobile, leave roaming as is
                 updatePackageInList(packageName) { pkg ->
@@ -222,19 +227,24 @@ class FirewallViewModel(
                     pkg.copy(roamingBlocked = blocked, mobileBlocked = false)
                 }
 
-                // Persist both changes
-                manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
-                    .onSuccess {
-                        manageNetworkAccessUseCase.setMobileBlocking(packageName, false)
+                // Persist both changes atomically - both must succeed or both fail
+                val roamingResult = manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
+                val mobileResult = manageNetworkAccessUseCase.setMobileBlocking(packageName, false)
+
+                // Check if both operations succeeded
+                if (roamingResult.isSuccess && mobileResult.isSuccess) {
+                    // Both succeeded - optimistic update already applied, no need to reload
+                } else {
+                    // At least one failed - revert by reloading
+                    loadNetworkPackages()
+                    val error = roamingResult.exceptionOrNull() ?: mobileResult.exceptionOrNull()
+                    if (error != null && superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
                     }
-                    .onFailure { error ->
-                        // Revert on failure by reloading
-                        loadNetworkPackages()
-                        if (superuserBannerState.shouldShowBannerForError(error)) {
-                            superuserBannerState.showSuperuserRequiredBanner()
-                        }
-                        _uiState.value = _uiState.value.copy(error = error.message)
-                    }
+                    _uiState.value = _uiState.value.copy(
+                        error = "Failed to unblock roaming: ${error?.message ?: "Unknown error"}"
+                    )
+                }
             } else {
                 // Roaming is being disabled - only update roaming, leave mobile as is
                 updatePackageInList(packageName) { pkg ->

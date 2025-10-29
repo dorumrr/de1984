@@ -13,6 +13,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
@@ -339,6 +340,40 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Flag to prevent infinite recursion when updating switches programmatically
         var isUpdatingProgrammatically = false
 
+        // Function to update UI toggles based on current package state
+        fun updateTogglesFromPackage(currentPkg: NetworkPackage) {
+            isUpdatingProgrammatically = true
+
+            // Update WiFi toggle
+            binding.wifiToggle.toggleSwitch.isChecked = currentPkg.wifiBlocked
+            updateSwitchColors(binding.wifiToggle.toggleSwitch, currentPkg.wifiBlocked)
+
+            // Update Mobile toggle
+            binding.mobileToggle.toggleSwitch.isChecked = currentPkg.mobileBlocked
+            updateSwitchColors(binding.mobileToggle.toggleSwitch, currentPkg.mobileBlocked)
+
+            // Update Roaming toggle (if device has cellular)
+            if (hasCellular) {
+                binding.roamingToggle.toggleSwitch.isChecked = currentPkg.roamingBlocked
+                updateSwitchColors(binding.roamingToggle.toggleSwitch, currentPkg.roamingBlocked)
+            }
+
+            isUpdatingProgrammatically = false
+        }
+
+        // Initial setup of toggles
+        updateTogglesFromPackage(pkg)
+
+        // Observe package changes to update UI when ViewModel makes cascading changes
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.uiState.collect { state ->
+                val updatedPkg = state.packages.find { it.packageName == pkg.packageName }
+                if (updatedPkg != null && !isUpdatingProgrammatically) {
+                    updateTogglesFromPackage(updatedPkg)
+                }
+            }
+        }
+
         // Setup WiFi toggle
         setupNetworkToggle(
             binding = binding.wifiToggle,
@@ -346,6 +381,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             isBlocked = pkg.wifiBlocked,
             enabled = true,
             onToggle = { blocked ->
+                if (isUpdatingProgrammatically) return@setupNetworkToggle
                 viewModel.setWifiBlocking(pkg.packageName, blocked)
             }
         )
@@ -359,17 +395,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 
+                // ViewModel handles mobile+roaming dependency atomically
                 viewModel.setMobileBlocking(pkg.packageName, blocked)
-
-                // If mobile is blocked, automatically block roaming too
-                if (blocked && hasCellular) {
-                    viewModel.setRoamingBlocking(pkg.packageName, true)
-                    // Update the roaming toggle UI
-                    isUpdatingProgrammatically = true
-                    binding.roamingToggle.toggleSwitch.isChecked = true
-                    updateSwitchColors(binding.roamingToggle.toggleSwitch, true)
-                    isUpdatingProgrammatically = false
-                }
             }
         )
 
@@ -383,19 +410,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 onToggle = { blocked ->
                     if (isUpdatingProgrammatically) return@setupNetworkToggle
 
-                    // If roaming is being enabled (unblocked), enable mobile too
-                    if (!blocked) {
-                        val mobileBlocked = binding.mobileToggle.toggleSwitch.isChecked
-                        if (mobileBlocked) {
-                            viewModel.setMobileBlocking(pkg.packageName, false)
-                            // Update the mobile toggle UI
-                            isUpdatingProgrammatically = true
-                            binding.mobileToggle.toggleSwitch.isChecked = false
-                            updateSwitchColors(binding.mobileToggle.toggleSwitch, false)
-                            isUpdatingProgrammatically = false
-                        }
-                    }
-
+                    // ViewModel handles mobile+roaming dependency atomically
                     viewModel.setRoamingBlocking(pkg.packageName, blocked)
                 }
             )

@@ -222,16 +222,23 @@ class FirewallManager(
                         context, rootManager, shizukuManager, errorHandler
                     )
                     val iptablesAvailable = iptablesBackend.checkAvailability()
+                    Log.d(TAG, "iptables available: ${iptablesAvailable.isSuccess}, reason: ${iptablesAvailable.exceptionOrNull()?.message}")
+
                     if (iptablesAvailable.isSuccess) {
+                        Log.d(TAG, "Selected: iptables backend")
                         iptablesBackend
                     } else {
                         val cmBackend = ConnectivityManagerFirewallBackend(
                             context, shizukuManager, errorHandler
                         )
                         val cmAvailable = cmBackend.checkAvailability()
+                        Log.d(TAG, "ConnectivityManager available: ${cmAvailable.isSuccess}, reason: ${cmAvailable.exceptionOrNull()?.message}")
+
                         if (cmAvailable.isSuccess) {
+                            Log.d(TAG, "Selected: ConnectivityManager backend")
                             cmBackend
                         } else {
+                            Log.d(TAG, "Selected: VPN backend (fallback)")
                             VpnFirewallBackend(context)
                         }
                     }

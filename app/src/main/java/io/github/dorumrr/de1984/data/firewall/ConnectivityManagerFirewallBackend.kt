@@ -168,14 +168,19 @@ class ConnectivityManagerFirewallBackend(
     override suspend fun checkAvailability(): Result<Unit> {
         return try {
             // Check Android version
+            Log.d(TAG, "checkAvailability: Android API ${Build.VERSION.SDK_INT}, required: $MIN_API_LEVEL")
             if (Build.VERSION.SDK_INT < MIN_API_LEVEL) {
                 val error = "ConnectivityManager firewall requires Android 13+"
+                Log.d(TAG, "checkAvailability: FAILED - $error")
                 return Result.failure(Exception(error))
             }
 
             // Check Shizuku permission
-            if (!shizukuManager.hasShizukuPermission) {
+            val hasShizuku = shizukuManager.hasShizukuPermission
+            Log.d(TAG, "checkAvailability: hasShizuku=$hasShizuku")
+            if (!hasShizuku) {
                 val error = "Shizuku permission required"
+                Log.d(TAG, "checkAvailability: FAILED - $error")
                 return Result.failure(Exception(error))
             }
 
@@ -185,9 +190,11 @@ class ConnectivityManagerFirewallBackend(
             // Check if output contains expected help text
             if (!output.contains("set-chain3-enabled")) {
                 val error = "ConnectivityManager firewall chain API not available"
+                Log.d(TAG, "checkAvailability: FAILED - $error")
                 return Result.failure(Exception(error))
             }
 
+            Log.d(TAG, "checkAvailability: SUCCESS")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "ConnectivityManager firewall not available", e)

@@ -129,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         if (!permissionManager.hasNotificationPermission()) {
             requestNotificationPermission()
         } else {
-            permissionsCompleted = true
+            onPermissionsComplete()
         }
     }
 

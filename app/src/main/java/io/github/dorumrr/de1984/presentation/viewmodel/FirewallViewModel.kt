@@ -314,9 +314,25 @@ class FirewallViewModel(
         Log.d(TAG, "Root status: $rootStatus, hasRootPermission: $hasRoot")
         Log.d(TAG, "Shizuku status: $shizukuStatus, hasShizukuPermission: $hasShizuku")
 
-        val needsVpnPermission = mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN ||
-            (mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO &&
-             !hasRoot && !hasShizuku)
+        // Determine if VPN backend will be used
+        val needsVpnPermission = when (mode) {
+            io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN -> {
+                // Explicit VPN mode
+                true
+            }
+            io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO -> {
+                // AUTO mode: check if iptables or ConnectivityManager will be available
+                val canUseIptables = hasRoot || (hasShizuku && shizukuManager.isShizukuRootMode())
+                val canUseConnectivityManager = hasShizuku && android.os.Build.VERSION.SDK_INT >= 33
+                val willUseVpn = !canUseIptables && !canUseConnectivityManager
+                Log.d(TAG, "AUTO mode: canUseIptables=$canUseIptables, canUseConnectivityManager=$canUseConnectivityManager, willUseVpn=$willUseVpn")
+                willUseVpn
+            }
+            else -> {
+                // IPTABLES, CONNECTIVITY_MANAGER, or other explicit modes don't need VPN
+                false
+            }
+        }
 
         Log.d(TAG, "needsVpnPermission: $needsVpnPermission")
 

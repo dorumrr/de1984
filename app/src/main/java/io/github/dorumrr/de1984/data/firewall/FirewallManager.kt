@@ -213,113 +213,66 @@ class FirewallManager(
      */
     private suspend fun selectBackend(mode: FirewallMode): Result<FirewallBackend> {
         return try {
-            Log.d(TAG, "=== selectBackend() called with mode: $mode ===")
-            Log.d(TAG, "Current permission status:")
-            Log.d(TAG, "  - Root: hasPermission=${rootManager.hasRootPermission}, status=${rootManager.rootStatus.value}")
-            Log.d(TAG, "  - Shizuku: hasPermission=${shizukuManager.hasShizukuPermission}, status=${shizukuManager.shizukuStatus.value}")
+            Log.d(TAG, "Selecting backend for mode: $mode")
 
             val backend = when (mode) {
                 FirewallMode.AUTO -> {
-                    Log.d(TAG, "AUTO mode: Checking backend availability (priority: iptables > ConnectivityManager > VPN)...")
-
-                    // 1. Try iptables (requires root or Shizuku root mode)
+                    // Priority: iptables > ConnectivityManager > VPN
                     val iptablesBackend = IptablesFirewallBackend(
                         context, rootManager, shizukuManager, errorHandler
                     )
                     val iptablesAvailable = iptablesBackend.checkAvailability()
                     if (iptablesAvailable.isSuccess) {
-                        Log.d(TAG, "✅ AUTO mode: iptables is available (root) - Selected iptables backend (NO VPN KEY ICON)")
                         iptablesBackend
                     } else {
-                        Log.d(TAG, "❌ AUTO mode: iptables not available (${iptablesAvailable.exceptionOrNull()?.message})")
-
-                        // 2. Try ConnectivityManager (requires Shizuku + Android 13+)
                         val cmBackend = ConnectivityManagerFirewallBackend(
                             context, shizukuManager, errorHandler
                         )
                         val cmAvailable = cmBackend.checkAvailability()
                         if (cmAvailable.isSuccess) {
-                            Log.d(TAG, "✅ AUTO mode: ConnectivityManager is available (Shizuku + Android 13+) - Selected ConnectivityManager backend (NO VPN KEY ICON)")
                             cmBackend
                         } else {
-                            Log.d(TAG, "❌ AUTO mode: ConnectivityManager not available (${cmAvailable.exceptionOrNull()?.message})")
-
-                            // 3. Fall back to VPN (always works)
-                            Log.d(TAG, "⚠️  AUTO mode: Using VPN backend as fallback (WILL SHOW VPN KEY ICON)")
                             VpnFirewallBackend(context)
                         }
                     }
                 }
 
                 FirewallMode.VPN -> {
-                    Log.d(TAG, "VPN mode: Selected VPN backend")
                     VpnFirewallBackend(context)
                 }
 
                 FirewallMode.IPTABLES -> {
-                    Log.d(TAG, "IPTABLES mode: Checking iptables availability...")
                     val iptablesBackend = IptablesFirewallBackend(
                         context, rootManager, shizukuManager, errorHandler
                     )
-
-                    // Check availability
                     iptablesBackend.checkAvailability().getOrElse { error ->
-                        Log.e(TAG, "IPTABLES mode: Backend not available - ${error.message}")
                         return Result.failure(error)
                     }
-
-                    Log.d(TAG, "IPTABLES mode: Selected iptables backend")
                     iptablesBackend
                 }
 
                 FirewallMode.CONNECTIVITY_MANAGER -> {
-                    Log.d(TAG, "CONNECTIVITY_MANAGER mode: Checking ConnectivityManager availability...")
                     val cmBackend = ConnectivityManagerFirewallBackend(
                         context, shizukuManager, errorHandler
                     )
-
-                    // Check availability
                     cmBackend.checkAvailability().getOrElse { error ->
-                        Log.e(TAG, "CONNECTIVITY_MANAGER mode: Backend not available - ${error.message}")
                         return Result.failure(error)
                     }
-
-                    Log.d(TAG, "CONNECTIVITY_MANAGER mode: Selected ConnectivityManager backend")
                     cmBackend
                 }
 
                 FirewallMode.NETWORK_POLICY_MANAGER -> {
-                    Log.d(TAG, "NETWORK_POLICY_MANAGER mode: Checking NetworkPolicyManager availability...")
                     val npmBackend = NetworkPolicyManagerFirewallBackend(
                         context, shizukuManager, errorHandler
                     )
-
-                    // Check availability
                     npmBackend.checkAvailability().getOrElse { error ->
-                        Log.e(TAG, "NETWORK_POLICY_MANAGER mode: Backend not available - ${error.message}")
                         return Result.failure(error)
                     }
-
-                    Log.d(TAG, "NETWORK_POLICY_MANAGER mode: Selected NetworkPolicyManager backend")
                     npmBackend
                 }
             }
 
-            Log.d(TAG, "=== Backend selected successfully: ${backend.getType()} ===")
-            when (backend.getType()) {
-                FirewallBackendType.VPN -> {
-                    Log.d(TAG, "⚠️  VPN backend will show VPN KEY ICON in status bar")
-                }
-                FirewallBackendType.IPTABLES -> {
-                    Log.d(TAG, "✅ iptables backend will NOT show VPN key icon (root)")
-                }
-                FirewallBackendType.CONNECTIVITY_MANAGER -> {
-                    Log.d(TAG, "✅ ConnectivityManager backend will NOT show VPN key icon (Shizuku + Android 13+)")
-                }
-                FirewallBackendType.NETWORK_POLICY_MANAGER -> {
-                    Log.d(TAG, "✅ NetworkPolicyManager backend will NOT show VPN key icon (Shizuku)")
-                }
-            }
+            Log.d(TAG, "Backend selected: ${backend.getType()}")
             Result.success(backend)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to select backend", e)

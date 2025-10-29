@@ -39,15 +39,12 @@ class VpnFirewallBackend(
     
     override suspend fun start(): Result<Unit> {
         return try {
-            Log.d(TAG, "=== Starting VPN firewall backend ===")
-            Log.d(TAG, "WARNING: VPN backend will show VPN key icon in status bar")
-
             val intent = Intent(context, FirewallVpnService::class.java).apply {
                 action = FirewallVpnService.ACTION_START
             }
             context.startService(intent)
 
-            Log.d(TAG, "VPN firewall backend start requested")
+            Log.d(TAG, "VPN firewall started")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start VPN firewall", e)
@@ -57,21 +54,19 @@ class VpnFirewallBackend(
     
     override suspend fun stop(): Result<Unit> {
         return try {
-            Log.d(TAG, "Stopping VPN firewall backend")
-            
             val intent = Intent(context, FirewallVpnService::class.java).apply {
                 action = FirewallVpnService.ACTION_STOP
             }
             context.startService(intent)
-            
-            Log.d(TAG, "VPN firewall backend stop requested")
+
+            Log.d(TAG, "VPN firewall stopped")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to stop VPN firewall", e)
             Result.failure(e)
         }
     }
-    
+
     override suspend fun applyRules(
         rules: List<FirewallRule>,
         networkType: NetworkType,
@@ -81,9 +76,6 @@ class VpnFirewallBackend(
         // 1. Listening to FIREWALL_RULES_CHANGED broadcast
         // 2. Monitoring network type changes via NetworkStateMonitor
         // 3. Monitoring screen state changes via ScreenStateMonitor
-        // 
-        // No explicit action needed here - the service is reactive
-        Log.d(TAG, "VPN backend applies rules automatically via service")
         return Result.success(Unit)
     }
     

@@ -56,9 +56,6 @@ class IptablesFirewallBackend(
     
     override suspend fun start(): Result<Unit> = mutex.withLock {
         return try {
-            Log.d(TAG, "=== Starting iptables firewall backend ===")
-            Log.d(TAG, "iptables backend does NOT show VPN key icon - uses iptables rules")
-
             // Check availability first
             checkAvailability().getOrElse { error ->
                 return Result.failure(error)
@@ -70,7 +67,7 @@ class IptablesFirewallBackend(
             }
 
             isActiveState = true
-            Log.d(TAG, "✅ iptables firewall backend started successfully - NO VPN KEY ICON")
+            Log.d(TAG, "iptables firewall started")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start iptables firewall", e)
@@ -223,13 +220,7 @@ class IptablesFirewallBackend(
                 }
             }
 
-            Log.d(TAG, "Rules applied successfully: ${blockedUids.size} apps blocked")
-
-            // Verify rules are actually in iptables
-            Log.d(TAG, "=== Verifying iptables rules ===")
-            val (listExitCode, listOutput) = executeCommand("$IPTABLES -L $CHAIN_OUTPUT -n -v")
-            Log.d(TAG, "Current iptables rules:\n$listOutput")
-
+            Log.d(TAG, "Rules applied: ${blockedUids.size} apps blocked")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply rules", e)
@@ -244,16 +235,12 @@ class IptablesFirewallBackend(
     
     override suspend fun checkAvailability(): Result<Unit> {
         return try {
-            Log.d(TAG, "=== IptablesFirewallBackend.checkAvailability() ===")
             // Check if we have root or Shizuku access
             val hasRoot = rootManager.hasRootPermission
             val hasShizuku = shizukuManager.hasShizukuPermission
             val hasAccess = hasRoot || hasShizuku
 
-            Log.d(TAG, "hasRootPermission: $hasRoot, hasShizukuPermission: $hasShizuku, hasAccess: $hasAccess")
-
             if (!hasAccess) {
-                Log.d(TAG, "No root or Shizuku access - iptables not available")
                 val error = errorHandler.createRootRequiredError("iptables firewall")
                 return Result.failure(error)
             }
@@ -276,22 +263,17 @@ class IptablesFirewallBackend(
                 Log.d(TAG, "✅ Shizuku is running in ROOT mode - can use iptables")
             }
 
-            Log.d(TAG, "Has access, checking iptables binary...")
             // Check if iptables is available
-            val (exitCode, output) = executeCommand("$IPTABLES --version")
-
-            Log.d(TAG, "iptables --version: exitCode=$exitCode, output=$output")
+            val (exitCode, _) = executeCommand("$IPTABLES --version")
 
             if (exitCode != 0) {
-                Log.d(TAG, "iptables binary not available on device")
                 val error = errorHandler.createUnsupportedDeviceError(
                     operation = "iptables firewall",
                     reason = "iptables not available on this device"
                 )
                 return Result.failure(error)
             }
-            
-            Log.d(TAG, "iptables available: $output")
+
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to check iptables availability", e)

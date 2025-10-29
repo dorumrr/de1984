@@ -167,36 +167,27 @@ class ConnectivityManagerFirewallBackend(
 
     override suspend fun checkAvailability(): Result<Unit> {
         return try {
-            Log.d(TAG, "=== ConnectivityManagerFirewallBackend.checkAvailability() ===")
-
             // Check Android version
             if (Build.VERSION.SDK_INT < MIN_API_LEVEL) {
-                val error = "ConnectivityManager firewall requires Android 13+ (current: Android ${Build.VERSION.SDK_INT})"
-                Log.e(TAG, "❌ $error")
+                val error = "ConnectivityManager firewall requires Android 13+"
                 return Result.failure(Exception(error))
             }
 
             // Check Shizuku permission
             if (!shizukuManager.hasShizukuPermission) {
                 val error = "Shizuku permission required"
-                Log.e(TAG, "❌ $error")
                 return Result.failure(Exception(error))
             }
 
             // Test if the connectivity command is available
-            // Note: cmd connectivity help may return non-zero exit code even when working
-            val (exitCode, output) = shizukuManager.executeShellCommand("cmd connectivity help")
-            Log.d(TAG, "cmd connectivity help: exitCode=$exitCode, output length=${output.length}")
+            val (_, output) = shizukuManager.executeShellCommand("cmd connectivity help")
 
-            // Check if output contains expected help text (more reliable than exit code)
+            // Check if output contains expected help text
             if (!output.contains("set-chain3-enabled")) {
-                val error = "ConnectivityManager firewall chain API not available (Android 13+ feature)"
-                Log.e(TAG, "❌ $error")
-                Log.e(TAG, "Output: $output")
+                val error = "ConnectivityManager firewall chain API not available"
                 return Result.failure(Exception(error))
             }
 
-            Log.d(TAG, "✅ ConnectivityManager firewall is available")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "ConnectivityManager firewall not available", e)

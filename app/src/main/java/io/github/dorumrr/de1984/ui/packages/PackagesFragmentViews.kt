@@ -70,7 +70,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     override fun scrollToTop() {
-        binding.packagesRecyclerView.scrollToPosition(0)
+        // Only scroll if binding is available (fragment view is created)
+        _binding?.packagesRecyclerView?.scrollToPosition(0)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

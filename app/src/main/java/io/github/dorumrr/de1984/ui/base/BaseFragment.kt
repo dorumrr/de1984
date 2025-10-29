@@ -26,7 +26,7 @@ import androidx.viewbinding.ViewBinding
  */
 abstract class BaseFragment<VB : ViewBinding> : Fragment() {
 
-    private var _binding: VB? = null
+    protected var _binding: VB? = null
 
     /**
      * Access to the binding object. Only valid between onCreateView and onDestroyView.

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root layout with popup menu navigation -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Root layout with Material Design 3 bottom navigation -->
+<androidx.constraintlayout.widget.ConstraintLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
     <!-- Top Bar with Firewall Toggle -->
     <com.google.android.material.appbar.AppBarLayout
@@ -14,7 +14,10 @@
         android:layout_height="wrap_content"
         android:elevation="2dp"
         android:fitsSystemWindows="false"
-        app:elevation="2dp">
+        app:elevation="2dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
@@ -33,13 +36,11 @@
             <!-- Custom toolbar content -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingStart="4dp"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
-                android:paddingEnd="4dp">
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
 
                 <!-- Logo + Title Group -->
                 <LinearLayout
@@ -69,22 +70,24 @@
                         android:textStyle="bold"
                         android:letterSpacing="0.05" />
 
+                    <!-- Toolbar Icon (Shield) - only visible on Firewall tab -->
+                    <ImageView
+                        android:id="@+id/toolbar_icon"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="8dp"
+                        android:src="@drawable/ic_shield"
+                        android:contentDescription="Firewall Icon"
+                        android:visibility="gone"
+                        app:tint="@color/white" />
+
                 </LinearLayout>
 
-                <!-- Spacer to push status and menu to the right -->
+                <!-- Spacer to push switch to the right -->
                 <View
                     android:layout_width="0dp"
                     android:layout_height="1dp"
                     android:layout_weight="1" />
-
-                <!-- Section Icon (visible on Apps/Settings tabs, on the right) -->
-                <ImageView
-                    android:id="@+id/toolbar_icon"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:visibility="gone"
-                    android:contentDescription="Section Icon"
-                    app:tint="@color/white" />
 
                 <!-- Status Badge + Switch Group -->
                 <LinearLayout
@@ -110,13 +113,13 @@
                         android:background="@drawable/status_badge_active"
                         android:visibility="gone" />
 
-                    <!-- INACTIVE Badge (visible when firewall is off, before switch) -->
+                    <!-- OFF Badge (visible when firewall is off, before switch) -->
                     <TextView
                         android:id="@+id/firewall_off_badge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="8dp"
-                        android:text="INACTIVE"
+                        android:text="OFF"
                         android:textSize="10sp"
                         android:textStyle="bold"
                         android:textColor="@color/white"
@@ -124,31 +127,20 @@
                         android:paddingEnd="6dp"
                         android:paddingTop="2dp"
                         android:paddingBottom="2dp"
-                        android:background="@drawable/status_badge_error"
-                        android:visibility="gone" />
+                        android:background="@drawable/status_badge_off"
+                        android:visibility="visible" />
 
-                    <!-- Firewall Toggle Switch (visible only on Firewall tab) -->
-                    <com.google.android.material.switchmaterial.SwitchMaterial
+                    <!-- Firewall Toggle Switch -->
+                    <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/firewall_toggle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:visibility="gone"
-                        app:thumbTint="@color/white"
+                        android:checked="false"
+                        app:thumbTint="@color/switch_thumb_color"
                         app:trackTint="@color/switch_track_color"
                         app:trackDecorationTint="@android:color/transparent" />
 
                 </LinearLayout>
-
-                <!-- Three-dot Menu Icon (on the right) -->
-                <ImageView
-                    android:id="@+id/menu_icon"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:padding="12dp"
-                    android:src="@drawable/ic_more_vert"
-                    android:contentDescription="Menu"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="@color/white" />
 
             </LinearLayout>
 
@@ -161,7 +153,20 @@
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        app:layout_constraintTop_toBottomOf="@id/app_bar_layout"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-</LinearLayout>
+    <!-- Material Design 3 Bottom Navigation -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
+        style="@style/Widget.De1984.BottomNavigationView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:menu="@menu/bottom_nav_menu"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
+</androidx.constraintlayout.widget.ConstraintLayout>

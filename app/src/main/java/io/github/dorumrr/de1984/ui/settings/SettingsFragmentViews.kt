@@ -90,7 +90,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     ) = FragmentSettingsBinding.inflate(inflater, container, false)
 
     override fun scrollToTop() {
-        binding.root.scrollTo(0, 0)
+        // Only scroll if binding is available (fragment view is created)
+        _binding?.root?.scrollTo(0, 0)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

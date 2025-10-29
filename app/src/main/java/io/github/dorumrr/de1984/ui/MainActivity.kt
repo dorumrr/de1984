@@ -3,12 +3,9 @@ package io.github.dorumrr.de1984.ui
 import android.Manifest
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
 import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +15,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.dorumrr.de1984.BuildConfig
 import io.github.dorumrr.de1984.De1984Application
@@ -37,7 +35,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Main activity for De1984 app
- * Manages navigation between Firewall, Packages, and Settings screens using overflow menu
+ * Manages navigation between Firewall, Packages, Settings, and Credits screens using Material Design 3 bottom navigation
  */
 class MainActivity : AppCompatActivity() {
 
@@ -168,7 +166,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupToolbar()
-        setupMenuIcon()
+        setupBottomNavigation()
         observeFirewallState()
 
         // Load initial fragment
@@ -186,7 +184,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
-        // No back button or home button needed for popup menu navigation
+        // No back button or home button needed for bottom navigation
 
         // Setup firewall toggle (Material Switch)
         binding.firewallToggle.setOnCheckedChangeListener { _, isChecked ->
@@ -196,62 +194,22 @@ class MainActivity : AppCompatActivity() {
         updateToolbar()
     }
 
-    private fun setupMenuIcon() {
-        // Setup three-dot menu icon click listener
-        binding.menuIcon.setOnClickListener { view ->
-            showPopupMenu(view)
-        }
-    }
-
-    private fun showPopupMenu(anchor: View) {
-        val popup = PopupMenu(this, anchor)
-        popup.menuInflater.inflate(R.menu.popup_menu, popup.menu)
-
-        // Set icons visible (Material 3 style)
-        try {
-            val fieldMPopup = PopupMenu::class.java.getDeclaredField("mPopup")
-            fieldMPopup.isAccessible = true
-            val mPopup = fieldMPopup.get(popup)
-            mPopup.javaClass
-                .getDeclaredMethod("setForceShowIcon", Boolean::class.java)
-                .invoke(mPopup, true)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        // Tint icons for light/dark mode compatibility
-        val iconColor = getMenuIconColor()
-        for (i in 0 until popup.menu.size()) {
-            val item = popup.menu.getItem(i)
-            item.icon?.let { icon ->
-                icon.mutate() // Mutate to avoid affecting other instances
-                icon.colorFilter = PorterDuffColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
-            }
-        }
-
-        // Highlight current tab
-        when (currentTab) {
-            Tab.FIREWALL -> popup.menu.findItem(R.id.menu_firewall)?.isChecked = true
-            Tab.APPS -> popup.menu.findItem(R.id.menu_packages)?.isChecked = true
-            Tab.SETTINGS -> popup.menu.findItem(R.id.menu_settings)?.isChecked = true
-            Tab.CREDITS -> popup.menu.findItem(R.id.menu_credits)?.isChecked = true
-        }
-
-        popup.setOnMenuItemClickListener { item ->
+    private fun setupBottomNavigation() {
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.menu_firewall -> {
+                R.id.firewallFragment -> {
                     loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
                     true
                 }
-                R.id.menu_packages -> {
+                R.id.packagesFragment -> {
                     loadFragment(PackagesFragmentViews(), Tab.APPS)
                     true
                 }
-                R.id.menu_settings -> {
+                R.id.settingsFragment -> {
                     loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
                     true
                 }
-                R.id.menu_credits -> {
+                R.id.creditsFragment -> {
                     loadFragment(CreditsFragmentViews(), Tab.CREDITS)
                     true
                 }
@@ -259,8 +217,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        popup.show()
+        // Set initial selection
+        binding.bottomNavigation.selectedItemId = R.id.firewallFragment
     }
+
+
 
 
 
@@ -270,7 +231,7 @@ class MainActivity : AppCompatActivity() {
             replace(R.id.fragment_container, fragment)
         }
         updateToolbar()
-        updateNavigationDrawerSelection()
+        updateBottomNavigationSelection()
 
         // Scroll to top when fragment is loaded
         // Use post to ensure fragment view is created
@@ -279,14 +240,47 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateNavigationDrawerSelection() {
-        // No need to update navigation view for popup menu
+    private fun updateBottomNavigationSelection() {
+        // Update bottom navigation selection to match current tab
+        val itemId = when (currentTab) {
+            Tab.FIREWALL -> R.id.firewallFragment
+            Tab.APPS -> R.id.packagesFragment
+            Tab.SETTINGS -> R.id.settingsFragment
+            Tab.CREDITS -> R.id.creditsFragment
+        }
+
+        // Temporarily remove listener to avoid triggering navigation
+        binding.bottomNavigation.setOnItemSelectedListener(null)
+        binding.bottomNavigation.selectedItemId = itemId
+
+        // Restore listener
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.firewallFragment -> {
+                    loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
+                    true
+                }
+                R.id.packagesFragment -> {
+                    loadFragment(PackagesFragmentViews(), Tab.APPS)
+                    true
+                }
+                R.id.settingsFragment -> {
+                    loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
+                    true
+                }
+                R.id.creditsFragment -> {
+                    loadFragment(CreditsFragmentViews(), Tab.CREDITS)
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     private fun updateToolbar() {
         when (currentTab) {
             Tab.FIREWALL -> {
-                binding.toolbarTitle.text = "FIREWALL"
+                binding.toolbarTitle.text = Constants.Navigation.TITLE_FIREWALL
                 binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.VISIBLE
                 // Update badges based on current firewall state
@@ -295,21 +289,21 @@ class MainActivity : AppCompatActivity() {
                 binding.firewallOffBadge.visibility = if (isEnabled) View.GONE else View.VISIBLE
             }
             Tab.APPS -> {
-                binding.toolbarTitle.text = "PACKAGES"
+                binding.toolbarTitle.text = Constants.Navigation.TITLE_PACKAGES
                 binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
             Tab.SETTINGS -> {
-                binding.toolbarTitle.text = "SETTINGS"
+                binding.toolbarTitle.text = Constants.Navigation.TITLE_SETTINGS
                 binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
             Tab.CREDITS -> {
-                binding.toolbarTitle.text = "CREDITS"
+                binding.toolbarTitle.text = Constants.Navigation.TITLE_CREDITS
                 binding.toolbarIcon.visibility = View.GONE
                 binding.firewallToggle.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
@@ -380,27 +374,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /**
-     * Get the appropriate icon color for popup menu based on current theme
-     * Ensures icons are visible in both light and dark modes
-     */
-    private fun getMenuIconColor(): Int {
-        val nightModeFlags = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return when (nightModeFlags) {
-            Configuration.UI_MODE_NIGHT_YES -> {
-                // Dark mode - use light gray for better visibility
-                ContextCompat.getColor(this, android.R.color.white)
-            }
-            Configuration.UI_MODE_NIGHT_NO -> {
-                // Light mode - use dark gray
-                ContextCompat.getColor(this, android.R.color.black)
-            }
-            else -> {
-                // Default to dark gray
-                ContextCompat.getColor(this, android.R.color.black)
-            }
-        }
-    }
+
 
     override fun onDestroy() {
         super.onDestroy()

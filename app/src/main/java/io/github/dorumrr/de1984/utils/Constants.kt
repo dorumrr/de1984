@@ -36,6 +36,10 @@ object Constants {
         const val TOGGLE_SWITCH_WIDTH = 56
         const val BOTTOM_NAV_HEIGHT = 80
 
+        // Navigation
+        const val BOTTOM_NAV_ICON_SIZE = 24
+        const val BOTTOM_NAV_ELEVATION = 8
+
         object Dialogs {
             const val FIREWALL_START_TITLE = "Start De1984 Firewall?"
             const val FIREWALL_START_MESSAGE = "Welcome to De1984! Would you like to start the firewall now to protect your privacy?"
@@ -202,6 +206,30 @@ object Constants {
         const val BLOCK_CONFIRMATION_TITLE = "Block Network Access"
         const val ALLOW_CONFIRMATION_TITLE = "Allow Network Access"
         const val SYSTEM_PACKAGE_WARNING = "⚠️ System Package Warning"
+    }
+
+    object Navigation {
+        // Bottom Navigation Destinations
+        const val DESTINATION_FIREWALL = "firewall"
+        const val DESTINATION_PACKAGES = "packages"
+        const val DESTINATION_SETTINGS = "settings"
+        const val DESTINATION_CREDITS = "credits"
+
+        // Navigation Labels
+        const val LABEL_FIREWALL = "Firewall"
+        const val LABEL_PACKAGES = "Packages"
+        const val LABEL_SETTINGS = "Settings"
+        const val LABEL_CREDITS = "Credits"
+
+        // Toolbar Titles (uppercase for consistency)
+        const val TITLE_FIREWALL = "FIREWALL"
+        const val TITLE_PACKAGES = "PACKAGES"
+        const val TITLE_SETTINGS = "SETTINGS"
+        const val TITLE_CREDITS = "CREDITS"
+
+        // Firewall Toggle Button Text
+        const val BUTTON_TEXT_ON = "ON"
+        const val BUTTON_TEXT_OFF = "OFF"
     }
 
 }

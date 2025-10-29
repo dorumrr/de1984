@@ -80,7 +80,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     ) = FragmentFirewallBinding.inflate(inflater, container, false)
 
     override fun scrollToTop() {
-        binding.packagesRecyclerView.scrollToPosition(0)
+        // Only scroll if binding is available (fragment view is created)
+        _binding?.packagesRecyclerView?.scrollToPosition(0)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

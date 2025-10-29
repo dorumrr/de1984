@@ -35,4 +35,26 @@
         <item name="android:paddingTop">0dp</item>
         <item name="android:paddingBottom">0dp</item>
     </style>
+
+    <!-- Material Design 3 Bottom Navigation -->
+    <style name="Widget.De1984.BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.De1984.BottomNavigationView</item>
+        <item name="android:background">@color/bottom_nav_background</item>
+        <item name="elevation">8dp</item>
+        <item name="itemIconSize">24dp</item>
+        <item name="labelVisibilityMode">labeled</item>
+        <item name="itemActiveIndicatorStyle">@style/Widget.De1984.BottomNavigationView.ActiveIndicator</item>
+    </style>
+
+    <!-- Bottom Navigation Theme Overlay -->
+    <style name="ThemeOverlay.De1984.BottomNavigationView" parent="">
+        <item name="colorOnSurface">@color/lineage_teal</item>
+        <item name="colorOnSurfaceVariant">@color/blue_grey</item>
+        <item name="colorSurface">@color/bottom_nav_background</item>
+    </style>
+
+    <!-- Bottom Navigation Active Indicator -->
+    <style name="Widget.De1984.BottomNavigationView.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/bottom_nav_selected_background</item>
+    </style>
 </resources>

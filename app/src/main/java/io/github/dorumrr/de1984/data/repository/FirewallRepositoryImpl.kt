@@ -1,6 +1,7 @@
 package io.github.dorumrr.de1984.data.repository
 
 import android.content.Context
+import android.util.Log
 import io.github.dorumrr.de1984.data.database.dao.FirewallRuleDao
 import io.github.dorumrr.de1984.data.mapper.toDomain
 import io.github.dorumrr.de1984.data.mapper.toEntity
@@ -13,6 +14,10 @@ class FirewallRepositoryImpl(
     private val firewallRuleDao: FirewallRuleDao,
     private val context: Context
 ) : FirewallRepository {
+
+    companion object {
+        private const val TAG = "FirewallRepository"
+    }
 
     private fun notifyRulesChanged() {
         val intent = android.content.Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED")
@@ -61,16 +66,30 @@ class FirewallRepositoryImpl(
     }
     
     override suspend fun insertRule(rule: FirewallRule) {
+        // Log Chrome rules for debugging
+        if (rule.packageName.contains("chrome", ignoreCase = true)) {
+            Log.d(TAG, "insertRule: ${rule.packageName} - wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming}")
+            Log.d(TAG, "  Stack trace:", Exception("insertRule called"))
+        }
         firewallRuleDao.insertRule(rule.toEntity())
         notifyRulesChanged()
     }
 
     override suspend fun insertRules(rules: List<FirewallRule>) {
+        // Log Chrome rules for debugging
+        rules.filter { it.packageName.contains("chrome", ignoreCase = true) }.forEach { rule ->
+            Log.d(TAG, "insertRules: ${rule.packageName} - wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming}")
+        }
         firewallRuleDao.insertRules(rules.toEntity())
         notifyRulesChanged()
     }
 
     override suspend fun updateRule(rule: FirewallRule) {
+        // Log Chrome rules for debugging
+        if (rule.packageName.contains("chrome", ignoreCase = true)) {
+            Log.d(TAG, "updateRule: ${rule.packageName} - wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming}")
+            Log.d(TAG, "  Stack trace:", Exception("updateRule called"))
+        }
         firewallRuleDao.updateRule(rule.toEntity())
         notifyRulesChanged()
     }
@@ -92,6 +111,21 @@ class FirewallRepositoryImpl(
 
     override suspend fun allowAllApps() {
         firewallRuleDao.allowAllApps()
+        notifyRulesChanged()
+    }
+
+    override suspend fun updateWifiBlocking(packageName: String, blocked: Boolean) {
+        firewallRuleDao.updateWifiBlocking(packageName, blocked)
+        notifyRulesChanged()
+    }
+
+    override suspend fun updateMobileBlocking(packageName: String, blocked: Boolean) {
+        firewallRuleDao.updateMobileBlocking(packageName, blocked)
+        notifyRulesChanged()
+    }
+
+    override suspend fun updateRoamingBlocking(packageName: String, blocked: Boolean) {
+        firewallRuleDao.updateRoamingBlocking(packageName, blocked)
         notifyRulesChanged()
     }
 }

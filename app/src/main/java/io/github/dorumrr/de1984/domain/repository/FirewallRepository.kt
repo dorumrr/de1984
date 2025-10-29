@@ -30,7 +30,14 @@ interface FirewallRepository {
     suspend fun deleteAllRules()
     
     suspend fun blockAllApps()
-    
+
     suspend fun allowAllApps()
+
+    // Atomic field updates to prevent race conditions
+    suspend fun updateWifiBlocking(packageName: String, blocked: Boolean)
+
+    suspend fun updateMobileBlocking(packageName: String, blocked: Boolean)
+
+    suspend fun updateRoamingBlocking(packageName: String, blocked: Boolean)
 }
 

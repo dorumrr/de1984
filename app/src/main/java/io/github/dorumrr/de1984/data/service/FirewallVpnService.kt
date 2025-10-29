@@ -305,6 +305,8 @@ class FirewallVpnService : VpnService() {
     private suspend fun getBlockedAppsForCurrentState(): Set<String> {
         val blockedApps = mutableSetOf<String>()
 
+        Log.d(TAG, "getBlockedAppsForCurrentState: currentNetworkType=$currentNetworkType, isScreenOn=$isScreenOn")
+
         val sharedPreferences = getSharedPreferences(
             io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
             Context.MODE_PRIVATE
@@ -315,8 +317,12 @@ class FirewallVpnService : VpnService() {
         ) ?: io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_FIREWALL_POLICY
         val isBlockAllDefault = defaultPolicy == io.github.dorumrr.de1984.utils.Constants.Settings.POLICY_BLOCK_ALL
 
+        Log.d(TAG, "getBlockedAppsForCurrentState: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
+
         val allRules = firewallRepository.getAllRules().first()
         val rulesMap = allRules.associateBy { it.packageName }
+
+        Log.d(TAG, "getBlockedAppsForCurrentState: loaded ${allRules.size} rules from database")
 
         val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
             .filter { appInfo ->
@@ -350,17 +356,18 @@ class FirewallVpnService : VpnService() {
                     else -> false
                 }
 
-                // Debug logging for specific packages
-                if (packageName.contains("duckduckgo", ignoreCase = true)) {
+                // Debug logging for Chrome
+                if (packageName.contains("chrome", ignoreCase = true)) {
                     Log.d(TAG, "DEBUG VPN: $packageName - Has rule, shouldBlock=$blockResult")
                     Log.d(TAG, "  Rule: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming}, enabled=${rule.enabled}")
                     Log.d(TAG, "  isBlockedOn($currentNetworkType)=${rule.isBlockedOn(currentNetworkType)}")
+                    Log.d(TAG, "  currentNetworkType=$currentNetworkType, isScreenOn=$isScreenOn")
                 }
 
                 blockResult
             } else {
-                // Debug logging for specific packages
-                if (packageName.contains("duckduckgo", ignoreCase = true)) {
+                // Debug logging for Chrome
+                if (packageName.contains("chrome", ignoreCase = true)) {
                     Log.d(TAG, "DEBUG VPN: $packageName - No rule, applying default policy (isBlockAllDefault=$isBlockAllDefault)")
                 }
                 isBlockAllDefault
@@ -371,6 +378,7 @@ class FirewallVpnService : VpnService() {
             }
         }
 
+        Log.d(TAG, "getBlockedAppsForCurrentState: returning ${blockedApps.size} blocked apps")
         return blockedApps
     }
 

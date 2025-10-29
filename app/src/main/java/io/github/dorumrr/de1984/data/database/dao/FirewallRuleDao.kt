@@ -46,11 +46,21 @@ interface FirewallRuleDao {
     
     @Query("UPDATE firewall_rules SET wifiBlocked = 1, mobileBlocked = 1, updatedAt = :timestamp WHERE enabled = 1")
     suspend fun blockAllApps(timestamp: Long = System.currentTimeMillis())
-    
+
     @Query("UPDATE firewall_rules SET wifiBlocked = 0, mobileBlocked = 0, updatedAt = :timestamp WHERE enabled = 1")
     suspend fun allowAllApps(timestamp: Long = System.currentTimeMillis())
-    
+
     @Query("SELECT COUNT(*) FROM firewall_rules WHERE (wifiBlocked = 1 OR mobileBlocked = 1) AND enabled = 1")
     fun getBlockedCount(): Flow<Int>
+
+    // Atomic field updates to prevent race conditions
+    @Query("UPDATE firewall_rules SET wifiBlocked = :blocked, updatedAt = :timestamp WHERE packageName = :packageName")
+    suspend fun updateWifiBlocking(packageName: String, blocked: Boolean, timestamp: Long = System.currentTimeMillis())
+
+    @Query("UPDATE firewall_rules SET mobileBlocked = :blocked, updatedAt = :timestamp WHERE packageName = :packageName")
+    suspend fun updateMobileBlocking(packageName: String, blocked: Boolean, timestamp: Long = System.currentTimeMillis())
+
+    @Query("UPDATE firewall_rules SET blockWhenRoaming = :blocked, updatedAt = :timestamp WHERE packageName = :packageName")
+    suspend fun updateRoamingBlocking(packageName: String, blocked: Boolean, timestamp: Long = System.currentTimeMillis())
 }
 

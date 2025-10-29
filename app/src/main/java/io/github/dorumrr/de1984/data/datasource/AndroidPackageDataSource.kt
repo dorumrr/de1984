@@ -448,10 +448,12 @@ class AndroidPackageDataSource(
             try {
                 val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
                 val existingRule = firewallRepository.getRuleByPackage(packageName).first()
-                val rule = if (existingRule != null) {
-                    existingRule.copy(wifiBlocked = blocked, updatedAt = System.currentTimeMillis())
+
+                if (existingRule != null) {
+                    // Use atomic update to prevent race conditions
+                    firewallRepository.updateWifiBlocking(packageName, blocked)
                 } else {
-                    // Get default policy to determine initial state for other network types
+                    // Create new rule with default policy for other network types
                     val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
@@ -459,7 +461,7 @@ class AndroidPackageDataSource(
                     )
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
-                    FirewallRule(
+                    val rule = FirewallRule(
                         packageName = packageName,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
@@ -469,9 +471,9 @@ class AndroidPackageDataSource(
                         isSystemApp = isSystemApp(appInfo),
                         hasInternetPermission = hasNetworkPermissions(packageName)
                     )
+                    firewallRepository.insertRule(rule)
                 }
 
-                firewallRepository.insertRule(rule)
                 true
             } catch (e: Exception) {
                 false
@@ -488,10 +490,12 @@ class AndroidPackageDataSource(
             try {
                 val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
                 val existingRule = firewallRepository.getRuleByPackage(packageName).first()
-                val rule = if (existingRule != null) {
-                    existingRule.copy(mobileBlocked = blocked, updatedAt = System.currentTimeMillis())
+
+                if (existingRule != null) {
+                    // Use atomic update to prevent race conditions
+                    firewallRepository.updateMobileBlocking(packageName, blocked)
                 } else {
-                    // Get default policy to determine initial state for other network types
+                    // Create new rule with default policy for other network types
                     val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
@@ -499,7 +503,7 @@ class AndroidPackageDataSource(
                     )
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
-                    FirewallRule(
+                    val rule = FirewallRule(
                         packageName = packageName,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
@@ -509,9 +513,9 @@ class AndroidPackageDataSource(
                         isSystemApp = isSystemApp(appInfo),
                         hasInternetPermission = hasNetworkPermissions(packageName)
                     )
+                    firewallRepository.insertRule(rule)
                 }
 
-                firewallRepository.insertRule(rule)
                 true
             } catch (e: Exception) {
                 false
@@ -529,10 +533,11 @@ class AndroidPackageDataSource(
                 val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
                 val existingRule = firewallRepository.getRuleByPackage(packageName).first()
 
-                val rule = if (existingRule != null) {
-                    existingRule.copy(blockWhenRoaming = blocked, updatedAt = System.currentTimeMillis())
+                if (existingRule != null) {
+                    // Use atomic update to prevent race conditions
+                    firewallRepository.updateRoamingBlocking(packageName, blocked)
                 } else {
-                    // Get default policy to determine initial state for other network types
+                    // Create new rule with default policy for other network types
                     val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
@@ -540,7 +545,7 @@ class AndroidPackageDataSource(
                     )
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
-                    FirewallRule(
+                    val rule = FirewallRule(
                         packageName = packageName,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
@@ -551,9 +556,9 @@ class AndroidPackageDataSource(
                         isSystemApp = isSystemApp(appInfo),
                         hasInternetPermission = hasNetworkPermissions(packageName)
                     )
+                    firewallRepository.insertRule(rule)
                 }
 
-                firewallRepository.insertRule(rule)
                 true
             } catch (e: Exception) {
                 false

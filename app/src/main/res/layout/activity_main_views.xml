@@ -121,7 +121,7 @@
                         android:text="OFF"
                         android:textSize="10sp"
                         android:textStyle="bold"
-                        android:textColor="@color/white"
+                        android:textColor="@color/text_white"
                         android:paddingStart="6dp"
                         android:paddingEnd="6dp"
                         android:paddingTop="2dp"

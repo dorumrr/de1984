@@ -212,8 +212,12 @@ class SettingsViewModel(
                 )
                 saveSetting(Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY, newPolicy)
 
-                // Restart firewall if running to apply the new policy interpretation
-                restartFirewallIfRunning()
+                // Trigger rule re-application if firewall is running
+                // This is more efficient than restarting the entire firewall
+                if (firewallManager.isActive()) {
+                    Log.d(TAG, "Triggering rule re-application for policy change")
+                    firewallManager.triggerRuleReapplication()
+                }
 
                 Log.d(TAG, "Policy changed successfully, rules preserved")
             } catch (e: Exception) {

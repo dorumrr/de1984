@@ -149,6 +149,8 @@ class IptablesFirewallBackend(
                         }
                     }
 
+                Log.d(TAG, "Block All mode: found ${allPackages.size} packages with network permissions")
+
                 for (appInfo in allPackages) {
                     val uid = appInfo.uid
                     val packageName = appInfo.packageName
@@ -163,15 +165,18 @@ class IptablesFirewallBackend(
                     val shouldBlock = if (rulesForUid != null && rulesForUid.isNotEmpty()) {
                         // Has explicit rules - use as-is (absolute blocking state)
                         // Check if ANY rule says to block (most restrictive)
-                        rulesForUid.any { rule ->
+                        val blockDecision = rulesForUid.any { rule ->
                             when {
                                 !screenOn && rule.blockWhenScreenOff -> true
                                 rule.isBlockedOn(networkType) -> true
                                 else -> false
                             }
                         }
+                        Log.d(TAG, "  $packageName (UID $uid): has rule, shouldBlock=$blockDecision")
+                        blockDecision
                     } else {
                         // No rule - apply default policy (block all)
+                        Log.d(TAG, "  $packageName (UID $uid): no rule, blocking by default")
                         true
                     }
 

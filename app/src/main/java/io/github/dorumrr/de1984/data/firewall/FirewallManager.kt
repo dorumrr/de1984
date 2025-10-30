@@ -343,6 +343,15 @@ class FirewallManager(
     }
     
     /**
+     * Trigger rule re-application (e.g., when policy changes).
+     * This is a public method that can be called from outside to force rule re-application.
+     */
+    fun triggerRuleReapplication() {
+        Log.d(TAG, "Triggering rule re-application")
+        scheduleRuleApplication()
+    }
+
+    /**
      * Apply rules to the current backend.
      */
     private suspend fun applyRules() {

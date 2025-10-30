@@ -213,19 +213,16 @@ object Constants {
         const val DESTINATION_FIREWALL = "firewall"
         const val DESTINATION_PACKAGES = "packages"
         const val DESTINATION_SETTINGS = "settings"
-        const val DESTINATION_ABOUT = "about"
 
         // Navigation Labels
         const val LABEL_FIREWALL = "Firewall"
         const val LABEL_PACKAGES = "Packages"
         const val LABEL_SETTINGS = "Settings"
-        const val LABEL_ABOUT = "About"
 
         // Toolbar Titles (uppercase for consistency)
         const val TITLE_FIREWALL = "De1984 FIREWALL"
         const val TITLE_PACKAGES = "De1984 PACKAGES"
         const val TITLE_SETTINGS = "De1984 SETTINGS"
-        const val TITLE_ABOUT = "De1984 ABOUT"
 
         // Firewall Toggle Button Text
         const val BUTTON_TEXT_ON = "ON"

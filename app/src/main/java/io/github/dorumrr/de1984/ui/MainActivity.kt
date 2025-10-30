@@ -245,7 +245,6 @@ class MainActivity : AppCompatActivity() {
             Tab.FIREWALL -> R.id.firewallFragment
             Tab.APPS -> R.id.packagesFragment
             Tab.SETTINGS -> R.id.settingsFragment
-            Tab.ABOUT -> R.id.aboutFragment
         }
 
         // Temporarily remove listener to avoid triggering navigation
@@ -371,7 +370,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     enum class Tab {
-        FIREWALL, APPS, SETTINGS, ABOUT
+        FIREWALL, APPS, SETTINGS
     }
 }
 

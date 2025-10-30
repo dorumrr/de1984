@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Toolbar Color (Dark Mode) - Complete black for OLED -->
+    <color name="lineage_teal">#000000</color> <!-- Pure black -->
+
     <!-- Bottom Navigation Colors (Dark Mode) -->
-    <color name="bottom_nav_background">#2C2C2C</color> <!-- Dark surface background -->
+    <color name="bottom_nav_background">#000000</color> <!-- Pure black -->
     <color name="bottom_nav_selected_background">#004D40</color> <!-- Dark teal background -->
+    <color name="bottom_nav_inactive">#FFFFFF</color> <!-- White for inactive items -->
 
     <!-- Chip Colors (Dark Mode) -->
     <color name="chip_background_checked">#004D40</color> <!-- Dark teal -->

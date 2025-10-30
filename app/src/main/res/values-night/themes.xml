@@ -32,7 +32,7 @@
     <!-- Bottom Navigation Theme Overlay - Dark Mode -->
     <style name="ThemeOverlay.De1984.BottomNavigationView" parent="">
         <item name="colorOnSurface">@color/primary_dark</item>
-        <item name="colorOnSurfaceVariant">@color/outline_dark</item>
+        <item name="colorOnSurfaceVariant">@color/white</item>
         <item name="colorSurface">@color/bottom_nav_background</item>
     </style>
 </resources>

@@ -1,20 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Dark Mode - Identical to light mode except background color -->
+
     <!-- Base application theme for De1984 - Dark Mode -->
-    <style name="Theme.De1984" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.De1984" parent="android:Theme.Material.Light.NoActionBar">
         <!-- Status bar -->
         <item name="android:statusBarColor">@color/lineage_teal</item>
         <item name="android:windowLightStatusBar">false</item>
 
         <!-- Navigation bar -->
-        <item name="android:navigationBarColor">@color/background_dark</item>
+        <item name="android:navigationBarColor">@color/white</item>
 
-        <!-- Window background for splash/loading screen with logo - dark background -->
+        <!-- Window background for splash/loading screen with logo -->
         <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
 
     <!-- AppCompat theme for Views-based activities - Dark Mode -->
-    <style name="Theme.De1984.Views" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.De1984.Views" parent="Theme.Material3.Light.NoActionBar">
         <!-- Status bar -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
@@ -25,15 +27,8 @@
         <!-- Enable edge-to-edge -->
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
 
-        <!-- Window background -->
-        <item name="android:windowBackground">@color/background_dark</item>
-    </style>
-
-    <!-- Bottom Navigation Theme Overlay - Dark Mode -->
-    <style name="ThemeOverlay.De1984.BottomNavigationView" parent="">
-        <item name="colorOnSurface">@color/white</item>
-        <item name="colorOnSurfaceVariant">@color/white</item>
-        <item name="colorSurface">@color/bottom_nav_background</item>
+        <!-- Window background - Only difference from light mode -->
+        <item name="android:windowBackground">@color/white</item>
     </style>
 </resources>
 

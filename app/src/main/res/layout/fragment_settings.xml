@@ -441,7 +441,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Contribute on GitHub"
-                        style="@style/Widget.Material3.Button"
+                        style="@style/Widget.De1984.Button"
                         app:icon="@drawable/ic_info"
                         app:iconGravity="start" />
 

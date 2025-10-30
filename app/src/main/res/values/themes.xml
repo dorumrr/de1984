@@ -50,8 +50,8 @@
 
     <!-- Bottom Navigation Theme Overlay -->
     <style name="ThemeOverlay.De1984.BottomNavigationView" parent="">
-        <item name="colorOnSurface">@color/white</item>
-        <item name="colorOnSurfaceVariant">@color/white</item>
+        <item name="colorOnSurface">@color/text_white</item>
+        <item name="colorOnSurfaceVariant">@color/text_white</item>
         <item name="colorSurface">@color/bottom_nav_background</item>
     </style>
 
@@ -67,5 +67,11 @@
     <style name="ShapeAppearance.De1984.BottomNavigationView.ActiveIndicator" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">16dp</item>
+    </style>
+
+    <!-- Custom Button Style - Teal background with white text (like selected chips) -->
+    <style name="Widget.De1984.Button" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/lineage_teal</item>
+        <item name="android:textColor">@color/text_white</item>
     </style>
 </resources>

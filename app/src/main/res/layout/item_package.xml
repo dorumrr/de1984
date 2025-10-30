@@ -84,7 +84,7 @@
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:background="@drawable/status_badge_complete"
-                android:textColor="@android:color/white" />
+                android:textColor="@color/badge_text_success" />
 
             <!-- Package Type Badge -->
             <TextView

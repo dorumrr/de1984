@@ -31,7 +31,7 @@
             android:theme="@style/ThemeOverlay.Material3.Dark"
             app:contentInsetStart="0dp"
             app:contentInsetStartWithNavigation="0dp"
-            app:titleTextColor="@color/white">
+            app:titleTextColor="@color/text_white">
 
             <!-- Custom toolbar content -->
             <LinearLayout
@@ -65,7 +65,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="De1984 • Firewall"
-                        android:textColor="@color/white"
+                        android:textColor="@color/text_white"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -104,7 +104,7 @@
                         android:text="ACTIVE"
                         android:textSize="10sp"
                         android:textStyle="bold"
-                        android:textColor="@color/white"
+                        android:textColor="@color/badge_text_success"
                         android:paddingStart="6dp"
                         android:paddingEnd="6dp"
                         android:paddingTop="2dp"

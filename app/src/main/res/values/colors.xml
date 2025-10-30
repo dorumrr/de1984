@@ -31,6 +31,7 @@
     <!-- Common Colors -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
+    <color name="text_white">#FFFFFF</color> <!-- Always white text, even in dark mode -->
     <color name="outline">#90A4AE</color>
     <color name="outline_dark">#616161</color>
 
@@ -45,6 +46,14 @@
     <color name="chip_stroke_unchecked">#BDBDBD</color> <!-- Light gray -->
     <color name="chip_text_checked">#00695C</color> <!-- Dark teal -->
     <color name="chip_text_unchecked">#616161</color> <!-- Dark gray -->
+
+    <!-- Status Badge Colors (Light Mode) -->
+    <color name="badge_background_success">#E0F2F1</color> <!-- Light teal - matches chip_background_checked -->
+    <color name="badge_stroke_success">#00897B</color> <!-- Teal - matches chip_stroke_checked -->
+    <color name="badge_text_success">#00695C</color> <!-- Dark teal - matches chip_text_checked -->
+    <color name="badge_background_error">#FFEBEE</color> <!-- Light red - Material Red 50 -->
+    <color name="badge_stroke_error">#D32F2F</color> <!-- Red - Material Red 700 -->
+    <color name="badge_text_error">#B71C1C</color> <!-- Dark red - Material Red 900 -->
 
     <!-- Package Type Chip Colors (Light Mode) -->
     <color name="package_type_chip_background">#F5F5F5</color> <!-- Light gray -->

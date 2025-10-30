@@ -262,7 +262,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             binding.permissionTierBasic,
             title = "Basic Functionality",
             description = "View installed packages and basic information",
-            status = if (state.hasBasicPermissions) "Completed" else "Setup Required",
+            status = if (state.hasBasicPermissions) "Completed" else "Permission Required",
             isComplete = state.hasBasicPermissions,
             permissions = state.basicPermissions,
             setupButtonText = "Grant Permission",
@@ -276,7 +276,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             binding.permissionTierBattery,
             title = "Background Process",
             description = "Prevents Android from killing the firewall service to save battery. Critical for VPN reliability.",
-            status = if (state.hasBatteryOptimizationExemption) "Completed" else "Setup Required",
+            status = if (state.hasBatteryOptimizationExemption) "Completed" else "Permission Required",
             isComplete = state.hasBatteryOptimizationExemption,
             permissions = state.batteryOptimizationInfo,
             setupButtonText = "Grant Permission",
@@ -344,6 +344,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             if (isComplete) R.drawable.status_badge_complete
             else R.drawable.status_badge_background
         )
+        tierBinding.tierStatusBadge.setTextColor(
+            requireContext().getColor(
+                if (isComplete) R.color.badge_text_success
+                else R.color.badge_text_error
+            )
+        )
 
         // Setup permissions list
         tierBinding.permissionsListContainer.removeAllViews()
@@ -359,7 +365,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             name.text = permission.name
             if (permission.isGranted) {
                 icon.setImageResource(android.R.drawable.checkbox_on_background)
-                icon.setColorFilter(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark))
+                icon.setColorFilter(ContextCompat.getColor(requireContext(), R.color.lineage_teal))
             } else {
                 icon.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
                 icon.setColorFilter(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))

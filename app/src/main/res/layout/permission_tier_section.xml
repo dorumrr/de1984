@@ -34,7 +34,7 @@
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
             android:background="@drawable/status_badge_background"
-            android:textColor="@android:color/white" />
+            android:textColor="@color/badge_text_error" />
 
     </LinearLayout>
 
@@ -70,7 +70,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Grant Permission"
-            style="@style/Widget.Material3.Button" />
+            style="@style/Widget.De1984.Button" />
 
     </LinearLayout>
 

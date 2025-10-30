@@ -1,30 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Toolbar Color (Dark Mode) - Complete black for OLED -->
-    <color name="lineage_teal">#000000</color> <!-- Pure black -->
+    <!-- Dark Mode - Background is dark gray, text is white, bottom nav has dark pill -->
+
+    <!-- Background Color (Dark Mode) - Dark gray instead of white -->
+    <color name="white">#2C2C2C</color> <!-- Dark gray background for dark mode -->
+    <color name="background_dark">#2C2C2C</color> <!-- Dark gray background -->
 
     <!-- Bottom Navigation Colors (Dark Mode) -->
-    <color name="bottom_nav_background">#000000</color> <!-- Pure black -->
-    <color name="bottom_nav_selected_background">#2C2C2C</color> <!-- Dark gray background for selected item -->
-    <color name="bottom_nav_inactive">#FFFFFF</color> <!-- White for inactive items -->
+    <color name="bottom_nav_selected_background">#424242</color> <!-- Dark gray pill for selected item -->
 
     <!-- Chip Colors (Dark Mode) -->
-    <color name="chip_background_checked">#004D40</color> <!-- Dark teal -->
-    <color name="chip_background_unchecked">#424242</color> <!-- Dark surface variant -->
-    <color name="chip_stroke_checked">#4DB6AC</color> <!-- Light teal -->
-    <color name="chip_stroke_unchecked">#757575</color> <!-- Medium gray -->
-    <color name="chip_text_checked">#80CBC4</color> <!-- Light teal -->
-    <color name="chip_text_unchecked">#E0E0E0</color> <!-- Light gray -->
-
-    <!-- Package Type Chip Colors (Dark Mode) -->
-    <color name="package_type_chip_background">#424242</color> <!-- Dark gray -->
-    <color name="package_type_chip_stroke">#616161</color> <!-- Medium gray border -->
-    <color name="package_type_chip_text">#E0E0E0</color> <!-- Light gray text -->
-
-    <!-- Root Status Background (Dark Mode) -->
-    <color name="root_status_background">#3A3A3A</color> <!-- Darker gray for dark mode -->
-
-    <!-- Outline Colors (Dark Mode) -->
-    <color name="outline">#616161</color> <!-- Medium gray for borders in dark mode -->
+    <color name="chip_background_unchecked">#00FFFFFF</color> <!-- Transparent background for unselected chips -->
+    <color name="chip_text_unchecked">#B0BEC5</color> <!-- Light gray text for unselected chips -->
+    <color name="chip_stroke_unchecked">#B0BEC5</color> <!-- Light gray border for unselected chips -->
 </resources>
 

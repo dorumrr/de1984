@@ -12,5 +12,6 @@
     android:textColor="@color/chip_text_selector"
     app:chipBackgroundColor="@color/chip_background_selector"
     app:chipStrokeColor="@color/chip_stroke_selector"
-    app:chipStrokeWidth="1dp" />
+    app:chipStrokeWidth="1dp"
+    app:checkedIconTint="@color/chip_text_selector" />
 

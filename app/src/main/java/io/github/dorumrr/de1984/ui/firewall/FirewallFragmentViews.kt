@@ -564,7 +564,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             ),
             intArrayOf(
                 ContextCompat.getColor(context, R.color.error_red),      // RED when blocked (ON)
-                ContextCompat.getColor(context, R.color.success_green)   // GREEN when allowed (OFF)
+                ContextCompat.getColor(context, R.color.lineage_teal)   // TEAL when allowed (OFF)
             )
         )
 
@@ -575,7 +575,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             ),
             intArrayOf(
                 ContextCompat.getColor(context, R.color.error_red) and 0x80FFFFFF.toInt(),      // RED with 50% opacity when blocked (ON)
-                ContextCompat.getColor(context, R.color.success_green) and 0x80FFFFFF.toInt()   // GREEN with 50% opacity when allowed (OFF)
+                ContextCompat.getColor(context, R.color.lineage_teal) and 0x80FFFFFF.toInt()   // TEAL with 50% opacity when allowed (OFF)
             )
         )
 

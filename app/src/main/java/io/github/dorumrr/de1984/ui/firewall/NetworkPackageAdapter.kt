@@ -80,8 +80,8 @@ class NetworkPackageAdapter(
                 appIcon.visibility = View.GONE
             }
 
-            // Get colors for allowed (green) and blocked (red)
-            val allowedColor = ContextCompat.getColor(itemView.context, R.color.success_green)
+            // Get colors for allowed (teal) and blocked (red)
+            val allowedColor = ContextCompat.getColor(itemView.context, R.color.lineage_teal)
             val blockedColor = ContextCompat.getColor(itemView.context, R.color.error_red)
 
             // Set WiFi icon color and overlay

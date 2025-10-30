@@ -100,8 +100,7 @@ class VpnFirewallBackend(
                 capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
             } else {
                 @Suppress("DEPRECATION")
-                val networkInfo = connectivityManager.activeNetworkInfo
-                networkInfo?.type == ConnectivityManager.TYPE_VPN
+                (connectivityManager.activeNetworkInfo?.type == ConnectivityManager.TYPE_VPN)
             }
 
             // Both conditions must be true: service flag set AND VPN connection active

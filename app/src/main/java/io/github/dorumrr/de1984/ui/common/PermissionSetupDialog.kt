@@ -63,7 +63,6 @@ object PermissionSetupDialog {
             description = description,
             status = status,
             isComplete = isComplete,
-            permissions = emptyList(),
             setupButtonText = buttonText,
             onSetupClick = {
                 dialog.dismiss()
@@ -146,7 +145,6 @@ object PermissionSetupDialog {
         description: String,
         status: String,
         isComplete: Boolean,
-        permissions: List<PermissionInfo>,
         setupButtonText: String,
         onSetupClick: () -> Unit
     ) {

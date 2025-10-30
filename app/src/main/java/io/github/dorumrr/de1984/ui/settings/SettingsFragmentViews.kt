@@ -596,7 +596,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         }
         lastRootTestTime = currentTime
 
-        // Mark that we've requested root permission
         viewModel.markRootPermissionRequested()
 
         var resultMessage = "🔄 Testing privileged access...\n\nPlease grant permission in the popup dialog if prompted."

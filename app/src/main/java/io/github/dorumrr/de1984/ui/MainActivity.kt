@@ -26,6 +26,7 @@ import io.github.dorumrr.de1984.data.service.PackageMonitoringService
 import io.github.dorumrr.de1984.databinding.ActivityMainViewsBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
+import io.github.dorumrr.de1984.ui.common.StandardDialog
 import io.github.dorumrr.de1984.ui.firewall.FirewallFragmentViews
 import io.github.dorumrr.de1984.ui.packages.PackagesFragmentViews
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
@@ -228,20 +229,20 @@ class MainActivity : AppCompatActivity() {
                 val density = resources.displayMetrics.density
                 view.setPadding(
                     view.paddingLeft,
-                    (12 * density).toInt(),
+                    (Constants.UI.BOTTOM_NAV_PADDING_TOP * density).toInt(),
                     view.paddingRight,
-                    (3 * density).toInt()
+                    (Constants.UI.BOTTOM_NAV_PADDING_BOTTOM * density).toInt()
                 )
             }
 
             if (view.javaClass.simpleName == "BaselineLayout") {
                 val density = resources.displayMetrics.density
-                view.translationY = -2 * density
+                view.translationY = Constants.UI.BOTTOM_NAV_TEXT_TRANSLATION_Y * density
             }
 
             if (view is android.widget.ImageView && view.parent?.javaClass?.simpleName == "FrameLayout") {
                 val density = resources.displayMetrics.density
-                val newSize = (27.5 * density).toInt()
+                val newSize = (Constants.UI.BOTTOM_NAV_ICON_SIZE_ENLARGED * density).toInt()
                 val params = view.layoutParams
                 params.width = newSize
                 params.height = newSize
@@ -385,18 +386,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showFirewallStartDialog() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(Constants.UI.Dialogs.FIREWALL_START_TITLE)
-            .setMessage(Constants.UI.Dialogs.FIREWALL_START_MESSAGE)
-            .setPositiveButton(Constants.UI.Dialogs.FIREWALL_START_CONFIRM) { _, _ ->
+        StandardDialog.showConfirmation(
+            context = this,
+            title = Constants.UI.Dialogs.FIREWALL_START_TITLE,
+            message = Constants.UI.Dialogs.FIREWALL_START_MESSAGE,
+            confirmButtonText = Constants.UI.Dialogs.FIREWALL_START_CONFIRM,
+            onConfirm = {
                 val prepareIntent = firewallViewModel.startFirewall()
                 if (prepareIntent != null) {
                     vpnPermissionLauncher.launch(prepareIntent)
                 }
-            }
-            .setNegativeButton(Constants.UI.Dialogs.FIREWALL_START_SKIP, null)
-            .setCancelable(true)
-            .show()
+            },
+            cancelButtonText = Constants.UI.Dialogs.FIREWALL_START_SKIP
+        )
     }
 
 

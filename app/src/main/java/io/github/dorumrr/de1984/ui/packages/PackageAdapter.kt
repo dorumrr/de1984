@@ -12,6 +12,7 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.databinding.ItemPackageBinding
 import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.model.PackageType
+import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
 
 class PackageAdapter(
@@ -73,12 +74,11 @@ class PackageAdapter(
                 binding.appIcon.setImageResource(R.drawable.de1984_icon)
             }
 
-            // Set enabled/disabled badge
             if (pkg.isEnabled) {
-                binding.enabledBadge.text = "Enabled"
+                binding.enabledBadge.text = Constants.Packages.STATE_ENABLED
                 binding.enabledBadge.setBackgroundResource(R.drawable.status_badge_complete)
             } else {
-                binding.enabledBadge.text = "Disabled"
+                binding.enabledBadge.text = Constants.Packages.STATE_DISABLED
                 binding.enabledBadge.setBackgroundResource(R.drawable.status_badge_background)
             }
 

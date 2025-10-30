@@ -38,7 +38,11 @@ object Constants {
 
         // Navigation
         const val BOTTOM_NAV_ICON_SIZE = 24
+        const val BOTTOM_NAV_ICON_SIZE_ENLARGED = 27.5f
         const val BOTTOM_NAV_ELEVATION = 8
+        const val BOTTOM_NAV_PADDING_TOP = 12
+        const val BOTTOM_NAV_PADDING_BOTTOM = 3
+        const val BOTTOM_NAV_TEXT_TRANSLATION_Y = -2
 
         object Dialogs {
             const val FIREWALL_START_TITLE = "Start De1984 Firewall?"

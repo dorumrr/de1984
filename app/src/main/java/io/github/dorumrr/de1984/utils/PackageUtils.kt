@@ -119,8 +119,8 @@ object PackageUtils {
     
     fun filterPackagesByType(packages: List<PackageInfo>, type: String): List<PackageInfo> {
         return when (type.lowercase()) {
-            "system" -> packages.filter { it.isSystemApp() }
-            "user" -> packages.filter { !it.isSystemApp() }
+            Constants.Packages.TYPE_SYSTEM -> packages.filter { it.isSystemApp() }
+            Constants.Packages.TYPE_USER -> packages.filter { !it.isSystemApp() }
             "all" -> packages
             else -> packages
         }

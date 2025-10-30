@@ -158,7 +158,7 @@ class SettingsViewModel(
     }
     
     private fun saveSetting(key: String, value: Any) {
-        val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val editor = prefs.edit()
 
         when (value) {

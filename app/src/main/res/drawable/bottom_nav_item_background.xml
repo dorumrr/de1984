@@ -1,19 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Selected state - with top border line -->
-    <item android:state_checked="true">
-        <layer-list>
-            <!-- Top border line -->
-            <item android:gravity="top">
-                <shape android:shape="rectangle">
-                    <solid android:color="@color/bottom_nav_indicator" />
-                    <size android:height="3dp" />
-                </shape>
-            </item>
-        </layer-list>
-    </item>
-
-    <!-- Default state (transparent) -->
+    <!-- All states - transparent (no indicator line) -->
     <item>
         <shape android:shape="rectangle">
             <solid android:color="@android:color/transparent" />

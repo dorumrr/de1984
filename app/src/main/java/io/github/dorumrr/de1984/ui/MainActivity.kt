@@ -144,7 +144,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun onPermissionsComplete() {
         permissionsCompleted = true
-        shouldShowFirewallStartDialog = true
+        // Only show firewall start dialog if firewall is not already running
+        val isFirewallRunning = firewallViewModel.uiState.value.isFirewallEnabled
+        shouldShowFirewallStartDialog = !isFirewallRunning
         // UI is already setup in onCreate, just show dialog if needed
         if (shouldShowFirewallStartDialog) {
             shouldShowFirewallStartDialog = false

@@ -17,17 +17,7 @@
     <fragment
         android:id="@+id/settingsFragment"
         android:name="io.github.dorumrr.de1984.ui.settings.SettingsFragmentViews"
-        android:label="Settings">
-
-        <action
-            android:id="@+id/action_settings_to_about"
-            app:destination="@id/aboutFragment" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/aboutFragment"
-        android:name="io.github.dorumrr.de1984.ui.about.AboutFragmentViews"
-        android:label="@string/nav_about" />
+        android:label="Settings" />
 
 </navigation>
 

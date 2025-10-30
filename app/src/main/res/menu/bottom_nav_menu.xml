@@ -14,10 +14,5 @@
         android:id="@+id/settingsFragment"
         android:icon="@drawable/ic_settings"
         android:title="Settings" />
-
-    <item
-        android:id="@+id/aboutFragment"
-        android:icon="@drawable/ic_info"
-        android:title="@string/nav_about" />
 </menu>
 

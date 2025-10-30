@@ -35,7 +35,7 @@
     <color name="outline_dark">#616161</color>
 
     <!-- Bottom Navigation Colors (Light Mode) -->
-    <color name="bottom_nav_background">#FFFFFF</color> <!-- White background -->
+    <color name="bottom_nav_background">#167C80</color> <!-- Teal background - same as toolbar -->
     <color name="bottom_nav_selected_background">#E0F2F1</color> <!-- Light teal background -->
 
     <!-- Chip Colors (Light Mode) -->

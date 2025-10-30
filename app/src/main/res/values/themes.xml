@@ -48,8 +48,8 @@
 
     <!-- Bottom Navigation Theme Overlay -->
     <style name="ThemeOverlay.De1984.BottomNavigationView" parent="">
-        <item name="colorOnSurface">@color/lineage_teal</item>
-        <item name="colorOnSurfaceVariant">@color/blue_grey</item>
+        <item name="colorOnSurface">@color/white</item>
+        <item name="colorOnSurfaceVariant">@color/white</item>
         <item name="colorSurface">@color/bottom_nav_background</item>
     </style>
 

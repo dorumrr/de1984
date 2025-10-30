@@ -382,34 +382,63 @@
                 android:orientation="vertical"
                 android:padding="20dp">
 
-                <TextView
+                <!-- Contribute Header -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="🚀 Contribute"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:gravity="center"
-                    android:layout_marginBottom="8dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🚀"
+                        android:textSize="40sp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Contribute"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="?android:attr/textColorPrimary" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Get involved and help improve De1984"
+                            android:textSize="14sp"
+                            android:textColor="?android:attr/textColorSecondary" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Help improve De1984 Firewall and Package Control by contributing code, reporting bugs, or suggesting features."
+                    android:text="Contribute code, report bugs, or suggest features to make this app better for everyone."
                     android:textSize="14sp"
                     android:textColor="?android:attr/textColorSecondary"
-                    android:gravity="center" />
+                    android:layout_marginBottom="12dp" />
 
                 <TextView
                     android:id="@+id/contribute_link"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
                     android:text="Contribute on GitHub →"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="@color/lineage_teal"
-                    android:gravity="center"
                     android:padding="12dp"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"

@@ -8,6 +8,7 @@
 
     <!-- Bottom Navigation Colors (Dark Mode) -->
     <color name="bottom_nav_selected_background">#424242</color> <!-- Dark gray pill for selected item -->
+    <color name="bottom_nav_indicator">#FFFFFF</color> <!-- White indicator line in dark mode -->
 
     <!-- Chip Colors (Dark Mode) -->
     <color name="chip_background_unchecked">#00FFFFFF</color> <!-- Transparent background for unselected chips -->

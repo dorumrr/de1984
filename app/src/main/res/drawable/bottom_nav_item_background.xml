@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Selected state -->
+    <!-- Selected state - with top border line -->
     <item android:state_checked="true">
-        <shape android:shape="rectangle">
-            <solid android:color="@color/bottom_nav_selected_background" />
-        </shape>
+        <layer-list>
+            <!-- Top border line -->
+            <item android:gravity="top">
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/bottom_nav_indicator" />
+                    <size android:height="3dp" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
 
     <!-- Default state (transparent) -->

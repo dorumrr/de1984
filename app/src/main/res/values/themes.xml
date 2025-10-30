@@ -41,12 +41,13 @@
         <item name="materialThemeOverlay">@style/ThemeOverlay.De1984.BottomNavigationView</item>
         <item name="android:background">@color/bottom_nav_background</item>
         <item name="elevation">8dp</item>
-        <item name="itemIconSize">28dp</item>
+        <item name="itemIconSize">22dp</item>
         <item name="itemIconTint">@color/bottom_nav_item_color</item>
+        <item name="itemTextColor">@color/bottom_nav_item_color</item>
         <item name="itemRippleColor">@null</item>
-        <item name="itemBackground">@null</item>
-        <item name="labelVisibilityMode">unlabeled</item>
-        <item name="android:minHeight">64dp</item>
+        <item name="itemBackground">@drawable/bottom_nav_item_background</item>
+        <item name="labelVisibilityMode">labeled</item>
+        <item name="android:minHeight">60dp</item>
         <item name="itemActiveIndicatorStyle">@null</item>
         <item name="itemPaddingTop">0dp</item>
         <item name="itemPaddingBottom">0dp</item>
@@ -57,20 +58,12 @@
         <item name="colorOnSurface">@color/text_white</item>
         <item name="colorOnSurfaceVariant">@color/text_white</item>
         <item name="colorSurface">@color/bottom_nav_background</item>
+        <item name="textAppearanceLabelSmall">@style/TextAppearance.De1984.BottomNavigation.Label</item>
     </style>
 
-    <!-- Bottom Navigation Active Indicator -->
-    <style name="Widget.De1984.BottomNavigationView.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
-        <item name="android:color">@color/bottom_nav_selected_background</item>
-        <item name="android:width">90dp</item>
-        <item name="android:height">48dp</item>
-        <item name="shapeAppearance">@style/ShapeAppearance.De1984.BottomNavigationView.ActiveIndicator</item>
-    </style>
-
-    <!-- Shape for Bottom Navigation Active Indicator (slightly rounded corners) -->
-    <style name="ShapeAppearance.De1984.BottomNavigationView.ActiveIndicator" parent="">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">16dp</item>
+    <!-- Custom text appearance for bottom navigation labels with reduced spacing -->
+    <style name="TextAppearance.De1984.BottomNavigation.Label" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:textSize">12sp</item>
     </style>
 
     <!-- Custom Button Style - Teal background with white text (like selected chips) -->

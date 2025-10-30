@@ -41,11 +41,13 @@
         <item name="materialThemeOverlay">@style/ThemeOverlay.De1984.BottomNavigationView</item>
         <item name="android:background">@color/bottom_nav_background</item>
         <item name="elevation">8dp</item>
-        <item name="itemIconSize">24dp</item>
-        <item name="labelVisibilityMode">labeled</item>
-        <item name="itemActiveIndicatorStyle">@style/Widget.De1984.BottomNavigationView.ActiveIndicator</item>
-        <item name="itemPaddingTop">8dp</item>
-        <item name="itemPaddingBottom">8dp</item>
+        <item name="itemIconSize">28dp</item>
+        <item name="itemIconTint">@color/bottom_nav_item_color</item>
+        <item name="labelVisibilityMode">unlabeled</item>
+        <item name="android:minHeight">64dp</item>
+        <item name="itemActiveIndicatorStyle">@null</item>
+        <item name="itemPaddingTop">0dp</item>
+        <item name="itemPaddingBottom">0dp</item>
     </style>
 
     <!-- Bottom Navigation Theme Overlay -->

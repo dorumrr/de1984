@@ -12,10 +12,10 @@
     <color name="dark_blue_grey">#0F1419</color>
     
     <!-- Status Colors -->
-    <color name="success_green">#2E7D32</color> <!-- Material Green 800 - Darker, consistent green -->
+    <color name="success_green">#2E7D32</color>
     <color name="warning_orange">#FF9800</color>
-    <color name="error_red">#EF5350</color> <!-- Tamed red - visible against teal but not too vibrant -->
-    <color name="error_red_light">#FFCDD2</color> <!-- Material Red 100 - Light red for backgrounds -->
+    <color name="error_red">#EF5350</color>
+    <color name="error_red_light">#FFCDD2</color>
     
     <!-- Surface Colors -->
     <color name="background_light">#F5F5F5</color>

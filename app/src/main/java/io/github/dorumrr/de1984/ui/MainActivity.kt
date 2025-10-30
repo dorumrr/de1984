@@ -216,10 +216,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Set initial selection
         binding.bottomNavigation.selectedItemId = R.id.firewallFragment
-
-        // Debug: Add borders to icon and text views
         binding.bottomNavigation.post {
             customizeBottomNavSpacing()
         }
@@ -227,7 +224,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun customizeBottomNavSpacing() {
         fun customizeRecursively(view: android.view.View) {
-            // Set padding on BottomNavigationItemView: 8dp top, 5dp bottom
             if (view.javaClass.simpleName == "BottomNavigationItemView") {
                 val density = resources.displayMetrics.density
                 view.setPadding(
@@ -238,16 +234,14 @@ class MainActivity : AppCompatActivity() {
                 )
             }
 
-            // Adjust text spacing - reduce gap between icon and text
             if (view.javaClass.simpleName == "BaselineLayout") {
                 val density = resources.displayMetrics.density
-                view.translationY = -2 * density // Move up to reduce spacing
+                view.translationY = -2 * density
             }
 
-            // Increase icon size by 25% (from 22dp to 27.5dp)
             if (view is android.widget.ImageView && view.parent?.javaClass?.simpleName == "FrameLayout") {
                 val density = resources.displayMetrics.density
-                val newSize = (27.5 * density).toInt() // 22 * 1.25 = 27.5dp
+                val newSize = (27.5 * density).toInt()
                 val params = view.layoutParams
                 params.width = newSize
                 params.height = newSize

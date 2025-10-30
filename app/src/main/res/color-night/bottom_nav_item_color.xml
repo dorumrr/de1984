@@ -3,6 +3,6 @@
     <!-- Selected state - White -->
     <item android:color="@color/text_white" android:state_checked="true" />
     <!-- Unselected state - Light gray -->
-    <item android:color="#E9E9E9" />
+    <item android:color="#b8b8b8" />
 </selector>
 

@@ -43,6 +43,7 @@
         <item name="elevation">8dp</item>
         <item name="itemIconSize">28dp</item>
         <item name="itemIconTint">@color/bottom_nav_item_color</item>
+        <item name="itemRippleColor">@android:color/transparent</item>
         <item name="labelVisibilityMode">unlabeled</item>
         <item name="android:minHeight">64dp</item>
         <item name="itemActiveIndicatorStyle">@null</item>

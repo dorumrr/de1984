@@ -1,0 +1,25 @@
+De1984 Firewall release v2.0.0
+
+New Features:
+• Multiple firewall backend support: iptables (root/Shizuku), ConnectivityManager (Android 13+), and VPN fallback
+• Automatic backend selection based on device capabilities and permissions
+• iptables backend for rooted devices provides kernel-level blocking with better performance
+• ConnectivityManager backend for Android 13+ devices without root
+• VPN backend as fallback for maximum compatibility
+• Improved firewall rule application with automatic re-application on policy changes
+
+UI Improvements:
+• Enhanced bottom navigation styling with improved spacing and aesthetics
+• Implemented edge-to-edge display with proper window insets handling
+• Improved color scheme with better contrast and accessibility
+
+Bug Fixes:
+• Fixed VPN start dialog appearing every time app is restored from background
+• Fixed firewall rules not applying when switching between "Block All" and "Allow All" policies
+• Fixed double refresh issue when changing filters in Firewall screen
+• Optimized RecyclerView updates to prevent unnecessary UI flickering
+
+Performance:
+• Optimized package list updates with smarter change detection
+• Improved filter chip updates to prevent redundant callbacks
+• Reduced unnecessary logging

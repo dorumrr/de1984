@@ -19,35 +19,48 @@
 ## ✨ Features
 
 ### 🛡️ Firewall
-- **VPN-based firewall** (no root required)
-- Block apps from accessing WiFi, Mobile Data, or Roaming
-- Per-app network control with granular permissions
+- **Multiple firewall capabilities**: iptables, ConnectivityManager, and VPN fallback
+- **Automatic firewall method selection** based on device capabilities
+- **Comprehensive iptables** for rooted devices provides kernel-level blocking with superior performance
+- **ConnectivityManager** for Android 13+ devices without root
+- **VPN backend** as fallback for maximum compatibility (no root required)
+- Block apps from accessing WiFi, Mobile Data, or Roaming independently
+- **Global firewall policies**: "Block All by Default" (allowlist) or "Allow All by Default" (blocklist)
+- Screen-off blocking to save battery and data
+- Real-time network state monitoring and automatic rule application
 
 ### 📦 Package Management (with Shizuku or root)
-- Enable/disable users of system apps
+- Enable/disable system apps
 - Force stop running apps
 - Uninstall system and user apps
 - Works with Shizuku (no root required) or traditional root access
+- Filter packages by system/user apps, enabled/disabled state
+- Search functionality for quick package lookup
 
 ### 🔒 Privacy First
 - Zero tracking or analytics
 - No telemetry
 - Local-only data storage
+- No proprietary libraries
+- Buildable from source
 - 100% open source (MIT License)
 
 ## 📋 Requirements
 
 - **Android 8.0 (API 26) or higher**
-- Shizuku or root access optional (required for package management features)
-- VPN permission (for firewall functionality)
+- **For iptables firewall**: Root or Shizuku access
+- **For ConnectivityManager firewall**: Android 13+ (no root required)
+- **For VPN firewall**: VPN permission (no root required, works on all Android versions)
+- **For package management**: Shizuku or root access
 
 ## 🔐 Permissions
 
-- **INTERNET**: For firewall functionality (VPN-based)
-- **ACCESS_NETWORK_STATE**: Monitor network connectivity
-- **BIND_VPN_SERVICE**: Create local VPN for firewall
-- **QUERY_ALL_PACKAGES**: View installed apps (optional)
-- **Shizuku or root access**: For advanced package management (optional)
+- **ACCESS_NETWORK_STATE**: Monitor network connectivity for automatic rule application
+- **BIND_VPN_SERVICE**: Create local VPN for VPN-based firewall backend
+- **QUERY_ALL_PACKAGES**: View all installed apps
+- **POST_NOTIFICATIONS**: Show notifications for new app installations (optional)
+- **RECEIVE_BOOT_COMPLETED**: Auto-start firewall on device boot
+- **Shizuku or root access**: For iptables firewall and package management (optional)
 
 ## 🤝 Contributing
 

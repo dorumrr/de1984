@@ -1,17 +1,25 @@
-De1984 is a firewall and package manager for Android devices.
+De1984 is a powerful firewall and package manager for Android devices with multiple backend support for maximum flexibility and performance.
 
 <b>FIREWALL FEATURES</b>
 
-- VPN-based firewall (no root required)
-- Block apps from accessing WiFi, Mobile Data, or Roaming
-- Per-app network control with granular permissions
+- Multiple firewall capabilities: iptables (root/Shizuku), ConnectivityManager (Android 13+), and VPN fallback
+- Automatic firewall method selection based on device capabilities
+- Comprehensive iptables method for rooted devices provides kernel-level blocking with superior performance
+- ConnectivityManager for Android 13+ devices without root
+- VPN backend as fallback for maximum compatibility (no root required)
+- Block apps from accessing WiFi, Mobile Data, or Roaming independently
+- Global firewall policies: "Block All by Default" (allowlist) or "Allow All by Default" (blocklist)
+- Screen-off blocking to save battery and data
+- Real-time network state monitoring and automatic rule application
 
 <b>PACKAGE MANAGEMENT (with Shizuku or root)</b>
 
-- Enable/disable users of system apps
+- Enable/disable system apps
 - Force stop running apps
 - Uninstall system and user apps
 - Works with Shizuku (no root required) or traditional root access
+- Filter packages by system/user apps, enabled/disabled state
+- Search functionality for quick package lookup
 
 <b>PRIVACY FIRST</b>
 
@@ -26,15 +34,19 @@ De1984 is a firewall and package manager for Android devices.
 <b>REQUIREMENTS</b>
 
 - Android 8.0 (API 26) or higher
-- Shizuku or root access optional (required for package management features)
-- VPN permission (for firewall functionality)
+- For iptables firewall: Root or Shizuku access
+- For ConnectivityManager firewall: Android 13+ (no root required)
+- For VPN firewall: VPN permission (no root required, works on all Android versions)
+- For package management: Shizuku or root access
 
 <b>PERMISSIONS</b>
 
-- ACCESS_NETWORK_STATE: Monitor network connectivity
-- BIND_VPN_SERVICE: Create local VPN for firewall
-- QUERY_ALL_PACKAGES: View installed apps (optional)
-- Shizuku or root access: For advanced package management (optional)
+- ACCESS_NETWORK_STATE: Monitor network connectivity for automatic rule application
+- BIND_VPN_SERVICE: Create local VPN for VPN-based firewall backend
+- QUERY_ALL_PACKAGES: View all installed apps
+- POST_NOTIFICATIONS: Show notifications for new app installations (optional)
+- RECEIVE_BOOT_COMPLETED: Auto-start firewall on device boot
+- Shizuku or root access: For iptables firewall and package management (optional)
 
 <b>OPEN SOURCE</b>
 

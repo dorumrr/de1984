@@ -42,50 +42,40 @@
 ### De1984-Specific Implementation:
 
 **What Must Be Constants**:
-- ✅ Spacing/padding values: `16dp`, `24dp` → `Constants.UI.SPACING_STANDARD`, `SPACING_LARGE`
 - ✅ Package types: `"system"`, `"user"` → `Constants.Packages.TYPE_SYSTEM`, `TYPE_USER`
 - ✅ Package states: `"Enabled"`, `"Disabled"` → `Constants.Packages.STATE_ENABLED`, `STATE_DISABLED`
-- ✅ Icon sizes: `24dp`, `32dp` → `Constants.UI.ICON_SIZE_SMALL`, `ICON_SIZE_MEDIUM`
-- ✅ UI dimensions: Bottom sheet radius, drag handles, borders
-- ✅ Text sizes: `16sp`, `14sp` → `Constants.UI.TEXT_SIZE_BODY`, `TEXT_SIZE_CAPTION`
+- ✅ Settings keys and values: `"firewall_enabled"`, `"block_all"` → `Constants.Settings.*`
+- ✅ Firewall states: `"Blocked"`, `"Allowed"` → `Constants.Firewall.STATE_BLOCKED`, `STATE_ALLOWED`
+- ✅ Dialog text: Titles, messages, button labels → `Constants.UI.Dialogs.*`
 
 **What Can Be Contextual** (Not constants):
-- ❌ Layout-specific margins in XML that aren't reused
-- ❌ One-off padding values unique to a single view
-- ❌ Component-specific sizes that aren't reused elsewhere
+- ❌ Layout-specific margins/padding in XML that aren't reused in Kotlin code
+- ❌ One-off dimension values unique to a single view
+- ❌ Component-specific sizes defined directly in XML
 
-**Rule of Thumb**: If a value appears 2+ times or has semantic meaning, make it a constant.
+**Rule of Thumb**: If a value is used in Kotlin code (not just XML), make it a constant. XML layouts use hardcoded dp values directly.
 
 ```kotlin
-// ❌ BAD: Repeated magic numbers in XML layouts
-<!-- item_package.xml -->
-<TextView
-    android:layout_marginStart="16dp"
-    android:textSize="16sp" />
-
-<!-- item_network_package.xml -->
-<TextView
-    android:layout_marginStart="16dp"
-    android:textSize="16sp" />
+// ❌ BAD: Magic strings repeated in code
+fun updatePackageState(state: String) {
+    if (state == "Enabled") { /* ... */ }
+}
 
 // ✅ GOOD: Centralized constants (De1984 example)
 object Constants {
-    object UI {
-        const val SPACING_STANDARD = 16  // dp
-        const val TEXT_SIZE_BODY = 16    // sp
+    object Packages {
+        const val STATE_ENABLED = "Enabled"
+        const val STATE_DISABLED = "Disabled"
     }
 }
 
 // Use in code:
-binding.textView.apply {
-    setPadding(Constants.UI.SPACING_STANDARD.dp, 0, 0, 0)
-    textSize = Constants.UI.TEXT_SIZE_BODY.toFloat()
+fun updatePackageState(state: String) {
+    if (state == Constants.Packages.STATE_ENABLED) { /* ... */ }
 }
-
-// Or reference in XML via dimens.xml:
-<dimen name="spacing_standard">16dp</dimen>
-<dimen name="text_size_body">16sp</dimen>
 ```
+
+**Note**: De1984 uses hardcoded dp values directly in XML layouts. Constants are only created for values used in Kotlin code.
 
 ## 🔧 KISS (Keep It Simple, Stupid)
 
@@ -688,53 +678,26 @@ fun getFiltered(filter: String): Flow<List<Package>> {
 ```kotlin
 object Constants {
     object UI {
-        // Spacing (8dp grid system) - use in code, reference in XML via dimens.xml
-        const val SPACING_EXTRA_TINY = 2  // dp
-        const val SPACING_TINY = 4         // dp
-        const val SPACING_SMALL = 8        // dp
-        const val SPACING_MEDIUM = 12      // dp
-        const val SPACING_STANDARD = 16    // dp
-        const val SPACING_LARGE = 24       // dp
+        // Bottom Navigation (used in MainActivity.kt for custom spacing)
+        const val BOTTOM_NAV_ICON_SIZE_ENLARGED = 27.5f
+        const val BOTTOM_NAV_PADDING_TOP = 12
+        const val BOTTOM_NAV_PADDING_BOTTOM = 3
+        const val BOTTOM_NAV_TEXT_TRANSLATION_Y = -2
 
-        // Elevation
-        const val ELEVATION_CARD = 2       // dp
-        const val ELEVATION_SURFACE = 4    // dp
+        object Dialogs {
+            const val FIREWALL_START_TITLE = "Start De1984 Firewall?"
+            const val FIREWALL_START_MESSAGE = "Welcome to De1984! Would you like to start the firewall now to protect your privacy?"
+            const val FIREWALL_START_CONFIRM = "Start Firewall"
+            const val FIREWALL_START_SKIP = "Later"
 
-        // Corner radius
-        const val CORNER_RADIUS_STANDARD = 12 // dp
+            const val POLICY_CHANGE_TITLE = "Change Default Policy?"
+            const val POLICY_CHANGE_CONFIRM = "Change Policy"
+            const val POLICY_CHANGE_CANCEL = "Cancel"
 
-        // Icon sizes
-        const val ICON_SIZE_TINY = 16      // dp
-        const val ICON_SIZE_SMALL = 24     // dp
-        const val ICON_SIZE_MEDIUM = 32    // dp
-        const val ICON_SIZE_LARGE = 40     // dp
-        const val ICON_SIZE_EXTRA_LARGE = 60 // dp
-
-        // Bottom sheet
-        const val BOTTOM_SHEET_CORNER_RADIUS = 28 // dp
-        const val DRAG_HANDLE_WIDTH = 32          // dp
-        const val DRAG_HANDLE_HEIGHT = 4          // dp
-
-        // Borders
-        const val BORDER_WIDTH_THIN = 1 // dp
-
-        // Alpha values
-        const val ALPHA_FULL = 1f
-        const val ALPHA_DISABLED = 0.6f
-    }
-
-    object Packages {
-        // Package types (lowercase for consistency)
-        const val TYPE_SYSTEM = "system"
-        const val TYPE_USER = "user"
-
-        // Package states
-        const val STATE_ENABLED = "Enabled"
-        const val STATE_DISABLED = "Disabled"
-
-        // Filters
-        val PACKAGE_TYPE_FILTERS = listOf("User", "System")
-        val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled")
+            const val VPN_WARNING_EMOJI = "⚠️"
+            const val VPN_WARNING_TITLE = "WARNING: A VPN is currently active!"
+            const val VPN_WARNING_MESSAGE = "Please allow your VPN app in the firewall to avoid connectivity issues."
+        }
     }
 
     object App {
@@ -747,59 +710,169 @@ object Constants {
         }
     }
 
+    object Packages {
+        const val TYPE_SYSTEM = "system"
+        const val TYPE_USER = "user"
+        const val STATE_ENABLED = "Enabled"
+        const val STATE_DISABLED = "Disabled"
+
+        val PACKAGE_TYPE_FILTERS = listOf("User", "System")
+        val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled")
+
+        const val ANDROID_PACKAGE_PREFIX = "com.android"
+        const val GOOGLE_PACKAGE_PREFIX = "com.google"
+        const val SYSTEM_PACKAGE_PREFIX = "android"
+    }
+
     object Settings {
         const val PREFS_NAME = "de1984_prefs"
         const val KEY_SHOW_APP_ICONS = "show_app_icons"
         const val KEY_DEFAULT_FIREWALL_POLICY = "default_firewall_policy"
         const val KEY_FIREWALL_ENABLED = "firewall_enabled"
-        // ... other settings constants
+        const val KEY_VPN_SERVICE_RUNNING = "vpn_service_running"
+        const val KEY_NEW_APP_NOTIFICATIONS = "new_app_notifications"
+        const val KEY_FIREWALL_MODE = "firewall_mode"
+
+        const val POLICY_BLOCK_ALL = "block_all"
+        const val POLICY_ALLOW_ALL = "allow_all"
+
+        const val MODE_AUTO = "auto"
+        const val MODE_VPN = "vpn"
+        const val MODE_IPTABLES = "iptables"
+
+        const val DEFAULT_SHOW_APP_ICONS = true
+        const val DEFAULT_FIREWALL_POLICY = POLICY_ALLOW_ALL
+        const val DEFAULT_FIREWALL_ENABLED = false
+        const val DEFAULT_NEW_APP_NOTIFICATIONS = true
+        const val DEFAULT_FIREWALL_MODE = MODE_AUTO
+    }
+
+    object Permissions {
+        const val QUERY_ALL_PACKAGES_PERMISSION = "android.permission.QUERY_ALL_PACKAGES"
+        const val WRITE_SECURE_SETTINGS_PERMISSION = "android.permission.WRITE_SECURE_SETTINGS"
+        const val CHANGE_COMPONENT_ENABLED_STATE_PERMISSION = "android.permission.CHANGE_COMPONENT_ENABLED_STATE"
+        const val KILL_BACKGROUND_PROCESSES_PERMISSION = "android.permission.KILL_BACKGROUND_PROCESSES"
+        const val REQUEST_DELETE_PACKAGES_PERMISSION = "android.permission.REQUEST_DELETE_PACKAGES"
+    }
+
+    object RootAccess {
+        const val STATUS_GRANTED = "Root Access: Granted"
+        const val STATUS_DENIED = "Root Access: Denied"
+        const val STATUS_NOT_AVAILABLE = "Root Access: Not Available"
+        const val STATUS_CHECKING = "Root Access: Checking..."
+
+        const val DESC_GRANTED = "Advanced operations are available"
+        const val DESC_DENIED = "Root permission was denied. Follow the instructions below to grant access."
+        const val DESC_NOT_AVAILABLE = "Your device is not rooted. Root access is required for advanced package management operations."
+        const val DESC_CHECKING = "Please wait..."
+
+        const val GRANT_INSTRUCTIONS_TITLE = "To grant root access:"
+        const val GRANT_INSTRUCTIONS_BODY = "• Reinstall the app to trigger the permission dialog again\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)"
+
+        const val ROOTING_TOOLS_TITLE = "<b>Recommended rooting tools:</b>"
+        const val ROOTING_TOOLS_BODY = "• Magisk - Most popular and widely supported root solution. Works on Android 5.0+ and supports modules for additional features.\n• KernelSU - Modern kernel-based root management. Provides better security isolation and doesn't modify system partition.\n• APatch - Newer alternative with kernel patching approach. Good for devices with strict security policies."
+
+        const val SETUP_INSTRUCTIONS = """To enable package disable/enable functionality:
+
+1. Root your device using your preferred method
+2. Grant superuser access to De1984 when prompted
+3. Restart the app to use advanced operations"""
+    }
+
+    object ShizukuAccess {
+        const val STATUS_GRANTED = "Shizuku: Granted"
+        const val STATUS_DENIED = "Shizuku: Denied"
+        const val STATUS_NOT_AVAILABLE = "Shizuku: Not Installed"
+        const val STATUS_NOT_RUNNING = "Shizuku: Not Running"
+        const val STATUS_CHECKING = "Shizuku: Checking..."
+
+        const val DESC_GRANTED = "Advanced operations are available via Shizuku"
+        const val DESC_DENIED = "Shizuku permission was denied. Tap 'Grant Shizuku Permission' to try again."
+        const val DESC_NOT_AVAILABLE = "Shizuku is not installed. Install Shizuku to enable package management without root."
+        const val DESC_NOT_RUNNING = "Shizuku is installed but not running. Start Shizuku to enable package management."
+        const val DESC_CHECKING = "Please wait..."
+
+        const val WHAT_IS_SHIZUKU = "Shizuku allows apps to use system APIs with elevated privileges (ADB or root). It's a safer alternative to traditional root access for package management."
     }
 
     object Firewall {
         const val STATE_BLOCKED = "Blocked"
         const val STATE_ALLOWED = "Allowed"
+
+        val PACKAGE_TYPE_FILTERS = listOf("User", "System")
         val NETWORK_STATE_FILTERS = listOf("Allowed", "Blocked")
-        // ... other firewall constants
+
+        val NETWORK_PERMISSIONS = listOf(
+            "android.permission.INTERNET",
+            "android.permission.ACCESS_NETWORK_STATE",
+            "android.permission.ACCESS_WIFI_STATE",
+            "android.permission.CHANGE_NETWORK_STATE",
+            "android.permission.CHANGE_WIFI_STATE"
+        )
+
+        const val SYSTEM_PACKAGE_WARNING = "⚠️ System Package Warning"
+    }
+
+    object Navigation {
+        const val DESTINATION_FIREWALL = "firewall"
+        const val DESTINATION_PACKAGES = "packages"
+        const val DESTINATION_SETTINGS = "settings"
+
+        const val LABEL_FIREWALL = "Firewall"
+        const val LABEL_PACKAGES = "Packages"
+        const val LABEL_SETTINGS = "Settings"
+
+        const val TITLE_FIREWALL = "De1984 FIREWALL"
+        const val TITLE_PACKAGES = "De1984 PACKAGES"
+        const val TITLE_SETTINGS = "De1984 SETTINGS"
+    }
+
+    object PrivilegedAccessBanner {
+        const val MESSAGE_NO_ACCESS_AVAILABLE = "No privileged access available. Install Shizuku or root your device to enable package management."
+        const val MESSAGE_SHIZUKU_NOT_RUNNING = "Shizuku is installed but not running. Start Shizuku or root your device to enable package management."
+        const val MESSAGE_PERMISSION_REQUIRED = "Shizuku or root access required for package management"
+
+        const val BUTTON_GO_TO_SETTINGS = "Go to Settings"
+        const val BUTTON_GRANT = "Grant"
+        const val BUTTON_DISMISS = "Dismiss"
     }
 }
 ```
 
-**Usage in Kotlin Code**:
+**Usage Examples**:
 ```kotlin
-// Use constants when setting dimensions programmatically
-binding.textView.apply {
-    setPadding(
-        Constants.UI.SPACING_STANDARD.dpToPx(context),
-        Constants.UI.SPACING_SMALL.dpToPx(context),
-        Constants.UI.SPACING_STANDARD.dpToPx(context),
-        Constants.UI.SPACING_SMALL.dpToPx(context)
-    )
+// Package state comparison
+if (pkg.isEnabled) {
+    binding.enabledBadge.text = Constants.Packages.STATE_ENABLED
+} else {
+    binding.enabledBadge.text = Constants.Packages.STATE_DISABLED
 }
 
-// Or use extension functions
-binding.icon.layoutParams.width = Constants.UI.ICON_SIZE_MEDIUM.dp
-binding.icon.layoutParams.height = Constants.UI.ICON_SIZE_MEDIUM.dp
+// Settings access
+val policy = sharedPrefs.getString(
+    Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
+    Constants.Settings.DEFAULT_FIREWALL_POLICY
+)
+
+// Dialog text
+StandardDialog.show(
+    context = context,
+    title = Constants.UI.Dialogs.FIREWALL_START_TITLE,
+    message = Constants.UI.Dialogs.FIREWALL_START_MESSAGE,
+    positiveButtonText = Constants.UI.Dialogs.FIREWALL_START_CONFIRM,
+    negativeButtonText = Constants.UI.Dialogs.FIREWALL_START_SKIP
+)
+
+// Bottom navigation customization (MainActivity.kt)
+view.setPadding(
+    view.paddingLeft,
+    (Constants.UI.BOTTOM_NAV_PADDING_TOP * density).toInt(),
+    view.paddingRight,
+    (Constants.UI.BOTTOM_NAV_PADDING_BOTTOM * density).toInt()
+)
 ```
 
-**Usage in XML Layouts**:
-```xml
-<!-- Current practice: Direct dp values in XML -->
-<!-- For consistency, use the same values as defined in Constants.kt -->
-<com.google.android.material.card.MaterialCardView
-    android:layout_marginStart="12dp"
-    android:layout_marginEnd="12dp"
-    android:layout_marginTop="4dp"
-    android:layout_marginBottom="4dp"
-    app:cardElevation="2dp"
-    app:cardCornerRadius="12dp">
-
-    <ImageView
-        android:layout_width="48dp"
-        android:layout_height="48dp" />
-</com.google.android.material.card.MaterialCardView>
-```
-
-**Note**: XML layouts use hardcoded dp values. Constants.kt serves as the single source of truth for these values when used in Kotlin code.
+**Note**: XML layouts use hardcoded dp values directly. Constants are only created for values used in Kotlin code.
 
 **Adding New Constants**:
 1. Determine the appropriate category (UI, Packages, App, etc.)

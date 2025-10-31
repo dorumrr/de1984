@@ -36,8 +36,6 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES"
         tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.GET_TASKS"
-        tools:ignore="ProtectedPermissions" />
 
     <!-- Root access (when available) -->
     <uses-permission android:name="android.permission.ACCESS_SUPERUSER"

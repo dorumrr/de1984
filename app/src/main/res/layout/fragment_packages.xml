@@ -57,13 +57,13 @@
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/search_input"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="41dp"
             android:hint="Search..."
             android:inputType="text"
             android:maxLines="1"
             android:textSize="14sp"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
             android:imeOptions="actionSearch" />
 
     </com.google.android.material.textfield.TextInputLayout>

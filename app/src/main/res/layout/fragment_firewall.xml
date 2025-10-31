@@ -17,7 +17,7 @@
         android:clipToPadding="false"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingTop="8dp"
+        android:paddingTop="2dp"
         android:paddingBottom="0dp">
 
         <com.google.android.material.chip.ChipGroup

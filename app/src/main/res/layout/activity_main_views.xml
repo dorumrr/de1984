@@ -42,60 +42,50 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp">
 
-                <!-- Logo + Title Group -->
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginStart="0dp">
-
-                    <!-- App Logo -->
-                    <ImageView
-                        android:id="@+id/app_logo"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_marginEnd="4dp"
-                        android:src="@drawable/de1984_logo"
-                        android:contentDescription="De1984 Logo" />
-
-                    <!-- Title -->
-                    <TextView
-                        android:id="@+id/toolbar_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="De1984 • Firewall"
-                        android:textColor="@color/text_white"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <!-- Toolbar Icon (Shield) - only visible on Firewall tab -->
-                    <ImageView
-                        android:id="@+id/toolbar_icon"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_marginStart="8dp"
-                        android:src="@drawable/ic_shield"
-                        android:contentDescription="Firewall Icon"
-                        android:visibility="gone"
-                        app:tint="@color/white" />
-
-                </LinearLayout>
-
-                <!-- Spacer to push switch to the right -->
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
-
-                <!-- Status Badge + Switch Group -->
+                <!-- Left: Logo + "De1984" -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- ACTIVE Badge (visible when firewall is on, before switch) -->
+                    <!-- App Logo -->
+                    <ImageView
+                        android:id="@+id/app_logo"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_marginEnd="8dp"
+                        android:src="@drawable/de1984_logo"
+                        android:contentDescription="De1984 Logo" />
+
+                    <!-- App Name -->
+                    <TextView
+                        android:id="@+id/app_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="De1984"
+                        android:textColor="@color/text_white"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <!-- Spacer -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Center: Status Badge + Switch (Firewall only) -->
+                <LinearLayout
+                    android:id="@+id/firewall_toggle_group"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone">
+
+                    <!-- ACTIVE Badge -->
                     <TextView
                         android:id="@+id/firewall_active_badge"
                         android:layout_width="wrap_content"
@@ -112,7 +102,7 @@
                         android:background="@drawable/status_badge_active"
                         android:visibility="gone" />
 
-                    <!-- OFF Badge (visible when firewall is off, before switch) -->
+                    <!-- OFF Badge -->
                     <TextView
                         android:id="@+id/firewall_off_badge"
                         android:layout_width="wrap_content"
@@ -140,6 +130,36 @@
                         app:trackDecorationTint="@android:color/transparent" />
 
                 </LinearLayout>
+
+                <!-- Spacer -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Right: Section Name -->
+                <TextView
+                    android:id="@+id/toolbar_section_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="FIREWALL"
+                    android:textColor="@color/text_white"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <!-- Toolbar Icon (unused, kept for compatibility) -->
+                <ImageView
+                    android:id="@+id/toolbar_icon"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
+
+                <!-- Toolbar Title (unused, kept for compatibility) -->
+                <TextView
+                    android:id="@+id/toolbar_title"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
 
             </LinearLayout>
 

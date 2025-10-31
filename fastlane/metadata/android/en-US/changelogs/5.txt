@@ -1,0 +1,4 @@
+De1984 v2.1.0
+
+• Backup/Restore: Export and import your firewall rules
+• Internet Only filter: View only apps with INTERNET permission

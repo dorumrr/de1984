@@ -179,27 +179,24 @@ class FirewallViewModel(
             if (blocked) {
                 // Optimistically update both mobile and roaming
                 updatePackageInList(packageName) { pkg ->
-                    pkg.copy(mobileBlocked = blocked, roamingBlocked = true)
+                    pkg.copy(mobileBlocked = true, roamingBlocked = true)
                 }
 
-                // Persist both changes atomically - both must succeed or both fail
-                val mobileResult = manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked)
-                val roamingResult = manageNetworkAccessUseCase.setRoamingBlocking(packageName, true)
-
-                // Check if both operations succeeded
-                if (mobileResult.isSuccess && roamingResult.isSuccess) {
-                    // Both succeeded - optimistic update already applied, no need to reload
-                } else {
-                    // At least one failed - revert by reloading
-                    loadNetworkPackages()
-                    val error = mobileResult.exceptionOrNull() ?: roamingResult.exceptionOrNull()
-                    if (error != null && superuserBannerState.shouldShowBannerForError(error)) {
-                        superuserBannerState.showSuperuserRequiredBanner()
+                // Persist with atomic batch update - only one database transaction, only one notification
+                manageNetworkAccessUseCase.setMobileAndRoaming(packageName, mobileBlocked = true, roamingBlocked = true)
+                    .onSuccess {
+                        // Success - optimistic update already applied, no need to reload
                     }
-                    _uiState.value = _uiState.value.copy(
-                        error = "Failed to block mobile data: ${error?.message ?: "Unknown error"}"
-                    )
-                }
+                    .onFailure { error ->
+                        // Revert on failure by reloading
+                        loadNetworkPackages()
+                        if (superuserBannerState.shouldShowBannerForError(error)) {
+                            superuserBannerState.showSuperuserRequiredBanner()
+                        }
+                        _uiState.value = _uiState.value.copy(
+                            error = "Failed to block mobile data: ${error.message ?: "Unknown error"}"
+                        )
+                    }
             } else {
                 // Mobile is being enabled - only update mobile, leave roaming as is
                 updatePackageInList(packageName) { pkg ->
@@ -229,27 +226,24 @@ class FirewallViewModel(
             if (!blocked) {
                 // Optimistically update both roaming and mobile
                 updatePackageInList(packageName) { pkg ->
-                    pkg.copy(roamingBlocked = blocked, mobileBlocked = false)
+                    pkg.copy(roamingBlocked = false, mobileBlocked = false)
                 }
 
-                // Persist both changes atomically - both must succeed or both fail
-                val roamingResult = manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
-                val mobileResult = manageNetworkAccessUseCase.setMobileBlocking(packageName, false)
-
-                // Check if both operations succeeded
-                if (roamingResult.isSuccess && mobileResult.isSuccess) {
-                    // Both succeeded - optimistic update already applied, no need to reload
-                } else {
-                    // At least one failed - revert by reloading
-                    loadNetworkPackages()
-                    val error = roamingResult.exceptionOrNull() ?: mobileResult.exceptionOrNull()
-                    if (error != null && superuserBannerState.shouldShowBannerForError(error)) {
-                        superuserBannerState.showSuperuserRequiredBanner()
+                // Persist with atomic batch update - only one database transaction, only one notification
+                manageNetworkAccessUseCase.setMobileAndRoaming(packageName, mobileBlocked = false, roamingBlocked = false)
+                    .onSuccess {
+                        // Success - optimistic update already applied, no need to reload
                     }
-                    _uiState.value = _uiState.value.copy(
-                        error = "Failed to unblock roaming: ${error?.message ?: "Unknown error"}"
-                    )
-                }
+                    .onFailure { error ->
+                        // Revert on failure by reloading
+                        loadNetworkPackages()
+                        if (superuserBannerState.shouldShowBannerForError(error)) {
+                            superuserBannerState.showSuperuserRequiredBanner()
+                        }
+                        _uiState.value = _uiState.value.copy(
+                            error = "Failed to unblock roaming: ${error.message ?: "Unknown error"}"
+                        )
+                    }
             } else {
                 // Roaming is being disabled - only update roaming, leave mobile as is
                 updatePackageInList(packageName) { pkg ->
@@ -270,6 +264,33 @@ class FirewallViewModel(
                         _uiState.value = _uiState.value.copy(error = error.message)
                     }
             }
+        }
+    }
+
+    fun setAllNetworkBlocking(packageName: String, blocked: Boolean) {
+        viewModelScope.launch {
+            // Optimistically update all network types at once
+            updatePackageInList(packageName) { pkg ->
+                pkg.copy(
+                    wifiBlocked = blocked,
+                    mobileBlocked = blocked,
+                    roamingBlocked = blocked
+                )
+            }
+
+            // Persist with atomic batch update - only one database transaction, only one notification
+            manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, blocked)
+                .onSuccess {
+                    // Success - optimistic update already applied, no need to reload
+                }
+                .onFailure { error ->
+                    // Revert on failure by reloading
+                    loadNetworkPackages()
+                    if (superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
+                    }
+                    _uiState.value = _uiState.value.copy(error = error.message)
+                }
         }
     }
 

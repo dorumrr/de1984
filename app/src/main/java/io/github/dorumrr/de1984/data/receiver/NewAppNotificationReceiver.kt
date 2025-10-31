@@ -76,11 +76,10 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
     
     private suspend fun handleBlockAll(context: Context, packageName: String, manageNetworkAccessUseCase: ManageNetworkAccessUseCase) {
         try {
-            val wifiResult = manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked = true)
-            val mobileResult = manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked = true)
-            val roamingResult = manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked = true)
+            // Use atomic batch update to prevent race conditions
+            val result = manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, blocked = true)
 
-            if (wifiResult.isSuccess && mobileResult.isSuccess && roamingResult.isSuccess) {
+            if (result.isSuccess) {
                 checkFirewallAndRedirect(context)
             }
 
@@ -115,11 +114,10 @@ class NewAppNotificationReceiver : BroadcastReceiver() {
     
     private suspend fun handleAllowAll(context: Context, packageName: String, manageNetworkAccessUseCase: ManageNetworkAccessUseCase) {
         try {
-            val wifiResult = manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked = false)
-            val mobileResult = manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked = false)
-            val roamingResult = manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked = false)
+            // Use atomic batch update to prevent race conditions
+            val result = manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, blocked = false)
 
-            if (wifiResult.isSuccess && mobileResult.isSuccess && roamingResult.isSuccess) {
+            if (result.isSuccess) {
                 checkFirewallAndRedirect(context)
             }
 

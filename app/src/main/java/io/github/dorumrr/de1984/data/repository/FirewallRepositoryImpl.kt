@@ -128,5 +128,15 @@ class FirewallRepositoryImpl(
         firewallRuleDao.updateRoamingBlocking(packageName, blocked)
         notifyRulesChanged()
     }
+
+    override suspend fun updateAllNetworkBlocking(packageName: String, blocked: Boolean) {
+        firewallRuleDao.updateAllNetworkBlocking(packageName, blocked)
+        notifyRulesChanged()
+    }
+
+    override suspend fun updateMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean) {
+        firewallRuleDao.updateMobileAndRoaming(packageName, mobileBlocked, roamingBlocked)
+        notifyRulesChanged()
+    }
 }
 

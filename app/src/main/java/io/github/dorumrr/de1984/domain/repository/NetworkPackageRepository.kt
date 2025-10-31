@@ -28,4 +28,8 @@ interface NetworkPackageRepository {
     suspend fun setMobileBlocking(packageName: String, blocked: Boolean): Result<Unit>
 
     suspend fun setRoamingBlocking(packageName: String, blocked: Boolean): Result<Unit>
+
+    suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Result<Unit>
+
+    suspend fun setMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean): Result<Unit>
 }

@@ -519,10 +519,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 
-                // Block/unblock ALL networks at once
-                viewModel.setWifiBlocking(pkg.packageName, blocked)
-                viewModel.setMobileBlocking(pkg.packageName, blocked)
-                viewModel.setRoamingBlocking(pkg.packageName, blocked)
+                // Block/unblock ALL networks at once atomically - prevents race conditions
+                viewModel.setAllNetworkBlocking(pkg.packageName, blocked)
             }
         )
 

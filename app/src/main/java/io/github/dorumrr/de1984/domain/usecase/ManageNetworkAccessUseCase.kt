@@ -25,4 +25,12 @@ class ManageNetworkAccessUseCase constructor(
     suspend fun setRoamingBlocking(packageName: String, blocked: Boolean): Result<Unit> {
         return networkPackageRepository.setRoamingBlocking(packageName, blocked)
     }
+
+    suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+        return networkPackageRepository.setAllNetworkBlocking(packageName, blocked)
+    }
+
+    suspend fun setMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean): Result<Unit> {
+        return networkPackageRepository.setMobileAndRoaming(packageName, mobileBlocked, roamingBlocked)
+    }
 }

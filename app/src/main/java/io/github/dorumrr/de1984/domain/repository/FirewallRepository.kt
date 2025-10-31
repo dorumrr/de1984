@@ -39,5 +39,11 @@ interface FirewallRepository {
     suspend fun updateMobileBlocking(packageName: String, blocked: Boolean)
 
     suspend fun updateRoamingBlocking(packageName: String, blocked: Boolean)
+
+    // Atomic batch update for all network types - prevents race conditions when toggling all networks at once
+    suspend fun updateAllNetworkBlocking(packageName: String, blocked: Boolean)
+
+    // Atomic batch update for mobile+roaming dependency - prevents race conditions when enforcing business rule
+    suspend fun updateMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean)
 }
 

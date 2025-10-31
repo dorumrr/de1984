@@ -569,4 +569,83 @@ class AndroidPackageDataSource(
             }
         }
     }
+
+    override suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Boolean {
+        if (Constants.App.isOwnApp(packageName)) {
+            return false
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                val existingRule = firewallRepository.getRuleByPackage(packageName).first()
+
+                if (existingRule != null) {
+                    // Use atomic batch update to prevent race conditions
+                    firewallRepository.updateAllNetworkBlocking(packageName, blocked)
+                } else {
+                    // Create new rule with all networks set to the same blocking state
+                    val rule = FirewallRule(
+                        packageName = packageName,
+                        uid = appInfo.uid,
+                        appName = getAppName(appInfo),
+                        wifiBlocked = blocked,
+                        mobileBlocked = blocked,
+                        blockWhenRoaming = blocked,
+                        enabled = true,
+                        isSystemApp = isSystemApp(appInfo),
+                        hasInternetPermission = hasNetworkPermissions(packageName)
+                    )
+                    firewallRepository.insertRule(rule)
+                }
+
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
+    override suspend fun setMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean): Boolean {
+        if (Constants.App.isOwnApp(packageName)) {
+            return false
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                val existingRule = firewallRepository.getRuleByPackage(packageName).first()
+
+                if (existingRule != null) {
+                    // Use atomic batch update to prevent race conditions
+                    firewallRepository.updateMobileAndRoaming(packageName, mobileBlocked, roamingBlocked)
+                } else {
+                    // Create new rule - inherit default policy for WiFi
+                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                    val defaultPolicy = prefs.getString(
+                        Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
+                        Constants.Settings.DEFAULT_FIREWALL_POLICY
+                    )
+                    val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
+
+                    val rule = FirewallRule(
+                        packageName = packageName,
+                        uid = appInfo.uid,
+                        appName = getAppName(appInfo),
+                        wifiBlocked = isBlockAllDefault,
+                        mobileBlocked = mobileBlocked,
+                        blockWhenRoaming = roamingBlocked,
+                        enabled = true,
+                        isSystemApp = isSystemApp(appInfo),
+                        hasInternetPermission = hasNetworkPermissions(packageName)
+                    )
+                    firewallRepository.insertRule(rule)
+                }
+
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
 }

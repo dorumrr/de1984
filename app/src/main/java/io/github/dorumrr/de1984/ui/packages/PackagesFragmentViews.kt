@@ -131,8 +131,10 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             chipGroup = binding.filterChips,
             typeFilters = packageTypeFilters,
             stateFilters = packageStateFilters,
+            permissionFilters = emptyList(),  // No permission filters in Packages screen
             selectedTypeFilter = currentTypeFilter,
             selectedStateFilter = currentStateFilter,
+            selectedPermissionFilter = false,  // Not used in Packages screen
             onTypeFilterSelected = { filter ->
                 // Only trigger if different from current
                 if (filter != currentTypeFilter) {
@@ -148,6 +150,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     currentStateFilter = filter
                     viewModel.setPackageStateFilter(filter)
                 }
+            },
+            onPermissionFilterSelected = { _ ->
+                // Not used in Packages screen
             }
         )
     }
@@ -235,7 +240,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         FilterChipsHelper.updateMultiSelectFilterChips(
             chipGroup = binding.filterChips,
             selectedTypeFilter = packageTypeFilter,
-            selectedStateFilter = packageStateFilter
+            selectedStateFilter = packageStateFilter,
+            selectedPermissionFilter = false  // Not used in Packages screen
         )
     }
 

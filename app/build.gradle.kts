@@ -5,6 +5,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.20"
 }
 
 // Load keystore.properties if it exists (standard Android approach)
@@ -169,4 +170,7 @@ dependencies {
     // Shizuku
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
+
+    // JSON serialization for backup/restore
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }

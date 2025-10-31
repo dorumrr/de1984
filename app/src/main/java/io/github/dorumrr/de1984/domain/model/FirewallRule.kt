@@ -1,5 +1,8 @@
 package io.github.dorumrr.de1984.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class FirewallRule(
     val packageName: String,
     val uid: Int,

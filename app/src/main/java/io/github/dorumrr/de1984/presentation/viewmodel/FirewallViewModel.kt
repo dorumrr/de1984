@@ -131,7 +131,8 @@ class FirewallViewModel(
     fun setPackageTypeFilter(packageType: String) {
         val newFilterState = FirewallFilterState(
             packageType = packageType,
-            networkState = null
+            networkState = null,
+            internetOnly = false  // Reset Internet Only when switching User/System
         )
         // Store filter in pending state - DO NOT update StateFlow yet
         pendingFilterState = newFilterState
@@ -142,7 +143,23 @@ class FirewallViewModel(
 
     fun setNetworkStateFilter(networkState: String?) {
         val currentFilterState = _uiState.value.filterState
-        val newFilterState = currentFilterState.copy(networkState = networkState)
+        val newFilterState = currentFilterState.copy(
+            networkState = networkState
+            // internetOnly is preserved when switching Allowed/Blocked
+        )
+        // Store filter in pending state - DO NOT update StateFlow yet
+        pendingFilterState = newFilterState
+
+        // Load packages will emit the state with correct data
+        loadNetworkPackages()
+    }
+
+    fun setInternetOnlyFilter(internetOnly: Boolean) {
+        val currentFilterState = _uiState.value.filterState
+        val newFilterState = currentFilterState.copy(
+            internetOnly = internetOnly
+            // networkState and packageType are preserved
+        )
         // Store filter in pending state - DO NOT update StateFlow yet
         pendingFilterState = newFilterState
 

@@ -42,13 +42,15 @@ class GetNetworkPackagesUseCase constructor(
     }
 
     fun getFilteredByState(filterState: FirewallFilterState): Flow<List<NetworkPackage>> {
+        // Step 1: Apply package type filter (User or System)
         val baseFlow = when (filterState.packageType.lowercase()) {
             "user" -> getByType(PackageType.USER)
             "system" -> getByType(PackageType.SYSTEM)
             else -> getByType(PackageType.USER)
         }
 
-        return if (filterState.networkState != null) {
+        // Step 2: Apply network state filter (Allowed or Blocked) if selected
+        val stateFilteredFlow = if (filterState.networkState != null) {
             baseFlow.map { packages ->
                 when (filterState.networkState.lowercase()) {
                     // "Allowed" filter: Show apps that are allowed on ANY network
@@ -66,6 +68,15 @@ class GetNetworkPackagesUseCase constructor(
             }
         } else {
             baseFlow
+        }
+
+        // Step 3: Apply Internet Only permission filter if enabled
+        return if (filterState.internetOnly) {
+            stateFilteredFlow.map { packages ->
+                packages.filter { pkg -> pkg.hasInternetPermission }
+            }
+        } else {
+            stateFilteredFlow
         }
     }
     

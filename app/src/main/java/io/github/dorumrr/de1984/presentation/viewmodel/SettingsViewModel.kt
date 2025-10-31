@@ -2,6 +2,7 @@ package io.github.dorumrr.de1984.presentation.viewmodel
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -17,15 +18,23 @@ import io.github.dorumrr.de1984.data.firewall.FirewallManager
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
+import io.github.dorumrr.de1984.domain.model.FirewallRulesBackup
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
-
 import io.github.dorumrr.de1984.utils.Constants
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class SettingsViewModel(
     private val context: Context,
@@ -296,6 +305,163 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(message = null)
     }
 
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    /**
+     * Backup firewall rules to a JSON file.
+     */
+    fun backupRules(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null, message = null)
+
+                // Get all rules
+                val rules = firewallRepository.getAllRules().first()
+
+                if (rules.isEmpty()) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "No firewall rules to backup"
+                    )
+                    return@launch
+                }
+
+                // Create backup object
+                val backup = FirewallRulesBackup(
+                    version = 1,
+                    exportDate = System.currentTimeMillis(),
+                    appVersion = BuildConfig.VERSION_NAME,
+                    rulesCount = rules.size,
+                    rules = rules
+                )
+
+                // Serialize to JSON
+                val json = Json.encodeToString(FirewallRulesBackup.serializer(), backup)
+
+                // Write to file
+                writeToUri(uri, json)
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    message = "✅ Backup successful: ${rules.size} rules saved"
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Backup failed", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Backup failed: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Restore firewall rules from a JSON file.
+     * @param uri URI of the backup file
+     * @param replaceExisting If true, delete all existing rules before restoring
+     */
+    fun restoreRules(uri: Uri, replaceExisting: Boolean) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null, message = null)
+
+                // Read JSON from file
+                val json = readFromUri(uri)
+
+                // Parse JSON
+                val backup = Json.decodeFromString<FirewallRulesBackup>(json)
+
+                // Validate version
+                if (backup.version > 1) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Unsupported backup version: ${backup.version}"
+                    )
+                    return@launch
+                }
+
+                // Validate rules
+                if (backup.rules.isEmpty()) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Backup file contains no rules"
+                    )
+                    return@launch
+                }
+
+                // Replace existing rules if requested
+                if (replaceExisting) {
+                    firewallRepository.deleteAllRules()
+                }
+
+                // Insert rules (REPLACE strategy handles duplicates)
+                firewallRepository.insertRules(backup.rules)
+
+                val action = if (replaceExisting) "restored" else "merged"
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    message = "✅ Rules $action successfully: ${backup.rules.size} rules"
+                )
+            } catch (e: SerializationException) {
+                Log.e(TAG, "Invalid backup file format", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Invalid backup file format"
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Restore failed", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Restore failed: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Parse a backup file and return its contents for preview.
+     */
+    suspend fun parseBackupFile(uri: Uri): Result<FirewallRulesBackup> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val json = readFromUri(uri)
+                val backup = Json.decodeFromString<FirewallRulesBackup>(json)
+                Result.success(backup)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse backup file", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Write content to a URI using ContentResolver.
+     */
+    private suspend fun writeToUri(uri: Uri, content: String) = withContext(Dispatchers.IO) {
+        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+            outputStream.write(content.toByteArray())
+        } ?: throw IOException("Failed to open output stream")
+    }
+
+    /**
+     * Read content from a URI using ContentResolver.
+     */
+    private suspend fun readFromUri(uri: Uri): String = withContext(Dispatchers.IO) {
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            inputStream.bufferedReader().readText()
+        } ?: throw IOException("Failed to open input stream")
+    }
+
+    /**
+     * Get current date in yyyy-MM-dd format for backup filenames.
+     */
+    fun getCurrentDate(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        return sdf.format(Date())
+    }
+
     /**
      * One-time cleanup of orphaned update-related preferences.
      * This method removes preferences that are no longer used after update system removal.
@@ -362,6 +528,7 @@ data class SettingsUiState(
 
     val isLoading: Boolean = false,
     val message: String? = null,
+    val error: String? = null,
 
     val hasBasicPermissions: Boolean = true,
     val hasEnhancedPermissions: Boolean = false,

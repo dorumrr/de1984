@@ -36,7 +36,11 @@ import io.github.dorumrr.de1984.ui.base.BaseFragment
 import io.github.dorumrr.de1984.ui.common.StandardDialog
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
 import io.github.dorumrr.de1984.utils.Constants
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Settings Fragment using XML Views
@@ -74,6 +78,20 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     ) { _ ->
         // Refresh permissions when user returns from battery settings
         permissionViewModel.refreshPermissions()
+    }
+
+    // Backup launcher - creates a new JSON file
+    private val backupLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { viewModel.backupRules(it) }
+    }
+
+    // Restore launcher - opens an existing JSON file
+    private val restoreLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { showRestorePreview(it) }
     }
 
     private var lastRootTestTime = 0L
@@ -128,6 +146,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // New app notifications switch
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setNewAppNotifications(isChecked)
+        }
+
+        // Backup rules button
+        binding.backupRulesButton.setOnClickListener {
+            val filename = "de1984-firewall-backup-${viewModel.getCurrentDate()}.json"
+            backupLauncher.launch(filename)
+        }
+
+        // Restore rules button
+        binding.restoreRulesButton.setOnClickListener {
+            restoreLauncher.launch(arrayOf("application/json"))
         }
 
         // Footer (author link) - make only "Doru Moraru" clickable
@@ -205,6 +234,25 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.newAppNotificationsSwitch.isChecked = state.newAppNotifications
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setNewAppNotifications(isChecked)
+        }
+
+        // Show success message (clear immediately to prevent re-showing on every state update)
+        state.message?.let { message ->
+            viewModel.clearMessage()
+            StandardDialog.showInfo(
+                context = requireContext(),
+                title = "Success",
+                message = message
+            )
+        }
+
+        // Show error message (clear immediately to prevent re-showing on every state update)
+        state.error?.let { error ->
+            viewModel.clearError()
+            StandardDialog.showError(
+                context = requireContext(),
+                message = error
+            )
         }
     }
 
@@ -683,6 +731,96 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             data = Uri.fromParts("package", requireContext().packageName, null)
         }
         startActivity(intent)
+    }
+
+    /**
+     * Show restore preview dialog - parses backup file and shows metadata.
+     */
+    private fun showRestorePreview(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // Show loading dialog
+                val loadingDialog = MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Loading Backup...")
+                    .setMessage("Please wait...")
+                    .setCancelable(false)
+                    .create()
+                loadingDialog.show()
+
+                // Parse backup file
+                val result = viewModel.parseBackupFile(uri)
+                loadingDialog.dismiss()
+
+                result.fold(
+                    onSuccess = { backup ->
+                        showRestoreOptions(uri, backup)
+                    },
+                    onFailure = { error ->
+                        StandardDialog.showError(
+                            context = requireContext(),
+                            message = "Failed to read backup file: ${error.message}"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                StandardDialog.showError(
+                    context = requireContext(),
+                    message = "Failed to load backup: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Show restore options dialog with backup preview.
+     */
+    private fun showRestoreOptions(uri: Uri, backup: io.github.dorumrr.de1984.domain.model.FirewallRulesBackup) {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+        val backupDate = dateFormat.format(Date(backup.exportDate))
+
+        val message = """
+            📦 Backup Information:
+
+            • Created: $backupDate
+            • App Version: ${backup.appVersion}
+            • Rules Count: ${backup.rulesCount}
+
+            Choose restore mode:
+
+            • Merge: Keep existing rules and add/update from backup
+            • Replace All: Delete all existing rules first (⚠️ destructive)
+        """.trimIndent()
+
+        StandardDialog.show(
+            context = requireContext(),
+            title = "Restore Firewall Rules?",
+            message = message,
+            positiveButtonText = "Merge",
+            onPositiveClick = {
+                viewModel.restoreRules(uri, replaceExisting = false)
+            },
+            negativeButtonText = "Replace All",
+            onNegativeClick = {
+                showReplaceConfirmation(uri)
+            },
+            cancelable = true
+        )
+    }
+
+    /**
+     * Show confirmation dialog for destructive "Replace All" operation.
+     */
+    private fun showReplaceConfirmation(uri: Uri) {
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = "⚠️ Replace All Rules?",
+            message = "This will DELETE all existing firewall rules and replace them with the backup.\n\nThis action cannot be undone.\n\nAre you sure?",
+            confirmButtonText = "Replace All",
+            onConfirm = {
+                viewModel.restoreRules(uri, replaceExisting = true)
+            },
+            cancelButtonText = "Cancel"
+        )
     }
 
     companion object {

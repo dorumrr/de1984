@@ -126,9 +126,11 @@ object Constants {
     object Firewall {
         const val STATE_BLOCKED = "Blocked"
         const val STATE_ALLOWED = "Allowed"
+        const val STATE_INTERNET_ONLY = "Internet Only"
 
         val PACKAGE_TYPE_FILTERS = listOf("User", "System")
         val NETWORK_STATE_FILTERS = listOf("Allowed", "Blocked")
+        val PERMISSION_FILTERS = listOf("Internet Only")
 
         val NETWORK_PERMISSIONS = listOf(
             "android.permission.INTERNET",

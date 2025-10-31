@@ -62,10 +62,13 @@ object FilterChipsHelper {
         chipGroup: ChipGroup,
         typeFilters: List<String>,
         stateFilters: List<String>,
+        permissionFilters: List<String>,
         selectedTypeFilter: String?,
         selectedStateFilter: String?,
+        selectedPermissionFilter: Boolean,
         onTypeFilterSelected: (String) -> Unit,
-        onStateFilterSelected: (String?) -> Unit
+        onStateFilterSelected: (String?) -> Unit,
+        onPermissionFilterSelected: (Boolean) -> Unit
     ) {
         chipGroup.removeAllViews()
 
@@ -145,6 +148,22 @@ object FilterChipsHelper {
             }
             chipGroup.addView(chip)
         }
+
+        // Add permission filters (independent toggle - can be combined with other filters)
+        permissionFilters.forEach { filter ->
+            val chip = createFilterChip(chipGroup, filter, selectedPermissionFilter)
+            chip.tag = "permission:$filter" // Tag to identify chip type
+            chip.setOnCheckedChangeListener { _, isChecked ->
+                // Skip if this is a programmatic update
+                if (isUpdatingProgrammatically) {
+                    return@setOnCheckedChangeListener
+                }
+
+                // Permission chips are independent - just notify the callback
+                onPermissionFilterSelected(isChecked)
+            }
+            chipGroup.addView(chip)
+        }
     }
 
 
@@ -156,7 +175,8 @@ object FilterChipsHelper {
     fun updateMultiSelectFilterChips(
         chipGroup: ChipGroup,
         selectedTypeFilter: String?,
-        selectedStateFilter: String?
+        selectedStateFilter: String?,
+        selectedPermissionFilter: Boolean
     ) {
         // Set flag to prevent callbacks during programmatic updates
         isUpdatingProgrammatically = true
@@ -176,6 +196,9 @@ object FilterChipsHelper {
                     val filterName = tag.removePrefix("state:")
                     val shouldBeChecked = filterName == selectedStateFilter
                     chip.isChecked = shouldBeChecked
+                }
+                tag.startsWith("permission:") -> {
+                    chip.isChecked = selectedPermissionFilter
                 }
             }
         }

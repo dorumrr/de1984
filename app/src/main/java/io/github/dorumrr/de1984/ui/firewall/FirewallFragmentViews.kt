@@ -73,6 +73,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private lateinit var adapter: NetworkPackageAdapter
     private var currentTypeFilter: String? = null
     private var currentStateFilter: String? = null
+    private var currentPermissionFilter: Boolean = false
     private var lastSubmittedPackages: List<NetworkPackage> = emptyList()
 
     override fun getViewBinding(
@@ -122,13 +123,16 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Initial setup - only called once
         currentTypeFilter = "User"
         currentStateFilter = null
+        currentPermissionFilter = false
 
         FilterChipsHelper.setupMultiSelectFilterChips(
             chipGroup = binding.filterChips,
             typeFilters = Constants.Firewall.PACKAGE_TYPE_FILTERS,
             stateFilters = Constants.Firewall.NETWORK_STATE_FILTERS,
+            permissionFilters = Constants.Firewall.PERMISSION_FILTERS,
             selectedTypeFilter = currentTypeFilter,
             selectedStateFilter = currentStateFilter,
+            selectedPermissionFilter = currentPermissionFilter,
             onTypeFilterSelected = { filter ->
                 if (filter != currentTypeFilter) {
                     currentTypeFilter = filter
@@ -139,6 +143,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 if (filter != currentStateFilter) {
                     currentStateFilter = filter
                     viewModel.setNetworkStateFilter(filter)
+                }
+            },
+            onPermissionFilterSelected = { enabled ->
+                if (enabled != currentPermissionFilter) {
+                    currentPermissionFilter = enabled
+                    viewModel.setInternetOnlyFilter(enabled)
                 }
             }
         )
@@ -216,21 +226,26 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
     private fun updateFilterChips(
         packageTypeFilter: String,
-        networkStateFilter: String?
+        networkStateFilter: String?,
+        internetOnlyFilter: Boolean
     ) {
         // Only update if filters have changed
-        if (packageTypeFilter == currentTypeFilter && networkStateFilter == currentStateFilter) {
+        if (packageTypeFilter == currentTypeFilter &&
+            networkStateFilter == currentStateFilter &&
+            internetOnlyFilter == currentPermissionFilter) {
             return
         }
 
         currentTypeFilter = packageTypeFilter
         currentStateFilter = networkStateFilter
+        currentPermissionFilter = internetOnlyFilter
 
         // Update chip selection without recreating or triggering listeners
         FilterChipsHelper.updateMultiSelectFilterChips(
             chipGroup = binding.filterChips,
             selectedTypeFilter = packageTypeFilter,
-            selectedStateFilter = networkStateFilter
+            selectedStateFilter = networkStateFilter,
+            selectedPermissionFilter = internetOnlyFilter
         )
     }
 
@@ -284,7 +299,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Update filter chips
         updateFilterChips(
             packageTypeFilter = state.filterState.packageType,
-            networkStateFilter = state.filterState.networkState
+            networkStateFilter = state.filterState.networkState,
+            internetOnlyFilter = state.filterState.internetOnly
         )
 
         // Apply search filtering with partial substring matching (app name only)

@@ -233,14 +233,27 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                        app:boxBackgroundMode="outline"
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusBottomEnd="12dp"
+                        app:hintEnabled="false"
+                        app:expandedHintEnabled="false"
+                        app:hintAnimationEnabled="false"
+                        app:endIconMode="dropdown_menu"
+                        style="@style/Widget.De1984.TextInputLayout.Compact">
 
                         <AutoCompleteTextView
                             android:id="@+id/backend_selection_dropdown"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="41dp"
                             android:inputType="none"
-                            android:textSize="14sp" />
+                            android:textSize="14sp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="10dp"
+                            android:paddingBottom="10dp" />
 
                     </com.google.android.material.textfield.TextInputLayout>
 

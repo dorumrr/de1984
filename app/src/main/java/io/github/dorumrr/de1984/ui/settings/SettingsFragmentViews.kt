@@ -586,7 +586,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
             name.text = permission.name
             if (permission.isGranted) {
-                icon.setImageResource(android.R.drawable.checkbox_on_background)
+                icon.setImageResource(R.drawable.ic_check)
                 icon.setColorFilter(ContextCompat.getColor(requireContext(), R.color.lineage_teal))
             } else {
                 icon.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)

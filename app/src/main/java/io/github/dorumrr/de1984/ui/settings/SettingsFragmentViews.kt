@@ -339,16 +339,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             isAvailable = true
         ))
 
-        // iptables requires root or Shizuku in root mode
-        val iptablesAvailable = hasRoot || hasShizukuRoot
-        backends.add(BackendOption(
-            mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.IPTABLES,
-            displayName = "iptables",
-            description = "Kernel-level blocking (requires root)",
-            isAvailable = iptablesAvailable,
-            requirementText = if (!iptablesAvailable) "Requires root or Shizuku in root mode" else null
-        ))
-
         // ConnectivityManager requires Shizuku + Android 13+
         val connectivityManagerAvailable = hasShizuku && isAndroid13Plus
         val connectivityManagerRequirement = when {
@@ -362,6 +352,16 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             description = "System-level blocking (requires Shizuku + Android 13+)",
             isAvailable = connectivityManagerAvailable,
             requirementText = connectivityManagerRequirement
+        ))
+
+        // iptables requires root or Shizuku in root mode
+        val iptablesAvailable = hasRoot || hasShizukuRoot
+        backends.add(BackendOption(
+            mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.IPTABLES,
+            displayName = "iptables",
+            description = "Kernel-level blocking (requires root)",
+            isAvailable = iptablesAvailable,
+            requirementText = if (!iptablesAvailable) "Requires root or Shizuku in root mode" else null
         ))
 
         return backends
@@ -1003,7 +1003,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private class BackendAdapter(
         context: android.content.Context,
         private val backends: List<BackendOption>
-    ) : android.widget.ArrayAdapter<BackendOption>(context, android.R.layout.simple_dropdown_item_1line, backends) {
+    ) : android.widget.ArrayAdapter<BackendOption>(context, R.layout.item_backend_dropdown, backends) {
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val view = super.getView(position, convertView, parent)

@@ -272,75 +272,97 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun setupBackendSelectionDropdown() {
-        // Get available backends based on current permissions
-        val availableBackends = getAvailableBackends()
+        // Get ALL backends (available and unavailable)
+        val allBackends = getAllBackends()
 
-        // Create adapter with available backends
-        val adapter = android.widget.ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            availableBackends.map { it.displayName }
-        )
+        // Create custom adapter that shows disabled items
+        val adapter = BackendAdapter(requireContext(), allBackends)
 
         binding.backendSelectionDropdown.setAdapter(adapter)
 
         // Set current selection
         val currentMode = viewModel.uiState.value.firewallMode
-        val currentIndex = availableBackends.indexOfFirst { it.mode == currentMode }
+        val currentIndex = allBackends.indexOfFirst { it.mode == currentMode }
         if (currentIndex >= 0) {
-            binding.backendSelectionDropdown.setText(availableBackends[currentIndex].displayName, false)
+            binding.backendSelectionDropdown.setText(allBackends[currentIndex].displayName, false)
         }
 
-        // Handle selection changes
+        // Handle selection changes - only allow selecting available backends
         binding.backendSelectionDropdown.setOnItemClickListener { _, _, position, _ ->
-            val selectedBackend = availableBackends[position]
-            viewModel.setFirewallMode(selectedBackend.mode)
+            val selectedBackend = allBackends[position]
+            if (selectedBackend.isAvailable) {
+                viewModel.setFirewallMode(selectedBackend.mode)
+            } else {
+                // Revert to current selection if unavailable backend was clicked
+                binding.backendSelectionDropdown.setText(allBackends[currentIndex].displayName, false)
+
+                // Show info about why it's not available
+                StandardDialog.showInfo(
+                    context = requireContext(),
+                    title = "${selectedBackend.displayName} Not Available",
+                    message = selectedBackend.requirementText ?: "This backend is not available on your device."
+                )
+            }
+        }
+
+        // Setup info icon click handler
+        binding.backendInfoIcon.setOnClickListener {
+            showBackendInfoDialog()
         }
     }
 
-    private fun getAvailableBackends(): List<BackendOption> {
+    private fun getAllBackends(): List<BackendOption> {
         val backends = mutableListOf<BackendOption>()
+
+        // Check current permissions
+        val rootStatus = viewModel.rootStatus.value
+        val shizukuStatus = viewModel.shizukuStatus.value
+        val hasRoot = rootStatus == io.github.dorumrr.de1984.data.common.RootStatus.ROOTED_WITH_PERMISSION
+        val hasShizukuRoot = shizukuStatus == io.github.dorumrr.de1984.data.common.ShizukuStatus.RUNNING_WITH_PERMISSION &&
+                viewModel.isShizukuRootMode()
+        val hasShizuku = shizukuStatus == io.github.dorumrr.de1984.data.common.ShizukuStatus.RUNNING_WITH_PERMISSION
+        val isAndroid13Plus = android.os.Build.VERSION.SDK_INT >= 33
 
         // AUTO is always available
         backends.add(BackendOption(
             mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO,
             displayName = "AUTO (Recommended)",
-            description = "Automatically select best available backend"
+            description = "Automatically select best available backend",
+            isAvailable = true
         ))
 
         // VPN is always available
         backends.add(BackendOption(
             mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN,
             displayName = "VPN",
-            description = "Always use VPN backend"
+            description = "Always use VPN backend",
+            isAvailable = true
         ))
 
         // iptables requires root or Shizuku in root mode
-        val rootStatus = viewModel.rootStatus.value
-        val shizukuStatus = viewModel.shizukuStatus.value
-        val hasRoot = rootStatus == io.github.dorumrr.de1984.data.common.RootStatus.ROOTED_WITH_PERMISSION
-        val hasShizukuRoot = shizukuStatus == io.github.dorumrr.de1984.data.common.ShizukuStatus.RUNNING_WITH_PERMISSION &&
-                viewModel.isShizukuRootMode()
-
-        if (hasRoot || hasShizukuRoot) {
-            backends.add(BackendOption(
-                mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.IPTABLES,
-                displayName = "iptables",
-                description = "Kernel-level blocking (requires root)"
-            ))
-        }
+        val iptablesAvailable = hasRoot || hasShizukuRoot
+        backends.add(BackendOption(
+            mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.IPTABLES,
+            displayName = "iptables",
+            description = "Kernel-level blocking (requires root)",
+            isAvailable = iptablesAvailable,
+            requirementText = if (!iptablesAvailable) "Requires root or Shizuku in root mode" else null
+        ))
 
         // ConnectivityManager requires Shizuku + Android 13+
-        val hasShizuku = shizukuStatus == io.github.dorumrr.de1984.data.common.ShizukuStatus.RUNNING_WITH_PERMISSION
-        val isAndroid13Plus = android.os.Build.VERSION.SDK_INT >= 33
-
-        if (hasShizuku && isAndroid13Plus) {
-            backends.add(BackendOption(
-                mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.CONNECTIVITY_MANAGER,
-                displayName = "ConnectivityManager",
-                description = "System-level blocking (requires Shizuku + Android 13+)"
-            ))
+        val connectivityManagerAvailable = hasShizuku && isAndroid13Plus
+        val connectivityManagerRequirement = when {
+            !isAndroid13Plus -> "Requires Android 13+"
+            !hasShizuku -> "Requires Shizuku"
+            else -> null
         }
+        backends.add(BackendOption(
+            mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.CONNECTIVITY_MANAGER,
+            displayName = "ConnectivityManager",
+            description = "System-level blocking (requires Shizuku + Android 13+)",
+            isAvailable = connectivityManagerAvailable,
+            requirementText = connectivityManagerRequirement
+        ))
 
         return backends
     }
@@ -358,10 +380,51 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.backendStatusText.text = statusText
     }
 
+    private fun showBackendInfoDialog() {
+        val message = """
+            De1984 supports three firewall backends:
+
+            🔹 VPN Backend
+            • Always available (no root required)
+            • Uses Android VpnService API
+            • Supports granular control (WiFi/Mobile/Roaming)
+            • Occupies VPN slot (can't use other VPN apps)
+            • User-space packet filtering
+
+            🔹 iptables Backend
+            • Requires root or Shizuku in root mode
+            • Kernel-level blocking (most efficient)
+            • Supports granular control (WiFi/Mobile/Roaming)
+            • Doesn't occupy VPN slot
+            • Works with other VPN apps
+
+            🔹 ConnectivityManager Backend
+            • Requires Shizuku + Android 13+
+            • System-level blocking via NetworkPolicyManager
+            • All-or-nothing blocking only (no granular control)
+            • Doesn't occupy VPN slot
+            • Works with other VPN apps
+
+            💡 AUTO Mode (Recommended)
+            Automatically selects the best available backend:
+            1. iptables (if root/Shizuku available)
+            2. ConnectivityManager (if Shizuku + Android 13+)
+            3. VPN (fallback)
+        """.trimIndent()
+
+        StandardDialog.showInfo(
+            context = requireContext(),
+            title = "Firewall Backends",
+            message = message
+        )
+    }
+
     private data class BackendOption(
         val mode: io.github.dorumrr.de1984.domain.firewall.FirewallMode,
         val displayName: String,
-        val description: String
+        val description: String,
+        val isAvailable: Boolean = true,
+        val requirementText: String? = null
     )
 
 
@@ -932,6 +995,55 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             },
             cancelButtonText = "Cancel"
         )
+    }
+
+    /**
+     * Custom adapter for backend dropdown that shows disabled items with different styling.
+     */
+    private class BackendAdapter(
+        context: android.content.Context,
+        private val backends: List<BackendOption>
+    ) : android.widget.ArrayAdapter<BackendOption>(context, android.R.layout.simple_dropdown_item_1line, backends) {
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view = super.getView(position, convertView, parent)
+            val backend = backends[position]
+
+            val textView = view.findViewById<TextView>(android.R.id.text1)
+            textView.text = if (backend.isAvailable) {
+                backend.displayName
+            } else {
+                "${backend.displayName} (${backend.requirementText})"
+            }
+
+            // Disable unavailable backends
+            textView.isEnabled = backend.isAvailable
+            textView.alpha = if (backend.isAvailable) 1.0f else 0.5f
+
+            return view
+        }
+
+        override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view = super.getDropDownView(position, convertView, parent)
+            val backend = backends[position]
+
+            val textView = view.findViewById<TextView>(android.R.id.text1)
+            textView.text = if (backend.isAvailable) {
+                backend.displayName
+            } else {
+                "${backend.displayName} (${backend.requirementText})"
+            }
+
+            // Disable unavailable backends
+            textView.isEnabled = backend.isAvailable
+            textView.alpha = if (backend.isAvailable) 1.0f else 0.5f
+
+            return view
+        }
+
+        override fun isEnabled(position: Int): Boolean {
+            return backends[position].isAvailable
+        }
     }
 
     companion object {

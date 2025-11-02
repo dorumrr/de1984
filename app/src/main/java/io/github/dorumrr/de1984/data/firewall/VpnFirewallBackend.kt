@@ -82,29 +82,21 @@ class VpnFirewallBackend(
     override fun isActive(): Boolean {
         // Check if OUR VPN service is running by checking SharedPreferences flag
         // (FirewallVpnService updates this when starting/stopping)
+        //
+        // IMPORTANT: We only check if the service is running, NOT if VPN connection is active.
+        // This is because of zero-app optimization (FIREWALL.md line 115):
+        // When zero apps need blocking, VPN interface is not established, but the service
+        // is still running and monitoring for changes. In this case, firewall IS active
+        // (it's just not blocking anything because there's nothing to block).
         return try {
             val prefs = context.getSharedPreferences(
                 io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
                 Context.MODE_PRIVATE
             )
-            val isServiceRunning = prefs.getBoolean(
+            prefs.getBoolean(
                 io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
                 false
             )
-
-            // Also verify that a VPN is actually active (double-check)
-            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            val hasVpnConnection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val activeNetwork = connectivityManager.activeNetwork
-                val capabilities = activeNetwork?.let { connectivityManager.getNetworkCapabilities(it) }
-                capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
-            } else {
-                @Suppress("DEPRECATION")
-                (connectivityManager.activeNetworkInfo?.type == ConnectivityManager.TYPE_VPN)
-            }
-
-            // Both conditions must be true: service flag set AND VPN connection active
-            isServiceRunning && hasVpnConnection
         } catch (e: Exception) {
             Log.e(TAG, "Failed to check if VPN is active", e)
             false

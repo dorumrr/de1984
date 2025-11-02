@@ -226,6 +226,15 @@ class SettingsViewModel(
                 if (firewallManager.isActive()) {
                     Log.d(TAG, "Triggering rule re-application for policy change")
                     firewallManager.triggerRuleReapplication()
+
+                    // IMPORTANT: Also send broadcast to notify VPN service about policy change
+                    // VPN service needs to restart to apply the new policy (zero-app optimization)
+                    // For example: switching from "Allow All" (0 blocked apps) to "Block All" (all apps blocked)
+                    // requires VPN interface to be established
+                    Log.d(TAG, "Sending FIREWALL_RULES_CHANGED broadcast to notify VPN service")
+                    val intent = Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED")
+                    intent.setPackage(context.packageName)
+                    context.sendBroadcast(intent)
                 }
 
                 Log.d(TAG, "Policy changed successfully, rules preserved")

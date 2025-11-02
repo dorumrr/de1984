@@ -246,37 +246,49 @@ class FirewallVpnService : VpnService() {
     }
 
     private fun restartVpn() {
+        Log.d(TAG, "restartVpn: called")
         restartDebounceJob?.cancel()
 
         restartDebounceJob = serviceScope.launch debounce@{
             delay(300)
 
             if (!shouldRestartVpn()) {
+                Log.d(TAG, "restartVpn: shouldRestartVpn() returned false, skipping restart")
                 return@debounce
             }
 
+            Log.d(TAG, "restartVpn: proceeding with VPN restart")
             vpnSetupJob?.cancel()
 
             packetForwardingJob?.cancel()
 
             vpnSetupJob = serviceScope.launch setup@{
                 try {
-                    vpnInterface?.close()
                     if (!isServiceActive) {
+                        Log.w(TAG, "restartVpn: service not active, aborting")
                         return@setup
                     }
 
-                    vpnInterface = buildVpnInterface()
+                    Log.d(TAG, "restartVpn: calling buildVpnInterface()...")
+                    val oldVpnInterface = vpnInterface
+                    val newVpnInterface = buildVpnInterface()
 
                     if (!isServiceActive) {
-                        vpnInterface?.close()
-                        vpnInterface = null
+                        Log.w(TAG, "restartVpn: service became inactive during build, aborting")
+                        newVpnInterface?.close()
                         return@setup
                     }
 
-                    if (vpnInterface == null) {
+                    if (newVpnInterface == null) {
+                        Log.e(TAG, "restartVpn: buildVpnInterface() returned NULL - VPN is DOWN!")
                         lastAppliedBlockedApps = emptySet()
                     } else {
+                        // Close old VPN AFTER new one is established
+                        // This prevents the system from thinking the service is stopping
+                        oldVpnInterface?.close()
+                        vpnInterface = newVpnInterface
+
+                        Log.d(TAG, "restartVpn: VPN interface established, starting packet dropping")
                         startPacketDropping()
 
                         lastAppliedBlockedApps = getBlockedAppsForCurrentState()
@@ -285,6 +297,7 @@ class FirewallVpnService : VpnService() {
                     lastAppliedNetworkType = currentNetworkType
                     lastAppliedScreenState = isScreenOn
                 } catch (e: Exception) {
+                    Log.e(TAG, "restartVpn: Exception during restart", e)
                     if (isServiceActive) {
                         stopSelf()
                     }
@@ -380,7 +393,12 @@ class FirewallVpnService : VpnService() {
 
             val blockedCount = applyFirewallRules(builder)
 
-            if (blockedCount == 0) {
+            Log.d(TAG, "buildVpnInterface: blockedCount=$blockedCount")
+
+            // If blockedCount is -1, it means no apps need to be blocked
+            // In this case, don't establish VPN to avoid routing all apps through it
+            if (blockedCount < 0) {
+                Log.d(TAG, "buildVpnInterface: No apps to block, not establishing VPN")
                 return null
             }
 
@@ -405,9 +423,20 @@ class FirewallVpnService : VpnService() {
                 return null
             }
 
+            Log.d(TAG, "buildVpnInterface: calling builder.establish()...")
             val vpn = builder.establish()
+            if (vpn == null) {
+                Log.e(TAG, "buildVpnInterface: builder.establish() returned NULL! This usually means:")
+                Log.e(TAG, "  1. VPN permission was revoked")
+                Log.e(TAG, "  2. Another VPN app took over")
+                Log.e(TAG, "  3. VPN configuration is invalid")
+                Log.e(TAG, "  blockedCount was: $blockedCount")
+            } else {
+                Log.d(TAG, "buildVpnInterface: VPN established successfully with blockedCount=$blockedCount")
+            }
             vpn
         } catch (e: Exception) {
+            Log.e(TAG, "buildVpnInterface: Exception caught", e)
             e.printStackTrace()
             null
         }
@@ -422,7 +451,11 @@ class FirewallVpnService : VpnService() {
             ) ?: io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_FIREWALL_POLICY
 
             val isBlockAllDefault = defaultPolicy == io.github.dorumrr.de1984.utils.Constants.Settings.POLICY_BLOCK_ALL
+            Log.d(TAG, "applyFirewallRules: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
+
             val rulesList = firewallRepository.getAllRules().first()
+            Log.d(TAG, "applyFirewallRules: loaded ${rulesList.size} rules from database")
+
             val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
                 .filter { appInfo ->
                     try {
@@ -437,11 +470,22 @@ class FirewallVpnService : VpnService() {
                         false
                     }
                 }
+            Log.d(TAG, "applyFirewallRules: found ${allPackages.size} packages with network permissions")
+
             var allowedCount = 0
             var blockedCount = 0
             var defaultPolicyCount = 0
+            var failedCount = 0
 
             val rulesMap = rulesList.associateBy { it.packageName }
+
+            // SIMPLE STRATEGY: Always use addAllowedApplication() for blocked apps
+            // This means:
+            // - Blocked apps: Added to VPN → traffic goes through VPN → gets dropped
+            // - Allowed apps: NOT added → bypass VPN → use normal internet
+            // This works for both "Block All" and "Allow All" modes
+
+            Log.d(TAG, "applyFirewallRules: Using simple strategy (addAllowedApplication for blocked apps)")
 
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
@@ -456,38 +500,46 @@ class FirewallVpnService : VpnService() {
 
                 val shouldBlock = if (rule != null && rule.enabled) {
                     // Has explicit rule - use it as-is (absolute blocking state)
-                    when {
-                        !isScreenOn && rule.blockWhenScreenOff -> {
-                            true
-                        }
-
-                        rule.isBlockedOn(currentNetworkType) -> {
-                            true
-                        }
-
-                        else -> {
-                            false
-                        }
+                    val blocked = when {
+                        !isScreenOn && rule.blockWhenScreenOff -> true
+                        rule.isBlockedOn(currentNetworkType) -> true
+                        else -> false
                     }
+                    Log.d(TAG, "  $packageName: explicit rule, shouldBlock=$blocked (wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked})")
+                    blocked
                 } else {
+                    // No explicit rule - use default policy
                     defaultPolicyCount++
                     isBlockAllDefault
                 }
 
                 if (shouldBlock) {
+                    // Add to VPN to block
                     try {
                         builder.addAllowedApplication(packageName)
                         blockedCount++
                     } catch (e: PackageManager.NameNotFoundException) {
+                        Log.w(TAG, "  $packageName: NameNotFoundException when adding to VPN")
+                        failedCount++
                     }
                 } else {
                     allowedCount++
-
+                    // Don't add to builder - will bypass VPN
                 }
             }
 
+            // CRITICAL: When using addAllowedApplication(), if we don't add ANY apps,
+            // Android will route ALL apps through the VPN by default!
+            // To prevent this, if blockedCount==0, we return -1 to signal "don't establish VPN"
+            if (blockedCount == 0) {
+                Log.w(TAG, "applyFirewallRules: No apps to block, returning -1 to skip VPN establishment")
+                return -1
+            }
+
+            Log.d(TAG, "applyFirewallRules: FINAL COUNTS - blocked=$blockedCount, allowed=$allowedCount, defaultPolicy=$defaultPolicyCount, failed=$failedCount")
             return blockedCount
         } catch (e: Exception) {
+            Log.e(TAG, "applyFirewallRules: Exception", e)
             e.printStackTrace()
             return 0
         }
@@ -557,6 +609,39 @@ class FirewallVpnService : VpnService() {
     private fun startPacketDropping() {
         packetForwardingJob?.cancel()
 
+        val vpn = vpnInterface ?: return
+
+        packetForwardingJob = serviceScope.launch {
+            try {
+                val inputStream = java.io.FileInputStream(vpn.fileDescriptor)
+                val buffer = ByteArray(32767) // Max IP packet size
+
+                Log.d(TAG, "startPacketDropping: Started reading packets to drop them")
+
+                while (isServiceActive && vpnInterface != null) {
+                    try {
+                        val length = inputStream.read(buffer)
+                        if (length > 0) {
+                            // Packet read successfully - just drop it (don't forward)
+                            // This effectively blocks the app's network access
+                        } else if (length < 0) {
+                            // End of stream - VPN closed
+                            Log.d(TAG, "startPacketDropping: End of stream, stopping")
+                            break
+                        }
+                    } catch (e: Exception) {
+                        if (isServiceActive) {
+                            Log.w(TAG, "startPacketDropping: Error reading packet", e)
+                        }
+                        break
+                    }
+                }
+
+                Log.d(TAG, "startPacketDropping: Stopped reading packets")
+            } catch (e: Exception) {
+                Log.e(TAG, "startPacketDropping: Exception", e)
+            }
+        }
     }
 
 }

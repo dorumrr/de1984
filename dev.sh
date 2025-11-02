@@ -359,6 +359,19 @@ install_apk() {
     log_info "Note: Home screen shortcut will be created on first launch"
 }
 
+# Update APK (reinstall without losing data)
+update_apk() {
+    log_header "Updating APK (Preserving Data)"
+
+    log_info "Updating: $APK_PATH_DEBUG"
+    log_info "Using -r flag to preserve app data..."
+    adb install -r "$APK_PATH_DEBUG"
+
+    log_success "App updated successfully!"
+    log_info "Package: $APP_ID_DEBUG"
+    log_info "All app data and settings preserved"
+}
+
 # Launch app (internal - used by install command)
 launch_app() {
     log_header "Launching App"
@@ -849,6 +862,7 @@ show_welcome() {
     echo ""
     echo -e "  ${GREEN}build${NC}     - Build debug APK for local testing"
     echo -e "  ${GREEN}install${NC}   - Build and install debug APK on device/emulator"
+    echo -e "  ${GREEN}update${NC}    - Build and update APK ${YELLOW}(preserves app data)${NC}"
     echo -e "  ${GREEN}release${NC}   - Build production-signed APK ${GREEN}(for ALL public distribution)${NC}"
     echo ""
     echo -e "${YELLOW}Emulator:${NC}"
@@ -879,6 +893,7 @@ show_help() {
     echo "Commands:"
     echo "  build                        - Build debug APK"
     echo "  install [device|emulator]    - Build and install debug APK (auto-starts emulator)"
+    echo "  update [device|emulator]     - Build and update APK (preserves app data)"
     echo "  release                      - Build production-signed APK"
     echo "  screenshot                   - Take and save screenshot"
     echo ""
@@ -892,6 +907,7 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  ./dev.sh install             - Build and install on device/emulator"
+    echo "  ./dev.sh update              - Build and update (keeps data)"
     echo "  ./dev.sh release             - Build production APK"
     echo "  ./dev.sh emulator            - Start Pixel 9a emulator"
     echo ""
@@ -918,6 +934,15 @@ main() {
             build_debug_apk
             uninstall_app
             install_apk
+            launch_app
+            show_app_info
+            ;;
+        "update")
+            check_adb
+            check_device "$target"
+            show_device_info
+            build_debug_apk
+            update_apk
             launch_app
             show_app_info
             ;;

@@ -101,9 +101,14 @@ class FirewallManager(
         return try {
             Log.d(TAG, "Starting firewall with mode: $mode")
 
+            // Store old backend info BEFORE stopping
+            val oldBackend = currentBackend
+            val wasGranular = oldBackend?.supportsGranularControl() ?: false
+            val oldBackendType = oldBackend?.getType()
+
             // Stop any currently running backend first to avoid conflicts
             if (currentBackend != null) {
-                Log.d(TAG, "Stopping existing backend before starting new one")
+                Log.d(TAG, "Stopping existing backend ($oldBackendType) before starting new one")
                 stopFirewallInternal().getOrElse { error ->
                     Log.w(TAG, "Failed to stop existing backend: ${error.message}")
                     // Continue anyway - try to start new backend
@@ -114,6 +119,17 @@ class FirewallManager(
             val backend = selectBackend(mode).getOrElse { error ->
                 Log.e(TAG, "Failed to select backend: ${error.message}")
                 return Result.failure(error)
+            }
+
+            // Check if we're switching from granular to non-granular
+            val isGranular = backend.supportsGranularControl()
+            val needsMigration = wasGranular && !isGranular
+
+            if (needsMigration) {
+                Log.d(TAG, "Backend transition: granular ($oldBackendType) → simple (${backend.getType()}), migrating rules...")
+                migrateRulesToSimple()
+            } else if (oldBackend != null) {
+                Log.d(TAG, "Backend transition: $oldBackendType → ${backend.getType()}, no migration needed (both granular or both simple)")
             }
 
             // Start backend
@@ -282,7 +298,61 @@ class FirewallManager(
             Result.failure(error)
         }
     }
-    
+
+    /**
+     * Migrate partial rules to simple all-or-nothing rules.
+     * Uses majority rule: if 2+ networks are blocked, block all; otherwise allow all.
+     *
+     * This is called when switching from a granular backend (VPN/iptables) to a
+     * simple backend (ConnectivityManager) that only supports all-or-nothing blocking.
+     */
+    private suspend fun migrateRulesToSimple() {
+        try {
+            Log.d(TAG, "=== Starting rule migration: granular → simple ===")
+            val rules = firewallRepository.getAllRules().first()
+            var migratedCount = 0
+            var skippedCount = 0
+
+            rules.forEach { rule ->
+                // Check if rule has partial blocking
+                val blocks = listOf(
+                    rule.wifiBlocked,
+                    rule.mobileBlocked,
+                    rule.blockWhenRoaming
+                )
+
+                val hasPartialBlock = blocks.any { it } && blocks.any { !it }
+
+                if (hasPartialBlock) {
+                    // Use majority rule: if 2+ blocked → block all, else allow all
+                    val blockedCount = blocks.count { it }
+                    val blockAll = blockedCount >= 2
+
+                    Log.d(TAG, "Migrating ${rule.packageName}: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming} → blockAll=$blockAll (${blockedCount}/3 blocked)")
+
+                    // Update rule to block/allow all networks
+                    firewallRepository.updateRule(
+                        rule.copy(
+                            wifiBlocked = blockAll,
+                            mobileBlocked = blockAll,
+                            blockWhenRoaming = blockAll,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    )
+                    migratedCount++
+                } else {
+                    // Rule is already uniform (all blocked or all allowed)
+                    skippedCount++
+                }
+            }
+
+            Log.d(TAG, "✅ Rule migration complete: $migratedCount rules migrated, $skippedCount rules already uniform")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to migrate rules", e)
+            // Don't throw - allow firewall to start even if migration fails
+        }
+    }
+
     /**
      * Start monitoring network and screen state changes.
      * Used for iptables and NetworkPolicyManager backends (VPN backend monitors internally).

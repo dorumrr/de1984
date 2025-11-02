@@ -26,6 +26,248 @@
 
 **PRAGMATIC APPROACH**: We balance theoretical best practices with practical development needs. Rules should enhance productivity, not hinder it.
 
+---
+
+## 🔄 Development Workflow (3-Phase Process) - COMPULSORY!
+
+> **Universal Principle** - Applicable to all projects, especially when working with LLMs
+
+**Principle**: Every development task must follow a structured 3-phase process to ensure quality, maintainability, and correctness.
+
+### Phase 1: Discovery (≥97% Confidence Required)
+
+**Goal**: Achieve near-complete understanding before writing any code.
+
+**Required Actions**:
+1. **Use retrieval tools extensively**:
+   - `codebase-retrieval` - Find relevant code across the project
+   - `git-commit-retrieval` - Understand how similar changes were made
+   - `view` - Examine specific files and implementations
+
+2. **Check code directly**:
+   - Implementation details (Kotlin classes, Compose UI, Room DAOs, ViewModels)
+   - Architecture patterns (MVVM, Repository, Manual DI)
+   - Existing similar features (how they're implemented)
+
+3. **Verify understanding**:
+   - Direct relationships (ViewModels → Repositories → DataSources → Database)
+   - Dependencies (Kotlin coroutines, Flow, StateFlow, Room)
+   - Business rules (firewall backends, package management, permissions)
+   - Performance constraints (VPN startup < 2s, database queries < 50ms)
+   - Security requirements (no breaches during backend switching, atomic transitions)
+
+4. **Ask for clarification** if:
+   - Requirements are contradictory or unclear
+   - Multiple implementation approaches are possible
+   - Security implications are uncertain
+   - Performance impact is unknown
+
+5. **Assess confidence**:
+   - Requirements clarity (do I understand WHAT to build?)
+   - Context completeness (do I understand HOW to build it?)
+   - Risk assessment (what could go wrong?)
+
+### Phase 2: Planning (≥96% Confidence Required)
+
+**Goal**: Create a detailed, reviewable plan before implementation.
+
+**Required Actions**:
+1. **Create detailed plan**:
+   - Files to create (with full paths and purposes)
+   - Files to modify (with specific changes and reasons)
+   - Files to delete (with removal justification)
+   - Database migrations (if schema changes, with version bump)
+   - Implementation order (respect dependencies, avoid breaking changes)
+   - Risk mitigation strategies (fallbacks, error handling, testing)
+
+2. **Validate plan**:
+   - Business rule compliance (firewall behavior, backend selection, switch dependencies)
+   - Security requirements (no breaches, atomic transitions, fail-safe fallbacks)
+   - Performance targets achievable (VPN startup, database queries, UI responsiveness)
+   - Architecture patterns respected (MVVM, Repository, Manual DI)
+   - Cross-platform compatibility (API 21+, light/dark mode, all screen sizes)
+   - Constants usage (all magic numbers/strings in `Constants.kt`)
+
+3. **Present plan to user**:
+   - Clear summary of changes
+   - Rationale for each decision
+   - Potential risks and mitigations
+   - Wait for approval before proceeding
+
+### Phase 3: Implementation
+
+**Goal**: Execute the plan systematically and verify as you go.
+
+**Required Actions**:
+1. **Follow plan systematically**:
+   - Respect module boundaries (ui/, domain/, data/, presentation/)
+   - Follow Kotlin conventions (naming, formatting, idioms)
+   - Use established patterns (MVVM, Repository, StateFlow)
+   - Maintain constants in `Constants.kt`
+
+2. **Verify as you go**:
+   - Build after each logical change (`./gradlew assembleDebug`)
+   - Test in light AND dark mode (MANDATORY)
+   - Test on multiple Android versions (API 21, 26, 29+, 34+)
+   - Verify performance targets (measure if critical)
+   - Check security requirements (no breaches, atomic transitions)
+
+3. **Create task documentation** (see Documentation section below)
+
+### Confidence Scoring
+
+Use this scale to assess your confidence before proceeding:
+
+- **97-100%**: Full understanding, no ambiguity, ready to implement
+- **90-96%**: Good understanding, minor gaps won't impact implementation
+- **80-89%**: Adequate understanding, document assumptions clearly
+- **<80%**: **DO NOT PROCEED** - Ask questions, gather more context
+
+**Rule**: Never proceed to next phase if confidence is below threshold.
+
+---
+
+## 📚 Documentation (Mandatory for ALL Tasks)
+
+> **Universal Principle** - Adapt file location to your project structure
+
+**Principle**: Document significant changes to help future developers (including LLMs) understand the codebase evolution.
+
+### Documentation File Location
+
+**File**: `llm_docs/YYYYMMDDHHMMSS-descriptive-kebab-case.md`
+
+**Example**: `llm_docs/20241102143022-vpn-backend-atomic-switching.md`
+
+### Documentation Template
+
+```markdown
+# [Feature/Fix Name]
+**Date:** YYYY-MM-DD HH:MM:SS | **Status:** ✅ Complete / 🚧 In Progress / ❌ Failed
+
+## Summary
+2-3 sentences describing what was done and why.
+
+## Problem/Context
+What issue, need, or motivation led to this change?
+
+## Solution
+High-level approach implemented. Key decisions and trade-offs.
+
+## Changes
+- **Created:** `path/to/file.kt` - Purpose and functionality
+- **Updated:** `path/to/file.kt` - What changed and why
+- **Deleted:** `path/to/file.kt` - Removal reason
+
+## Impact
+- **Performance**: Before → After (with measurements if applicable)
+- **User benefits**: How this improves user experience
+- **Technical improvements**: Code quality, maintainability, architecture
+- **Security**: Any security implications or improvements
+
+## Testing
+- Tested on Android versions: API 21, 26, 29, 34
+- Tested in light/dark mode: ✅
+- Performance verified: ✅ (if applicable)
+- Security verified: ✅ (if applicable)
+```
+
+### When to Document
+
+**ALWAYS document**:
+- ✅ Major features (new screens, new backends, new functionality)
+- ✅ Architectural changes (new patterns, refactoring, module changes)
+- ✅ Performance optimizations (with before/after measurements)
+- ✅ Bug fixes taking >30 minutes (complex issues, security fixes)
+- ✅ Decisions with trade-offs (why we chose approach A over B)
+- ✅ Code quality improvements affecting >5 files
+- ✅ Database migrations (schema changes, data migrations)
+- ✅ Security changes (permission handling, backend switching, atomic transitions)
+
+**DON'T document**:
+- ❌ Typo fixes (one-line changes)
+- ❌ Formatting changes (whitespace, indentation)
+- ❌ Routine dependency bumps (unless breaking changes)
+- ❌ Minor UI text changes (button labels, strings)
+
+### Documentation Retention
+
+**Keep for 6-12 months** in `llm_docs/`:
+- Recent features and fixes
+- Active development documentation
+- Ongoing architectural decisions
+
+**Move to `llm_docs/archive/`** (organized by category):
+- Important historical decisions
+- Major architectural changes
+- Security-critical implementations
+
+**Delete after 6 months**:
+- Trivial changes
+- Superseded implementations
+- Outdated approaches
+
+---
+
+## 🤖 LLM Optimization
+
+> **Universal Principle** - Applicable to all projects using LLM-assisted development
+
+**Principle**: Keep the codebase LLM-friendly to maximize AI assistance effectiveness.
+
+### Codebase Structure for LLMs
+
+**Maintain**:
+- Clear, consistent package structure
+- Self-documenting code (meaningful names, clear logic)
+- Centralized constants (`Constants.kt`)
+- Consistent patterns (MVVM, Repository, StateFlow)
+- Comprehensive documentation in `llm_docs/`
+
+**Suggest optimizations** to minimize token consumption:
+- Offer suggestions, **NEVER implement without approval**
+- Identify redundant code or documentation
+- Suggest consolidation opportunities
+- Recommend archiving old documentation
+
+### Exclude from LLM Scanning
+
+**Build artifacts and generated code** (add to `.gitignore` and LLM ignore patterns):
+```
+build/
+.gradle/
+.kotlin/
+app/build/
+.idea/
+local.properties
+*.apk
+*.aab
+*.dex
+*.class
+*.so
+*.jar
+```
+
+**Token savings**: ~99% reduction (typical Android project: 410 MB → ~500 KB) by excluding build artifacts.
+
+### LLM-Friendly Code Practices
+
+**DO**:
+- ✅ Use descriptive names (no abbreviations unless standard)
+- ✅ Keep functions small and focused (max 20-30 lines)
+- ✅ Document complex logic with comments (explain WHY, not WHAT)
+- ✅ Use consistent patterns throughout the codebase
+- ✅ Centralize constants and configurations
+
+**DON'T**:
+- ❌ Use cryptic variable names (`x`, `tmp`, `data`)
+- ❌ Create deeply nested logic (max 3 levels)
+- ❌ Mix different patterns in similar code
+- ❌ Scatter constants throughout the codebase
+- ❌ Leave commented-out code
+
+---
+
 ## 🎯 DRY (Don't Repeat Yourself)
 
 > **Universal Principle** - Applicable to all projects

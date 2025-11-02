@@ -382,6 +382,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     private fun showBackendInfoDialog() {
         val message = """
+            💡 AUTO Mode (Recommended)
+            Automatically selects the best available backend:
+            1. iptables (if root/Shizuku available)
+            2. ConnectivityManager (if Shizuku + Android 13+)
+            3. VPN (fallback)
+
             De1984 supports three firewall backends:
 
             🔹 VPN Backend
@@ -404,12 +410,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             • All-or-nothing blocking only (no granular control)
             • Doesn't occupy VPN slot
             • Works with other VPN apps
-
-            💡 AUTO Mode (Recommended)
-            Automatically selects the best available backend:
-            1. iptables (if root/Shizuku available)
-            2. ConnectivityManager (if Shizuku + Android 13+)
-            3. VPN (fallback)
         """.trimIndent()
 
         StandardDialog.showInfo(

@@ -259,6 +259,10 @@ class SettingsViewModel(
         }
     }
 
+    fun isShizukuRootMode(): Boolean {
+        return shizukuManager.isShizukuRootMode()
+    }
+
     private suspend fun restartFirewallIfRunning() {
         try {
             // Check if firewall is actually running before restarting

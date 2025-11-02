@@ -138,6 +138,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             updateFirewallPolicyDescription(isChecked)
         }
 
+        // Backend selection dropdown
+        setupBackendSelectionDropdown()
+
         // Show app icons switch
         binding.showAppIconsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowAppIcons(isChecked)
@@ -236,6 +239,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             viewModel.setNewAppNotifications(isChecked)
         }
 
+        // Update backend selection dropdown
+        setupBackendSelectionDropdown()
+        updateBackendStatus()
+
         // Show success message (clear immediately to prevent re-showing on every state update)
         state.message?.let { message ->
             viewModel.clearMessage()
@@ -264,6 +271,99 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         }
     }
 
+    private fun setupBackendSelectionDropdown() {
+        // Get available backends based on current permissions
+        val availableBackends = getAvailableBackends()
+
+        // Create adapter with available backends
+        val adapter = android.widget.ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            availableBackends.map { it.displayName }
+        )
+
+        binding.backendSelectionDropdown.setAdapter(adapter)
+
+        // Set current selection
+        val currentMode = viewModel.uiState.value.firewallMode
+        val currentIndex = availableBackends.indexOfFirst { it.mode == currentMode }
+        if (currentIndex >= 0) {
+            binding.backendSelectionDropdown.setText(availableBackends[currentIndex].displayName, false)
+        }
+
+        // Handle selection changes
+        binding.backendSelectionDropdown.setOnItemClickListener { _, _, position, _ ->
+            val selectedBackend = availableBackends[position]
+            viewModel.setFirewallMode(selectedBackend.mode)
+        }
+    }
+
+    private fun getAvailableBackends(): List<BackendOption> {
+        val backends = mutableListOf<BackendOption>()
+
+        // AUTO is always available
+        backends.add(BackendOption(
+            mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO,
+            displayName = "AUTO (Recommended)",
+            description = "Automatically select best available backend"
+        ))
+
+        // VPN is always available
+        backends.add(BackendOption(
+            mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN,
+            displayName = "VPN",
+            description = "Always use VPN backend"
+        ))
+
+        // iptables requires root or Shizuku in root mode
+        val rootStatus = viewModel.rootStatus.value
+        val shizukuStatus = viewModel.shizukuStatus.value
+        val hasRoot = rootStatus == io.github.dorumrr.de1984.data.common.RootStatus.ROOTED_WITH_PERMISSION
+        val hasShizukuRoot = shizukuStatus == io.github.dorumrr.de1984.data.common.ShizukuStatus.RUNNING_WITH_PERMISSION &&
+                viewModel.isShizukuRootMode()
+
+        if (hasRoot || hasShizukuRoot) {
+            backends.add(BackendOption(
+                mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.IPTABLES,
+                displayName = "iptables",
+                description = "Kernel-level blocking (requires root)"
+            ))
+        }
+
+        // ConnectivityManager requires Shizuku + Android 13+
+        val hasShizuku = shizukuStatus == io.github.dorumrr.de1984.data.common.ShizukuStatus.RUNNING_WITH_PERMISSION
+        val isAndroid13Plus = android.os.Build.VERSION.SDK_INT >= 33
+
+        if (hasShizuku && isAndroid13Plus) {
+            backends.add(BackendOption(
+                mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.CONNECTIVITY_MANAGER,
+                displayName = "ConnectivityManager",
+                description = "System-level blocking (requires Shizuku + Android 13+)"
+            ))
+        }
+
+        return backends
+    }
+
+    private fun updateBackendStatus() {
+        val activeBackend = viewModel.activeBackendType.value
+        val currentMode = viewModel.uiState.value.firewallMode
+
+        val statusText = if (activeBackend != null) {
+            "Active: ${activeBackend.name} (Mode: ${currentMode.name})"
+        } else {
+            "Firewall not running"
+        }
+
+        binding.backendStatusText.text = statusText
+    }
+
+    private data class BackendOption(
+        val mode: io.github.dorumrr.de1984.domain.firewall.FirewallMode,
+        val displayName: String,
+        val description: String
+    )
+
 
 
     private fun observePermissionState() {
@@ -285,6 +385,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                         if (rootStatus == RootStatus.ROOTED_WITH_PERMISSION) {
                             permissionViewModel.refreshPermissions()
                         }
+
+                        // Refresh backend dropdown when permissions change
+                        setupBackendSelectionDropdown()
                     }
                 }
                 launch {
@@ -298,6 +401,14 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                         if (shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION) {
                             permissionViewModel.refreshPermissions()
                         }
+
+                        // Refresh backend dropdown when permissions change
+                        setupBackendSelectionDropdown()
+                    }
+                }
+                launch {
+                    viewModel.activeBackendType.collect { _ ->
+                        updateBackendStatus()
                     }
                 }
             }

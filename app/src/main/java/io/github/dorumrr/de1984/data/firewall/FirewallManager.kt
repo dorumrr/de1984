@@ -51,6 +51,7 @@ class FirewallManager(
     companion object {
         private const val TAG = "FirewallManager"
         private const val RULE_APPLICATION_DEBOUNCE_MS = 300L
+        private const val BACKEND_HEALTH_CHECK_INTERVAL_MS = 30_000L // 30 seconds
     }
 
     private val scope = CoroutineScope(SupervisorJob())
@@ -58,11 +59,15 @@ class FirewallManager(
     private var monitoringJob: Job? = null
     private var ruleChangeMonitoringJob: Job? = null
     private var ruleApplicationJob: Job? = null
+    private var healthMonitoringJob: Job? = null
 
     private var currentBackend: FirewallBackend? = null
-    
+
     private val _activeBackendType = MutableStateFlow<FirewallBackendType?>(null)
     val activeBackendType: StateFlow<FirewallBackendType?> = _activeBackendType.asStateFlow()
+
+    private val _backendHealthWarning = MutableStateFlow<String?>(null)
+    val backendHealthWarning: StateFlow<String?> = _backendHealthWarning.asStateFlow()
     
     private var currentNetworkType: NetworkType = NetworkType.NONE
     private var isScreenOn: Boolean = true
@@ -101,56 +106,113 @@ class FirewallManager(
         return try {
             Log.d(TAG, "Starting firewall with mode: $mode")
 
-            // Store old backend info BEFORE stopping
+            // Store old backend info BEFORE any changes
             val oldBackend = currentBackend
             val wasGranular = oldBackend?.supportsGranularControl() ?: false
             val oldBackendType = oldBackend?.getType()
 
-            // Stop any currently running backend first to avoid conflicts
-            if (currentBackend != null) {
-                Log.d(TAG, "Stopping existing backend ($oldBackendType) before starting new one")
-                stopFirewallInternal().getOrElse { error ->
-                    Log.w(TAG, "Failed to stop existing backend: ${error.message}")
-                    // Continue anyway - try to start new backend
-                }
-            }
-
-            // Select backend
-            val backend = selectBackend(mode).getOrElse { error ->
+            // Select new backend
+            val newBackend = selectBackend(mode).getOrElse { error ->
                 Log.e(TAG, "Failed to select backend: ${error.message}")
                 return Result.failure(error)
             }
 
+            val newBackendType = newBackend.getType()
+
+            // If same backend type, just ensure it's running
+            if (oldBackendType == newBackendType && oldBackend != null) {
+                Log.d(TAG, "Same backend type ($oldBackendType), ensuring it's active")
+                if (!oldBackend.isActive()) {
+                    Log.d(TAG, "Backend not active, restarting...")
+                    oldBackend.start().getOrElse { error ->
+                        Log.e(TAG, "Failed to restart backend: ${error.message}")
+                        return Result.failure(error)
+                    }
+                }
+                return Result.success(oldBackendType)
+            }
+
+            // Different backend - perform atomic switch
+            Log.d(TAG, "Backend switch: $oldBackendType → $newBackendType")
+
             // Check if we're switching from granular to non-granular
-            val isGranular = backend.supportsGranularControl()
+            val isGranular = newBackend.supportsGranularControl()
             val needsMigration = wasGranular && !isGranular
 
             if (needsMigration) {
-                Log.d(TAG, "Backend transition: granular ($oldBackendType) → simple (${backend.getType()}), migrating rules...")
+                Log.d(TAG, "Backend transition: granular ($oldBackendType) → simple ($newBackendType), migrating rules...")
                 migrateRulesToSimple()
             } else if (oldBackend != null) {
-                Log.d(TAG, "Backend transition: $oldBackendType → ${backend.getType()}, no migration needed (both granular or both simple)")
+                Log.d(TAG, "Backend transition: $oldBackendType → $newBackendType, no migration needed (both granular or both simple)")
             }
 
-            // Start backend
-            backend.start().getOrElse { error ->
-                Log.e(TAG, "Failed to start backend: ${error.message}")
+            // ATOMIC SWITCH: Start new backend FIRST, then stop old backend
+            // This prevents security gap where apps are unblocked during transition
+            Log.d(TAG, "Starting new backend ($newBackendType) BEFORE stopping old backend...")
+            newBackend.start().getOrElse { error ->
+                Log.e(TAG, "Failed to start new backend ($newBackendType): ${error.message}")
+                // Keep old backend running if new one fails
+                if (oldBackend != null && oldBackend.isActive()) {
+                    Log.w(TAG, "Keeping old backend ($oldBackendType) running since new backend failed to start")
+                }
                 return Result.failure(error)
             }
 
-            currentBackend = backend
-            _activeBackendType.value = backend.getType()
+            // Apply rules to new backend to ensure it's fully active
+            Log.d(TAG, "Applying rules to new backend ($newBackendType)...")
+            applyRulesToBackend(newBackend).getOrElse { error ->
+                Log.e(TAG, "Failed to apply rules to new backend: ${error.message}")
+                // Try to stop the new backend since it's not working properly
+                newBackend.stop()
+                // Keep old backend running
+                if (oldBackend != null && oldBackend.isActive()) {
+                    Log.w(TAG, "Keeping old backend ($oldBackendType) running since new backend failed to apply rules")
+                }
+                return Result.failure(error)
+            }
+
+            // Wait a moment to ensure new backend is fully established
+            kotlinx.coroutines.delay(500)
+
+            // Verify new backend is active
+            if (!newBackend.isActive()) {
+                Log.e(TAG, "New backend ($newBackendType) started but is not active!")
+                newBackend.stop()
+                if (oldBackend != null && oldBackend.isActive()) {
+                    Log.w(TAG, "Keeping old backend ($oldBackendType) running since new backend is not active")
+                }
+                return Result.failure(Exception("New backend failed to become active"))
+            }
+
+            Log.d(TAG, "New backend ($newBackendType) is active, now stopping old backend ($oldBackendType)...")
+
+            // Now it's safe to stop the old backend
+            if (oldBackend != null) {
+                stopMonitoring() // Stop monitoring for old backend
+                oldBackend.stop().getOrElse { error ->
+                    Log.w(TAG, "Failed to stop old backend ($oldBackendType): ${error.message}")
+                    // Continue anyway - new backend is already running
+                }
+            }
+
+            // Update current backend reference
+            currentBackend = newBackend
+            _activeBackendType.value = newBackendType
 
             // Start monitoring for iptables, ConnectivityManager, and NetworkPolicyManager backends
             // (VPN backend monitors internally)
-            if (backend.getType() == FirewallBackendType.IPTABLES ||
-                backend.getType() == FirewallBackendType.CONNECTIVITY_MANAGER ||
-                backend.getType() == FirewallBackendType.NETWORK_POLICY_MANAGER) {
+            if (newBackendType == FirewallBackendType.IPTABLES ||
+                newBackendType == FirewallBackendType.CONNECTIVITY_MANAGER ||
+                newBackendType == FirewallBackendType.NETWORK_POLICY_MANAGER) {
                 startMonitoring()
             }
 
-            Log.d(TAG, "Firewall started successfully with backend: ${backend.getType()}")
-            Result.success(backend.getType())
+            // Start continuous backend health monitoring for privileged backends
+            // Per FIREWALL.md lines 92-96: continuously monitor backend availability
+            startBackendHealthMonitoring()
+
+            Log.d(TAG, "Firewall started successfully with backend: $newBackendType (atomic switch complete)")
+            Result.success(newBackendType)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start firewall", e)
             val error = errorHandler.handleError(e, "start firewall")
@@ -301,7 +363,8 @@ class FirewallManager(
 
     /**
      * Migrate partial rules to simple all-or-nothing rules.
-     * Uses majority rule: if 2+ networks are blocked, block all; otherwise allow all.
+     * Per FIREWALL.md lines 214-218: If ANY network is blocked, block all (conservative approach).
+     * If NO networks are blocked, allow all.
      *
      * This is called when switching from a granular backend (VPN/iptables) to a
      * simple backend (ConnectivityManager) that only supports all-or-nothing blocking.
@@ -324,11 +387,12 @@ class FirewallManager(
                 val hasPartialBlock = blocks.any { it } && blocks.any { !it }
 
                 if (hasPartialBlock) {
-                    // Use majority rule: if 2+ blocked → block all, else allow all
-                    val blockedCount = blocks.count { it }
-                    val blockAll = blockedCount >= 2
+                    // Conservative approach: if ANY network is blocked, block all
+                    // Per FIREWALL.md line 215: "Partially blocked (1-2 networks blocked): Treat as fully blocked"
+                    val hasAnyBlock = blocks.any { it }
+                    val blockAll = hasAnyBlock
 
-                    Log.d(TAG, "Migrating ${rule.packageName}: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming} → blockAll=$blockAll (${blockedCount}/3 blocked)")
+                    Log.d(TAG, "Migrating ${rule.packageName}: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming} → blockAll=$blockAll (conservative: any block → block all)")
 
                     // Update rule to block/allow all networks
                     firewallRepository.updateRule(
@@ -399,6 +463,146 @@ class FirewallManager(
         ruleChangeMonitoringJob = null
         ruleApplicationJob?.cancel()
         ruleApplicationJob = null
+        healthMonitoringJob?.cancel()
+        healthMonitoringJob = null
+    }
+
+    /**
+     * Start continuous backend health monitoring.
+     * Periodically checks if the current backend is still available and active.
+     * If backend fails, automatically fallback to VPN.
+     * Per FIREWALL.md lines 92-96.
+     */
+    private fun startBackendHealthMonitoring() {
+        val backend = currentBackend ?: return
+        val backendType = backend.getType()
+
+        // Only monitor privileged backends (iptables, ConnectivityManager)
+        // VPN backend doesn't need health monitoring (always available)
+        if (backendType == FirewallBackendType.VPN) {
+            Log.d(TAG, "VPN backend doesn't need health monitoring")
+            return
+        }
+
+        Log.d(TAG, "Starting backend health monitoring for $backendType (every ${BACKEND_HEALTH_CHECK_INTERVAL_MS}ms)")
+
+        healthMonitoringJob?.cancel()
+        healthMonitoringJob = scope.launch {
+            while (true) {
+                delay(BACKEND_HEALTH_CHECK_INTERVAL_MS)
+
+                try {
+                    Log.d(TAG, "Health check: Testing $backendType backend availability...")
+
+                    // Check if backend is still available
+                    val availabilityResult = backend.checkAvailability()
+
+                    if (availabilityResult.isFailure) {
+                        Log.e(TAG, "❌ Health check FAILED: $backendType backend is no longer available!")
+                        Log.e(TAG, "Error: ${availabilityResult.exceptionOrNull()?.message}")
+
+                        // Backend failed - trigger automatic fallback to VPN
+                        handleBackendFailure(backendType)
+                        break // Stop monitoring - new backend will start its own monitoring
+                    }
+
+                    // Check if backend is still active
+                    if (!backend.isActive()) {
+                        Log.e(TAG, "❌ Health check FAILED: $backendType backend is not active!")
+
+                        // Backend became inactive - trigger automatic fallback
+                        handleBackendFailure(backendType)
+                        break
+                    }
+
+                    Log.d(TAG, "✅ Health check passed: $backendType backend is healthy")
+                    _backendHealthWarning.value = null // Clear any previous warnings
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Health check exception for $backendType", e)
+                    // Don't trigger fallback on exceptions - might be temporary
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle backend failure by automatically falling back to VPN.
+     * Per FIREWALL.md lines 46, 80-96: If manually selected backend fails, switch to AUTO mode.
+     *
+     * IMPORTANT: This method acquires startStopMutex to prevent race conditions with manual
+     * backend switching operations.
+     */
+    private suspend fun handleBackendFailure(failedBackendType: FirewallBackendType) = startStopMutex.withLock {
+        Log.e(TAG, "=== BACKEND FAILURE DETECTED: $failedBackendType ===")
+
+        // Check if user had manually selected this backend
+        val currentMode = getCurrentMode()
+        val wasManualSelection = currentMode != FirewallMode.AUTO
+
+        if (wasManualSelection) {
+            Log.e(TAG, "Manually selected backend ($currentMode) failed. Switching to AUTO mode per FIREWALL.md line 46")
+            // Switch to AUTO mode in settings
+            setMode(FirewallMode.AUTO)
+        }
+
+        Log.e(TAG, "Attempting automatic fallback to VPN...")
+
+        try {
+            // Stop monitoring to prevent interference
+            stopMonitoring()
+
+            // Try to fallback to VPN
+            val vpnBackend = VpnFirewallBackend(context)
+
+            Log.d(TAG, "Starting VPN backend as fallback...")
+            vpnBackend.start().getOrElse { error ->
+                Log.e(TAG, "❌ CRITICAL: VPN fallback FAILED: ${error.message}")
+                _backendHealthWarning.value = "FIREWALL DOWN: All backends failed. Your apps are UNBLOCKED!"
+
+                // Update state to reflect firewall is down
+                currentBackend = null
+                _activeBackendType.value = null
+
+                return@withLock
+            }
+
+            // Wait for VPN to establish
+            delay(1000)
+
+            if (!vpnBackend.isActive()) {
+                Log.e(TAG, "❌ CRITICAL: VPN fallback started but not active!")
+                _backendHealthWarning.value = "FIREWALL DOWN: VPN fallback failed. Your apps are UNBLOCKED!"
+
+                currentBackend = null
+                _activeBackendType.value = null
+
+                return@withLock
+            }
+
+            Log.d(TAG, "✅ VPN fallback successful!")
+
+            // Update current backend
+            currentBackend = vpnBackend
+            _activeBackendType.value = FirewallBackendType.VPN
+
+            // Show warning to user
+            val warningMessage = if (wasManualSelection) {
+                "$failedBackendType backend failed. Switched to AUTO mode and using VPN."
+            } else {
+                "$failedBackendType backend failed. Automatically switched to VPN."
+            }
+            _backendHealthWarning.value = warningMessage
+
+            // VPN monitors internally, no need to start monitoring
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ CRITICAL: Exception during backend fallback", e)
+            _backendHealthWarning.value = "FIREWALL DOWN: Fallback failed. Your apps are UNBLOCKED!"
+
+            currentBackend = null
+            _activeBackendType.value = null
+        }
     }
     
     /**
@@ -426,22 +630,35 @@ class FirewallManager(
      */
     private suspend fun applyRules() {
         val backend = currentBackend ?: return
-
-        if (backend.getType() == FirewallBackendType.VPN) {
-            // VPN backend handles rules internally
-            return
+        applyRulesToBackend(backend).getOrElse { error ->
+            Log.e(TAG, "Failed to apply rules: ${error.message}")
         }
+    }
 
-        try {
+    /**
+     * Apply rules to a specific backend.
+     * Used during atomic backend switching to ensure new backend is fully active.
+     */
+    private suspend fun applyRulesToBackend(backend: FirewallBackend): Result<Unit> {
+        return try {
+            if (backend.getType() == FirewallBackendType.VPN) {
+                // VPN backend handles rules internally
+                return Result.success(Unit)
+            }
+
             // Get all rules from repository
             val rules = firewallRepository.getAllRules().first()
 
             // Apply rules
             backend.applyRules(rules, currentNetworkType, isScreenOn).getOrElse { error ->
-                Log.e(TAG, "Failed to apply rules: ${error.message}")
+                Log.e(TAG, "Failed to apply rules to ${backend.getType()}: ${error.message}")
+                return Result.failure(error)
             }
+
+            Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error applying rules", e)
+            Log.e(TAG, "Error applying rules to ${backend.getType()}", e)
+            Result.failure(e)
         }
     }
 

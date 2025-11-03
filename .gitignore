@@ -1,5 +1,6 @@
 docs
 llm_docs
+RULES.md
 
 # Built application files
 *.apk

@@ -303,7 +303,6 @@ io.github.dorumrr.de1984/
 **Documentation organization**:
 - **Root**: README.md, RULES.md, PRD.md, FIREWALL.md, RELEASE_SIGNING_GUIDE.md
 - **llm_docs/**: Task documentation (timestamped markdown files)
-- **docs/**: Technical design documents, architecture decisions
 
 **Architecture**: MVVM + Repository + Manual DI (ServiceLocator)
 

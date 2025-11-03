@@ -1,6 +1,7 @@
 package io.github.dorumrr.de1984.data.firewall
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
 import io.github.dorumrr.de1984.data.common.ErrorHandler
@@ -9,6 +10,7 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
+import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -109,12 +111,12 @@ class NetworkPolicyManagerFirewallBackend(
         return try {
             Log.d(TAG, "=== NetworkPolicyManagerFirewallBackend.applyRules() ===")
             Log.d(TAG, "Rules count: ${rules.size}, networkType: $networkType, screenOn: $screenOn")
-            
+
             if (!isRunning) {
                 Log.w(TAG, "Firewall not running, skipping rule application")
                 return Result.success(Unit)
             }
-            
+
             // Get NetworkPolicyManager instance
             val networkPolicyManager = getNetworkPolicyManager()
             if (networkPolicyManager == null) {
@@ -124,23 +126,76 @@ class NetworkPolicyManagerFirewallBackend(
                 )
                 return Result.failure(error)
             }
-            
+
             // Test which policy works on first run
             if (!policyTested) {
                 testPolicySupport(networkPolicyManager)
             }
 
+            // Get default policy from SharedPreferences
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val defaultPolicy = prefs.getString(
+                Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
+                Constants.Settings.DEFAULT_FIREWALL_POLICY
+            ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
+            val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
+
+            Log.d(TAG, "Default policy: $defaultPolicy (isBlockAllDefault=$isBlockAllDefault)")
+
             var appliedCount = 0
             var errorCount = 0
 
-            rules.forEach { rule ->
+            // Create a map of rules by UID for quick lookup
+            val rulesByUid = rules.filter { it.enabled }.groupBy { it.uid }
+
+            // Get all installed packages with network permissions
+            val packageManager = context.packageManager
+            val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                .filter { appInfo ->
+                    try {
+                        val packageInfo = packageManager.getPackageInfo(
+                            appInfo.packageName,
+                            PackageManager.GET_PERMISSIONS
+                        )
+                        packageInfo.requestedPermissions?.any { permission ->
+                            Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
+                        } ?: false
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+
+            Log.d(TAG, "Found ${allPackages.size} packages with network permissions")
+
+            // Apply rules to all packages
+            allPackages.forEach { appInfo ->
+                val packageName = appInfo.packageName
+                val uid = appInfo.uid
+
+                // Never block our own app
+                if (Constants.App.isOwnApp(packageName)) {
+                    return@forEach
+                }
+
                 try {
-                    // Determine if app should be blocked
-                    val shouldBlock = when {
-                        !rule.enabled -> false
-                        !screenOn && rule.blockWhenScreenOff -> true
-                        rule.isBlockedOn(networkType) -> true
-                        else -> false
+                    val rulesForUid = rulesByUid[uid]
+
+                    val shouldBlock = if (rulesForUid != null && rulesForUid.isNotEmpty()) {
+                        // Has explicit rules - use them
+                        // For shared UIDs, block if ANY rule says to block (most restrictive)
+                        rulesForUid.any { rule ->
+                            when {
+                                !screenOn && rule.blockWhenScreenOff -> true
+                                rule.isBlockedOn(networkType) -> true
+                                else -> false
+                            }
+                        }
+                    } else {
+                        // No rule - apply default policy
+                        // Per FIREWALL.md lines 220-230:
+                        // - Block All mode: Apps without rules are blocked on all networks
+                        // - Allow All mode: Apps without rules are allowed on all networks
+                        isBlockAllDefault
                     }
 
                     // Set policy
@@ -150,7 +205,7 @@ class NetworkPolicyManagerFirewallBackend(
                         POLICY_NONE
                     }
 
-                    setUidPolicyMethod?.invoke(networkPolicyManager, rule.uid, policy)
+                    setUidPolicyMethod?.invoke(networkPolicyManager, uid, policy)
                     appliedCount++
 
                     val policyName = when (blockingPolicy) {
@@ -159,14 +214,15 @@ class NetworkPolicyManagerFirewallBackend(
                         else -> "UNKNOWN"
                     }
 
-                    Log.d(TAG, "Applied policy for ${rule.packageName} (UID ${rule.uid}): " +
+                    val ruleStatus = if (rulesForUid != null) "has rule" else "no rule (default policy)"
+                    Log.d(TAG, "Applied policy for $packageName (UID $uid, $ruleStatus): " +
                             "policy=${if (shouldBlock) "BLOCK ($policyName)" else "ALLOW"}")
                 } catch (e: Exception) {
                     errorCount++
-                    Log.e(TAG, "Failed to apply policy for ${rule.packageName} (UID ${rule.uid})", e)
+                    Log.e(TAG, "Failed to apply policy for $packageName (UID $uid)", e)
                 }
             }
-            
+
             Log.d(TAG, "✅ Applied $appliedCount policies, $errorCount errors")
             Result.success(Unit)
         } catch (e: Exception) {

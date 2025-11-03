@@ -44,6 +44,7 @@ class BootReceiver : BroadcastReceiver() {
                 val app = context.applicationContext as? De1984Application
                 if (app != null) {
                     val firewallManager = app.dependencies.firewallManager
+                    val shizukuManager = app.dependencies.shizukuManager
 
                     // Use goAsync() to keep receiver alive while coroutine runs
                     val pendingResult = goAsync()
@@ -52,6 +53,16 @@ class BootReceiver : BroadcastReceiver() {
                     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
                     scope.launch {
                         try {
+                            // Wait for Shizuku to be initialized before starting firewall
+                            // This is important for ACTION_MY_PACKAGE_REPLACED (app update)
+                            // where Shizuku may not be fully initialized yet
+                            Log.d(TAG, "Checking Shizuku status before starting firewall...")
+                            shizukuManager.checkShizukuStatus()
+
+                            // Small delay to ensure Shizuku is fully ready
+                            kotlinx.coroutines.delay(500)
+
+                            Log.d(TAG, "Starting firewall...")
                             val result = firewallManager.startFirewall()
                             result.onSuccess { backendType ->
                                 Log.d(TAG, "Firewall restored successfully with backend: $backendType")

@@ -71,7 +71,70 @@ class FirewallManager(
     
     private var currentNetworkType: NetworkType = NetworkType.NONE
     private var isScreenOn: Boolean = true
-    
+
+    init {
+        // Initialize backend state on startup
+        initializeBackendState()
+    }
+
+    /**
+     * Initialize backend state by detecting if any backend is currently running.
+     * This is needed when the app starts and a backend (e.g., VPN service) is already running.
+     */
+    private fun initializeBackendState() {
+        scope.launch {
+            try {
+                // Check if VPN service is running
+                val vpnBackend = VpnFirewallBackend(context)
+                if (vpnBackend.isActive()) {
+                    Log.d(TAG, "Detected VPN backend running on startup")
+                    currentBackend = vpnBackend
+                    _activeBackendType.value = FirewallBackendType.VPN
+                    // VPN monitors internally, no need to start monitoring
+                    startBackendHealthMonitoring()
+                    return@launch
+                }
+
+                // Check if iptables backend is running
+                val iptablesBackend = IptablesFirewallBackend(context, rootManager, shizukuManager, errorHandler)
+                if (iptablesBackend.isActive()) {
+                    Log.d(TAG, "Detected iptables backend running on startup")
+                    currentBackend = iptablesBackend
+                    _activeBackendType.value = FirewallBackendType.IPTABLES
+                    startMonitoring()
+                    startBackendHealthMonitoring()
+                    return@launch
+                }
+
+                // Check if ConnectivityManager backend is running
+                val cmBackend = ConnectivityManagerFirewallBackend(context, shizukuManager, errorHandler)
+                if (cmBackend.isActive()) {
+                    Log.d(TAG, "Detected ConnectivityManager backend running on startup")
+                    currentBackend = cmBackend
+                    _activeBackendType.value = FirewallBackendType.CONNECTIVITY_MANAGER
+                    startMonitoring()
+                    startBackendHealthMonitoring()
+                    return@launch
+                }
+
+                // Check if NetworkPolicyManager backend is running
+                val npmBackend = NetworkPolicyManagerFirewallBackend(context, shizukuManager, errorHandler)
+                if (npmBackend.isActive()) {
+                    Log.d(TAG, "Detected NetworkPolicyManager backend running on startup")
+                    currentBackend = npmBackend
+                    _activeBackendType.value = FirewallBackendType.NETWORK_POLICY_MANAGER
+                    startMonitoring()
+                    startBackendHealthMonitoring()
+                    return@launch
+                }
+
+                Log.d(TAG, "No backend detected running on startup")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error initializing backend state", e)
+            }
+        }
+    }
+
     /**
      * Get the current firewall mode from settings.
      */

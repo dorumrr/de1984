@@ -369,10 +369,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     private fun updateBackendStatus() {
         val activeBackend = viewModel.activeBackendType.value
-        val currentMode = viewModel.uiState.value.firewallMode
 
         val statusText = if (activeBackend != null) {
-            "Active: ${activeBackend.name} (Mode: ${currentMode.name})"
+            "Active: ${activeBackend.name}"
         } else {
             "Firewall not running"
         }

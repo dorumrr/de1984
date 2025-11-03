@@ -1,6 +1,7 @@
 package io.github.dorumrr.de1984.data.firewall
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import io.github.dorumrr.de1984.data.common.ErrorHandler
@@ -9,6 +10,7 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
+import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -119,37 +121,87 @@ class ConnectivityManagerFirewallBackend(
                 return Result.success(Unit)
             }
 
+            // Get default policy from SharedPreferences
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val defaultPolicy = prefs.getString(
+                Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
+                Constants.Settings.DEFAULT_FIREWALL_POLICY
+            ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
+            val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
+
+            Log.d(TAG, "Default policy: $defaultPolicy (isBlockAllDefault=$isBlockAllDefault)")
+
             var appliedCount = 0
             var errorCount = 0
 
-            rules.forEach { rule ->
+            // Create a map of rules by package name for quick lookup
+            val rulesByPackage = rules.filter { it.enabled }.associateBy { it.packageName }
+
+            // Get all installed packages with network permissions
+            val packageManager = context.packageManager
+            val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                .filter { appInfo ->
+                    try {
+                        val packageInfo = packageManager.getPackageInfo(
+                            appInfo.packageName,
+                            PackageManager.GET_PERMISSIONS
+                        )
+                        packageInfo.requestedPermissions?.any { permission ->
+                            Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
+                        } ?: false
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+
+            Log.d(TAG, "Found ${allPackages.size} packages with network permissions")
+
+            // Apply rules to all packages
+            allPackages.forEach { appInfo ->
+                val packageName = appInfo.packageName
+
+                // Never block our own app
+                if (Constants.App.isOwnApp(packageName)) {
+                    return@forEach
+                }
+
                 try {
-                    // Determine if app should be blocked
-                    // For ConnectivityManager, it's all-or-nothing: if ANY network is blocked, block ALL
-                    val shouldBlock = when {
-                        !rule.enabled -> false
-                        !screenOn && rule.blockWhenScreenOff -> true
-                        rule.isBlockedOn(networkType) -> true
-                        else -> false
+                    val rule = rulesByPackage[packageName]
+
+                    val shouldBlock = if (rule != null) {
+                        // Has explicit rule - use it
+                        // Per FIREWALL.md lines 220-230: ConnectivityManager is all-or-nothing
+                        when {
+                            !screenOn && rule.blockWhenScreenOff -> true
+                            rule.isBlockedOn(networkType) -> true
+                            else -> false
+                        }
+                    } else {
+                        // No rule - apply default policy
+                        // Per FIREWALL.md lines 220-230:
+                        // - Block All mode: Apps without rules are blocked on all networks
+                        // - Allow All mode: Apps without rules are allowed on all networks
+                        isBlockAllDefault
                     }
 
                     // Set package networking enabled/disabled using shell command
                     val enabled = !shouldBlock  // true = allow, false = block
                     val (exitCode, output) = shizukuManager.executeShellCommand(
-                        "cmd connectivity set-package-networking-enabled $enabled ${rule.packageName}"
+                        "cmd connectivity set-package-networking-enabled $enabled $packageName"
                     )
 
                     if (exitCode == 0) {
                         appliedCount++
-                        Log.d(TAG, "Applied policy for ${rule.packageName}: " +
+                        val ruleStatus = if (rule != null) "has rule" else "no rule (default policy)"
+                        Log.d(TAG, "Applied policy for $packageName ($ruleStatus): " +
                                 "policy=${if (shouldBlock) "BLOCK (all networks)" else "ALLOW"}")
                     } else {
                         errorCount++
-                        Log.e(TAG, "Failed to apply policy for ${rule.packageName}: $output")
+                        Log.e(TAG, "Failed to apply policy for $packageName: $output")
                     }
                 } catch (e: Exception) {
                     errorCount++
-                    Log.e(TAG, "Failed to apply policy for ${rule.packageName}", e)
+                    Log.e(TAG, "Failed to apply policy for $packageName", e)
                 }
             }
 

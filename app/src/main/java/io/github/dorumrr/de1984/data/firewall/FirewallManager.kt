@@ -182,11 +182,8 @@ class FirewallManager(
 
             val newBackendType = newBackend.getType()
 
-            // If same backend type, just ensure it's running
-            if (oldBackendType == newBackendType && oldBackend != null) {
-                Log.d(TAG, "Same backend type ($oldBackendType), ensuring it's active")
-                if (!oldBackend.isActive()) {
-                    Log.d(TAG, "Backend not active, restarting...")
+            if (oldBackendType == newBackendType) {
+                if (!oldBackend!!.isActive()) {
                     oldBackend.start().getOrElse { error ->
                         Log.e(TAG, "Failed to restart backend: ${error.message}")
                         return Result.failure(error)

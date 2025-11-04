@@ -65,10 +65,10 @@
         <!-- Badges Column (Right Side) -->
         <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_marginStart="12dp"
             android:orientation="vertical"
-            android:gravity="end">
+            android:gravity="center_vertical|end">
 
             <!-- Row 1: Enabled/Disabled Badge -->
             <TextView

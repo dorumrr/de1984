@@ -1,1 +1,3 @@
-• 
+• Critical Package Protection – Blocks uninstallation of essential/important packages with warnings
+• Added user-contributed package details
+• Improved badges to reflect category and criticality

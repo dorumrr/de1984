@@ -3,7 +3,7 @@
 **Privacy isn’t default. Take it back with De1984 Firewall and Package Control.**
 
 <div>
-  <a href="https://apt.izzysoft.de/packages/io.github.dorumrr.de1984"><img height="50" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"></a> <!-- <a href="https://f-droid.org/en/packages/io.github.dorumrr.de1984/"><img height="50" src="https://f-droid.org/badge/get-it-on.png"></a>--> <a href="https://www.buymeacoffee.com/ossdev"><img height="50" src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png" /></a>
+  <a href="https://apt.izzysoft.de/packages/io.github.dorumrr.de1984"><img height="50" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"></a> <a href="https://f-droid.org/en/packages/io.github.dorumrr.de1984/"><img height="50" src="https://f-droid.org/badge/get-it-on.png"></a> <a href="https://www.buymeacoffee.com/ossdev"><img height="50" src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png" /></a>
 </div>
 
 ## 📸 Screenshots
@@ -85,7 +85,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 De1984 protects your privacy. You can protect its future!
 
-[![DONATE](https://img.shields.io/badge/DONATE-FFD700?style=for-the-badge&logoColor=white)](https://donate.stripe.com/5kQeV6cOgaxGcsf9iD3ZK01)
+[![DONATE](https://img.shields.io/badge/DONATE-FFD700?style=for-the-badge&logoColor=white)](https://www.buymeacoffee.com/ossdev)
 
 ---
 

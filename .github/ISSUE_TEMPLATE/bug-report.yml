@@ -1,0 +1,40 @@
+name: 🐞 Bug Report
+description: Create A Bug Report To Help Us Fix Them
+title: "[BUG]"
+labels: bug
+
+body:
+  - type: textarea
+    id: describe
+    attributes:
+      label: |
+        Describe The Bug
+      description: |
+        What Did You Do To Show This Bug ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: recurrence
+    attributes:
+      label: |
+        To Reproduce
+      description: |
+        Example of problem Reproduction Steps:
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See Error
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: |
+        Screenshots Or Screen Recording
+      description: |
+       A screenshot or screen recording can help explain the problem. If your file is too large for GitHub, compress it (ZIP) or provide a link (e.g., from a file-hosting service).
+    validations:
+      required: true
+      

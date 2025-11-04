@@ -405,7 +405,7 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setNetworkAccess(packageName: String, allowed: Boolean): Boolean {
-        if (Constants.App.isOwnApp(packageName)) {
+        if (Constants.Firewall.isSystemCritical(packageName)) {
             return false
         }
 
@@ -444,7 +444,7 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setWifiBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.App.isOwnApp(packageName)) {
+        if (Constants.Firewall.isSystemCritical(packageName)) {
             return false
         }
 
@@ -486,7 +486,7 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setMobileBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.App.isOwnApp(packageName)) {
+        if (Constants.Firewall.isSystemCritical(packageName)) {
             return false
         }
 
@@ -528,7 +528,7 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setRoamingBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.App.isOwnApp(packageName)) {
+        if (Constants.Firewall.isSystemCritical(packageName)) {
             return false
         }
 
@@ -571,7 +571,7 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.App.isOwnApp(packageName)) {
+        if (Constants.Firewall.isSystemCritical(packageName)) {
             return false
         }
 
@@ -607,7 +607,7 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean): Boolean {
-        if (Constants.App.isOwnApp(packageName)) {
+        if (Constants.Firewall.isSystemCritical(packageName)) {
             return false
         }
 

@@ -17,7 +17,7 @@ class NetworkPackageRepositoryImpl(
         return packageDataSource.getPackages()
             .map { entities ->
                 entities
-                    .filter { !Constants.App.isOwnApp(it.packageName) }
+                    .filter { !Constants.Firewall.isSystemCritical(it.packageName) }
                     .filter { it.hasNetworkAccess }
                     .map { it.toNetworkDomain() }
                     .sortedBy { it.name.lowercase() }

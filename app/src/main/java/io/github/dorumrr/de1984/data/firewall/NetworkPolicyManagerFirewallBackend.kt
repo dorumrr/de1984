@@ -172,8 +172,8 @@ class NetworkPolicyManagerFirewallBackend(
                 val packageName = appInfo.packageName
                 val uid = appInfo.uid
 
-                // Never block our own app
-                if (Constants.App.isOwnApp(packageName)) {
+                // Never block system-critical packages
+                if (Constants.Firewall.isSystemCritical(packageName)) {
                     return@forEach
                 }
 

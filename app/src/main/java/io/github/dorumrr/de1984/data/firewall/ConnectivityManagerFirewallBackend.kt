@@ -160,8 +160,8 @@ class ConnectivityManagerFirewallBackend(
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
 
-                // Never block our own app
-                if (Constants.App.isOwnApp(packageName)) {
+                // Never block system-critical packages
+                if (Constants.Firewall.isSystemCritical(packageName)) {
                     return@forEach
                 }
 

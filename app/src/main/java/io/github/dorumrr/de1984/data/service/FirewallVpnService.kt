@@ -490,8 +490,8 @@ class FirewallVpnService : VpnService() {
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
 
-                // Never block our own app
-                if (io.github.dorumrr.de1984.utils.Constants.App.isOwnApp(packageName)) {
+                // Never block system-critical packages
+                if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName)) {
                     allowedCount++
                     return@forEach
                 }

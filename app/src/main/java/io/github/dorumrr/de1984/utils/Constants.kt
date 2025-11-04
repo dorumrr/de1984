@@ -141,6 +141,36 @@ object Constants {
         )
 
         const val SYSTEM_PACKAGE_WARNING = "⚠️ System Package Warning"
+
+        /**
+         * Packages that should NEVER be blocked to prevent breaking core Android functionality.
+         * These packages are critical for network connectivity and system operation.
+         */
+        val SYSTEM_WHITELIST = setOf(
+            // De1984 itself
+            App.PACKAGE_NAME,
+            App.PACKAGE_NAME_DEBUG,
+
+            // Critical network infrastructure
+            "com.android.networkstack",           // Network stack (DHCP, IP config, network validation)
+            "com.android.networkstack.inprocess", // Network stack (older Android versions)
+            "com.android.networkstack.permissionconfig", // Network stack permissions
+            "com.android.resolv",                 // DNS resolver (critical for all network operations)
+
+            // Critical system UI
+            "com.android.systemui",               // System UI (prevents UI crashes)
+            "com.android.settings",               // Settings app (allows user to fix issues)
+
+            // Captive portal detection (optional but recommended)
+            "com.android.captiveportallogin",     // Captive portal login (hotel/airport WiFi)
+        )
+
+        /**
+         * Check if a package is system-critical and should never be blocked.
+         */
+        fun isSystemCritical(packageName: String): Boolean {
+            return SYSTEM_WHITELIST.contains(packageName)
+        }
     }
 
     object Navigation {

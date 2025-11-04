@@ -155,8 +155,8 @@ class IptablesFirewallBackend(
                     val uid = appInfo.uid
                     val packageName = appInfo.packageName
 
-                    // Never block our own app
-                    if (Constants.App.isOwnApp(packageName)) {
+                    // Never block system-critical packages
+                    if (Constants.Firewall.isSystemCritical(packageName)) {
                         continue
                     }
 

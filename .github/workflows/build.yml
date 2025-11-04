@@ -6,7 +6,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Release APK
-        uses: gradle/actions@v3
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: assembleRelease
         env:

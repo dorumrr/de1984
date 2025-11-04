@@ -12,6 +12,7 @@ import io.github.dorumrr.de1984.data.model.PackageEntity
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.utils.Constants
+import io.github.dorumrr.de1984.utils.PackageSafetyLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -94,6 +95,11 @@ class AndroidPackageDataSource(
                             )
                         }
 
+                        // Load safety data for this package
+                        val criticality = PackageSafetyLoader.getCriticality(context, appInfo.packageName)
+                        val category = PackageSafetyLoader.getCategory(context, appInfo.packageName)
+                        val affects = PackageSafetyLoader.getAffects(context, appInfo.packageName)
+
                         PackageEntity(
                             packageName = appInfo.packageName,
                             name = getAppName(appInfo),
@@ -110,7 +116,10 @@ class AndroidPackageDataSource(
                             wifiBlocked = blockingState.wifiBlocked,
                             mobileBlocked = blockingState.mobileBlocked,
                             roamingBlocked = blockingState.roamingBlocked,
-                            isVpnApp = isVpnApp
+                            isVpnApp = isVpnApp,
+                            criticality = criticality,
+                            category = category,
+                            affects = affects
                         )
                     }.sortedBy { it.name.lowercase() }
             } catch (e: Exception) {
@@ -174,6 +183,11 @@ class AndroidPackageDataSource(
                     )
                 }
 
+                // Load safety data for this package
+                val criticality = PackageSafetyLoader.getCriticality(context, appInfo.packageName)
+                val category = PackageSafetyLoader.getCategory(context, appInfo.packageName)
+                val affects = PackageSafetyLoader.getAffects(context, appInfo.packageName)
+
                 PackageEntity(
                     packageName = appInfo.packageName,
                     name = getAppName(appInfo),
@@ -190,7 +204,10 @@ class AndroidPackageDataSource(
                     wifiBlocked = blockingState.wifiBlocked,
                     mobileBlocked = blockingState.mobileBlocked,
                     roamingBlocked = blockingState.roamingBlocked,
-                    isVpnApp = isVpnApp
+                    isVpnApp = isVpnApp,
+                    criticality = criticality,
+                    category = category,
+                    affects = affects
                 )
             } catch (e: Exception) {
                 null

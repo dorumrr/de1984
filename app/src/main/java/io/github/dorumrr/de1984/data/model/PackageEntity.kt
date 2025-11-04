@@ -1,6 +1,7 @@
 package io.github.dorumrr.de1984.data.model
 
 import io.github.dorumrr.de1984.domain.model.Package
+import io.github.dorumrr.de1984.domain.model.PackageCriticality
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.utils.Constants
 
@@ -20,7 +21,10 @@ data class PackageEntity(
     val wifiBlocked: Boolean = false,
     val mobileBlocked: Boolean = false,
     val roamingBlocked: Boolean = false,
-    val isVpnApp: Boolean = false
+    val isVpnApp: Boolean = false,
+    val criticality: PackageCriticality? = null,
+    val category: String? = null,
+    val affects: List<String> = emptyList()
 )
 
 fun PackageEntity.toDomain(): Package {
@@ -39,7 +43,10 @@ fun PackageEntity.toDomain(): Package {
         installTime = installTime,
         updateTime = updateTime,
         permissions = permissions,
-        hasNetworkAccess = hasNetworkAccess
+        hasNetworkAccess = hasNetworkAccess,
+        criticality = criticality,
+        category = category,
+        affects = affects
     )
 }
 
@@ -58,6 +65,9 @@ fun Package.toEntity(): PackageEntity {
         installTime = installTime,
         updateTime = updateTime,
         permissions = permissions,
-        hasNetworkAccess = hasNetworkAccess
+        hasNetworkAccess = hasNetworkAccess,
+        criticality = criticality,
+        category = category,
+        affects = affects
     )
 }

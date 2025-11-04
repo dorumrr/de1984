@@ -14,5 +14,10 @@
     <color name="chip_background_unchecked">#00FFFFFF</color> <!-- Transparent background for unselected chips -->
     <color name="chip_text_unchecked">#B0BEC5</color> <!-- Light gray text for unselected chips -->
     <color name="chip_stroke_unchecked">#B0BEC5</color> <!-- Light gray border for unselected chips -->
+
+    <!-- Affects Info Box Colors (Dark Mode) -->
+    <color name="affects_info_box_background">#1E1E1E</color> <!-- Darker gray for better contrast -->
+    <color name="affects_info_box_stroke">#424242</color>     <!-- Medium gray border -->
+    <color name="affects_info_box_text">#E0E0E0</color>       <!-- Light gray text -->
 </resources>
 

@@ -146,6 +146,18 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             viewModel.setShowAppIcons(isChecked)
         }
 
+        // Allow critical package uninstall switch
+        binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                // Show warning dialog when enabling
+                showCriticalUninstallWarning {
+                    viewModel.setAllowCriticalPackageUninstall(true)
+                }
+            } else {
+                viewModel.setAllowCriticalPackageUninstall(false)
+            }
+        }
+
         // New app notifications switch
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setNewAppNotifications(isChecked)
@@ -231,6 +243,18 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.showAppIconsSwitch.isChecked = state.showAppIcons
         binding.showAppIconsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowAppIcons(isChecked)
+        }
+
+        binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener(null)
+        binding.allowCriticalUninstallSwitch.isChecked = state.allowCriticalPackageUninstall
+        binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                showCriticalUninstallWarning {
+                    viewModel.setAllowCriticalPackageUninstall(true)
+                }
+            } else {
+                viewModel.setAllowCriticalPackageUninstall(false)
+            }
         }
 
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener(null)
@@ -1043,6 +1067,31 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         override fun isEnabled(position: Int): Boolean {
             return backends[position].isAvailable
         }
+    }
+
+    private fun showCriticalUninstallWarning(onConfirm: () -> Unit) {
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = "⚠️ Warning",
+            message = "This allows uninstalling system-critical packages that may brick your device. Only enable if you know what you're doing.\n\nAre you sure you want to enable this?",
+            confirmButtonText = "Enable",
+            onConfirm = onConfirm,
+            cancelButtonText = "Cancel",
+            onCancel = {
+                // Revert switch state
+                binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener(null)
+                binding.allowCriticalUninstallSwitch.isChecked = false
+                binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener { _, isChecked ->
+                    if (isChecked) {
+                        showCriticalUninstallWarning {
+                            viewModel.setAllowCriticalPackageUninstall(true)
+                        }
+                    } else {
+                        viewModel.setAllowCriticalPackageUninstall(false)
+                    }
+                }
+            }
+        )
     }
 
     companion object {

@@ -198,5 +198,69 @@ object StandardDialog {
             onDismiss = onOkClick
         )
     }
+
+    /**
+     * Show a type-to-confirm dialog that requires the user to type a specific word to confirm.
+     * Used for critical/dangerous operations.
+     *
+     * @param context The context to show the dialog in
+     * @param title The dialog title
+     * @param message The dialog message
+     * @param confirmWord The word the user must type to confirm (default: "UNINSTALL")
+     * @param confirmButtonText Text for the confirm button (default: "Confirm")
+     * @param onConfirm Callback when user types the correct word and clicks confirm
+     * @param onCancel Optional callback when cancel button is clicked
+     */
+    fun showTypeToConfirm(
+        context: Context,
+        title: String,
+        message: String,
+        confirmWord: String = "UNINSTALL",
+        confirmButtonText: String = "Confirm",
+        onConfirm: () -> Unit,
+        onCancel: (() -> Unit)? = null
+    ) {
+        // Create EditText for user input
+        val editText = android.widget.EditText(context).apply {
+            hint = "Type \"$confirmWord\" to confirm"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                       android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+            setPadding(40, 20, 40, 20)
+        }
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle(title)
+            .setMessage(message)
+            .setView(editText)
+            .setPositiveButton(confirmButtonText, null) // Set to null initially
+            .setNegativeButton("Cancel") { _, _ ->
+                onCancel?.invoke()
+            }
+            .setCancelable(true)
+            .create()
+
+        dialog.setOnShowListener {
+            val positiveButton = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+            positiveButton.isEnabled = false // Disable initially
+
+            // Enable/disable button based on input
+            editText.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    positiveButton.isEnabled = s?.toString()?.equals(confirmWord, ignoreCase = true) == true
+                }
+            })
+
+            positiveButton.setOnClickListener {
+                if (editText.text.toString().equals(confirmWord, ignoreCase = true)) {
+                    dialog.dismiss()
+                    onConfirm()
+                }
+            }
+        }
+
+        dialog.show()
+    }
 }
 

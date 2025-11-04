@@ -18,7 +18,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="12dp"
-        android:gravity="center_vertical">
+        android:gravity="top">
 
         <!-- App Icon -->
         <ImageView
@@ -28,16 +28,15 @@
             android:src="@drawable/de1984_icon"
             android:contentDescription="App icon" />
 
-        <!-- Package Info -->
+        <!-- Package Info (Left Side) -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="12dp"
-            android:orientation="vertical"
-            android:layout_gravity="center_vertical">
+            android:orientation="vertical">
 
-            <!-- App Name -->
+            <!-- Row 1: App Name -->
             <TextView
                 android:id="@+id/app_name"
                 android:layout_width="match_parent"
@@ -49,7 +48,7 @@
                 android:maxLines="1"
                 android:ellipsize="end" />
 
-            <!-- Package Name -->
+            <!-- Row 2: Package Name -->
             <TextView
                 android:id="@+id/package_name"
                 android:layout_width="match_parent"
@@ -69,9 +68,9 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:orientation="vertical"
-            android:gravity="end|center_vertical">
+            android:gravity="end">
 
-            <!-- Enabled/Disabled Badge -->
+            <!-- Row 1: Enabled/Disabled Badge -->
             <TextView
                 android:id="@+id/enabled_badge"
                 android:layout_width="wrap_content"
@@ -86,13 +85,30 @@
                 android:background="@drawable/status_badge_complete"
                 android:textColor="@color/badge_text_success" />
 
-            <!-- Package Type Badge -->
+            <!-- Row 2: Safety Level Badge (System) OR Package Type Badge (User) -->
+            <TextView
+                android:id="@+id/safety_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Essential"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/safety_badge_essential"
+                android:textColor="@color/badge_essential_text"
+                android:visibility="gone" />
+
+            <!-- Package Type Badge (User packages only) -->
             <TextView
                 android:id="@+id/package_type_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="System"
+                android:text="User"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:paddingStart="8dp"
@@ -100,7 +116,8 @@
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:background="@drawable/package_type_badge_background"
-                android:textColor="@color/package_type_chip_text" />
+                android:textColor="@color/package_type_chip_text"
+                android:visibility="gone" />
 
         </LinearLayout>
 

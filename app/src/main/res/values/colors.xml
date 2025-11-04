@@ -63,4 +63,40 @@
 
     <!-- Root Status Background (Light Mode) -->
     <color name="root_status_background">#F5F5F5</color> <!-- Light gray -->
+
+    <!-- Package Safety Badge Colors (Light Mode) -->
+    <!-- Essential (Red) - Will brick device -->
+    <color name="badge_essential_bg">#FFEBEE</color>      <!-- Light red - Material Red 50 -->
+    <color name="badge_essential_stroke">#D32F2F</color>  <!-- Red - Material Red 700 -->
+    <color name="badge_essential_text">#B71C1C</color>    <!-- Dark red - Material Red 900 -->
+
+    <!-- Important (Orange) - Will lose major features -->
+    <color name="badge_important_bg">#FFF3E0</color>      <!-- Light orange - Material Orange 50 -->
+    <color name="badge_important_stroke">#F57C00</color>  <!-- Orange - Material Orange 700 -->
+    <color name="badge_important_text">#E65100</color>    <!-- Dark orange - Material Orange 900 -->
+
+    <!-- Optional (Yellow) - May lose some features -->
+    <color name="badge_optional_bg">#FFF9C4</color>       <!-- Light yellow - Material Yellow 100 -->
+    <color name="badge_optional_stroke">#F9A825</color>   <!-- Yellow - Material Yellow 800 -->
+    <color name="badge_optional_text">#F57F17</color>     <!-- Dark yellow - Material Yellow 900 -->
+
+    <!-- Bloatware (Green) - Safe to remove -->
+    <color name="badge_bloatware_bg">#E8F5E9</color>      <!-- Light green - Material Green 50 -->
+    <color name="badge_bloatware_stroke">#43A047</color>  <!-- Green - Material Green 600 -->
+    <color name="badge_bloatware_text">#2E7D32</color>    <!-- Dark green - Material Green 800 -->
+
+    <!-- Unknown (Gray) - No data available -->
+    <color name="badge_unknown_bg">#F5F5F5</color>        <!-- Light gray -->
+    <color name="badge_unknown_stroke">#BDBDBD</color>    <!-- Gray -->
+    <color name="badge_unknown_text">#757575</color>      <!-- Dark gray -->
+
+    <!-- Category Badge Colors (Light Mode) -->
+    <color name="category_badge_background">#F5F5F5</color> <!-- Light gray -->
+    <color name="category_badge_stroke">#E0E0E0</color>     <!-- Gray border -->
+    <color name="category_badge_text">#616161</color>       <!-- Dark gray text -->
+
+    <!-- Affects Info Box Colors (Light Mode) -->
+    <color name="affects_info_box_background">#F5F5F5</color> <!-- Light gray -->
+    <color name="affects_info_box_stroke">#E0E0E0</color>     <!-- Gray border -->
+    <color name="affects_info_box_text">#616161</color>       <!-- Dark gray text -->
 </resources>

@@ -59,6 +59,7 @@ object Constants {
         const val KEY_VPN_SERVICE_RUNNING = "vpn_service_running"  // Tracks if VPN service is actually running
         const val KEY_NEW_APP_NOTIFICATIONS = "new_app_notifications"
         const val KEY_FIREWALL_MODE = "firewall_mode"
+        const val KEY_ALLOW_CRITICAL_UNINSTALL = "allow_critical_package_uninstall"
 
         const val POLICY_BLOCK_ALL = "block_all"
         const val POLICY_ALLOW_ALL = "allow_all"
@@ -72,6 +73,7 @@ object Constants {
         const val DEFAULT_FIREWALL_ENABLED = false
         const val DEFAULT_NEW_APP_NOTIFICATIONS = true
         const val DEFAULT_FIREWALL_MODE = MODE_AUTO
+        const val DEFAULT_ALLOW_CRITICAL_UNINSTALL = false
 
     }
 

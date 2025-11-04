@@ -140,6 +140,12 @@ object Constants {
             "android.permission.CHANGE_WIFI_STATE"
         )
 
+        /**
+         * VPN permission used to identify VPN apps.
+         * Apps that declare this permission are VPN service providers.
+         */
+        const val VPN_SERVICE_PERMISSION = "android.permission.BIND_VPN_SERVICE"
+
         const val SYSTEM_PACKAGE_WARNING = "⚠️ System Package Warning"
 
         /**
@@ -166,6 +172,7 @@ object Constants {
 
             // Critical network infrastructure - AOSP/Stock Android
             "com.android.networkstack",           // Network stack (AOSP/Stock Android 10+)
+            "com.android.networkstack.tethering", // Network stack tethering (connectivity validation, shares UID with networkstack)
             "com.android.networkstack.inprocess", // Network stack (older Android <10)
             "com.android.networkstack.permissionconfig", // Network stack permissions
             "com.android.resolv",                 // DNS resolver (critical for all network operations)
@@ -182,6 +189,9 @@ object Constants {
             "com.google.android.networkstack.overlay.vivo", // Vivo overlay
             "com.oneplus.commonoverlay.com.android.networkstack.inprocess.cn", // OnePlus overlay
 
+            // Critical system services
+            "com.android.cellbroadcastservice",   // Emergency broadcast service (shares UID with networkstack)
+
             // Critical system UI
             "com.android.systemui",               // System UI (prevents UI crashes)
             "com.android.settings",               // Settings app (allows user to fix issues)
@@ -195,6 +205,17 @@ object Constants {
          */
         fun isSystemCritical(packageName: String): Boolean {
             return SYSTEM_WHITELIST.contains(packageName)
+        }
+
+        /**
+         * Check if a package is a VPN app based on its permissions.
+         * VPN apps should always be allowed to prevent VPN reconnection issues.
+         *
+         * @param permissions List of permissions declared by the app
+         * @return true if the app has BIND_VPN_SERVICE permission (is a VPN app)
+         */
+        fun isVpnApp(permissions: List<String>): Boolean {
+            return permissions.contains(VPN_SERVICE_PERMISSION)
         }
     }
 

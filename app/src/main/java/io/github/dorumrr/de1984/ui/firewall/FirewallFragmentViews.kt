@@ -413,7 +413,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.wifiToggle,
             label = "WiFi",
             isBlocked = pkg.wifiBlocked,
-            enabled = !pkg.isSystemCritical,
+            enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
                 viewModel.setWifiBlocking(pkg.packageName, blocked)
@@ -425,7 +425,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.mobileToggle,
             label = "Mobile Data",
             isBlocked = pkg.mobileBlocked,
-            enabled = !pkg.isSystemCritical,
+            enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 
@@ -440,7 +440,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 binding = binding.roamingToggle,
                 label = "Roaming",
                 isBlocked = pkg.roamingBlocked,
-                enabled = !pkg.isSystemCritical,
+                enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
                 onToggle = { blocked ->
                     if (isUpdatingProgrammatically) return@setupNetworkToggle
 
@@ -458,6 +458,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         if (pkg.isSystemCritical) {
             binding.infoMessage.visibility = View.VISIBLE
             binding.infoMessage.text = "⚠️ System Critical Package - Network access cannot be modified to prevent system instability."
+        } else if (pkg.isVpnApp) {
+            binding.infoMessage.visibility = View.VISIBLE
+            binding.infoMessage.text = "🔒 VPN App - Always allowed to prevent VPN reconnection issues after device lock/unlock."
         } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
             binding.infoMessage.visibility = View.VISIBLE
             binding.infoMessage.text = "Using VPN-based firewall because your device is not rooted or doesn't have Shizuku. You cannot use another VPN app while De1984 firewall is active."
@@ -491,6 +494,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         val infoMessage = if (pkg.isSystemCritical) {
             "⚠️ System Critical Package - Network access cannot be modified to prevent system instability."
+        } else if (pkg.isVpnApp) {
+            "🔒 VPN App - Always allowed to prevent VPN reconnection issues after device lock/unlock."
         } else {
             when (backendType) {
                 io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER -> {
@@ -538,7 +543,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.internetToggle,
             label = "Block Internet",
             isBlocked = pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked,
-            enabled = !pkg.isSystemCritical,
+            enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 

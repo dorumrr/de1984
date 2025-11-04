@@ -78,6 +78,23 @@
                 android:background="@drawable/badge_background"
                 android:visibility="gone" />
 
+            <!-- VPN App Badge -->
+            <TextView
+                android:id="@+id/vpn_app_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="VPN App"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="#1976D2"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/badge_background_vpn"
+                android:visibility="gone" />
+
         </LinearLayout>
 
         <!-- Badges Column (Right Side) -->

@@ -182,6 +182,7 @@ private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain():
         versionName = versionName,
         versionCode = versionCode,
         installTime = installTime,
-        updateTime = updateTime
+        updateTime = updateTime,
+        isVpnApp = isVpnApp
     )
 }

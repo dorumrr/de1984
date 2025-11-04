@@ -297,10 +297,15 @@ class FirewallManager(
             // Stop monitoring
             stopMonitoring()
 
-            // Stop backend
+            // Stop current backend
             currentBackend?.stop()?.getOrElse { error ->
-                Log.w(TAG, "Failed to stop backend: ${error.message}")
+                Log.w(TAG, "Failed to stop current backend: ${error.message}")
             }
+
+            // Clean up ALL backend types to prevent orphaned rules
+            // This ensures that if user switched backends, old rules are cleaned up
+            // Per user request: when firewall is OFF, there should be NO rules from ANY backend
+            cleanupAllBackends()
 
             currentBackend = null
             _activeBackendType.value = null
@@ -312,6 +317,41 @@ class FirewallManager(
             val error = errorHandler.handleError(e, "stop firewall")
             Result.failure(error)
         }
+    }
+
+    /**
+     * Clean up all backend types to prevent orphaned rules.
+     * This is called when stopping the firewall to ensure no rules remain from any backend.
+     *
+     * Background: If user switches between backends (e.g., iptables → VPN), the old backend's
+     * rules may remain active. When firewall is disabled, we want a truly clean state with
+     * no rules from any backend.
+     */
+    private suspend fun cleanupAllBackends() {
+        Log.d(TAG, "Cleaning up all backend types to ensure no orphaned rules...")
+
+        // Clean up iptables rules (if any exist)
+        // This is the most important cleanup because iptables rules persist in the kernel
+        // even after the app is closed or crashes
+        try {
+            val iptablesBackend = IptablesFirewallBackend(
+                context,
+                rootManager,
+                shizukuManager,
+                errorHandler
+            )
+            iptablesBackend.stop()
+            Log.d(TAG, "Iptables cleanup completed")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to clean up iptables: ${e.message}")
+            // Ignore errors - best effort cleanup
+            // User may not have root/Shizuku, which is fine
+        }
+
+        // VPN and ConnectivityManager backends don't leave orphaned state:
+        // - VPN: Service stops cleanly, Android removes VPN interface automatically
+        // - ConnectivityManager: Chain is disabled via shell command, no persistent state
+        // So we only need to clean up iptables rules
     }
     
     /**

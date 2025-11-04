@@ -57,9 +57,19 @@ class AndroidPackageDataSource(
                     .filter { !Constants.App.isOwnApp(it.packageName) }
                     .map { appInfo ->
                         val rule = rulesByPackage[appInfo.packageName]
+                        val permissions = getAppPermissions(appInfo.packageName)
+                        val isVpnApp = hasVpnService(appInfo.packageName)
 
                         val blockingState = if (Constants.Firewall.isSystemCritical(appInfo.packageName)) {
                             // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
+                            BlockingState(
+                                isNetworkBlocked = false,
+                                wifiBlocked = false,
+                                mobileBlocked = false,
+                                roamingBlocked = false
+                            )
+                        } else if (isVpnApp) {
+                            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
                             BlockingState(
                                 isNetworkBlocked = false,
                                 wifiBlocked = false,
@@ -94,12 +104,13 @@ class AndroidPackageDataSource(
                             versionCode = getVersionCode(appInfo.packageName),
                             installTime = getInstallTime(appInfo.packageName),
                             updateTime = getUpdateTime(appInfo.packageName),
-                            permissions = getAppPermissions(appInfo.packageName),
+                            permissions = permissions,
                             hasNetworkAccess = hasNetworkPermissions(appInfo.packageName),
                             isNetworkBlocked = blockingState.isNetworkBlocked,
                             wifiBlocked = blockingState.wifiBlocked,
                             mobileBlocked = blockingState.mobileBlocked,
-                            roamingBlocked = blockingState.roamingBlocked
+                            roamingBlocked = blockingState.roamingBlocked,
+                            isVpnApp = isVpnApp
                         )
                     }.sortedBy { it.name.lowercase() }
             } catch (e: Exception) {
@@ -119,6 +130,8 @@ class AndroidPackageDataSource(
                 val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
 
                 val rule = firewallRepository.getRuleByPackage(packageName).first()
+                val permissions = getAppPermissions(packageName)
+                val isVpnApp = hasVpnService(packageName)
 
                 val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
                 val defaultPolicy = prefs.getString(
@@ -129,6 +142,14 @@ class AndroidPackageDataSource(
 
                 val blockingState = if (Constants.Firewall.isSystemCritical(packageName)) {
                     // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
+                    BlockingState(
+                        isNetworkBlocked = false,
+                        wifiBlocked = false,
+                        mobileBlocked = false,
+                        roamingBlocked = false
+                    )
+                } else if (isVpnApp) {
+                    // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
                     BlockingState(
                         isNetworkBlocked = false,
                         wifiBlocked = false,
@@ -163,12 +184,13 @@ class AndroidPackageDataSource(
                     versionCode = getVersionCode(appInfo.packageName),
                     installTime = getInstallTime(appInfo.packageName),
                     updateTime = getUpdateTime(appInfo.packageName),
-                    permissions = getAppPermissions(appInfo.packageName),
+                    permissions = permissions,
                     hasNetworkAccess = hasNetworkPermissions(appInfo.packageName),
                     isNetworkBlocked = blockingState.isNetworkBlocked,
                     wifiBlocked = blockingState.wifiBlocked,
                     mobileBlocked = blockingState.mobileBlocked,
-                    roamingBlocked = blockingState.roamingBlocked
+                    roamingBlocked = blockingState.roamingBlocked,
+                    isVpnApp = isVpnApp
                 )
             } catch (e: Exception) {
                 null
@@ -410,7 +432,36 @@ class AndroidPackageDataSource(
             emptyList()
         }
     }
-    
+
+    /**
+     * Check if an app has a VPN service by looking for services with BIND_VPN_SERVICE permission.
+     *
+     * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
+     * This is a service permission that protects the VPN service from being bound by unauthorized apps.
+     *
+     * Example from a VPN app's AndroidManifest.xml:
+     * <service android:name=".VpnService" android:permission="android.permission.BIND_VPN_SERVICE">
+     *     <intent-filter>
+     *         <action android:name="android.net.VpnService" />
+     *     </intent-filter>
+     * </service>
+     */
+    private fun hasVpnService(packageName: String): Boolean {
+        return try {
+            val packageInfo = packageManager.getPackageInfo(
+                packageName,
+                PackageManager.GET_SERVICES
+            )
+
+            // Check if any service has BIND_VPN_SERVICE permission
+            packageInfo.services?.any { serviceInfo ->
+                serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private fun hasNetworkPermissions(packageName: String): Boolean {
         val permissions = getAppPermissions(packageName)
         return permissions.any { permission ->

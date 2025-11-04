@@ -360,6 +360,16 @@ class FirewallVpnService : VpnService() {
                 continue
             }
 
+            // Never block system-critical packages
+            if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName)) {
+                continue
+            }
+
+            // Never block VPN apps to prevent VPN reconnection issues
+            if (hasVpnService(packageName)) {
+                continue
+            }
+
             val rule = rulesMap[packageName]
 
             val shouldBlock = if (rule != null && rule.enabled) {
@@ -492,6 +502,12 @@ class FirewallVpnService : VpnService() {
 
                 // Never block system-critical packages
                 if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName)) {
+                    allowedCount++
+                    return@forEach
+                }
+
+                // Never block VPN apps to prevent VPN reconnection issues
+                if (hasVpnService(packageName)) {
                     allowedCount++
                     return@forEach
                 }
@@ -641,6 +657,28 @@ class FirewallVpnService : VpnService() {
             } catch (e: Exception) {
                 Log.e(TAG, "startPacketDropping: Exception", e)
             }
+        }
+    }
+
+    /**
+     * Check if a package has a VPN service by looking for services with BIND_VPN_SERVICE permission.
+     *
+     * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
+     * This is a service permission that protects the VPN service from being bound by unauthorized apps.
+     */
+    private fun hasVpnService(packageName: String): Boolean {
+        return try {
+            val packageInfo = packageManager.getPackageInfo(
+                packageName,
+                PackageManager.GET_SERVICES
+            )
+
+            // Check if any service has BIND_VPN_SERVICE permission
+            packageInfo.services?.any { serviceInfo ->
+                serviceInfo.permission == io.github.dorumrr.de1984.utils.Constants.Firewall.VPN_SERVICE_PERMISSION
+            } ?: false
+        } catch (e: Exception) {
+            false
         }
     }
 

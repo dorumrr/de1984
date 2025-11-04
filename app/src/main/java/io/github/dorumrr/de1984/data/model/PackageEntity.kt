@@ -19,7 +19,8 @@ data class PackageEntity(
     val isNetworkBlocked: Boolean = false,
     val wifiBlocked: Boolean = false,
     val mobileBlocked: Boolean = false,
-    val roamingBlocked: Boolean = false
+    val roamingBlocked: Boolean = false,
+    val isVpnApp: Boolean = false
 )
 
 fun PackageEntity.toDomain(): Package {

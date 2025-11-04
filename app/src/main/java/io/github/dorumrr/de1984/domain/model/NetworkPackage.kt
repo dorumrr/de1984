@@ -14,7 +14,8 @@ data class NetworkPackage(
     val versionCode: Long? = null,
     val installTime: Long? = null,
     val updateTime: Long? = null,
-    val isSystemCritical: Boolean = false
+    val isSystemCritical: Boolean = false,
+    val isVpnApp: Boolean = false
 ) {
     val isNetworkAllowed: Boolean
         get() = !isNetworkBlocked

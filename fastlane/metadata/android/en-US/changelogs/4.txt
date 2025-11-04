@@ -1,5 +1,3 @@
-De1984 Firewall release v2.0.0
-
 New Features:
 • Multiple firewall backend support: iptables (root/Shizuku), ConnectivityManager (Android 13+), and VPN fallback
 • Automatic backend selection based on device capabilities and permissions

@@ -13,7 +13,8 @@ data class NetworkPackage(
     val versionName: String? = null,
     val versionCode: Long? = null,
     val installTime: Long? = null,
-    val updateTime: Long? = null
+    val updateTime: Long? = null,
+    val isSystemCritical: Boolean = false
 ) {
     val isNetworkAllowed: Boolean
         get() = !isNetworkBlocked

@@ -413,7 +413,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.wifiToggle,
             label = "WiFi",
             isBlocked = pkg.wifiBlocked,
-            enabled = true,
+            enabled = !pkg.isSystemCritical,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
                 viewModel.setWifiBlocking(pkg.packageName, blocked)
@@ -425,7 +425,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.mobileToggle,
             label = "Mobile Data",
             isBlocked = pkg.mobileBlocked,
-            enabled = true,
+            enabled = !pkg.isSystemCritical,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 
@@ -440,7 +440,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 binding = binding.roamingToggle,
                 label = "Roaming",
                 isBlocked = pkg.roamingBlocked,
-                enabled = true,
+                enabled = !pkg.isSystemCritical,
                 onToggle = { blocked ->
                     if (isUpdatingProgrammatically) return@setupNetworkToggle
 
@@ -450,12 +450,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             )
         }
 
-        // Show VPN limitation message if using VPN backend
+        // Show info message
         val app = requireActivity().application as De1984Application
         val firewallManager = app.dependencies.firewallManager
         val backendType = firewallManager.getActiveBackendType()
 
-        if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
+        if (pkg.isSystemCritical) {
+            binding.infoMessage.visibility = View.VISIBLE
+            binding.infoMessage.text = "⚠️ System Critical Package - Network access cannot be modified to prevent system instability."
+        } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
             binding.infoMessage.visibility = View.VISIBLE
             binding.infoMessage.text = "Using VPN-based firewall because your device is not rooted or doesn't have Shizuku. You cannot use another VPN app while De1984 firewall is active."
         } else {
@@ -481,19 +484,23 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
 
-        // Set appropriate info message based on backend type
+        // Set appropriate info message based on package type and backend
         val app = requireActivity().application as De1984Application
         val firewallManager = app.dependencies.firewallManager
         val backendType = firewallManager.getActiveBackendType()
 
-        val infoMessage = when (backendType) {
-            io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER -> {
-                "This blocks all network types (WiFi, Mobile, Roaming).\n\n" +
-                "Your device uses a system-level firewall that doesn't support per-network blocking. " +
-                "For granular control, root access is required."
-            }
-            else -> {
-                "This blocks all network types (WiFi, Mobile, Roaming)."
+        val infoMessage = if (pkg.isSystemCritical) {
+            "⚠️ System Critical Package - Network access cannot be modified to prevent system instability."
+        } else {
+            when (backendType) {
+                io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER -> {
+                    "This blocks all network types (WiFi, Mobile, Roaming).\n\n" +
+                    "Your device uses a system-level firewall that doesn't support per-network blocking. " +
+                    "For granular control, root access is required."
+                }
+                else -> {
+                    "This blocks all network types (WiFi, Mobile, Roaming)."
+                }
             }
         }
         binding.infoMessage.text = infoMessage
@@ -531,7 +538,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.internetToggle,
             label = "Block Internet",
             isBlocked = pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked,
-            enabled = true,
+            enabled = !pkg.isSystemCritical,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 

@@ -59,19 +59,15 @@ class SettingsViewModel(
 
     
     init {
-        Log.d(TAG, "=== SettingsViewModel init ===")
         loadSettings()
         loadSystemInfo()
         cleanupOrphanedPreferences()
-        Log.d(TAG, "Requesting root permission check...")
-        requestRootPermission() // Check root status on initialization
-        Log.d(TAG, "Requesting Shizuku permission check...")
-        requestShizukuPermission() // Check Shizuku status on initialization
+        requestRootPermission()
+        requestShizukuPermission()
     }
 
 
     fun requestRootPermission() {
-        Log.d(TAG, "requestRootPermission() called")
         viewModelScope.launch {
             rootManager.checkRootStatus()
         }
@@ -86,15 +82,11 @@ class SettingsViewModel(
     }
 
     fun requestShizukuPermission() {
-        Log.d(TAG, "requestShizukuPermission() called")
         viewModelScope.launch {
             shizukuManager.checkShizukuStatus()
 
-            // Auto-request Shizuku permission if running but not granted (like we do for root)
             val status = shizukuManager.shizukuStatus.value
-            Log.d(TAG, "Shizuku status after check: $status")
             if (status == ShizukuStatus.RUNNING_NO_PERMISSION) {
-                Log.d(TAG, "Shizuku is running but no permission - auto-requesting permission")
                 shizukuManager.requestShizukuPermission()
             }
         }
@@ -213,31 +205,18 @@ class SettingsViewModel(
 
         viewModelScope.launch {
             try {
-                Log.d(TAG, "Changing default policy to: $newPolicy (rules preserved with inverted semantics)")
-
-                // Update the policy - rules are preserved and interpreted based on new policy
                 _uiState.value = _uiState.value.copy(
                     defaultFirewallPolicy = newPolicy
                 )
                 saveSetting(Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY, newPolicy)
 
-                // Trigger rule re-application if firewall is running
-                // This is more efficient than restarting the entire firewall
                 if (firewallManager.isActive()) {
-                    Log.d(TAG, "Triggering rule re-application for policy change")
                     firewallManager.triggerRuleReapplication()
 
-                    // IMPORTANT: Also send broadcast to notify VPN service about policy change
-                    // VPN service needs to restart to apply the new policy (zero-app optimization)
-                    // For example: switching from "Allow All" (0 blocked apps) to "Block All" (all apps blocked)
-                    // requires VPN interface to be established
-                    Log.d(TAG, "Sending FIREWALL_RULES_CHANGED broadcast to notify VPN service")
                     val intent = Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED")
                     intent.setPackage(context.packageName)
                     context.sendBroadcast(intent)
                 }
-
-                Log.d(TAG, "Policy changed successfully, rules preserved")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to change policy", e)
             }
@@ -274,24 +253,16 @@ class SettingsViewModel(
 
     private suspend fun restartFirewallIfRunning() {
         try {
-            // Check if firewall is actually running before restarting
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
             val isFirewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
 
             if (!isFirewallEnabled) {
-                Log.d(TAG, "Firewall not running, skipping restart")
                 return
             }
 
-            Log.d(TAG, "Restarting firewall due to settings change")
-
-            // Stop current firewall (whatever backend is running)
             firewallManager.stopFirewall()
-
-            // Wait a bit for cleanup
             delay(500)
 
-            // Start firewall with new mode (explicitly pass the mode to avoid race conditions)
             val newMode = _uiState.value.firewallMode
             firewallManager.startFirewall(newMode)
         } catch (e: Exception) {

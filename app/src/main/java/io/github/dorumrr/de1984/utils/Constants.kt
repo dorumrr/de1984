@@ -145,17 +145,42 @@ object Constants {
         /**
          * Packages that should NEVER be blocked to prevent breaking core Android functionality.
          * These packages are critical for network connectivity and system operation.
+         *
+         * Note: Different Android devices use different package names for the network stack:
+         * - AOSP/Stock Android: com.android.networkstack
+         * - Google/Pixel devices: com.google.android.networkstack
+         * - Older Android (<10): com.android.networkstack.inprocess
+         * - Samsung devices: com.samsung.android.networkstack
+         * - Vivo devices: com.google.android.networkstack.overlay.vivo
+         * - OnePlus China: com.android.networkstack.inprocess.cn
+         *
+         * OEM overlay packages follow the pattern: com.google.android.networkstack.overlay.<oem>
+         * or com.<oem>.android.networkstack
+         *
+         * If you find a device where the network stack can be blocked, please report it with the package name.
          */
         val SYSTEM_WHITELIST = setOf(
             // De1984 itself
             App.PACKAGE_NAME,
             App.PACKAGE_NAME_DEBUG,
 
-            // Critical network infrastructure
-            "com.android.networkstack",           // Network stack (DHCP, IP config, network validation)
-            "com.android.networkstack.inprocess", // Network stack (older Android versions)
+            // Critical network infrastructure - AOSP/Stock Android
+            "com.android.networkstack",           // Network stack (AOSP/Stock Android 10+)
+            "com.android.networkstack.inprocess", // Network stack (older Android <10)
             "com.android.networkstack.permissionconfig", // Network stack permissions
             "com.android.resolv",                 // DNS resolver (critical for all network operations)
+
+            // Critical network infrastructure - Google/Pixel devices
+            "com.google.android.networkstack",    // Network stack (Google/Pixel devices)
+
+            // Critical network infrastructure - Samsung devices
+            "com.samsung.android.networkstack",   // Network stack (Samsung devices)
+            "com.samsung.android.networkstack.tethering.overlay", // Samsung tethering overlay
+
+            // Critical network infrastructure - OEM variants (OnePlus, Vivo, etc.)
+            "com.android.networkstack.inprocess.cn", // OnePlus China variant
+            "com.google.android.networkstack.overlay.vivo", // Vivo overlay
+            "com.oneplus.commonoverlay.com.android.networkstack.inprocess.cn", // OnePlus overlay
 
             // Critical system UI
             "com.android.systemui",               // System UI (prevents UI crashes)

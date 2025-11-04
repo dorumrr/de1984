@@ -17,9 +17,12 @@ class NetworkPackageRepositoryImpl(
         return packageDataSource.getPackages()
             .map { entities ->
                 entities
-                    .filter { !Constants.Firewall.isSystemCritical(it.packageName) }
                     .filter { it.hasNetworkAccess }
-                    .map { it.toNetworkDomain() }
+                    .map { entity ->
+                        entity.toNetworkDomain().copy(
+                            isSystemCritical = Constants.Firewall.isSystemCritical(entity.packageName)
+                        )
+                    }
                     .sortedBy { it.name.lowercase() }
             }
     }
@@ -61,7 +64,11 @@ class NetworkPackageRepositoryImpl(
         return try {
             val entity = packageDataSource.getPackage(packageName)
             if (entity != null && entity.hasNetworkAccess) {
-                Result.success(entity.toNetworkDomain())
+                Result.success(
+                    entity.toNetworkDomain().copy(
+                        isSystemCritical = Constants.Firewall.isSystemCritical(entity.packageName)
+                    )
+                )
             } else {
                 Result.failure(Exception("Network package not found: $packageName"))
             }

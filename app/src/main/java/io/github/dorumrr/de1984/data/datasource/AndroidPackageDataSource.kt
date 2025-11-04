@@ -58,7 +58,15 @@ class AndroidPackageDataSource(
                     .map { appInfo ->
                         val rule = rulesByPackage[appInfo.packageName]
 
-                        val blockingState = if (rule != null && rule.enabled) {
+                        val blockingState = if (Constants.Firewall.isSystemCritical(appInfo.packageName)) {
+                            // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
+                            BlockingState(
+                                isNetworkBlocked = false,
+                                wifiBlocked = false,
+                                mobileBlocked = false,
+                                roamingBlocked = false
+                            )
+                        } else if (rule != null && rule.enabled) {
                             // Has explicit rule - use it as-is (absolute blocking state)
                             BlockingState(
                                 isNetworkBlocked = rule.wifiBlocked || rule.mobileBlocked,
@@ -119,7 +127,15 @@ class AndroidPackageDataSource(
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
                 val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
-                val blockingState = if (rule != null && rule.enabled) {
+                val blockingState = if (Constants.Firewall.isSystemCritical(packageName)) {
+                    // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
+                    BlockingState(
+                        isNetworkBlocked = false,
+                        wifiBlocked = false,
+                        mobileBlocked = false,
+                        roamingBlocked = false
+                    )
+                } else if (rule != null && rule.enabled) {
                     // Has explicit rule - use it as-is (absolute blocking state)
                     BlockingState(
                         isNetworkBlocked = rule.wifiBlocked || rule.mobileBlocked,

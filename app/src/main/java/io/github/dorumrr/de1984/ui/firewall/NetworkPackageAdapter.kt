@@ -46,6 +46,7 @@ class NetworkPackageAdapter(
         private val appIcon: ImageView = itemView.findViewById(R.id.app_icon)
         private val appName: TextView = itemView.findViewById(R.id.app_name)
         private val packageName: TextView = itemView.findViewById(R.id.package_name)
+        private val systemCriticalBadge: TextView = itemView.findViewById(R.id.system_critical_badge)
         private val wifiIcon: ImageView = itemView.findViewById(R.id.wifi_icon)
         private val wifiBlockedOverlay: ImageView = itemView.findViewById(R.id.wifi_blocked_overlay)
         private val mobileIcon: ImageView = itemView.findViewById(R.id.mobile_icon)
@@ -64,6 +65,12 @@ class NetworkPackageAdapter(
             // Set app name and package name
             appName.text = pkg.name
             packageName.text = pkg.packageName
+
+            // Show/hide system critical badge
+            systemCriticalBadge.visibility = if (pkg.isSystemCritical) View.VISIBLE else View.GONE
+
+            // Dim the entire item if system critical
+            itemView.alpha = if (pkg.isSystemCritical) 0.6f else 1.0f
 
             // Set app icon
             if (showIcons) {

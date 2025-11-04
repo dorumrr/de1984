@@ -61,6 +61,23 @@
                 android:maxLines="1"
                 android:ellipsize="end" />
 
+            <!-- System Critical Badge -->
+            <TextView
+                android:id="@+id/system_critical_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="System Critical"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/error_red"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/badge_background"
+                android:visibility="gone" />
+
         </LinearLayout>
 
         <!-- Badges Column (Right Side) -->

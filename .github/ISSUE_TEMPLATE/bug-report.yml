@@ -1,40 +1,81 @@
 name: 🐞 Bug Report
-description: Create A Bug Report To Help Us Fix Them
-title: "[BUG]"
+description: Help us fix bugs by reporting issues you've encountered
+title: "BUG: "
 labels: bug
 
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below to help us understand and fix the issue.
+
   - type: textarea
     id: describe
     attributes:
-      label: |
-        Describe The Bug
-      description: |
-        What Did You Do To Show This Bug ?
+      label: What happened?
+      description: Tell us what went wrong. Be as detailed as possible.
+      placeholder: |
+        Example: The app crashes when I try to block a system package.
     validations:
       required: true
 
   - type: textarea
     id: recurrence
     attributes:
-      label: |
-        To Reproduce
-      description: |
-        Example of problem Reproduction Steps:
-        1. Go to '...'
-        2. Click on '....'
-        3. Scroll down to '....'
-        4. See Error
+      label: Steps to reproduce
+      description: Help recreate the bug by listing the exact steps you took.
+      placeholder: |
+        1. Open the Packages tab
+        2. Search for 'com.android.systemui'
+        3. Tap the block button
+        4. App crashes with error message
     validations:
       required: true
 
   - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      description: What should have happened instead?
+      placeholder: |
+        Example: The package should be blocked and a success message should appear.
+    validations:
+      required: false
+
+  - type: textarea
     id: screenshots
     attributes:
-      label: |
-        Screenshots Or Screen Recording
+      label: Screenshots or screen recording
       description: |
-       A screenshot or screen recording can help explain the problem. If your file is too large for GitHub, compress it (ZIP) or provide a link (e.g., from a file-hosting service).
+        Visual evidence helps us understand the issue better. You can:
+        - Drag and drop images directly here
+        - Paste screenshots from your clipboard
+        - Share a link to a video (YouTube, Google Drive, etc.)
+      placeholder: |
+        Drag and drop your screenshots here, or paste a link to a screen recording.
+    validations:
+      required: false
+
+  - type: textarea
+    id: device_info
+    attributes:
+      label: Device information
+      description: Help us understand your setup (you can find this in Settings → About)
+      placeholder: |
+        - Device: Pixel 9a
+        - Android version: Android 15 (API 35)
+        - De1984 version: 1.0.0
+        - Root access: Yes/No
     validations:
       required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else that might help us understand the issue?
+      placeholder: |
+        Example: This only happens when I have VPN enabled, or after a system update.
+    validations:
+      required: false
       

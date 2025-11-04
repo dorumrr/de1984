@@ -1,5 +1,3 @@
-De1984 v2.2.0
-
 • Firewall Backend Selection System
 • Properly restore of firewall rules when device restarts or app launches
 • Enhanced Default Policy & Rule Application, including Block All/Allow All policies

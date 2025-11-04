@@ -463,7 +463,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding.infoMessage.text = "🔒 VPN App - Always allowed to prevent VPN reconnection issues after device lock/unlock."
         } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
             binding.infoMessage.visibility = View.VISIBLE
-            binding.infoMessage.text = "Using VPN-based firewall because your device is not rooted or doesn't have Shizuku. You cannot use another VPN app while De1984 firewall is active."
+            binding.infoMessage.text = "Using VPN-based firewall because your device is not rooted or doesn't have Shizuku. You cannot use another VPN app while De1984 Firewall is active."
         } else {
             binding.infoMessage.visibility = View.GONE
         }

@@ -50,7 +50,77 @@
                 android:maxLines="1"
                 android:ellipsize="end" />
 
+            <!-- Badges Container -->
+            <LinearLayout
+                android:id="@+id/action_sheet_badges_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <!-- Safety Badge -->
+                <TextView
+                    android:id="@+id/action_sheet_safety_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Essential"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:background="@drawable/safety_badge_essential"
+                    android:textColor="@color/badge_essential_text" />
+
+                <!-- Category Badge -->
+                <TextView
+                    android:id="@+id/action_sheet_category_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="System UI"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:background="@drawable/category_badge_background"
+                    android:textColor="@color/category_badge_text" />
+
+            </LinearLayout>
+
         </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Affects Section -->
+    <LinearLayout
+        android:id="@+id/affects_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="120dp"
+            android:background="@drawable/affects_info_box_background"
+            android:padding="12dp"
+            android:scrollbars="vertical"
+            android:fadeScrollbars="false">
+
+            <LinearLayout
+                android:id="@+id/affects_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </ScrollView>
 
     </LinearLayout>
 

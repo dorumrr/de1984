@@ -5,7 +5,10 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -18,6 +21,7 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionsBinding
 import io.github.dorumrr.de1984.databinding.FragmentPackagesBinding
 import io.github.dorumrr.de1984.domain.model.Package
+import io.github.dorumrr.de1984.domain.model.PackageCriticality
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.presentation.viewmodel.PackagesUiState
 import io.github.dorumrr.de1984.presentation.viewmodel.PackagesViewModel
@@ -416,6 +420,78 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
         }
 
+        // Set safety and category badges
+        if (pkg.criticality != null && pkg.criticality != PackageCriticality.UNKNOWN) {
+            binding.actionSheetBadgesContainer.visibility = View.VISIBLE
+
+            when (pkg.criticality) {
+                PackageCriticality.ESSENTIAL -> {
+                    binding.actionSheetSafetyBadge.text = "Essential"
+                    binding.actionSheetSafetyBadge.setBackgroundResource(R.drawable.safety_badge_essential)
+                    binding.actionSheetSafetyBadge.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.badge_essential_text)
+                    )
+                }
+                PackageCriticality.IMPORTANT -> {
+                    binding.actionSheetSafetyBadge.text = "Important"
+                    binding.actionSheetSafetyBadge.setBackgroundResource(R.drawable.safety_badge_important)
+                    binding.actionSheetSafetyBadge.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.badge_important_text)
+                    )
+                }
+                PackageCriticality.OPTIONAL -> {
+                    binding.actionSheetSafetyBadge.text = "Optional"
+                    binding.actionSheetSafetyBadge.setBackgroundResource(R.drawable.safety_badge_optional)
+                    binding.actionSheetSafetyBadge.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.badge_optional_text)
+                    )
+                }
+                PackageCriticality.BLOATWARE -> {
+                    binding.actionSheetSafetyBadge.text = "Bloatware"
+                    binding.actionSheetSafetyBadge.setBackgroundResource(R.drawable.safety_badge_bloatware)
+                    binding.actionSheetSafetyBadge.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.badge_bloatware_text)
+                    )
+                }
+                else -> {}
+            }
+
+            if (!pkg.category.isNullOrEmpty()) {
+                binding.actionSheetCategoryBadge.visibility = View.VISIBLE
+                binding.actionSheetCategoryBadge.text = pkg.category.replace("-", " ").split(" ")
+                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+            } else {
+                binding.actionSheetCategoryBadge.visibility = View.GONE
+            }
+        } else {
+            binding.actionSheetBadgesContainer.visibility = View.GONE
+        }
+
+        // Show affects list if available
+        if (pkg.affects.isNotEmpty()) {
+            binding.affectsSection.visibility = View.VISIBLE
+            binding.affectsList.removeAllViews()
+
+            pkg.affects.forEach { affect ->
+                val textView = TextView(requireContext()).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    text = "• $affect"
+                    textSize = 13f
+                    setTextColor(ContextCompat.getColor(requireContext(), R.color.affects_info_box_text))
+                    setPadding(0, 4, 0, 4)
+                    setSingleLine(false)
+                    maxLines = Integer.MAX_VALUE
+                    ellipsize = null
+                }
+                binding.affectsList.addView(textView)
+            }
+        } else {
+            binding.affectsSection.visibility = View.GONE
+        }
+
         // Setup Force Stop action
         binding.forceStopDescription.text = if (pkg.isEnabled) {
             "Immediately stop all processes"
@@ -444,16 +520,26 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             showEnableDisableConfirmation(pkg, !pkg.isEnabled)
         }
 
-        // Setup Uninstall action
-        binding.uninstallDescription.text = if (pkg.type == PackageType.SYSTEM) {
-            "Remove system package (DANGEROUS)"
-        } else {
-            "Remove this app from device"
-        }
+        // Setup Uninstall action - conditionally show based on criticality and settings
+        val allowCriticalUninstall = settingsViewModel.uiState.value.allowCriticalPackageUninstall
+        val isCriticalPackage = pkg.criticality == PackageCriticality.ESSENTIAL ||
+                                pkg.criticality == PackageCriticality.IMPORTANT
 
-        binding.uninstallAction.setOnClickListener {
-            dialog.dismiss()
-            showUninstallConfirmation(pkg)
+        if (isCriticalPackage && !allowCriticalUninstall) {
+            // Hide uninstall button for critical packages when setting is OFF
+            binding.uninstallAction.visibility = View.GONE
+        } else {
+            binding.uninstallAction.visibility = View.VISIBLE
+            binding.uninstallDescription.text = if (pkg.type == PackageType.SYSTEM) {
+                "Remove system package (DANGEROUS)"
+            } else {
+                "Remove this app from device"
+            }
+
+            binding.uninstallAction.setOnClickListener {
+                dialog.dismiss()
+                showUninstallConfirmation(pkg)
+            }
         }
 
         dialog.setContentView(binding.root)
@@ -500,21 +586,89 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun showUninstallConfirmation(pkg: Package) {
-        val isSystemPackage = pkg.type == PackageType.SYSTEM
-
-        StandardDialog.showConfirmation(
-            context = requireContext(),
-            title = "Uninstall ${pkg.name}?",
-            message = if (isSystemPackage) {
-                "⚠️ DANGER: This is a system package. Uninstalling it may brick your device or cause severe system instability.\n\nThis action cannot be easily undone.\n\nAre you absolutely sure?"
-            } else {
-                "This will remove ${pkg.name} from your device.\n\nAre you sure?"
-            },
-            confirmButtonText = "Uninstall",
-            onConfirm = {
-                viewModel.uninstallPackage(pkg.packageName)
+        // Show different dialogs based on package criticality
+        when (pkg.criticality) {
+            PackageCriticality.ESSENTIAL -> {
+                // Type-to-confirm for Essential packages
+                StandardDialog.showTypeToConfirm(
+                    context = requireContext(),
+                    title = "🚨 CRITICAL WARNING",
+                    message = "⚠️ ESSENTIAL SYSTEM PACKAGE ⚠️\n\n" +
+                            "Uninstalling ${pkg.name} WILL BRICK YOUR DEVICE!\n\n" +
+                            "This package is critical for system operation. Removing it will make your device unusable and may require a factory reset or reflashing.\n\n" +
+                            if (pkg.affects.isNotEmpty()) {
+                                "Affects:\n${pkg.affects.joinToString("\n") { "• $it" }}\n\n"
+                            } else "" +
+                            "Type \"UNINSTALL\" to confirm this dangerous action:",
+                    confirmWord = "UNINSTALL",
+                    confirmButtonText = "Uninstall",
+                    onConfirm = {
+                        viewModel.uninstallPackage(pkg.packageName)
+                    }
+                )
             }
-        )
+            PackageCriticality.IMPORTANT -> {
+                // Strong warning for Important packages
+                StandardDialog.showConfirmation(
+                    context = requireContext(),
+                    title = "⚠️ Warning: Important Package",
+                    message = "Uninstalling ${pkg.name} will cause major system features to stop working.\n\n" +
+                            if (pkg.affects.isNotEmpty()) {
+                                "Affects:\n${pkg.affects.joinToString("\n") { "• $it" }}\n\n"
+                            } else "" +
+                            "This may require a factory reset to restore functionality.\n\nAre you sure?",
+                    confirmButtonText = "Uninstall",
+                    onConfirm = {
+                        viewModel.uninstallPackage(pkg.packageName)
+                    }
+                )
+            }
+            PackageCriticality.OPTIONAL -> {
+                // Informational for Optional packages
+                StandardDialog.showConfirmation(
+                    context = requireContext(),
+                    title = "Uninstall ${pkg.name}?",
+                    message = if (pkg.affects.isNotEmpty()) {
+                        "This may affect:\n${pkg.affects.joinToString("\n") { "• $it" }}\n\nAre you sure?"
+                    } else {
+                        "This will remove ${pkg.name} from your device.\n\nAre you sure?"
+                    },
+                    confirmButtonText = "Uninstall",
+                    onConfirm = {
+                        viewModel.uninstallPackage(pkg.packageName)
+                    }
+                )
+            }
+            PackageCriticality.BLOATWARE -> {
+                // Positive message for Bloatware
+                StandardDialog.showConfirmation(
+                    context = requireContext(),
+                    title = "Uninstall ${pkg.name}?",
+                    message = "✓ Safe to remove\n\nThis package is considered bloatware and can be safely uninstalled.\n\nAre you sure?",
+                    confirmButtonText = "Uninstall",
+                    onConfirm = {
+                        viewModel.uninstallPackage(pkg.packageName)
+                    }
+                )
+            }
+            else -> {
+                // Default behavior for unknown packages (fallback to system/user check)
+                val isSystemPackage = pkg.type == PackageType.SYSTEM
+                StandardDialog.showConfirmation(
+                    context = requireContext(),
+                    title = "Uninstall ${pkg.name}?",
+                    message = if (isSystemPackage) {
+                        "⚠️ DANGER: This is a system package. Uninstalling it may brick your device or cause severe system instability.\n\nThis action cannot be easily undone.\n\nAre you absolutely sure?"
+                    } else {
+                        "This will remove ${pkg.name} from your device.\n\nAre you sure?"
+                    },
+                    confirmButtonText = "Uninstall",
+                    onConfirm = {
+                        viewModel.uninstallPackage(pkg.packageName)
+                    }
+                )
+            }
+        }
     }
 
     private fun showError(message: String) {

@@ -1,3 +1,1 @@
-De1984 v2.2.1
-
 • Prevent disabling connectivity of key packages to avoid breaking Android core networking

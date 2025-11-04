@@ -1,4 +1,2 @@
-De1984 v2.2.2
-
 • Fixed a bug that was not allowing WiFi to reconnect properly after disable and reenable
 • Improved rules cleanup on Firewall stop and/or restart.

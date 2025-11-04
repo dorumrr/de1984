@@ -1,7 +1,7 @@
 <resources>
     <!-- App Identity -->
-    <string name="app_name">De1984 Firewall</string>
-    <string name="app_tagline">Privacy isn’t default. Take it back with De1984 Firewall and package control.</string>
+    <string name="app_name">De1984</string>
+    <string name="app_tagline">Privacy isn’t default. Take it back with De1984 Firewall and Package Control.</string>
     
     <!-- Navigation -->
     <string name="nav_firewall">Firewall</string>

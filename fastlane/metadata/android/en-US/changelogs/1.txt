@@ -1,6 +1,3 @@
-De1984 Firewall release v1.0.0
-
-Features:
 • VPN-based firewall with per-app network control
 • WiFi, Mobile Data, and Roaming blocking
 • Allow/Block All modes

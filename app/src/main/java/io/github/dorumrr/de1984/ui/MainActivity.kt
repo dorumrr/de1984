@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val KEY_CURRENT_TAB = "current_tab"
     }
 
     private lateinit var binding: ActivityMainViewsBinding
@@ -175,9 +176,17 @@ class MainActivity : AppCompatActivity() {
         setupBottomNavigation()
         observeFirewallState()
 
-        // Load initial fragment
+        // Restore or load initial fragment
         if (savedInstanceState == null) {
+            // First time - load Firewall fragment
             loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
+        } else {
+            // Restoring from saved state - restore the current tab
+            val tabOrdinal = savedInstanceState.getInt(KEY_CURRENT_TAB, Tab.FIREWALL.ordinal)
+            currentTab = Tab.values()[tabOrdinal]
+            // Update UI to match restored tab (fragment is automatically restored by FragmentManager)
+            updateToolbar()
+            updateBottomNavigationSelection()
         }
 
         // Show firewall start dialog if needed
@@ -401,6 +410,12 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Save current tab so it can be restored after configuration changes
+        outState.putInt(KEY_CURRENT_TAB, currentTab.ordinal)
+    }
 
     override fun onDestroy() {
         super.onDestroy()

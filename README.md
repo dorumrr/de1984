@@ -1,6 +1,6 @@
 # De1984
 
-**Privacy isn’t default. Take it back with De1984 Firewall and Package control.**
+**Privacy isn’t default. Take it back with De1984 Firewall and Package Control.**
 
 <div>
   <a href="https://apt.izzysoft.de/packages/io.github.dorumrr.de1984"><img height="50" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"></a> <!-- <a href="https://f-droid.org/en/packages/io.github.dorumrr.de1984/"><img height="50" src="https://f-droid.org/badge/get-it-on.png"></a>--> <a href="https://www.buymeacoffee.com/ossdev"><img height="50" src="https://cdn.buymeacoffee.com/buttons/v2/arial-yellow.png" /></a>

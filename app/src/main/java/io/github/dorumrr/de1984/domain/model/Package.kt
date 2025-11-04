@@ -11,10 +11,21 @@ data class Package(
     val installTime: Long? = null,
     val updateTime: Long? = null,
     val permissions: List<String> = emptyList(),
-    val hasNetworkAccess: Boolean = false
+    val hasNetworkAccess: Boolean = false,
+    val criticality: PackageCriticality? = null,
+    val category: String? = null,
+    val affects: List<String> = emptyList()
 )
 
 enum class PackageType {
     SYSTEM,
     USER
+}
+
+enum class PackageCriticality {
+    ESSENTIAL,  // Red - will brick device
+    IMPORTANT,  // Orange - will lose major features
+    OPTIONAL,   // Yellow - may lose some features
+    BLOATWARE,  // Green - safe to remove
+    UNKNOWN     // Gray - no data available
 }

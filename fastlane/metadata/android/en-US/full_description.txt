@@ -1,4 +1,4 @@
-De1984 is a powerful firewall and package manager for Android devices with multiple backend support for maximum flexibility and performance.
+De1984 is a powerful Firewall and Package Manager for Android devices with multiple backend support for maximum flexibility and performance.
 
 <b>FIREWALL FEATURES</b>
 

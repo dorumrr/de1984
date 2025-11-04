@@ -7098,7 +7098,8 @@
       "criticality": "important",
       "category": "unknown",
       "affects": [
-        "Probably required for some forms of DRM; disabling might break things like Netflix streaming, which relies on DRM to function."
+        "Probably required for some forms of DRM",
+        "Disabling might break things like Netflix streaming, which relies on DRM to function."
       ]
     },
     "com.android.providers.userdictionary": {
@@ -7413,7 +7414,7 @@
       "criticality": "essential",
       "category": "unknown",
       "affects": [
-        "Proobably a bad idea to disable ;."
+        "Proobably a bad idea to disable."
       ]
     },
     "com.android.statementservice": {
@@ -7560,7 +7561,7 @@
       "criticality": "important",
       "category": "telephony",
       "affects": [
-        "Handles carrier-specific OTA updates? Probably safe to disable if you didn't get your phone from a carrier; the normal System Update."
+        "Handles carrier-specific OTA updates."
       ]
     },
     "com.oneplus.engmode": {
@@ -7726,7 +7727,7 @@
       "criticality": "bloatware",
       "category": "google-services",
       "affects": [
-        "Runs in background; I think it runs every now and then to change the app icon to current weather conditions."
+        "Runs in background. I think it runs every now and then to change the app icon to current weather conditions."
       ]
     },
     "net.oneplus.widget": {
@@ -8594,7 +8595,7 @@
       "criticality": "optional",
       "category": "telephony",
       "affects": [
-        "Probably safe to remove, just make sure to install another SMS app to not lose that functionality; QKSMS is a good FOSS replacement for basic SMS functionality and Google Messages is an option if."
+        "Probably safe to remove, just make sure to install another SMS app to not lose that functionality"
       ]
     },
     "com.oneplus.mms.basiccolorblack.overlay": {
@@ -9374,7 +9375,8 @@
       "criticality": "important",
       "category": "media",
       "affects": [
-        "Safe to disable, but NOT recommended; breaks file browsers and other forms of file access."
+        "Safe to disable, but NOT recommended.",
+        "Breaks file browsers and other forms of file access."
       ]
     },
     "com.google.mainline.telemetry": {
@@ -9423,7 +9425,7 @@
       "criticality": "important",
       "category": "system-core",
       "affects": [
-        "Probably worth keeping on; I noticed connection reliability getting worse when I disabled it."
+        "Probably worth keeping on. I noticed connection reliability getting worse when I disabled it."
       ]
     },
     "com.qualcomm.qti.ims": {
@@ -9556,7 +9558,7 @@
       "criticality": "essential",
       "category": "unknown",
       "affects": [
-        "Probably a bad idea to disable; could mess with device security."
+        "Probably a bad idea to disable, could mess with device security."
       ]
     },
     "vendor.qti.iwlan": {
@@ -10237,7 +10239,8 @@
       "criticality": "bloatware",
       "category": "unknown",
       "affects": [
-        "Probably required for some forms of DRM; disabling might break things like Netflix streaming, which relies on DRM to function."
+        "Probably required for some forms of DRM",
+        "Disabling might break things like Netflix streaming, which relies on DRM to function."
       ]
     },
     "com.lge.easyhome": {
@@ -12299,7 +12302,7 @@
       "criticality": "important",
       "category": "system-core",
       "affects": [
-        "Probably worth keeping on; I noticed connection reliability getting worse when I disabled it."
+        "Probably worth keeping on. I noticed connection reliability getting worse when I disabled it."
       ]
     },
     "com.quicinc.voice.activation": {
@@ -13489,7 +13492,8 @@
       "criticality": "optional",
       "category": "media",
       "affects": [
-        "Probably required for some forms of DRM; disabling might break things like Netflix streaming, which relies on DRM to function."
+        "Probably required for some forms of DRM",
+        "Disabling might break things like Netflix streaming, which relies on DRM to function."
       ]
     },
     "com.mediatek.wfo.impl": {
@@ -23156,7 +23160,8 @@
       "criticality": "bloatware",
       "category": "unknown",
       "affects": [
-        "Device logos and advertisements; uninstallation causes anomalies in cloud drive functionality."
+        "Device logos and advertisements",
+        "Uninstallation causes anomalies in cloud drive functionality."
       ]
     },
     "android.frameworkres.overlay.display.product": {
@@ -24983,7 +24988,8 @@
       "criticality": "optional",
       "category": "google-services",
       "affects": [
-        "Probably safe to disable; haven't noticed any consequences of disabling from weeks of use."
+        "Probably safe to disable.", 
+        "Haven't noticed any consequences of disabling from weeks of use."
       ]
     },
     "com.google.android.webview": {
@@ -25046,7 +25052,8 @@
       "criticality": "optional",
       "category": "telephony",
       "affects": [
-        "Sometimes the only keyboard app on a phone; Make sure you have another installed before you disable."
+        "Sometimes the only keyboard app on a phone.",
+        "Make sure you have another installed before you disable."
       ]
     },
     "com.google.android.apps.inputmethod.hindi": {
@@ -32921,7 +32928,7 @@
       "criticality": "bloatware",
       "category": "system-core",
       "affects": [
-        "Not for end-users; safe to remove to reduce bloat."
+        "Not for end-users, safe to remove to reduce bloat."
       ]
     },
     "com.samsung.android.sskds": {
@@ -34440,7 +34447,8 @@
       "criticality": "optional",
       "category": "vendor",
       "affects": [
-        "Part of Samsung Knox enterprise features; safe to remove only if you do not use Knox/enterprise functionality."
+        "Part of Samsung Knox enterprise features",
+        "Safe to remove only if you do not use Knox/enterprise functionality."
       ]
     },
     "com.samsung.android.knox.kfbp": {

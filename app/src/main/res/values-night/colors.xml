@@ -19,5 +19,10 @@
     <color name="affects_info_box_background">#1E1E1E</color> <!-- Darker gray for better contrast -->
     <color name="affects_info_box_stroke">#424242</color>     <!-- Medium gray border -->
     <color name="affects_info_box_text">#E0E0E0</color>       <!-- Light gray text -->
+
+    <!-- Bloatware Badge Colors (Dark Mode) -->
+    <color name="badge_bloatware_bg">#F5F5DC</color>      <!-- Cream/Beige background -->
+    <color name="badge_bloatware_stroke">#FFFFFF</color>  <!-- White border -->
+    <color name="badge_bloatware_text">#424242</color>    <!-- Dark grey text -->
 </resources>
 

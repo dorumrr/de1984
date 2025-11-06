@@ -36,8 +36,8 @@ The name **De1984** is inspired by George Orwell’s novel Nineteen Eighty-Four,
 <b>REQUIREMENTS</b>
 
 - Android 8.0 (API 26) or higher
-- For iptables firewall: Root or Shizuku access
-- For ConnectivityManager firewall: Android 13+ (no root required)
+- For iptables firewall: Root access OR Shizuku in root mode
+- For ConnectivityManager firewall: Shizuku + Android 13+
 - For VPN firewall: VPN permission (no root required, works on all Android versions)
 - For package management: Shizuku or root access
 

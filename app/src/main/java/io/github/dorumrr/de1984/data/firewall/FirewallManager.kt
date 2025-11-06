@@ -101,7 +101,8 @@ class FirewallManager(
                     Log.d(TAG, "Detected iptables backend running on startup")
                     currentBackend = iptablesBackend
                     _activeBackendType.value = FirewallBackendType.IPTABLES
-                    startMonitoring()
+                    // Note: PrivilegedFirewallService handles monitoring internally
+                    // Only start watchdog health monitoring from FirewallManager
                     startBackendHealthMonitoring()
                     return@launch
                 }
@@ -112,7 +113,8 @@ class FirewallManager(
                     Log.d(TAG, "Detected ConnectivityManager backend running on startup")
                     currentBackend = cmBackend
                     _activeBackendType.value = FirewallBackendType.CONNECTIVITY_MANAGER
-                    startMonitoring()
+                    // Note: PrivilegedFirewallService handles monitoring internally
+                    // Only start watchdog health monitoring from FirewallManager
                     startBackendHealthMonitoring()
                     return@launch
                 }
@@ -123,7 +125,8 @@ class FirewallManager(
                     Log.d(TAG, "Detected NetworkPolicyManager backend running on startup")
                     currentBackend = npmBackend
                     _activeBackendType.value = FirewallBackendType.NETWORK_POLICY_MANAGER
-                    startMonitoring()
+                    // Note: PrivilegedFirewallService handles monitoring internally
+                    // Only start watchdog health monitoring from FirewallManager
                     startBackendHealthMonitoring()
                     return@launch
                 }
@@ -259,16 +262,17 @@ class FirewallManager(
             currentBackend = newBackend
             _activeBackendType.value = newBackendType
 
-            // Start monitoring for iptables, ConnectivityManager, and NetworkPolicyManager backends
-            // (VPN backend monitors internally)
-            if (newBackendType == FirewallBackendType.IPTABLES ||
-                newBackendType == FirewallBackendType.CONNECTIVITY_MANAGER ||
-                newBackendType == FirewallBackendType.NETWORK_POLICY_MANAGER) {
-                startMonitoring()
-            }
+            // Note: Network/screen/rule monitoring is handled by services:
+            // - PrivilegedFirewallService for iptables/ConnectivityManager/NetworkPolicyManager
+            // - FirewallVpnService for VPN backend
+            // FirewallManager only runs WATCHDOG health monitoring to detect service crashes
 
-            // Start continuous backend health monitoring for privileged backends
+            // Start watchdog health monitoring
             // Per FIREWALL.md lines 92-96: continuously monitor backend availability
+            // This runs in FirewallManager scope as a watchdog layer that can detect:
+            // - Service crashes (service dies but SharedPreferences still says it's running)
+            // - Backend availability loss (root/Shizuku permission revoked)
+            // - Automatic fallback to VPN if privileged backend fails
             startBackendHealthMonitoring()
 
             Log.d(TAG, "Firewall started successfully with backend: $newBackendType (atomic switch complete)")
@@ -519,7 +523,14 @@ class FirewallManager(
 
     /**
      * Start monitoring network and screen state changes.
-     * Used for iptables and NetworkPolicyManager backends (VPN backend monitors internally).
+     *
+     * NOTE: This method is DEPRECATED and should NOT be called for new backends.
+     * All backends now handle monitoring internally via their services:
+     * - PrivilegedFirewallService for iptables/ConnectivityManager/NetworkPolicyManager
+     * - FirewallVpnService for VPN backend
+     *
+     * This method is only kept for legacy compatibility during atomic backend switching
+     * (to stop old backend monitoring before starting new backend).
      */
     private fun startMonitoring() {
         Log.d(TAG, "Starting state monitoring for ${currentBackend?.getType()} backend")

@@ -1,11 +1,13 @@
 package io.github.dorumrr.de1984.data.firewall
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.ShizukuManager
+import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.FirewallRule
@@ -49,13 +51,42 @@ class IptablesFirewallBackend(
     }
     
     private val mutex = Mutex()
-    private var isActiveState = false
-    
+
     // Track currently blocked UIDs to avoid redundant operations
     private val blockedUids = mutableSetOf<Int>()
-    
+
+    /**
+     * Start the firewall by starting the PrivilegedFirewallService.
+     * The service will call startInternal() to actually create iptables chains.
+     */
     override suspend fun start(): Result<Unit> = mutex.withLock {
         return try {
+            Log.d(TAG, "=== IptablesFirewallBackend.start() ===")
+            Log.d(TAG, "Starting PrivilegedFirewallService with iptables backend")
+
+            // Start the privileged firewall service
+            val intent = Intent(context, PrivilegedFirewallService::class.java).apply {
+                action = PrivilegedFirewallService.ACTION_START
+                putExtra(PrivilegedFirewallService.EXTRA_BACKEND_TYPE, "IPTABLES")
+            }
+            context.startService(intent)
+
+            Log.d(TAG, "✅ iptables firewall service started")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start iptables firewall", e)
+            val error = errorHandler.handleError(e, "start iptables firewall")
+            Result.failure(error)
+        }
+    }
+
+    /**
+     * Internal method called by PrivilegedFirewallService to actually create iptables chains.
+     */
+    suspend fun startInternal(): Result<Unit> = mutex.withLock {
+        return try {
+            Log.d(TAG, "startInternal: Creating iptables chains")
+
             // Check availability first
             checkAvailability().getOrElse { error ->
                 return Result.failure(error)
@@ -66,37 +97,62 @@ class IptablesFirewallBackend(
                 return Result.failure(error)
             }
 
-            isActiveState = true
-            Log.d(TAG, "iptables firewall started")
+            Log.d(TAG, "✅ iptables chains created")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start iptables firewall", e)
-            val error = errorHandler.handleError(e, "start iptables firewall")
+            Log.e(TAG, "Failed to create iptables chains", e)
+            val error = errorHandler.handleError(e, "create iptables chains")
             Result.failure(error)
         }
     }
-    
+
+    /**
+     * Stop the firewall by stopping the PrivilegedFirewallService.
+     * The service will call stopInternal() to actually delete iptables chains.
+     */
     override suspend fun stop(): Result<Unit> = mutex.withLock {
         return try {
             Log.d(TAG, "Stopping iptables firewall backend")
-            
-            // Remove all rules
-            clearAllRules().getOrElse { error ->
-                Log.w(TAG, "Failed to clear rules during stop: ${error.message}")
+            Log.d(TAG, "Stopping PrivilegedFirewallService")
+
+            // Stop the privileged firewall service
+            val intent = Intent(context, PrivilegedFirewallService::class.java).apply {
+                action = PrivilegedFirewallService.ACTION_STOP
             }
-            
-            // Delete custom chains
-            deleteCustomChains().getOrElse { error ->
-                Log.w(TAG, "Failed to delete chains during stop: ${error.message}")
-            }
-            
-            blockedUids.clear()
-            isActiveState = false
-            Log.d(TAG, "iptables firewall backend stopped successfully")
+            context.startService(intent)
+
+            Log.d(TAG, "iptables firewall service stopped successfully")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to stop iptables firewall", e)
             val error = errorHandler.handleError(e, "stop iptables firewall")
+            Result.failure(error)
+        }
+    }
+
+    /**
+     * Internal method called by PrivilegedFirewallService to actually delete iptables chains.
+     */
+    suspend fun stopInternal(): Result<Unit> = mutex.withLock {
+        return try {
+            Log.d(TAG, "stopInternal: Deleting iptables chains")
+
+            // Remove all rules
+            clearAllRules().getOrElse { error ->
+                Log.w(TAG, "Failed to clear rules during stop: ${error.message}")
+            }
+
+            // Delete custom chains
+            deleteCustomChains().getOrElse { error ->
+                Log.w(TAG, "Failed to delete chains during stop: ${error.message}")
+            }
+
+            blockedUids.clear()
+            Log.d(TAG, "iptables chains deleted")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete iptables chains", e)
+            val error = errorHandler.handleError(e, "delete iptables chains")
             Result.failure(error)
         }
     }
@@ -109,10 +165,7 @@ class IptablesFirewallBackend(
         return try {
             Log.d(TAG, "Applying rules: ${rules.size} total, network=$networkType, screenOn=$screenOn")
 
-            if (!isActiveState) {
-                Log.w(TAG, "Cannot apply rules: backend not active")
-                return Result.failure(IllegalStateException("Backend not active"))
-            }
+            // Note: No need to check isActive() here - service will only call this when active
 
             // Get default policy
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -234,7 +287,18 @@ class IptablesFirewallBackend(
         }
     }
     
-    override fun isActive(): Boolean = isActiveState
+    override fun isActive(): Boolean {
+        // Check if PrivilegedFirewallService is running with iptables backend
+        return try {
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val isServiceRunning = prefs.getBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, false)
+            val backendType = prefs.getString(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE, null)
+            isServiceRunning && backendType == "IPTABLES"
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check if iptables firewall is active", e)
+            false
+        }
+    }
     
     override fun getType(): FirewallBackendType = FirewallBackendType.IPTABLES
     

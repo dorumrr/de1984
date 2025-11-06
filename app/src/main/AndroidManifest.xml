@@ -78,6 +78,16 @@
                 android:value="firewall" />
         </service>
 
+        <!-- Privileged Firewall Service for iptables/ConnectivityManager/NetworkPolicyManager backends -->
+        <service
+            android:name=".data.service.PrivilegedFirewallService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="firewall" />
+        </service>
+
         <!-- Package monitoring service for new app notifications -->
         <service
             android:name=".data.service.PackageMonitoringService"

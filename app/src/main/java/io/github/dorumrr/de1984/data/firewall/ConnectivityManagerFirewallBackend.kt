@@ -1,11 +1,13 @@
 package io.github.dorumrr.de1984.data.firewall
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.ShizukuManager
+import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.FirewallRule
@@ -52,16 +54,37 @@ class ConnectivityManagerFirewallBackend(
     }
 
     private val mutex = Mutex()
-    private var isRunning = false
 
+    /**
+     * Start the firewall by starting the PrivilegedFirewallService.
+     * The service will call startInternal() to actually enable the firewall chain.
+     */
     override suspend fun start(): Result<Unit> = mutex.withLock {
         return try {
             Log.d(TAG, "=== ConnectivityManagerFirewallBackend.start() ===")
+            Log.d(TAG, "Starting PrivilegedFirewallService with ConnectivityManager backend")
 
-            if (isRunning) {
-                Log.d(TAG, "Already running")
-                return Result.success(Unit)
+            // Start the privileged firewall service
+            val intent = Intent(context, PrivilegedFirewallService::class.java).apply {
+                action = PrivilegedFirewallService.ACTION_START
+                putExtra(PrivilegedFirewallService.EXTRA_BACKEND_TYPE, "CONNECTIVITY_MANAGER")
             }
+            context.startService(intent)
+
+            Log.d(TAG, "✅ ConnectivityManager firewall service started")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start ConnectivityManager firewall", e)
+            Result.failure(errorHandler.handleError(e, "start ConnectivityManager firewall"))
+        }
+    }
+
+    /**
+     * Internal method called by PrivilegedFirewallService to actually enable the firewall chain.
+     */
+    suspend fun startInternal(): Result<Unit> = mutex.withLock {
+        return try {
+            Log.d(TAG, "startInternal: Enabling firewall chain")
 
             // Enable the firewall chain using shell command
             val (exitCode, output) = shizukuManager.executeShellCommand("cmd connectivity set-chain3-enabled true")
@@ -71,25 +94,43 @@ class ConnectivityManagerFirewallBackend(
                 return Result.failure(Exception(error))
             }
 
-            isRunning = true
-            Log.d(TAG, "✅ ConnectivityManager firewall started")
-            Log.d(TAG, "ℹ️  Firewall chain enabled (FIREWALL_CHAIN_OEM_DENY_3)")
-
+            Log.d(TAG, "✅ Firewall chain enabled (FIREWALL_CHAIN_OEM_DENY_3)")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start ConnectivityManager firewall", e)
-            Result.failure(errorHandler.handleError(e, "start ConnectivityManager firewall"))
+            Log.e(TAG, "Failed to enable firewall chain", e)
+            Result.failure(errorHandler.handleError(e, "enable ConnectivityManager firewall chain"))
         }
     }
 
+    /**
+     * Stop the firewall by stopping the PrivilegedFirewallService.
+     * The service will call stopInternal() to actually disable the firewall chain.
+     */
     override suspend fun stop(): Result<Unit> = mutex.withLock {
         return try {
             Log.d(TAG, "Stopping ConnectivityManager firewall backend")
+            Log.d(TAG, "Stopping PrivilegedFirewallService")
 
-            if (!isRunning) {
-                Log.d(TAG, "Not running")
-                return Result.success(Unit)
+            // Stop the privileged firewall service
+            val intent = Intent(context, PrivilegedFirewallService::class.java).apply {
+                action = PrivilegedFirewallService.ACTION_STOP
             }
+            context.startService(intent)
+
+            Log.d(TAG, "ConnectivityManager firewall service stopped successfully")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop ConnectivityManager firewall", e)
+            Result.failure(errorHandler.handleError(e, "stop ConnectivityManager firewall"))
+        }
+    }
+
+    /**
+     * Internal method called by PrivilegedFirewallService to actually disable the firewall chain.
+     */
+    suspend fun stopInternal(): Result<Unit> = mutex.withLock {
+        return try {
+            Log.d(TAG, "stopInternal: Disabling firewall chain")
 
             // Disable the firewall chain using shell command
             val (exitCode, output) = shizukuManager.executeShellCommand("cmd connectivity set-chain3-enabled false")
@@ -98,12 +139,11 @@ class ConnectivityManagerFirewallBackend(
                 // Don't fail on stop - just log the warning
             }
 
-            isRunning = false
-            Log.d(TAG, "ConnectivityManager firewall backend stopped successfully")
+            Log.d(TAG, "Firewall chain disabled")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to stop ConnectivityManager firewall", e)
-            Result.failure(errorHandler.handleError(e, "stop ConnectivityManager firewall"))
+            Log.e(TAG, "Failed to disable firewall chain", e)
+            Result.failure(errorHandler.handleError(e, "disable ConnectivityManager firewall chain"))
         }
     }
 
@@ -115,11 +155,6 @@ class ConnectivityManagerFirewallBackend(
         return try {
             Log.d(TAG, "=== ConnectivityManagerFirewallBackend.applyRules() ===")
             Log.d(TAG, "Rules count: ${rules.size}, networkType: $networkType, screenOn: $screenOn")
-
-            if (!isRunning) {
-                Log.w(TAG, "Firewall not running, skipping rule application")
-                return Result.success(Unit)
-            }
 
             // Get default policy from SharedPreferences
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -213,7 +248,18 @@ class ConnectivityManagerFirewallBackend(
         }
     }
 
-    override fun isActive(): Boolean = isRunning
+    override fun isActive(): Boolean {
+        // Check if PrivilegedFirewallService is running with ConnectivityManager backend
+        return try {
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val isServiceRunning = prefs.getBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, false)
+            val backendType = prefs.getString(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE, null)
+            isServiceRunning && backendType == "CONNECTIVITY_MANAGER"
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check if ConnectivityManager firewall is active", e)
+            false
+        }
+    }
 
     override fun getType(): FirewallBackendType = FirewallBackendType.CONNECTIVITY_MANAGER
 

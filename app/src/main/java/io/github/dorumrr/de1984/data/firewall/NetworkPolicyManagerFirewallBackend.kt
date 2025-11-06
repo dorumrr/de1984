@@ -1,11 +1,13 @@
 package io.github.dorumrr.de1984.data.firewall
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.ShizukuManager
+import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.FirewallRule
@@ -49,7 +51,6 @@ class NetworkPolicyManagerFirewallBackend(
         private const val SERVICE_NAME = "netpolicy"
     }
 
-    private var isRunning = false
     private val mutex = Mutex()
 
     // Track which policy constant works on this device
@@ -63,10 +64,37 @@ class NetworkPolicyManagerFirewallBackend(
     private var setUidPolicyMethod: Method? = null
     private var getUidPolicyMethod: Method? = null
 
+    /**
+     * Start the firewall by starting the PrivilegedFirewallService.
+     * The service will call startInternal() to initialize reflection.
+     */
     override suspend fun start(): Result<Unit> = mutex.withLock {
         return try {
             Log.d(TAG, "=== NetworkPolicyManagerFirewallBackend.start() ===")
-            
+            Log.d(TAG, "Starting PrivilegedFirewallService with NetworkPolicyManager backend")
+
+            // Start the privileged firewall service
+            val intent = Intent(context, PrivilegedFirewallService::class.java).apply {
+                action = PrivilegedFirewallService.ACTION_START
+                putExtra(PrivilegedFirewallService.EXTRA_BACKEND_TYPE, "NETWORK_POLICY_MANAGER")
+            }
+            context.startService(intent)
+
+            Log.d(TAG, "✅ NetworkPolicyManager firewall service started")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start NetworkPolicyManager firewall", e)
+            Result.failure(errorHandler.handleError(e, "start NetworkPolicyManager firewall"))
+        }
+    }
+
+    /**
+     * Internal method called by PrivilegedFirewallService to initialize reflection.
+     */
+    suspend fun startInternal(): Result<Unit> = mutex.withLock {
+        return try {
+            Log.d(TAG, "startInternal: Initializing reflection")
+
             // Initialize reflection if needed
             if (!initializeReflection()) {
                 val error = errorHandler.handleError(
@@ -76,26 +104,49 @@ class NetworkPolicyManagerFirewallBackend(
                 return Result.failure(error)
             }
 
-            isRunning = true
-            Log.d(TAG, "✅ NetworkPolicyManager firewall started")
+            Log.d(TAG, "✅ Reflection initialized")
             Log.d(TAG, "ℹ️  Policy support will be tested on first rule application")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start NetworkPolicyManager firewall", e)
-            Result.failure(errorHandler.handleError(e, "start NetworkPolicyManager firewall"))
+            Log.e(TAG, "Failed to initialize reflection", e)
+            Result.failure(errorHandler.handleError(e, "initialize NetworkPolicyManager reflection"))
         }
     }
 
+    /**
+     * Stop the firewall by stopping the PrivilegedFirewallService.
+     */
     override suspend fun stop(): Result<Unit> = mutex.withLock {
         return try {
-            Log.d(TAG, "=== NetworkPolicyManagerFirewallBackend.stop() ===")
-            
+            Log.d(TAG, "Stopping NetworkPolicyManager firewall backend")
+            Log.d(TAG, "Stopping PrivilegedFirewallService")
+
+            // Stop the privileged firewall service
+            val intent = Intent(context, PrivilegedFirewallService::class.java).apply {
+                action = PrivilegedFirewallService.ACTION_STOP
+            }
+            context.startService(intent)
+
+            Log.d(TAG, "NetworkPolicyManager firewall service stopped successfully")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop NetworkPolicyManager firewall", e)
+            Result.failure(errorHandler.handleError(e, "stop NetworkPolicyManager firewall"))
+        }
+    }
+
+    /**
+     * Internal method called by PrivilegedFirewallService to cleanup.
+     */
+    suspend fun stopInternal(): Result<Unit> = mutex.withLock {
+        return try {
+            Log.d(TAG, "stopInternal: Cleaning up")
+
             // Clear all policies by setting POLICY_NONE for all apps
             // Note: We don't track which apps we modified, so we can't clean up perfectly
             // This is acceptable as the policies will be reapplied when firewall starts again
-            
-            isRunning = false
-            Log.d(TAG, "✅ NetworkPolicyManager firewall stopped")
+
+            Log.d(TAG, "Cleanup complete")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to stop NetworkPolicyManager firewall", e)
@@ -112,10 +163,7 @@ class NetworkPolicyManagerFirewallBackend(
             Log.d(TAG, "=== NetworkPolicyManagerFirewallBackend.applyRules() ===")
             Log.d(TAG, "Rules count: ${rules.size}, networkType: $networkType, screenOn: $screenOn")
 
-            if (!isRunning) {
-                Log.w(TAG, "Firewall not running, skipping rule application")
-                return Result.success(Unit)
-            }
+            // Note: No need to check isActive() here - service will only call this when active
 
             // Get NetworkPolicyManager instance
             val networkPolicyManager = getNetworkPolicyManager()
@@ -231,7 +279,18 @@ class NetworkPolicyManagerFirewallBackend(
         }
     }
 
-    override fun isActive(): Boolean = isRunning
+    override fun isActive(): Boolean {
+        // Check if PrivilegedFirewallService is running with NetworkPolicyManager backend
+        return try {
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val isServiceRunning = prefs.getBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, false)
+            val backendType = prefs.getString(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE, null)
+            isServiceRunning && backendType == "NETWORK_POLICY_MANAGER"
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check if NetworkPolicyManager firewall is active", e)
+            false
+        }
+    }
 
     override fun getType(): FirewallBackendType = FirewallBackendType.NETWORK_POLICY_MANAGER
 

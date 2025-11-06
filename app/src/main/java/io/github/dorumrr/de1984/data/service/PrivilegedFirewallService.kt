@@ -389,7 +389,11 @@ class PrivilegedFirewallService : Service() {
     }
 
     private fun startBackendHealthMonitoring() {
-        Log.d(TAG, "Starting backend health monitoring (every ${BACKEND_HEALTH_CHECK_INTERVAL_MS}ms)")
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  🔍 STARTING SERVICE HEALTH MONITORING                       ║")
+        Log.d(TAG, "║  Interval: ${BACKEND_HEALTH_CHECK_INTERVAL_MS}ms (30 seconds)")
+        Log.d(TAG, "║  Purpose: Detect permission loss within service              ║")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
         healthMonitoringJob = serviceScope.launch {
             while (isServiceActive) {
@@ -399,19 +403,27 @@ class PrivilegedFirewallService : Service() {
                 val backendType = currentBackendType
 
                 if (backend == null || backendType == null) {
-                    Log.w(TAG, "Health check: backend is null, stopping monitoring")
+                    Log.w(TAG, "⚠️  SERVICE HEALTH CHECK: backend is null, stopping monitoring")
                     break
                 }
 
                 try {
-                    Log.d(TAG, "Health check: Testing $backendType backend availability...")
+                    Log.d(TAG, "")
+                    Log.d(TAG, "=== SERVICE HEALTH CHECK: $backendType ===")
+                    Log.d(TAG, "Checking if backend still has required permissions...")
 
                     // Check if backend is still available (root/Shizuku access, iptables binary, etc.)
                     val availabilityResult = backend.checkAvailability()
 
                     if (availabilityResult.isFailure) {
-                        Log.e(TAG, "❌ Health check FAILED: $backendType backend is no longer available!")
-                        Log.e(TAG, "Error: ${availabilityResult.exceptionOrNull()?.message}")
+                        Log.e(TAG, "")
+                        Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
+                        Log.e(TAG, "║  ❌ SERVICE: BACKEND AVAILABILITY CHECK FAILED               ║")
+                        Log.e(TAG, "║  Backend: $backendType")
+                        Log.e(TAG, "║  Reason: ${availabilityResult.exceptionOrNull()?.message}")
+                        Log.e(TAG, "║  Action: Stopping service to trigger FirewallManager fallback║")
+                        Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
+                        Log.e(TAG, "")
                         handleBackendFailure(backendType)
                         break
                     }
@@ -420,9 +432,17 @@ class PrivilegedFirewallService : Service() {
                     // is running (circular check). The checkAvailability() above is sufficient to
                     // verify the backend can still function (root/Shizuku access, APIs available, etc.)
 
-                    Log.d(TAG, "✅ Health check PASSED: $backendType backend is healthy")
+                    Log.d(TAG, "✅ SERVICE: Health check passed - $backendType is healthy")
+                    Log.d(TAG, "")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Health check exception for $backendType", e)
+                    Log.e(TAG, "")
+                    Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
+                    Log.e(TAG, "║  ❌ SERVICE: HEALTH CHECK EXCEPTION                          ║")
+                    Log.e(TAG, "║  Backend: $backendType")
+                    Log.e(TAG, "║  Exception: ${e.message}")
+                    Log.e(TAG, "║  Action: Stopping service to trigger FirewallManager fallback║")
+                    Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
+                    Log.e(TAG, "", e)
                     handleBackendFailure(backendType)
                     break
                 }
@@ -431,14 +451,24 @@ class PrivilegedFirewallService : Service() {
     }
 
     private fun handleBackendFailure(backendType: FirewallBackendType) {
-        Log.e(TAG, "Backend $backendType failed - stopping service")
+        Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.e(TAG, "║  ⚠️  BACKEND FAILURE DETECTED IN SERVICE                     ║")
+        Log.e(TAG, "║  Backend: $backendType")
+        Log.e(TAG, "║  Action: Stopping service to trigger FirewallManager fallback ║")
+        Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
         // Show notification to user
         showFailureNotification(backendType)
 
-        // Stop the service - FirewallManager will handle fallback to VPN
+        // Stop the service - FirewallManager watchdog will detect this and handle fallback to VPN
+        // IMPORTANT: Set wasExplicitlyStopped = true to prevent service from restarting
+        // The FirewallManager will start VPN backend instead
         wasExplicitlyStopped = true
+
+        Log.e(TAG, "Stopping service now - FirewallManager should detect within 30 seconds and fallback to VPN")
         stopFirewall()
+
+        Log.e(TAG, "Service stopped. Waiting for FirewallManager watchdog to detect and trigger VPN fallback...")
     }
 
     private fun showFailureNotification(backendType: FirewallBackendType) {

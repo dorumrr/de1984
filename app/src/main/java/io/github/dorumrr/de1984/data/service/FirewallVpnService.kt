@@ -197,6 +197,8 @@ class FirewallVpnService : VpnService() {
         isServiceActive = true
 
         // Update SharedPreferences to indicate VPN service is running
+        // IMPORTANT: Use commit() instead of apply() to ensure synchronous write
+        // FirewallManager checks isActive() shortly after starting the service
         val prefs = getSharedPreferences(
             io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
             Context.MODE_PRIVATE
@@ -204,7 +206,7 @@ class FirewallVpnService : VpnService() {
         prefs.edit().putBoolean(
             io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
             true
-        ).apply()
+        ).commit()
         Log.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=true")
 
         vpnSetupJob = serviceScope.launch {
@@ -565,6 +567,7 @@ class FirewallVpnService : VpnService() {
         isServiceActive = false
 
         // Update SharedPreferences to indicate VPN service is stopped
+        // IMPORTANT: Use commit() instead of apply() to ensure synchronous write
         val prefs = getSharedPreferences(
             io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
             Context.MODE_PRIVATE
@@ -572,7 +575,7 @@ class FirewallVpnService : VpnService() {
         prefs.edit().putBoolean(
             io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
             false
-        ).apply()
+        ).commit()
 
         vpnSetupJob?.cancel()
         vpnSetupJob = null

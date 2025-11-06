@@ -1,0 +1,2 @@
+• Seamless privilege handling. Automatically switches backends when Shizuku is stopped/restarted without manual intervention
+• Automatic VPN fallback. When Shizuku/root becomes unavailable, firewall automatically switches to VPN backend within 60 seconds

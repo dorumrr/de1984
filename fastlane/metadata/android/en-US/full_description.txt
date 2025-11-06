@@ -1,5 +1,7 @@
 De1984 is a powerful Firewall and Package Manager for Android devices with multiple backend support for maximum flexibility and performance.
 
+The name **De1984** is inspired by George Orwell’s novel Nineteen Eighty-Four, reflecting the app’s philosophy of resisting surveillance and reclaiming digital privacy. It symbolizes a reversal of the dystopian control described in the book, empowering users to take back control over their devices and data.
+
 <b>FIREWALL FEATURES</b>
 
 - Multiple firewall capabilities: iptables (root/Shizuku), ConnectivityManager (Android 13+), and VPN fallback
@@ -54,5 +56,5 @@ Source code: https://github.com/dorumrr/de1984
 License: MIT  
 Issues: https://github.com/dorumrr/de1984/issues  
 
-Late nights for brighter days.
+Late nights for brighter days. 
 Created by Doru Moraru

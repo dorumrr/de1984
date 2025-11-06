@@ -332,69 +332,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
      * Used for cross-navigation from other screens.
      */
     fun openAppDialog(packageName: String) {
-        Log.d(TAG, "[FIREWALL] openAppDialog called for: $packageName")
-        Log.d(TAG, "[FIREWALL] Current filter: ${viewModel.uiState.value.filterState.packageType}")
-        Log.d(TAG, "[FIREWALL] Current packages in list: ${viewModel.uiState.value.packages.size}")
-        
         // Find the package in the current list
         val pkg = viewModel.uiState.value.packages.find { it.packageName == packageName }
-        
         if (pkg != null) {
-            Log.d(TAG, "[FIREWALL] Package found: ${pkg.name}, opening dialog")
             showPackageActionSheet(pkg)
-        } else {
-            Log.w(TAG, "[FIREWALL] Package not found in filtered list. Trying to load package directly...")
-            
-            // Package not in filtered list - try to get it directly from repository
-            lifecycleScope.launch {
-                try {
-                    // Get package from repository (bypasses filter)
-                    val app = requireActivity().application as De1984Application
-                    val networkPackageRepository = app.dependencies.networkPackageRepository
-                    val result = networkPackageRepository.getNetworkPackage(packageName)
-                    
-                    result.onSuccess { foundPkg ->
-                        Log.d(TAG, "[FIREWALL] Package loaded from repository: ${foundPkg.name} (${foundPkg.type})")
-                        
-                        // Check if we need to change filter to show this package
-                        val currentFilter = viewModel.uiState.value.filterState.packageType
-                        val packageType = foundPkg.type.toString() // "USER" or "SYSTEM"
-                        
-                        if (currentFilter.equals(packageType, ignoreCase = true)) {
-                            // Filter already matches - just wait for data to load
-                            Log.d(TAG, "[FIREWALL] Filter already correct, waiting for data...")
-                            viewModel.uiState.collect { state ->
-                                val pkg = state.packages.find { it.packageName == packageName }
-                                if (pkg != null) {
-                                    Log.d(TAG, "[FIREWALL] Package found after waiting: ${pkg.name}")
-                                    showPackageActionSheet(pkg)
-                                    return@collect
-                                }
-                            }
-                        } else {
-                            // Need to change filter
-                            Log.d(TAG, "[FIREWALL] Changing filter from $currentFilter to $packageType")
-                            viewModel.setPackageTypeFilter(packageType)
-                            
-                            // Wait for filter change and data load
-                            viewModel.uiState.collect { state ->
-                                if (state.filterState.packageType.equals(packageType, ignoreCase = true) && !state.isLoading) {
-                                    val pkg = state.packages.find { it.packageName == packageName }
-                                    if (pkg != null) {
-                                        Log.d(TAG, "[FIREWALL] Package found after filter change: ${pkg.name}")
-                                        showPackageActionSheet(pkg)
-                                        return@collect
-                                    }
-                                }
-                            }
-                        }
-                    }.onFailure { error ->
-                        Log.e(TAG, "[FIREWALL] Failed to load package: ${error.message}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "[FIREWALL] Exception in openAppDialog: ${e.message}")
-                }
-            }
         }
     }
 
@@ -548,7 +489,6 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         // Cross-navigation button to Packages screen
         binding.actionSheetManageAppButton.setOnClickListener {
-            Log.d(TAG, "[FIREWALL] Manage App button clicked for: ${pkg.packageName}")
             dialog.dismiss()
             (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToPackagesWithApp(pkg.packageName)
         }
@@ -568,6 +508,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding.actionSheetAppIcon.setImageDrawable(icon)
         } catch (e: Exception) {
             binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
+            Log.d(TAG, "[FIREWALL] Manage App button clicked for: ${pkg.packageName}")
         }
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
@@ -645,7 +586,6 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         // Cross-navigation button to Packages screen
         binding.actionSheetManageAppButton.setOnClickListener {
-            Log.d(TAG, "[FIREWALL] Manage App button clicked for: ${pkg.packageName}")
             dialog.dismiss()
             (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToPackagesWithApp(pkg.packageName)
         }

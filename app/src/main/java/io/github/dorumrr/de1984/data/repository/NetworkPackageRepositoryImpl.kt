@@ -18,6 +18,7 @@ class NetworkPackageRepositoryImpl(
             .map { entities ->
                 entities
                     .filter { it.hasNetworkAccess }
+                    .filter { it.isEnabled }  // Hide disabled apps from firewall screen
                     .map { entity ->
                         entity.toNetworkDomain().copy(
                             isSystemCritical = Constants.Firewall.isSystemCritical(entity.packageName)
@@ -169,6 +170,7 @@ private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain():
         packageName = packageName,
         name = name,
         icon = icon,
+        isEnabled = isEnabled,
         type = when (type) {
             Constants.Packages.TYPE_SYSTEM -> PackageType.SYSTEM
             Constants.Packages.TYPE_USER -> PackageType.USER

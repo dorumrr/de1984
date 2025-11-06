@@ -121,6 +121,18 @@
 
         </LinearLayout>
 
+        <!-- Cross-Navigation Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/action_sheet_manage_app_button"
+            style="@style/Widget.De1984.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Manage App"
+            android:textAllCaps="false"
+            app:icon="@drawable/ic_package"
+            app:iconGravity="start" />
+
     </LinearLayout>
 
 </ScrollView>

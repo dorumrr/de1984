@@ -281,5 +281,17 @@
 
     </LinearLayout>
 
+    <!-- Cross-Navigation Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/action_sheet_firewall_button"
+        style="@style/Widget.De1984.Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Firewall Rules"
+        android:textAllCaps="false"
+        app:icon="@drawable/ic_shield"
+        app:iconGravity="start" />
+
 </LinearLayout>
 

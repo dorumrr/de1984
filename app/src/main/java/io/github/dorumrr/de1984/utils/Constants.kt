@@ -205,10 +205,45 @@ object Constants {
         )
 
         /**
+         * System-recommended apps that should be allowed by default.
+         * These apps are important for system functionality but CAN be blocked by advanced users.
+         *
+         * Unlike SYSTEM_WHITELIST (which cannot be blocked), these apps:
+         * - Are always created with "allow all" rules, even when default policy is "Block All"
+         * - Can be manually blocked by users if desired
+         * - Have normal (enabled) controls in the UI
+         *
+         * This ensures users can use "Block All" default policy without breaking WiFi/Bluetooth/Downloads.
+         */
+        val SYSTEM_RECOMMENDED_ALLOW = setOf(
+            // WiFi and Connectivity
+            "com.android.wifi",                    // WiFi service
+            "com.android.wifi.resources",          // WiFi resources
+
+            // Bluetooth
+            "com.android.bluetooth",               // Bluetooth service
+            "com.android.bluetoothmidiservice",    // Bluetooth MIDI
+
+            // Download Manager
+            "com.android.providers.downloads",     // Download Manager
+            "com.android.providers.downloads.ui",  // Download Manager UI
+
+            // NFC (for contactless payments, file sharing)
+            "com.android.nfc",                     // NFC service
+        )
+
+        /**
          * Check if a package is system-critical and should never be blocked.
          */
         fun isSystemCritical(packageName: String): Boolean {
             return SYSTEM_WHITELIST.contains(packageName)
+        }
+
+        /**
+         * Check if a package is system-recommended and should be allowed by default.
+         */
+        fun isSystemRecommendedAllow(packageName: String): Boolean {
+            return SYSTEM_RECOMMENDED_ALLOW.contains(packageName)
         }
 
         /**

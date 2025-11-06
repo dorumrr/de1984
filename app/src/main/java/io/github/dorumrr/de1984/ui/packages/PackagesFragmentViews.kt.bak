@@ -411,67 +411,26 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
      * Used for cross-navigation from other screens.
      */
     fun openAppDialog(packageName: String) {
-        Log.d(TAG, "[PACKAGES] openAppDialog called for: $packageName")
-        Log.d(TAG, "[PACKAGES] Current filter: ${viewModel.uiState.value.filterState.packageType}")
-        Log.d(TAG, "[PACKAGES] Current packages in list: ${viewModel.uiState.value.packages.size}")
+        Log.d(TAG, "openAppDialog called for: $packageName")
         
         // Find the package in the current list
         val pkg = viewModel.uiState.value.packages.find { it.packageName == packageName }
         
         if (pkg != null) {
-            Log.d(TAG, "[PACKAGES] Package found: ${pkg.name}, opening dialog")
+            Log.d(TAG, "Package found: ${pkg.name}, opening dialog")
             showPackageActionSheet(pkg)
         } else {
-            Log.w(TAG, "[PACKAGES] Package not found in filtered list. Trying to load package directly...")
+            Log.w(TAG, "Package not found in list. Total packages: ${viewModel.uiState.value.packages.size}")
             
-            // Package not in filtered list - try to get it directly from repository
+            // If package not found, wait for data to load and try again
             lifecycleScope.launch {
-                try {
-                    // Get package from repository (bypasses filter)
-                    val app = requireActivity().application as De1984Application
-                    val packageRepository = app.dependencies.packageRepository
-                    val result = packageRepository.getPackage(packageName)
-                    
-                    result.onSuccess { foundPkg ->
-                        Log.d(TAG, "[PACKAGES] Package loaded from repository: ${foundPkg.name} (${foundPkg.type})")
-                        
-                        // Check if we need to change filter to show this package
-                        val currentFilter = viewModel.uiState.value.filterState.packageType
-                        val packageType = foundPkg.type.toString() // "USER" or "SYSTEM"
-                        
-                        if (currentFilter.equals(packageType, ignoreCase = true)) {
-                            // Filter already matches - just wait for data to load
-                            Log.d(TAG, "[PACKAGES] Filter already correct, waiting for data...")
-                            viewModel.uiState.collect { state ->
-                                val pkg = state.packages.find { it.packageName == packageName }
-                                if (pkg != null) {
-                                    Log.d(TAG, "[PACKAGES] Package found after waiting: ${pkg.name}")
-                                    showPackageActionSheet(pkg)
-                                    return@collect
-                                }
-                            }
-                        } else {
-                            // Need to change filter
-                            Log.d(TAG, "[PACKAGES] Changing filter from $currentFilter to $packageType")
-                            viewModel.setPackageTypeFilter(packageType)
-                            
-                            // Wait for filter change and data load
-                            viewModel.uiState.collect { state ->
-                                if (state.filterState.packageType.equals(packageType, ignoreCase = true) && !state.isLoading) {
-                                    val pkg = state.packages.find { it.packageName == packageName }
-                                    if (pkg != null) {
-                                        Log.d(TAG, "[PACKAGES] Package found after filter change: ${pkg.name}")
-                                        showPackageActionSheet(pkg)
-                                        return@collect
-                                    }
-                                }
-                            }
-                        }
-                    }.onFailure { error ->
-                        Log.e(TAG, "[PACKAGES] Failed to load package: ${error.message}")
+                viewModel.uiState.collect { state ->
+                    val foundPkg = state.packages.find { it.packageName == packageName }
+                    if (foundPkg != null) {
+                        Log.d(TAG, "Package found after waiting: ${foundPkg.name}")
+                        showPackageActionSheet(foundPkg)
+                        return@collect // Stop collecting once found
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "[PACKAGES] Exception in openAppDialog: ${e.message}")
                 }
             }
         }
@@ -622,7 +581,6 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Cross-navigation button to Firewall screen
         binding.actionSheetFirewallButton.setOnClickListener {
-            Log.d(TAG, "[PACKAGES] Firewall Rules button clicked for: ${pkg.packageName}")
             dialog.dismiss()
             (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToFirewallWithApp(pkg.packageName)
         }

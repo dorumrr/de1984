@@ -4,6 +4,7 @@ data class NetworkPackage(
     val packageName: String,
     val name: String,
     val icon: String,
+    val isEnabled: Boolean,
     val type: PackageType,
     val isNetworkBlocked: Boolean = false,
     val wifiBlocked: Boolean = false,

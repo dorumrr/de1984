@@ -96,20 +96,12 @@ class HandleNewAppInstallUseCase constructor(
         val uid = appInfo.uid
         val isSystemApp = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
 
-        return when (defaultPolicy) {
-            Constants.Settings.POLICY_BLOCK_ALL -> {
-                FirewallRule(
-                    packageName = packageName,
-                    uid = uid,
-                    appName = appName,
-                    wifiBlocked = true,
-                    mobileBlocked = true,
-                    blockWhenRoaming = true,
-                    enabled = true,
-                    isSystemApp = isSystemApp
-                )
-            }
-            Constants.Settings.POLICY_ALLOW_ALL -> {
+        // System-recommended apps are ALWAYS allowed, regardless of default policy
+        val isRecommendedAllow = Constants.Firewall.isSystemRecommendedAllow(packageName)
+
+        return when {
+            // System-recommended apps always get "allow all" rules
+            isRecommendedAllow -> {
                 FirewallRule(
                     packageName = packageName,
                     uid = uid,
@@ -121,6 +113,20 @@ class HandleNewAppInstallUseCase constructor(
                     isSystemApp = isSystemApp
                 )
             }
+            // Block All policy - block everything except system-recommended
+            defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL -> {
+                FirewallRule(
+                    packageName = packageName,
+                    uid = uid,
+                    appName = appName,
+                    wifiBlocked = true,
+                    mobileBlocked = true,
+                    blockWhenRoaming = true,
+                    enabled = true,
+                    isSystemApp = isSystemApp
+                )
+            }
+            // Allow All policy or default - allow everything
             else -> {
                 FirewallRule(
                     packageName = packageName,

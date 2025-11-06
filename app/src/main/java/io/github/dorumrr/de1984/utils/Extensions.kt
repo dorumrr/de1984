@@ -1,8 +1,11 @@
 package io.github.dorumrr.de1984.utils
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 
 fun String.formatPackageName(): String {
     return this.substringAfterLast(".")
@@ -40,3 +43,13 @@ fun Boolean.toEnabledString(): String {
     return if (this) Constants.Packages.STATE_ENABLED else Constants.Packages.STATE_DISABLED
 }
 
+/**
+ * Open Android system settings page for a specific app.
+ */
+fun Context.openAppSettings(packageName: String) {
+    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.fromParts("package", packageName, null)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    }
+    startActivity(intent)
+}

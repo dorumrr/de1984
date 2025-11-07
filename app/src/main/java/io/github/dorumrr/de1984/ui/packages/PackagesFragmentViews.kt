@@ -406,6 +406,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         }
     }
 
+    // ============================================================================
+    // DO NOT REMOVE: This method is called from MainActivity for cross-navigation
+    // ============================================================================
     /**
      * Open the package action dialog for a specific app by package name.
      * Used for cross-navigation from other screens (e.g., Firewall -> Packages).
@@ -446,10 +449,10 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                             // Filter already matches - just wait for data to load
                             Log.d(TAG, "[PACKAGES] Filter already correct, waiting for data...")
                             viewModel.uiState.collect { state ->
-                                val pkg = state.packages.find { it.packageName == packageName }
-                                if (pkg != null) {
-                                    Log.d(TAG, "[PACKAGES] Package found after waiting: ${pkg.name}")
-                                    showPackageActionSheet(pkg)
+                                val foundPackage = state.packages.find { it.packageName == packageName }
+                                if (foundPackage != null) {
+                                    Log.d(TAG, "[PACKAGES] Package found after waiting: ${foundPackage.name}")
+                                    showPackageActionSheet(foundPackage)
                                     return@collect
                                 }
                             }
@@ -461,10 +464,10 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                             // Wait for filter change and data load
                             viewModel.uiState.collect { state ->
                                 if (state.filterState.packageType.equals(packageType, ignoreCase = true) && !state.isLoading) {
-                                    val pkg = state.packages.find { it.packageName == packageName }
-                                    if (pkg != null) {
-                                        Log.d(TAG, "[PACKAGES] Package found after filter change: ${pkg.name}")
-                                        showPackageActionSheet(pkg)
+                                    val foundPackage = state.packages.find { it.packageName == packageName }
+                                    if (foundPackage != null) {
+                                        Log.d(TAG, "[PACKAGES] Package found after filter change: ${foundPackage.name}")
+                                        showPackageActionSheet(foundPackage)
                                         return@collect
                                     }
                                 }
@@ -496,9 +499,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         }
 
         // ============================================================================
-        // IMPORTANT: Click settings icon to open Android system settings
+        // DO NOT REMOVE: Click settings icon to open Android system settings
         // User preference: Settings cog icon on the right opens Android app settings
-        // DO NOT REMOVE THIS FUNCTIONALITY - it's a core feature!
         // ============================================================================
         binding.actionSheetSettingsIcon.setOnClickListener {
             requireContext().openAppSettings(pkg.packageName)
@@ -544,7 +546,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             if (!pkg.category.isNullOrEmpty()) {
                 binding.actionSheetCategoryBadge.visibility = View.VISIBLE
                 binding.actionSheetCategoryBadge.text = pkg.category.replace("-", " ").split(" ")
-                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                    .joinToString(" ") { word -> word.replaceFirstChar { char -> char.uppercase() } }
             } else {
                 binding.actionSheetCategoryBadge.visibility = View.GONE
             }
@@ -577,13 +579,16 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             binding.affectsSection.visibility = View.GONE
         }
 
+        // ============================================================================
+        // DO NOT REMOVE: Firewall Rules cross-navigation button
+        // ============================================================================
         // Setup Firewall Rules action - only show if package has network access
         if (pkg.hasNetworkAccess) {
             binding.firewallRulesAction.visibility = View.VISIBLE
             binding.firewallRulesDivider.visibility = View.VISIBLE
             binding.firewallRulesAction.setOnClickListener {
                 dialog.dismiss()
-                (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToFirewallWithApp(pkg.packageName)
+                (requireActivity() as? MainActivity)?.navigateToFirewallWithApp(pkg.packageName)
             }
         } else {
             binding.firewallRulesAction.visibility = View.GONE

@@ -327,6 +327,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
     }
 
+    // ============================================================================
+    // DO NOT REMOVE: This method is called from MainActivity for cross-navigation
+    // ============================================================================
     /**
      * Open the firewall dialog for a specific app by package name.
      * Used for cross-navigation from other screens.
@@ -364,10 +367,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                             // Filter already matches - just wait for data to load
                             Log.d(TAG, "[FIREWALL] Filter already correct, waiting for data...")
                             viewModel.uiState.collect { state ->
-                                val pkg = state.packages.find { it.packageName == packageName }
-                                if (pkg != null) {
-                                    Log.d(TAG, "[FIREWALL] Package found after waiting: ${pkg.name}")
-                                    showPackageActionSheet(pkg)
+                                val foundPackage = state.packages.find { it.packageName == packageName }
+                                if (foundPackage != null) {
+                                    Log.d(TAG, "[FIREWALL] Package found after waiting: ${foundPackage.name}")
+                                    showPackageActionSheet(foundPackage)
                                     return@collect
                                 }
                             }
@@ -375,14 +378,14 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                             // Need to change filter
                             Log.d(TAG, "[FIREWALL] Changing filter from $currentFilter to $packageType")
                             viewModel.setPackageTypeFilter(packageType)
-                            
+
                             // Wait for filter change and data load
                             viewModel.uiState.collect { state ->
                                 if (state.filterState.packageType.equals(packageType, ignoreCase = true) && !state.isLoading) {
-                                    val pkg = state.packages.find { it.packageName == packageName }
-                                    if (pkg != null) {
-                                        Log.d(TAG, "[FIREWALL] Package found after filter change: ${pkg.name}")
-                                        showPackageActionSheet(pkg)
+                                    val foundPackage = state.packages.find { it.packageName == packageName }
+                                    if (foundPackage != null) {
+                                        Log.d(TAG, "[FIREWALL] Package found after filter change: ${foundPackage.name}")
+                                        showPackageActionSheet(foundPackage)
                                         return@collect
                                     }
                                 }

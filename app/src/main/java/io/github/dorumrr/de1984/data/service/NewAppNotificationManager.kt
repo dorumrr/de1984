@@ -85,10 +85,10 @@ class NewAppNotificationManager(
             // Add smart button: show opposite of default policy
             if (isBlockAllDefault) {
                 // Default is "Block All" → show "Allow All" button
-                notificationBuilder.addAction(createAllowAllAction(packageName, appName))
+                notificationBuilder.addAction(createAllowAllAction(packageName))
             } else {
                 // Default is "Allow All" → show "Block All" button
-                notificationBuilder.addAction(createBlockAllAction(packageName, appName))
+                notificationBuilder.addAction(createBlockAllAction(packageName))
             }
 
             val notification = notificationBuilder.build()
@@ -139,7 +139,7 @@ class NewAppNotificationManager(
         )
     }
 
-    private fun createBlockAllAction(packageName: String, appName: String): NotificationCompat.Action {
+    private fun createBlockAllAction(packageName: String): NotificationCompat.Action {
         val intent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = Constants.Notifications.ACTION_TOGGLE_NETWORK_ACCESS
             putExtra(Constants.Notifications.EXTRA_PACKAGE_NAME, packageName)
@@ -160,7 +160,7 @@ class NewAppNotificationManager(
         ).build()
     }
 
-    private fun createAllowAllAction(packageName: String, appName: String): NotificationCompat.Action {
+    private fun createAllowAllAction(packageName: String): NotificationCompat.Action {
         val intent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = Constants.Notifications.ACTION_TOGGLE_NETWORK_ACCESS
             putExtra(Constants.Notifications.EXTRA_PACKAGE_NAME, packageName)

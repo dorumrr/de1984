@@ -1,0 +1,2 @@
+• Fixed compatibility with VPN apps alongside De1984 in iptables and ConnectivityManager backends.
+• Improved notifications for new apps in accordance with default Firewall mode

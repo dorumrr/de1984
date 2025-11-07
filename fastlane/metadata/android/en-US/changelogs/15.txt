@@ -1,0 +1,1 @@
+• Multiple fixes to make the firewall backends more resilient to unexpected changes.

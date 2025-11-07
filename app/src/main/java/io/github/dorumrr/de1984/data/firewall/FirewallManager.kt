@@ -206,9 +206,6 @@ class FirewallManager(
                 Log.d(TAG, "Backend transition: $oldBackendType → $newBackendType, no migration needed (both granular or both simple)")
             }
 
-            // Migrate VPN apps to "allow all" state (always run, regardless of backend transition)
-            migrateVpnAppsToAllowed()
-
             // ATOMIC SWITCH: Start new backend FIRST, then stop old backend
             // This prevents security gap where apps are unblocked during transition
             Log.d(TAG, "Starting new backend ($newBackendType) BEFORE stopping old backend...")
@@ -521,67 +518,6 @@ class FirewallManager(
     }
 
     /**
-     * Migrate VPN apps to "allow all" state.
-     * VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues.
-     *
-     * This is called on firewall start to fix any existing VPN app blocking rules
-     * that may have been created before this fix was implemented.
-     */
-    private suspend fun migrateVpnAppsToAllowed() {
-        try {
-            Log.d(TAG, "=== Starting VPN app migration: blocked → allowed ===")
-            val rules = firewallRepository.getAllRules().first()
-            var migratedCount = 0
-            var skippedCount = 0
-
-            rules.forEach { rule ->
-                // Check if this is a VPN app
-                val isVpnApp = try {
-                    val packageInfo = context.packageManager.getPackageInfo(
-                        rule.packageName,
-                        android.content.pm.PackageManager.GET_SERVICES
-                    )
-                    packageInfo.services?.any { serviceInfo ->
-                        serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
-                    } ?: false
-                } catch (e: Exception) {
-                    false
-                }
-
-                if (isVpnApp) {
-                    // Check if VPN app has any blocking rules
-                    if (rule.wifiBlocked || rule.mobileBlocked || rule.blockWhenRoaming) {
-                        Log.d(TAG, "Migrating VPN app ${rule.packageName}: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming} → allow all")
-
-                        // Update rule to allow all networks
-                        firewallRepository.updateRule(
-                            rule.copy(
-                                wifiBlocked = false,
-                                mobileBlocked = false,
-                                blockWhenRoaming = false,
-                                updatedAt = System.currentTimeMillis()
-                            )
-                        )
-                        migratedCount++
-                    } else {
-                        // VPN app already has "allow all" rules
-                        skippedCount++
-                    }
-                }
-            }
-
-            if (migratedCount > 0) {
-                Log.d(TAG, "✅ VPN app migration complete: $migratedCount VPN apps migrated to 'allow all', $skippedCount already allowed")
-            } else {
-                Log.d(TAG, "✅ VPN app migration complete: No VPN apps needed migration")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to migrate VPN apps", e)
-            // Don't throw - allow firewall to start even if migration fails
-        }
-    }
-
-    /**
      * Start monitoring network and screen state changes.
      * Used for iptables and NetworkPolicyManager backends (VPN backend monitors internally).
      */
@@ -728,6 +664,10 @@ class FirewallManager(
                 currentBackend = null
                 _activeBackendType.value = null
 
+                // Update SharedPreferences to reflect firewall is stopped
+                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
+
                 return@withLock
             }
 
@@ -740,6 +680,10 @@ class FirewallManager(
 
                 currentBackend = null
                 _activeBackendType.value = null
+
+                // Update SharedPreferences to reflect firewall is stopped
+                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
 
                 return@withLock
             }
@@ -766,6 +710,10 @@ class FirewallManager(
 
             currentBackend = null
             _activeBackendType.value = null
+
+            // Update SharedPreferences to reflect firewall is stopped
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
         }
     }
     

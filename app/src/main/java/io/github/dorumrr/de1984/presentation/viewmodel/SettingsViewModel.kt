@@ -270,7 +270,17 @@ class SettingsViewModel(
             delay(500)
 
             val newMode = _uiState.value.firewallMode
-            firewallManager.startFirewall(newMode)
+            val result = firewallManager.startFirewall(newMode)
+
+            result.onFailure { error ->
+                // Update SharedPreferences to reflect firewall is stopped
+                prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
+
+                // Show error to user
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to restart firewall with new backend: ${error.message}"
+                )
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to restart firewall", e)
         }

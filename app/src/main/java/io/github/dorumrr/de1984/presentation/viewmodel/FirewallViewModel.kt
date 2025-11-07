@@ -402,6 +402,7 @@ class FirewallViewModel(
                     isFirewallEnabled = false,
                     error = error.message
                 )
+                saveFirewallState(false)
             }
         }
 
@@ -547,6 +548,7 @@ class FirewallViewModel(
             result.onSuccess { backendType ->
                 Log.d(TAG, "✅ Firewall restarted successfully with backend: $backendType")
                 _uiState.value = _uiState.value.copy(isFirewallEnabled = true)
+                saveFirewallState(true)
 
                 // Reload packages to refresh UI with correct controls
                 loadNetworkPackages()
@@ -556,6 +558,7 @@ class FirewallViewModel(
                     isFirewallEnabled = false,
                     error = "Failed to restart firewall with new backend: ${error.message}"
                 )
+                saveFirewallState(false)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception during firewall restart", e)
@@ -563,6 +566,7 @@ class FirewallViewModel(
                 isFirewallEnabled = false,
                 error = "Failed to restart firewall: ${e.message}"
             )
+            saveFirewallState(false)
         }
     }
 

@@ -54,10 +54,41 @@ class VpnFirewallBackend(
     
     override suspend fun stop(): Result<Unit> {
         return try {
+            // Send stop intent to FirewallVpnService
             val intent = Intent(context, FirewallVpnService::class.java).apply {
                 action = FirewallVpnService.ACTION_STOP
             }
             context.startService(intent)
+
+            Log.d(TAG, "VPN stop intent sent, waiting for service to stop...")
+
+            // Wait for service to actually stop by polling isActive()
+            // The SharedPreferences flag is updated immediately (in-memory) when stopVpn() is called,
+            // so this should be very fast (usually 1-2 checks, ~10-50ms)
+            val startTime = System.currentTimeMillis()
+            val timeout = 2000L
+            var attempts = 0
+
+            while (isActive()) {
+                val elapsed = System.currentTimeMillis() - startTime
+                if (elapsed >= timeout) {
+                    Log.w(TAG, "VPN service still active after ${elapsed}ms (timeout). Continuing anyway.")
+                    break
+                }
+                attempts++
+                kotlinx.coroutines.delay(50)  // Check every 50ms
+            }
+
+            val totalTime = System.currentTimeMillis() - startTime
+            if (attempts > 0) {
+                Log.d(TAG, "VPN service stopped after ${totalTime}ms ($attempts checks)")
+            } else {
+                Log.d(TAG, "VPN service already stopped (${totalTime}ms)")
+            }
+
+            // Additional small delay to ensure VPN interface is fully closed
+            // ParcelFileDescriptor.close() might take 100-500ms even after service stops
+            kotlinx.coroutines.delay(200)
 
             Log.d(TAG, "VPN firewall stopped")
             Result.success(Unit)

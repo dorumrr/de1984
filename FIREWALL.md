@@ -179,7 +179,13 @@ When switching networks, recalculates which UIDs should be blocked based on per-
 
 **Shared UIDs:**
 
-Multiple apps can share the same UID. In Block All mode, the UID is blocked if ANY app with that UID should be blocked. In Allow All mode, the UID is blocked if ANY app with that UID has an explicit block rule for the current network.
+Multiple apps can share the same UID. The firewall handles shared UIDs as follows:
+
+- **System-critical and VPN app exemption**: If ANY app with a UID is system-critical or a VPN app, the ENTIRE UID is exempted from blocking (all apps with that UID are allowed). This prevents bypass vulnerabilities where non-critical apps share UIDs with system packages.
+
+- **Block All mode**: For non-exempted UIDs, the UID is blocked if ANY app with that UID should be blocked (no explicit allow rule).
+
+- **Allow All mode**: For non-exempted UIDs, the UID is blocked if ANY app with that UID has an explicit block rule for the current network.
 
 **Example (Block All, WiFi):**
 - Chrome (UID 10100, no rule) → Blocked

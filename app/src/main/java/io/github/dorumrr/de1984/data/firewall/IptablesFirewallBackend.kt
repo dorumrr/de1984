@@ -208,13 +208,9 @@ class IptablesFirewallBackend(
                     val uid = appInfo.uid
                     val packageName = appInfo.packageName
 
-                    // Never block system-critical packages
-                    if (Constants.Firewall.isSystemCritical(packageName)) {
-                        continue
-                    }
-
-                    // Never block VPN apps to prevent VPN reconnection issues
-                    if (hasVpnService(packageName)) {
+                    // Never block UIDs that contain system-critical packages or VPN apps
+                    // This prevents shared UID bypass (e.g., Gboard sharing UID with system package)
+                    if (isUidExempted(uid, allPackages)) {
                         continue
                     }
 
@@ -245,12 +241,15 @@ class IptablesFirewallBackend(
             } else {
                 // Default policy is "Allow All" - only block apps with explicit block rules
                 // For shared UIDs, block if ANY app with that UID should be blocked
+
+                // Get all installed packages (needed to check for shared UIDs with system-critical/VPN apps)
+                val packageManager = context.packageManager
+                val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+
                 for ((uid, rulesForUid) in rulesByUid) {
-                    // Never block VPN apps to prevent VPN reconnection issues
-                    val hasVpnApp = rulesForUid.any { rule ->
-                        hasVpnService(rule.packageName)
-                    }
-                    if (hasVpnApp) {
+                    // Never block UIDs that contain system-critical packages or VPN apps
+                    // This prevents shared UID bypass (e.g., Gboard sharing UID with system package)
+                    if (isUidExempted(uid, allPackages)) {
                         continue
                     }
 
@@ -551,6 +550,30 @@ class IptablesFirewallBackend(
             } ?: false
         } catch (e: Exception) {
             false
+        }
+    }
+
+    /**
+     * Check if a UID should be exempted from blocking.
+     * A UID is exempted if ANY package with that UID is:
+     * - System-critical (in SYSTEM_WHITELIST)
+     * - A VPN app (has BIND_VPN_SERVICE permission)
+     *
+     * This prevents shared UID bypass vulnerability where a non-critical app
+     * (e.g., Gboard) shares a UID with a system-critical package.
+     *
+     * @param uid The UID to check
+     * @param allPackages List of all installed applications
+     * @return true if the UID should be exempted from blocking
+     */
+    private fun isUidExempted(uid: Int, allPackages: List<android.content.pm.ApplicationInfo>): Boolean {
+        // Get all packages with this UID
+        val packagesWithUid = allPackages.filter { it.uid == uid }
+
+        // Check if ANY package with this UID is system-critical or a VPN app
+        return packagesWithUid.any { appInfo ->
+            Constants.Firewall.isSystemCritical(appInfo.packageName) ||
+            hasVpnService(appInfo.packageName)
         }
     }
 }

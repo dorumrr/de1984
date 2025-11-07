@@ -220,8 +220,9 @@ class NetworkPolicyManagerFirewallBackend(
                 val packageName = appInfo.packageName
                 val uid = appInfo.uid
 
-                // Never block system-critical packages
-                if (Constants.Firewall.isSystemCritical(packageName)) {
+                // Never block UIDs that contain system-critical packages or VPN apps
+                // This prevents shared UID bypass (e.g., Gboard sharing UID with system package)
+                if (isUidExempted(uid, allPackages)) {
                     return@forEach
                 }
 
@@ -503,5 +504,51 @@ class NetworkPolicyManagerFirewallBackend(
     }
 
     override fun supportsGranularControl(): Boolean = false  // Only Mobile/Roaming (WiFi doesn't work on stock Android)
+
+    /**
+     * Check if an app has a VPN service by looking for services with BIND_VPN_SERVICE permission.
+     *
+     * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
+     * This is a service permission that protects the VPN service from being bound by unauthorized apps.
+     */
+    private fun hasVpnService(packageName: String): Boolean {
+        return try {
+            val packageInfo = context.packageManager.getPackageInfo(
+                packageName,
+                PackageManager.GET_SERVICES
+            )
+
+            // Check if any service has BIND_VPN_SERVICE permission
+            packageInfo.services?.any { serviceInfo ->
+                serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Check if a UID should be exempted from blocking.
+     * A UID is exempted if ANY package with that UID is:
+     * - System-critical (in SYSTEM_WHITELIST)
+     * - A VPN app (has BIND_VPN_SERVICE permission)
+     *
+     * This prevents shared UID bypass vulnerability where a non-critical app
+     * (e.g., Gboard) shares a UID with a system-critical package.
+     *
+     * @param uid The UID to check
+     * @param allPackages List of all installed applications
+     * @return true if the UID should be exempted from blocking
+     */
+    private fun isUidExempted(uid: Int, allPackages: List<android.content.pm.ApplicationInfo>): Boolean {
+        // Get all packages with this UID
+        val packagesWithUid = allPackages.filter { it.uid == uid }
+
+        // Check if ANY package with this UID is system-critical or a VPN app
+        return packagesWithUid.any { appInfo ->
+            Constants.Firewall.isSystemCritical(appInfo.packageName) ||
+            hasVpnService(appInfo.packageName)
+        }
+    }
 }
 

@@ -94,6 +94,18 @@
 
         </LinearLayout>
 
+        <!-- Settings Icon -->
+        <ImageView
+            android:id="@+id/action_sheet_settings_icon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:src="@drawable/ic_settings"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Open app settings"
+            app:tint="?android:attr/textColorSecondary" />
+
     </LinearLayout>
 
     <!-- Affects Section -->
@@ -281,17 +293,61 @@
 
     </LinearLayout>
 
-    <!-- Cross-Navigation Button -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/action_sheet_firewall_button"
-        style="@style/Widget.De1984.Button"
+    <!-- Divider -->
+    <View
+        android:id="@+id/firewall_rules_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="8dp"
+        android:background="?android:attr/listDivider"
+        android:visibility="gone" />
+
+    <!-- Firewall Rules Action -->
+    <LinearLayout
+        android:id="@+id/firewall_rules_action"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Firewall Rules"
-        android:textAllCaps="false"
-        app:icon="@drawable/ic_shield"
-        app:iconGravity="start" />
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_shield"
+            app:tint="?android:attr/textColorPrimary"
+            android:contentDescription="Firewall rules icon" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="16dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Firewall Rules"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Control network access"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </LinearLayout>
 

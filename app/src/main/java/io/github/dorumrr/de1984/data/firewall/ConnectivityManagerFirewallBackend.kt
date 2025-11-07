@@ -254,7 +254,39 @@ class ConnectivityManagerFirewallBackend(
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
             val isServiceRunning = prefs.getBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, false)
             val backendType = prefs.getString(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE, null)
-            isServiceRunning && backendType == "CONNECTIVITY_MANAGER"
+
+            // If SharedPreferences says service is not running, it's definitely not active
+            if (!isServiceRunning || backendType != "CONNECTIVITY_MANAGER") {
+                return false
+            }
+
+            // SharedPreferences says service is running, but verify the service is actually alive
+            // This is important after app reinstall (e.g., dev.sh update) where SharedPreferences
+            // persist but the service process is killed
+            val activityManager = context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+            if (activityManager != null) {
+                @Suppress("DEPRECATION")
+                val runningServices = activityManager.getRunningServices(Integer.MAX_VALUE)
+                val serviceClassName = "io.github.dorumrr.de1984.data.service.PrivilegedFirewallService"
+                val isServiceActuallyRunning = runningServices.any { service ->
+                    service.service.className == serviceClassName
+                }
+
+                // If service is not actually running, clear the SharedPreferences flags
+                if (!isServiceActuallyRunning) {
+                    Log.w(TAG, "SharedPreferences says privileged service is running, but service is not actually running. Clearing flags.")
+                    prefs.edit()
+                        .putBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, false)
+                        .remove(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE)
+                        .apply()
+                    return false
+                }
+
+                return true
+            }
+
+            // Fallback: if we can't check running services, trust SharedPreferences
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to check if ConnectivityManager firewall is active", e)
             false

@@ -407,23 +407,26 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     /**
-     * Open the package management dialog for a specific app by package name.
-     * Used for cross-navigation from other screens.
+     * Open the package action dialog for a specific app by package name.
+     * Used for cross-navigation from other screens (e.g., Firewall -> Packages).
+     *
+     * This method handles cases where the package might not be in the current filtered list
+     * by loading it directly from the repository and automatically switching filters if needed.
      */
     fun openAppDialog(packageName: String) {
         Log.d(TAG, "[PACKAGES] openAppDialog called for: $packageName")
         Log.d(TAG, "[PACKAGES] Current filter: ${viewModel.uiState.value.filterState.packageType}")
         Log.d(TAG, "[PACKAGES] Current packages in list: ${viewModel.uiState.value.packages.size}")
-        
+
         // Find the package in the current list
         val pkg = viewModel.uiState.value.packages.find { it.packageName == packageName }
-        
+
         if (pkg != null) {
             Log.d(TAG, "[PACKAGES] Package found: ${pkg.name}, opening dialog")
             showPackageActionSheet(pkg)
         } else {
             Log.w(TAG, "[PACKAGES] Package not found in filtered list. Trying to load package directly...")
-            
+
             // Package not in filtered list - try to get it directly from repository
             lifecycleScope.launch {
                 try {
@@ -431,14 +434,14 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     val app = requireActivity().application as De1984Application
                     val packageRepository = app.dependencies.packageRepository
                     val result = packageRepository.getPackage(packageName)
-                    
+
                     result.onSuccess { foundPkg ->
                         Log.d(TAG, "[PACKAGES] Package loaded from repository: ${foundPkg.name} (${foundPkg.type})")
-                        
+
                         // Check if we need to change filter to show this package
                         val currentFilter = viewModel.uiState.value.filterState.packageType
                         val packageType = foundPkg.type.toString() // "USER" or "SYSTEM"
-                        
+
                         if (currentFilter.equals(packageType, ignoreCase = true)) {
                             // Filter already matches - just wait for data to load
                             Log.d(TAG, "[PACKAGES] Filter already correct, waiting for data...")
@@ -454,7 +457,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                             // Need to change filter
                             Log.d(TAG, "[PACKAGES] Changing filter from $currentFilter to $packageType")
                             viewModel.setPackageTypeFilter(packageType)
-                            
+
                             // Wait for filter change and data load
                             viewModel.uiState.collect { state ->
                                 if (state.filterState.packageType.equals(packageType, ignoreCase = true) && !state.isLoading) {
@@ -490,6 +493,16 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             binding.actionSheetAppIcon.setImageDrawable(realIcon)
         } else {
             binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
+        }
+
+        // ============================================================================
+        // IMPORTANT: Click settings icon to open Android system settings
+        // User preference: Settings cog icon on the right opens Android app settings
+        // DO NOT REMOVE THIS FUNCTIONALITY - it's a core feature!
+        // ============================================================================
+        binding.actionSheetSettingsIcon.setOnClickListener {
+            requireContext().openAppSettings(pkg.packageName)
+            dialog.dismiss()
         }
 
         // Set safety and category badges
@@ -564,10 +577,17 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             binding.affectsSection.visibility = View.GONE
         }
 
-        // Click app icon to open system settings
-        binding.actionSheetAppIcon.setOnClickListener {
-            requireContext().openAppSettings(pkg.packageName)
-            dialog.dismiss()
+        // Setup Firewall Rules action - only show if package has network access
+        if (pkg.hasNetworkAccess) {
+            binding.firewallRulesAction.visibility = View.VISIBLE
+            binding.firewallRulesDivider.visibility = View.VISIBLE
+            binding.firewallRulesAction.setOnClickListener {
+                dialog.dismiss()
+                (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToFirewallWithApp(pkg.packageName)
+            }
+        } else {
+            binding.firewallRulesAction.visibility = View.GONE
+            binding.firewallRulesDivider.visibility = View.GONE
         }
 
         // Setup Force Stop action
@@ -618,13 +638,6 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 dialog.dismiss()
                 showUninstallConfirmation(pkg)
             }
-        }
-
-        // Cross-navigation button to Firewall screen
-        binding.actionSheetFirewallButton.setOnClickListener {
-            Log.d(TAG, "[PACKAGES] Firewall Rules button clicked for: ${pkg.packageName}")
-            dialog.dismiss()
-            (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToFirewallWithApp(pkg.packageName)
         }
 
         dialog.setContentView(binding.root)

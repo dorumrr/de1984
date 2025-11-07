@@ -434,8 +434,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
 
-        // Click app icon to open Android system settings
-        binding.actionSheetAppIcon.setOnClickListener {
+        // ============================================================================
+        // Click settings icon to open Android system settings
+        // ============================================================================
+        binding.actionSheetSettingsIcon.setOnClickListener {
             requireContext().openAppSettings(pkg.packageName)
             dialog.dismiss()
         }
@@ -546,9 +548,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding.infoMessage.visibility = View.GONE
         }
 
-        // Cross-navigation button to Packages screen
-        binding.actionSheetManageAppButton.setOnClickListener {
-            Log.d(TAG, "[FIREWALL] Manage App button clicked for: ${pkg.packageName}")
+        // Cross-navigation action to Packages screen
+        binding.manageAppAction.setOnClickListener {
+            Log.d(TAG, "[FIREWALL] Package Control action clicked for: ${pkg.packageName}")
             dialog.dismiss()
             (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToPackagesWithApp(pkg.packageName)
         }
@@ -572,8 +574,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
 
-        // Click app icon to open Android system settings
-        binding.actionSheetAppIcon.setOnClickListener {
+        // ============================================================================
+        // IMPORTANT: Click settings icon to open Android system settings
+        // User preference: Settings cog icon on the right opens Android app settings
+        // DO NOT REMOVE THIS FUNCTIONALITY - it's a core feature!
+        // ============================================================================
+        binding.actionSheetSettingsIcon.setOnClickListener {
             requireContext().openAppSettings(pkg.packageName)
             dialog.dismiss()
         }
@@ -643,9 +649,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
         )
 
-        // Cross-navigation button to Packages screen
-        binding.actionSheetManageAppButton.setOnClickListener {
-            Log.d(TAG, "[FIREWALL] Manage App button clicked for: ${pkg.packageName}")
+        // Cross-navigation action to Packages screen
+        binding.manageAppAction.setOnClickListener {
+            Log.d(TAG, "[FIREWALL] Package Control action clicked for: ${pkg.packageName}")
             dialog.dismiss()
             (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToPackagesWithApp(pkg.packageName)
         }

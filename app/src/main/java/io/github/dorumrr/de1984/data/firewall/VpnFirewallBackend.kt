@@ -93,10 +93,43 @@ class VpnFirewallBackend(
                 io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
                 Context.MODE_PRIVATE
             )
-            prefs.getBoolean(
+            val isRunningInPrefs = prefs.getBoolean(
                 io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
                 false
             )
+
+            // If SharedPreferences says service is not running, it's definitely not active
+            if (!isRunningInPrefs) {
+                return false
+            }
+
+            // SharedPreferences says service is running, but verify the service is actually alive
+            // This is important after app reinstall (e.g., dev.sh update) where SharedPreferences
+            // persist but the service process is killed
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+            if (activityManager != null) {
+                @Suppress("DEPRECATION")
+                val runningServices = activityManager.getRunningServices(Integer.MAX_VALUE)
+                val serviceClassName = "io.github.dorumrr.de1984.data.service.FirewallVpnService"
+                val isServiceRunning = runningServices.any { service ->
+                    service.service.className == serviceClassName
+                }
+
+                // If service is not actually running, clear the SharedPreferences flag
+                if (!isServiceRunning) {
+                    Log.w(TAG, "SharedPreferences says VPN service is running, but service is not actually running. Clearing flag.")
+                    prefs.edit().putBoolean(
+                        io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
+                        false
+                    ).apply()
+                    return false
+                }
+
+                return true
+            }
+
+            // Fallback: if we can't check running services, trust SharedPreferences
+            return isRunningInPrefs
         } catch (e: Exception) {
             Log.e(TAG, "Failed to check if VPN is active", e)
             false

@@ -1,2 +1,3 @@
 • Cross-Screen Navigation between Firewall and Packages screens for the same app with one tap
 • Added a quick access to Android app settings in dialog headers
+• Updated documentation

@@ -20,6 +20,14 @@
 - Different warning levels (friendly for user apps, scary for system apps)
 - Explicit "I Know The Risk" confirmation buttons
 
+**ALSO IMPORTANT**: When fixing a specific issue, make ONLY the minimal changes required to fix that exact issue. Do NOT:
+- Refactor or clean up unrelated code
+- Change import statements or fully qualified names
+- Modify comments unless they are directly causing the issue
+- Apply coding style preferences
+- Make "improvements" that weren't requested
+**If you notice other issues while working, MENTION them to the user and ASK if they want them fixed separately. Never bundle unrelated changes together.** Before making edits, explicitly state: "I will change ONLY lines X, Y, Z to fix [specific issue]" and get confirmation if there's any doubt.
+
 ## 🏗️ Core Development Philosophy
 
 **MAXIMUM MAINTAINABILITY** is the primary goal. Every line of code must be written with future developers in mind, ensuring the codebase remains clean, understandable, and extensible.

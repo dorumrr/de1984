@@ -61,8 +61,25 @@ class AndroidPackageDataSource(
                         val permissions = getAppPermissions(appInfo.packageName)
                         val isVpnApp = hasVpnService(appInfo.packageName)
 
+                        // Debug logging for VPN apps
+                        if (isVpnApp) {
+                            Log.d(TAG, "🔍 VPN APP DETECTED: ${appInfo.packageName}, hasRule=${rule != null}, isSystemCritical=${Constants.Firewall.isSystemCritical(appInfo.packageName)}")
+                        }
+
                         val blockingState = if (Constants.Firewall.isSystemCritical(appInfo.packageName)) {
                             // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
+                            if (isVpnApp) {
+                                Log.d(TAG, "✅ ${appInfo.packageName}: System-critical VPN app → ALLOW ALL")
+                            }
+                            BlockingState(
+                                isNetworkBlocked = false,
+                                wifiBlocked = false,
+                                mobileBlocked = false,
+                                roamingBlocked = false
+                            )
+                        } else if (isVpnApp) {
+                            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
+                            Log.d(TAG, "✅ ${appInfo.packageName}: VPN app → ALLOW ALL (wifi=false, mobile=false, roaming=false)")
                             BlockingState(
                                 isNetworkBlocked = false,
                                 wifiBlocked = false,
@@ -141,8 +158,25 @@ class AndroidPackageDataSource(
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
                 val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
+                // Debug logging for VPN apps
+                if (isVpnApp) {
+                    Log.d(TAG, "🔍 VPN APP DETECTED (getPackage): $packageName, hasRule=${rule != null}, isSystemCritical=${Constants.Firewall.isSystemCritical(packageName)}")
+                }
+
                 val blockingState = if (Constants.Firewall.isSystemCritical(packageName)) {
                     // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
+                    if (isVpnApp) {
+                        Log.d(TAG, "✅ $packageName: System-critical VPN app → ALLOW ALL")
+                    }
+                    BlockingState(
+                        isNetworkBlocked = false,
+                        wifiBlocked = false,
+                        mobileBlocked = false,
+                        roamingBlocked = false
+                    )
+                } else if (isVpnApp) {
+                    // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
+                    Log.d(TAG, "✅ $packageName: VPN app → ALLOW ALL (wifi=false, mobile=false, roaming=false)")
                     BlockingState(
                         isNetworkBlocked = false,
                         wifiBlocked = false,
@@ -455,10 +489,17 @@ class AndroidPackageDataSource(
             )
 
             // Check if any service has BIND_VPN_SERVICE permission
-            packageInfo.services?.any { serviceInfo ->
+            val isVpn = packageInfo.services?.any { serviceInfo ->
                 serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
             } ?: false
+
+            if (isVpn) {
+                Log.d(TAG, "🔍 hasVpnService($packageName) = true (found VPN service)")
+            }
+
+            isVpn
         } catch (e: Exception) {
+            Log.e(TAG, "❌ hasVpnService($packageName) failed", e)
             false
         }
     }

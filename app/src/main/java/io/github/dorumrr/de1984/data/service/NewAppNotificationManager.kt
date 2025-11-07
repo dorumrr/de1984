@@ -74,7 +74,7 @@ class NewAppNotificationManager(
             val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification_de1984)
                 .setLargeIcon(de1984Icon?.let { drawable -> drawableToBitmap(drawable) })
-                .setContentTitle("De1984 detected a new app")
+                .setContentTitle("De1984 Firewall detected a new app")
                 .setContentText("$appName was installed. Tap to configure firewall rules.")
                 .setStyle(NotificationCompat.BigTextStyle()
                     .bigText("$appName was installed and has network permissions. Tap to configure firewall rules in the app."))
@@ -155,7 +155,7 @@ class NewAppNotificationManager(
 
         return NotificationCompat.Action.Builder(
             R.drawable.ic_signal_cellular_off,
-            "Block All",
+            "Block Network",
             pendingIntent
         ).build()
     }
@@ -176,7 +176,7 @@ class NewAppNotificationManager(
 
         return NotificationCompat.Action.Builder(
             R.drawable.ic_check,
-            "Allow All",
+            "Allow Network",
             pendingIntent
         ).build()
     }

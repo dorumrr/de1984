@@ -96,10 +96,27 @@ class HandleNewAppInstallUseCase constructor(
         val uid = appInfo.uid
         val isSystemApp = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
 
+        // Check if this is a VPN app
+        val isVpnApp = hasVpnService(packageName)
+
         // System-recommended apps are ALWAYS allowed, regardless of default policy
         val isRecommendedAllow = Constants.Firewall.isSystemRecommendedAllow(packageName)
 
         return when {
+            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
+            isVpnApp -> {
+                Log.d(TAG, "Creating 'allow all' rule for VPN app: $packageName")
+                FirewallRule(
+                    packageName = packageName,
+                    uid = uid,
+                    appName = appName,
+                    wifiBlocked = false,
+                    mobileBlocked = false,
+                    blockWhenRoaming = false,
+                    enabled = true,
+                    isSystemApp = isSystemApp
+                )
+            }
             // System-recommended apps always get "allow all" rules
             isRecommendedAllow -> {
                 FirewallRule(
@@ -113,7 +130,7 @@ class HandleNewAppInstallUseCase constructor(
                     isSystemApp = isSystemApp
                 )
             }
-            // Block All policy - block everything except system-recommended
+            // Block All policy - block everything except VPN apps and system-recommended
             defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL -> {
                 FirewallRule(
                     packageName = packageName,
@@ -139,6 +156,28 @@ class HandleNewAppInstallUseCase constructor(
                     isSystemApp = isSystemApp
                 )
             }
+        }
+    }
+
+    /**
+     * Check if an app has a VPN service by looking for services with BIND_VPN_SERVICE permission.
+     *
+     * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
+     * This is a service permission that protects the VPN service from being bound by unauthorized apps.
+     */
+    private fun hasVpnService(packageName: String): Boolean {
+        return try {
+            val packageInfo = context.packageManager.getPackageInfo(
+                packageName,
+                PackageManager.GET_SERVICES
+            )
+
+            // Check if any service has BIND_VPN_SERVICE permission
+            packageInfo.services?.any { serviceInfo ->
+                serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
+            } ?: false
+        } catch (e: Exception) {
+            false
         }
     }
 }

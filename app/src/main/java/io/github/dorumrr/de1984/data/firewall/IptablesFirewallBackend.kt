@@ -213,6 +213,11 @@ class IptablesFirewallBackend(
                         continue
                     }
 
+                    // Never block VPN apps to prevent VPN reconnection issues
+                    if (hasVpnService(packageName)) {
+                        continue
+                    }
+
                     val rulesForUid = rulesByUid[uid]
 
                     val shouldBlock = if (rulesForUid != null && rulesForUid.isNotEmpty()) {
@@ -241,6 +246,14 @@ class IptablesFirewallBackend(
                 // Default policy is "Allow All" - only block apps with explicit block rules
                 // For shared UIDs, block if ANY app with that UID should be blocked
                 for ((uid, rulesForUid) in rulesByUid) {
+                    // Never block VPN apps to prevent VPN reconnection issues
+                    val hasVpnApp = rulesForUid.any { rule ->
+                        hasVpnService(rule.packageName)
+                    }
+                    if (hasVpnApp) {
+                        continue
+                    }
+
                     val shouldBlock = rulesForUid.any { rule ->
                         // Has explicit rule - use as-is (absolute blocking state)
                         when {
@@ -518,5 +531,27 @@ class IptablesFirewallBackend(
     }
 
     override fun supportsGranularControl(): Boolean = true  // Supports WiFi/Mobile/Roaming separately
+
+    /**
+     * Check if an app has a VPN service by looking for services with BIND_VPN_SERVICE permission.
+     *
+     * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
+     * This is a service permission that protects the VPN service from being bound by unauthorized apps.
+     */
+    private fun hasVpnService(packageName: String): Boolean {
+        return try {
+            val packageInfo = context.packageManager.getPackageInfo(
+                packageName,
+                PackageManager.GET_SERVICES
+            )
+
+            // Check if any service has BIND_VPN_SERVICE permission
+            packageInfo.services?.any { serviceInfo ->
+                serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
 

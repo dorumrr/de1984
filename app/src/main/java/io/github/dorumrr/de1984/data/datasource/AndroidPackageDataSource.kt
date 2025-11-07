@@ -69,14 +69,6 @@ class AndroidPackageDataSource(
                                 mobileBlocked = false,
                                 roamingBlocked = false
                             )
-                        } else if (isVpnApp) {
-                            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
-                            BlockingState(
-                                isNetworkBlocked = false,
-                                wifiBlocked = false,
-                                mobileBlocked = false,
-                                roamingBlocked = false
-                            )
                         } else if (rule != null && rule.enabled) {
                             // Has explicit rule - use it as-is (absolute blocking state)
                             BlockingState(
@@ -151,14 +143,6 @@ class AndroidPackageDataSource(
 
                 val blockingState = if (Constants.Firewall.isSystemCritical(packageName)) {
                     // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
-                    BlockingState(
-                        isNetworkBlocked = false,
-                        wifiBlocked = false,
-                        mobileBlocked = false,
-                        roamingBlocked = false
-                    )
-                } else if (isVpnApp) {
-                    // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
                     BlockingState(
                         isNetworkBlocked = false,
                         wifiBlocked = false,

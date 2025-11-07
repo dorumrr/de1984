@@ -206,6 +206,9 @@ class FirewallManager(
                 Log.d(TAG, "Backend transition: $oldBackendType → $newBackendType, no migration needed (both granular or both simple)")
             }
 
+            // Migrate VPN apps to "allow all" state (always run, regardless of backend transition)
+            migrateVpnAppsToAllowed()
+
             // ATOMIC SWITCH: Start new backend FIRST, then stop old backend
             // This prevents security gap where apps are unblocked during transition
             Log.d(TAG, "Starting new backend ($newBackendType) BEFORE stopping old backend...")
@@ -518,6 +521,67 @@ class FirewallManager(
     }
 
     /**
+     * Migrate VPN apps to "allow all" state.
+     * VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues.
+     *
+     * This is called on firewall start to fix any existing VPN app blocking rules
+     * that may have been created before this fix was implemented.
+     */
+    private suspend fun migrateVpnAppsToAllowed() {
+        try {
+            Log.d(TAG, "=== Starting VPN app migration: blocked → allowed ===")
+            val rules = firewallRepository.getAllRules().first()
+            var migratedCount = 0
+            var skippedCount = 0
+
+            rules.forEach { rule ->
+                // Check if this is a VPN app
+                val isVpnApp = try {
+                    val packageInfo = context.packageManager.getPackageInfo(
+                        rule.packageName,
+                        android.content.pm.PackageManager.GET_SERVICES
+                    )
+                    packageInfo.services?.any { serviceInfo ->
+                        serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
+                    } ?: false
+                } catch (e: Exception) {
+                    false
+                }
+
+                if (isVpnApp) {
+                    // Check if VPN app has any blocking rules
+                    if (rule.wifiBlocked || rule.mobileBlocked || rule.blockWhenRoaming) {
+                        Log.d(TAG, "Migrating VPN app ${rule.packageName}: wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, roaming=${rule.blockWhenRoaming} → allow all")
+
+                        // Update rule to allow all networks
+                        firewallRepository.updateRule(
+                            rule.copy(
+                                wifiBlocked = false,
+                                mobileBlocked = false,
+                                blockWhenRoaming = false,
+                                updatedAt = System.currentTimeMillis()
+                            )
+                        )
+                        migratedCount++
+                    } else {
+                        // VPN app already has "allow all" rules
+                        skippedCount++
+                    }
+                }
+            }
+
+            if (migratedCount > 0) {
+                Log.d(TAG, "✅ VPN app migration complete: $migratedCount VPN apps migrated to 'allow all', $skippedCount already allowed")
+            } else {
+                Log.d(TAG, "✅ VPN app migration complete: No VPN apps needed migration")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to migrate VPN apps", e)
+            // Don't throw - allow firewall to start even if migration fails
+        }
+    }
+
+    /**
      * Start monitoring network and screen state changes.
      * Used for iptables and NetworkPolicyManager backends (VPN backend monitors internally).
      */
@@ -584,12 +648,7 @@ class FirewallManager(
             return
         }
 
-        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        Log.d(TAG, "║  🔍 STARTING WATCHDOG HEALTH MONITORING                      ║")
-        Log.d(TAG, "║  Backend: $backendType")
-        Log.d(TAG, "║  Interval: ${BACKEND_HEALTH_CHECK_INTERVAL_MS}ms (30 seconds)")
-        Log.d(TAG, "║  Purpose: Detect service crashes & permission loss           ║")
-        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        Log.d(TAG, "Starting backend health monitoring for $backendType (every ${BACKEND_HEALTH_CHECK_INTERVAL_MS}ms)")
 
         healthMonitoringJob?.cancel()
         healthMonitoringJob = scope.launch {
@@ -597,64 +656,34 @@ class FirewallManager(
                 delay(BACKEND_HEALTH_CHECK_INTERVAL_MS)
 
                 try {
-                    Log.d(TAG, "")
-                    Log.d(TAG, "=== WATCHDOG HEALTH CHECK: $backendType ===")
-                    Log.d(TAG, "Checking backend availability and service status...")
-
-                    // Check if backend is still available (root/Shizuku access, APIs, etc.)
-                    Log.d(TAG, "Step 1/2: Checking backend.checkAvailability()...")
+                    Log.d(TAG, "Health check: Testing $backendType backend availability...")
 
                     // Check if backend is still available
                     val availabilityResult = backend.checkAvailability()
 
                     if (availabilityResult.isFailure) {
-                        Log.e(TAG, "")
-                        Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                        Log.e(TAG, "║  ❌ WATCHDOG: AVAILABILITY CHECK FAILED                      ║")
-                        Log.e(TAG, "║  Backend: $backendType")
-                        Log.e(TAG, "║  Reason: ${availabilityResult.exceptionOrNull()?.message}")
-                        Log.e(TAG, "║  Action: Triggering automatic fallback to VPN                ║")
-                        Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                        Log.e(TAG, "")
+                        Log.e(TAG, "❌ Health check FAILED: $backendType backend is no longer available!")
+                        Log.e(TAG, "Error: ${availabilityResult.exceptionOrNull()?.message}")
 
                         // Backend failed - trigger automatic fallback to VPN
-                        // IMPORTANT: Launch in separate coroutine to avoid JobCancellationException
-                        // when handleBackendFailure() calls stopMonitoring() which cancels this job
-                        scope.launch {
-                            handleBackendFailure(backendType)
-                        }
+                        handleBackendFailure(backendType)
                         break // Stop monitoring - new backend will start its own monitoring
                     }
-                    Log.d(TAG, "  ✅ Availability check passed")
 
-                    // Check if backend service is still active (via SharedPreferences)
-                    Log.d(TAG, "Step 2/2: Checking backend.isActive()...")
+                    // Check if backend is still active
                     if (!backend.isActive()) {
-                        Log.e(TAG, "")
-                        Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                        Log.e(TAG, "║  ❌ WATCHDOG: SERVICE INACTIVE                               ║")
-                        Log.e(TAG, "║  Backend: $backendType")
-                        Log.e(TAG, "║  Reason: Service stopped (crash or backend failure)          ║")
-                        Log.e(TAG, "║  Action: Triggering automatic fallback to VPN                ║")
-                        Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                        Log.e(TAG, "")
+                        Log.e(TAG, "❌ Health check FAILED: $backendType backend is not active!")
 
                         // Backend became inactive - trigger automatic fallback
-                        // IMPORTANT: Launch in separate coroutine to avoid JobCancellationException
-                        scope.launch {
-                            handleBackendFailure(backendType)
-                        }
+                        handleBackendFailure(backendType)
                         break
                     }
-                    Log.d(TAG, "  ✅ Service is active")
 
-                    Log.d(TAG, "✅ WATCHDOG: Health check passed - $backendType is healthy")
-                    Log.d(TAG, "")
+                    Log.d(TAG, "✅ Health check passed: $backendType backend is healthy")
                     _backendHealthWarning.value = null // Clear any previous warnings
 
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ WATCHDOG: Health check exception for $backendType", e)
-                    Log.e(TAG, "Not triggering fallback - might be temporary issue")
+                    Log.e(TAG, "Health check exception for $backendType", e)
                     // Don't trigger fallback on exceptions - might be temporary
                 }
             }
@@ -669,47 +698,30 @@ class FirewallManager(
      * backend switching operations.
      */
     private suspend fun handleBackendFailure(failedBackendType: FirewallBackendType) = startStopMutex.withLock {
-        Log.e(TAG, "")
-        Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        Log.e(TAG, "║  🚨 BACKEND FAILURE - INITIATING AUTOMATIC FALLBACK          ║")
-        Log.e(TAG, "║  Failed Backend: $failedBackendType")
-        Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-        Log.e(TAG, "")
+        Log.e(TAG, "=== BACKEND FAILURE DETECTED: $failedBackendType ===")
 
         // Check if user had manually selected this backend
         val currentMode = getCurrentMode()
         val wasManualSelection = currentMode != FirewallMode.AUTO
 
         if (wasManualSelection) {
-            Log.e(TAG, "User had manually selected backend: $currentMode")
-            Log.e(TAG, "Switching to AUTO mode per FIREWALL.md line 46")
+            Log.e(TAG, "Manually selected backend ($currentMode) failed. Switching to AUTO mode per FIREWALL.md line 46")
             // Switch to AUTO mode in settings
             setMode(FirewallMode.AUTO)
-        } else {
-            Log.e(TAG, "Backend was auto-selected (mode: $currentMode)")
         }
 
-        Log.e(TAG, "")
-        Log.e(TAG, "=== STEP 1: Stop old backend monitoring ===")
-        // Stop monitoring to prevent interference
-        stopMonitoring()
-        Log.e(TAG, "✅ Old backend monitoring stopped")
+        Log.e(TAG, "Attempting automatic fallback to VPN...")
 
         try {
-            Log.e(TAG, "")
-            Log.e(TAG, "=== STEP 2: Start VPN backend ===")
+            // Stop monitoring to prevent interference
+            stopMonitoring()
+
             // Try to fallback to VPN
             val vpnBackend = VpnFirewallBackend(context)
 
-            Log.e(TAG, "Calling vpnBackend.start()...")
+            Log.d(TAG, "Starting VPN backend as fallback...")
             vpnBackend.start().getOrElse { error ->
-                Log.e(TAG, "")
-                Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                Log.e(TAG, "║  ❌ CRITICAL: VPN FALLBACK FAILED                            ║")
-                Log.e(TAG, "║  Error: ${error.message}")
-                Log.e(TAG, "║  FIREWALL IS DOWN - ALL APPS ARE UNBLOCKED!                  ║")
-                Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                Log.e(TAG, "")
+                Log.e(TAG, "❌ CRITICAL: VPN fallback FAILED: ${error.message}")
                 _backendHealthWarning.value = "FIREWALL DOWN: All backends failed. Your apps are UNBLOCKED!"
 
                 // Update state to reflect firewall is down
@@ -718,21 +730,12 @@ class FirewallManager(
 
                 return@withLock
             }
-            Log.e(TAG, "✅ VPN backend start() succeeded")
 
-            Log.e(TAG, "")
-            Log.e(TAG, "=== STEP 3: Wait for VPN to establish ===")
-            Log.e(TAG, "Waiting 1 second for VPN to establish...")
+            // Wait for VPN to establish
             delay(1000)
 
-            Log.e(TAG, "Checking if VPN is active...")
             if (!vpnBackend.isActive()) {
-                Log.e(TAG, "")
-                Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                Log.e(TAG, "║  ❌ CRITICAL: VPN STARTED BUT NOT ACTIVE                     ║")
-                Log.e(TAG, "║  FIREWALL IS DOWN - ALL APPS ARE UNBLOCKED!                  ║")
-                Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                Log.e(TAG, "")
+                Log.e(TAG, "❌ CRITICAL: VPN fallback started but not active!")
                 _backendHealthWarning.value = "FIREWALL DOWN: VPN fallback failed. Your apps are UNBLOCKED!"
 
                 currentBackend = null
@@ -740,14 +743,12 @@ class FirewallManager(
 
                 return@withLock
             }
-            Log.e(TAG, "✅ VPN is active")
 
-            Log.e(TAG, "")
-            Log.e(TAG, "=== STEP 4: Update state ===")
+            Log.d(TAG, "✅ VPN fallback successful!")
+
             // Update current backend
             currentBackend = vpnBackend
             _activeBackendType.value = FirewallBackendType.VPN
-            Log.e(TAG, "✅ State updated to VPN backend")
 
             // Show warning to user
             val warningMessage = if (wasManualSelection) {
@@ -757,24 +758,10 @@ class FirewallManager(
             }
             _backendHealthWarning.value = warningMessage
 
-            Log.e(TAG, "")
-            Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            Log.e(TAG, "║  ✅ VPN FALLBACK SUCCESSFUL                                  ║")
-            Log.e(TAG, "║  Firewall is now running on VPN backend                      ║")
-            Log.e(TAG, "║  User warning: $warningMessage")
-            Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-            Log.e(TAG, "")
-
             // VPN monitors internally, no need to start monitoring
 
         } catch (e: Exception) {
-            Log.e(TAG, "")
-            Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            Log.e(TAG, "║  ❌ CRITICAL: EXCEPTION DURING FALLBACK                      ║")
-            Log.e(TAG, "║  Exception: ${e.message}")
-            Log.e(TAG, "║  FIREWALL IS DOWN - ALL APPS ARE UNBLOCKED!                  ║")
-            Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-            Log.e(TAG, "", e)
+            Log.e(TAG, "❌ CRITICAL: Exception during backend fallback", e)
             _backendHealthWarning.value = "FIREWALL DOWN: Fallback failed. Your apps are UNBLOCKED!"
 
             currentBackend = null

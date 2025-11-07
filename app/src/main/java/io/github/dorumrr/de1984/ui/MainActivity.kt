@@ -289,56 +289,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Navigate to Firewall screen and open the dialog for a specific app.
-     * Used for cross-navigation from Packages screen.
-     */
-    fun navigateToFirewallWithApp(packageName: String) {
-        Log.d(TAG, "[MAIN] navigateToFirewallWithApp called for: $packageName")
-        // Load Firewall fragment
-        loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
-
-        // Wait for fragment to be created and view to be ready, then open the dialog
-        binding.root.postDelayed({
-            Log.d(TAG, "[MAIN] postDelayed callback executing for Firewall")
-            val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
-            Log.d(TAG, "[MAIN] Fragment found: ${fragment?.javaClass?.simpleName}")
-            if (fragment is FirewallFragmentViews) {
-                Log.d(TAG, "[MAIN] Calling fragment.openAppDialog($packageName)")
-                fragment.openAppDialog(packageName)
-            } else {
-                Log.e(TAG, "[MAIN] Fragment is not FirewallFragmentViews! Type: ${fragment?.javaClass?.name}")
-            }
-        }, 100)
-    }
-
-    /**
-     * Navigate to Packages screen and open the dialog for a specific app.
-     * Used for cross-navigation from Firewall screen.
-     */
-    /**
-     * Navigate to Packages screen and open the dialog for a specific app.
-     * Used for cross-navigation from Firewall screen.
-     */
-    fun navigateToPackagesWithApp(packageName: String) {
-        Log.d(TAG, "[MAIN] navigateToPackagesWithApp called for: $packageName")
-        // Load Packages fragment
-        loadFragment(PackagesFragmentViews(), Tab.APPS)
-
-        // Wait for fragment to be created and view to be ready, then open the dialog
-        binding.root.postDelayed({
-            Log.d(TAG, "[MAIN] postDelayed callback executing for Packages")
-            val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
-            Log.d(TAG, "[MAIN] Fragment found: ${fragment?.javaClass?.simpleName}")
-            if (fragment is PackagesFragmentViews) {
-                Log.d(TAG, "[MAIN] Calling fragment.openAppDialog($packageName)")
-                fragment.openAppDialog(packageName)
-            } else {
-                Log.e(TAG, "[MAIN] Fragment is not PackagesFragmentViews! Type: ${fragment?.javaClass?.name}")
-            }
-        }, 100)
-    }
-
     private fun updateBottomNavigationSelection() {
         // Update bottom navigation selection to match current tab
         val itemId = when (currentTab) {
@@ -459,7 +409,39 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /**
+     * Navigate to Firewall screen and open dialog for specific app.
+     * Used for cross-navigation from notifications and other screens.
+     */
+    fun navigateToFirewallWithApp(packageName: String) {
+        Log.d(TAG, "[MAIN] navigateToFirewallWithApp called for: $packageName")
+        loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
 
+        // Use postDelayed to ensure fragment is fully loaded before opening dialog
+        binding.root.postDelayed({
+            val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+            if (fragment is FirewallFragmentViews) {
+                fragment.openAppDialog(packageName)
+            }
+        }, 100)
+    }
+
+    /**
+     * Navigate to Packages screen and open dialog for specific app.
+     * Used for cross-navigation from Firewall screen.
+     */
+    fun navigateToPackagesWithApp(packageName: String) {
+        Log.d(TAG, "[MAIN] navigateToPackagesWithApp called for: $packageName")
+        loadFragment(PackagesFragmentViews(), Tab.APPS)
+
+        // Use postDelayed to ensure fragment is fully loaded before opening dialog
+        binding.root.postDelayed({
+            val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+            if (fragment is PackagesFragmentViews) {
+                fragment.openAppDialog(packageName)
+            }
+        }, 100)
+    }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)

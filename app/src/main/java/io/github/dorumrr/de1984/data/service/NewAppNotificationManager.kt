@@ -15,7 +15,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import io.github.dorumrr.de1984.R
-import io.github.dorumrr.de1984.data.receiver.NewAppNotificationReceiver
+import io.github.dorumrr.de1984.data.receiver.NotificationActionReceiver
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
 
@@ -29,16 +29,6 @@ class NewAppNotificationManager(
         private const val CHANNEL_NAME = "New App Notifications"
         private const val CHANNEL_DESCRIPTION = "Notifications when new apps are installed"
         private const val NOTIFICATION_ID_BASE = 2000
-        
-        const val ACTION_BLOCK_ALL = "io.github.dorumrr.de1984.BLOCK_ALL"
-        const val ACTION_BLOCK_WIFI = "io.github.dorumrr.de1984.BLOCK_WIFI"
-        const val ACTION_BLOCK_MOBILE = "io.github.dorumrr.de1984.BLOCK_MOBILE"
-        const val ACTION_ALLOW_ALL = "io.github.dorumrr.de1984.ALLOW_ALL"
-        const val ACTION_ALLOW_WIFI = "io.github.dorumrr.de1984.ALLOW_WIFI"
-        const val ACTION_ALLOW_MOBILE = "io.github.dorumrr.de1984.ALLOW_MOBILE"
-        const val ACTION_OPEN_FIREWALL = "io.github.dorumrr.de1984.OPEN_FIREWALL"
-        
-        const val EXTRA_PACKAGE_NAME = "package_name"
     }
     
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -66,10 +56,11 @@ class NewAppNotificationManager(
             if (!areNotificationsEnabled()) {
                 return
             }
-            
+
             val appInfo = getAppInfo(packageName) ?: return
             val appName = appInfo.name
 
+            // Get default policy to determine which button to show
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
             val defaultPolicy = prefs.getString(
                 Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
@@ -79,29 +70,29 @@ class NewAppNotificationManager(
 
             val de1984Icon = ContextCompat.getDrawable(context, R.drawable.de1984_icon)
 
-            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            // Build notification with smart button (opposite of default policy)
+            val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification_de1984)
                 .setLargeIcon(de1984Icon?.let { drawable -> drawableToBitmap(drawable) })
                 .setContentTitle("De1984 detected a new app")
-                .setContentText("$appName was installed. Configure firewall rules?")
+                .setContentText("$appName was installed. Tap to configure firewall rules.")
                 .setStyle(NotificationCompat.BigTextStyle()
-                    .bigText("$appName was installed and has network permissions. Choose how to handle network access:"))
+                    .bigText("$appName was installed and has network permissions. Tap to configure firewall rules in the app."))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .setContentIntent(createOpenFirewallIntent(packageName))
-                .apply {
-                    if (isBlockAllDefault) {
-                        addAction(createAllowAllAction(packageName))
-                        addAction(createAllowWifiAction(packageName))
-                        addAction(createAllowMobileAction(packageName))
-                    } else {
-                        addAction(createBlockAllAction(packageName))
-                        addAction(createBlockWifiAction(packageName))
-                        addAction(createBlockMobileAction(packageName))
-                    }
-                }
-                .build()
-            
+
+            // Add smart button: show opposite of default policy
+            if (isBlockAllDefault) {
+                // Default is "Block All" → show "Allow All" button
+                notificationBuilder.addAction(createAllowAllAction(packageName, appName))
+            } else {
+                // Default is "Allow All" → show "Block All" button
+                notificationBuilder.addAction(createBlockAllAction(packageName, appName))
+            }
+
+            val notification = notificationBuilder.build()
+
             val notificationId = NOTIFICATION_ID_BASE + packageName.hashCode()
             notificationManager.notify(notificationId, notification)
 
@@ -135,11 +126,11 @@ class NewAppNotificationManager(
     
     private fun createOpenFirewallIntent(packageName: String): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
-            action = ACTION_OPEN_FIREWALL
-            putExtra(EXTRA_PACKAGE_NAME, packageName)
+            action = Constants.Notifications.ACTION_OPEN_FIREWALL
+            putExtra(Constants.Notifications.EXTRA_PACKAGE_NAME, packageName)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        
+
         return PendingIntent.getActivity(
             context,
             packageName.hashCode(),
@@ -147,16 +138,17 @@ class NewAppNotificationManager(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
-    
-    private fun createBlockAllAction(packageName: String): NotificationCompat.Action {
-        val intent = Intent(context, NewAppNotificationReceiver::class.java).apply {
-            action = ACTION_BLOCK_ALL
-            putExtra(EXTRA_PACKAGE_NAME, packageName)
+
+    private fun createBlockAllAction(packageName: String, appName: String): NotificationCompat.Action {
+        val intent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = Constants.Notifications.ACTION_TOGGLE_NETWORK_ACCESS
+            putExtra(Constants.Notifications.EXTRA_PACKAGE_NAME, packageName)
+            putExtra(Constants.Notifications.EXTRA_BLOCKED, true)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            (packageName + ACTION_BLOCK_ALL).hashCode(),
+            (packageName + "_block").hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -168,102 +160,23 @@ class NewAppNotificationManager(
         ).build()
     }
 
-    private fun createBlockWifiAction(packageName: String): NotificationCompat.Action {
-        val intent = Intent(context, NewAppNotificationReceiver::class.java).apply {
-            action = ACTION_BLOCK_WIFI
-            putExtra(EXTRA_PACKAGE_NAME, packageName)
+    private fun createAllowAllAction(packageName: String, appName: String): NotificationCompat.Action {
+        val intent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = Constants.Notifications.ACTION_TOGGLE_NETWORK_ACCESS
+            putExtra(Constants.Notifications.EXTRA_PACKAGE_NAME, packageName)
+            putExtra(Constants.Notifications.EXTRA_BLOCKED, false)
         }
-        
+
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            (packageName + ACTION_BLOCK_WIFI).hashCode(),
+            (packageName + "_allow").hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        
-        return NotificationCompat.Action.Builder(
-            R.drawable.ic_wifi_off,
-            "Block WiFi",
-            pendingIntent
-        ).build()
-    }
-    
-    private fun createBlockMobileAction(packageName: String): NotificationCompat.Action {
-        val intent = Intent(context, NewAppNotificationReceiver::class.java).apply {
-            action = ACTION_BLOCK_MOBILE
-            putExtra(EXTRA_PACKAGE_NAME, packageName)
-        }
-        
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            (packageName + ACTION_BLOCK_MOBILE).hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        return NotificationCompat.Action.Builder(
-            R.drawable.ic_signal_cellular_off,
-            "Block Mobile",
-            pendingIntent
-        ).build()
-    }
-    
-    private fun createAllowAllAction(packageName: String): NotificationCompat.Action {
-        val intent = Intent(context, NewAppNotificationReceiver::class.java).apply {
-            action = ACTION_ALLOW_ALL
-            putExtra(EXTRA_PACKAGE_NAME, packageName)
-        }
-        
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            (packageName + ACTION_ALLOW_ALL).hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
+
         return NotificationCompat.Action.Builder(
             R.drawable.ic_check,
             "Allow All",
-            pendingIntent
-        ).build()
-    }
-    
-    private fun createAllowWifiAction(packageName: String): NotificationCompat.Action {
-        val intent = Intent(context, NewAppNotificationReceiver::class.java).apply {
-            action = ACTION_ALLOW_WIFI
-            putExtra(EXTRA_PACKAGE_NAME, packageName)
-        }
-
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            (packageName + ACTION_ALLOW_WIFI).hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        return NotificationCompat.Action.Builder(
-            R.drawable.ic_check,
-            "Allow WiFi",
-            pendingIntent
-        ).build()
-    }
-
-    private fun createAllowMobileAction(packageName: String): NotificationCompat.Action {
-        val intent = Intent(context, NewAppNotificationReceiver::class.java).apply {
-            action = ACTION_ALLOW_MOBILE
-            putExtra(EXTRA_PACKAGE_NAME, packageName)
-        }
-
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            (packageName + ACTION_ALLOW_MOBILE).hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        return NotificationCompat.Action.Builder(
-            R.drawable.ic_check,
-            "Allow Mobile",
             pendingIntent
         ).build()
     }

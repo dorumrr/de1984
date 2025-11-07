@@ -258,6 +258,16 @@ object Constants {
         }
     }
 
+    object Notifications {
+        // Notification actions
+        const val ACTION_OPEN_FIREWALL = "io.github.dorumrr.de1984.OPEN_FIREWALL"
+        const val ACTION_TOGGLE_NETWORK_ACCESS = "io.github.dorumrr.de1984.TOGGLE_NETWORK_ACCESS"
+
+        // Intent extras
+        const val EXTRA_PACKAGE_NAME = "package_name"
+        const val EXTRA_BLOCKED = "blocked"
+    }
+
     object Navigation {
         // Bottom Navigation Destinations
         const val DESTINATION_FIREWALL = "firewall"

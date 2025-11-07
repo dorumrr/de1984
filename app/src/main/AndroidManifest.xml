@@ -124,9 +124,9 @@
             </intent-filter>
         </receiver>
 
-        <!-- Notification action receiver for new app notification buttons -->
+        <!-- Notification action receiver for new app notification button clicks -->
         <receiver
-            android:name=".data.receiver.NewAppNotificationReceiver"
+            android:name=".data.receiver.NotificationActionReceiver"
             android:exported="false"
             android:enabled="true" />
 

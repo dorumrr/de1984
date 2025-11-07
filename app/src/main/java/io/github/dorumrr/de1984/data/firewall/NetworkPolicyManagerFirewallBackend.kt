@@ -21,17 +21,23 @@ import java.lang.reflect.Method
 
 /**
  * Firewall backend using Android's NetworkPolicyManager API via Shizuku.
- * 
+ *
+ * This is a LEGACY backend for Android 12 and below. On Android 13+, use
+ * ConnectivityManager backend instead as it blocks all networks reliably.
+ *
  * This backend:
  * - Works with Shizuku in ADB mode (UID 2000) - no root required
  * - Does NOT show VPN icon
  * - Does NOT occupy VPN slot
  * - Uses system-level network policies
- * 
+ *
  * Limitations:
+ * - May not block WiFi on some devices (only Mobile/Roaming)
  * - Less granular than iptables (per-app only, not per-network-type)
- * - Uses hidden Android API (may break in future versions)
+ * - Uses hidden Android API (may break in future Android versions)
  * - Requires Shizuku to be running
+ *
+ * Recommendation: Use ConnectivityManager on Android 13+ for reliable blocking.
  */
 class NetworkPolicyManagerFirewallBackend(
     private val context: Context,

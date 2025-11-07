@@ -117,7 +117,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private fun setupViews() {
         // Donate button (included layout - access via root view)
         binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.donate_button)?.setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.buymeacoffee.com/ossdev"))
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://donate.stripe.com/5kQeV6cOgaxGcsf9iD3ZK01"))
             startActivity(intent)
         }
 
@@ -388,6 +388,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             requirementText = if (!iptablesAvailable) "Requires root or Shizuku in root mode" else null
         ))
 
+        // NetworkPolicyManager requires Shizuku (legacy backend for Android 12 and below)
+        // Note: ConnectivityManager is preferred on Android 13+ as it blocks all networks reliably
+        val networkPolicyManagerAvailable = hasShizuku
+        backends.add(BackendOption(
+            mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.NETWORK_POLICY_MANAGER,
+            displayName = "NetworkPolicyManager (Legacy)",
+            description = "For Android 12 and below (use ConnectivityManager on Android 13+)",
+            isAvailable = networkPolicyManagerAvailable,
+            requirementText = if (!networkPolicyManagerAvailable) "Requires Shizuku" else null
+        ))
+
         return backends
     }
 
@@ -397,7 +408,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         val statusText = if (activeBackend != null) {
             "Active: ${activeBackend.name}"
         } else {
-            "Firewall not running"
+            "Firewall not running."
         }
 
         binding.backendStatusText.text = statusText
@@ -411,7 +422,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             2. ConnectivityManager (if Shizuku + Android 13+)
             3. VPN (fallback)
 
-            De1984 supports three firewall backends:
+            De1984 supports four firewall backends:
 
             🔹 VPN Backend
             • Always available (no root required)
@@ -429,10 +440,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
             🔹 ConnectivityManager Backend
             • Requires Shizuku + Android 13+
-            • System-level blocking via NetworkPolicyManager
+            • System-level blocking (blocks all networks reliably)
             • All-or-nothing blocking only (no granular control)
             • Doesn't occupy VPN slot
             • Works with other VPN apps
+
+            🔹 NetworkPolicyManager Backend (Legacy)
+            • Requires Shizuku
+            • For Android 12 and below
+            • May not block WiFi on some devices
+            • Use ConnectivityManager on Android 13+ instead
+            • Doesn't occupy VPN slot
         """.trimIndent()
 
         StandardDialog.showInfo(
@@ -448,7 +466,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         val description: String,
         val isAvailable: Boolean = true,
         val requirementText: String? = null
-    )
+    ) {
+        override fun toString(): String = displayName
+    }
 
 
 

@@ -10,7 +10,7 @@ import io.github.dorumrr.de1984.domain.model.NetworkType
  * - VpnFirewallBackend: Uses Android VpnService (no root required, occupies VPN slot)
  * - IptablesFirewallBackend: Uses iptables (requires root, frees VPN slot)
  * - ConnectivityManagerFirewallBackend: Uses ConnectivityManager firewall chain (requires Shizuku, Android 13+, no VPN icon)
- * - NetworkPolicyManagerFirewallBackend: Uses NetworkPolicyManager (requires Shizuku, no VPN icon, deprecated)
+ * - NetworkPolicyManagerFirewallBackend: Uses NetworkPolicyManager (requires Shizuku, no VPN icon, legacy option for Android 12 and below)
  */
 interface FirewallBackend {
 
@@ -91,7 +91,7 @@ enum class FirewallBackendType {
     CONNECTIVITY_MANAGER,
 
     /**
-     * NetworkPolicyManager-based firewall (requires Shizuku, no VPN icon, deprecated)
+     * NetworkPolicyManager-based firewall (requires Shizuku, no VPN icon, legacy option for Android 12 and below)
      */
     NETWORK_POLICY_MANAGER
 }
@@ -122,7 +122,7 @@ enum class FirewallMode {
     CONNECTIVITY_MANAGER,
 
     /**
-     * Force NetworkPolicyManager-based firewall (requires Shizuku, deprecated)
+     * Force NetworkPolicyManager-based firewall (requires Shizuku, legacy option for Android 12 and below)
      */
     NETWORK_POLICY_MANAGER;
 

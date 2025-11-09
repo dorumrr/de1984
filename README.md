@@ -92,3 +92,4 @@ De1984 protects your privacy. You can protect its future!
 ---
 
 *Late nights for brighter days.*
+Created by Doru Moraru

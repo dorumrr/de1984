@@ -114,6 +114,10 @@ class MainActivity : AppCompatActivity() {
     private var permissionsCompleted = false
     private var shouldShowFirewallStartDialog = false
 
+    // Fragment cache to preserve scroll state (Firewall and Packages only)
+    private var firewallFragment: FirewallFragmentViews? = null
+    private var packagesFragment: PackagesFragmentViews? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -179,12 +183,17 @@ class MainActivity : AppCompatActivity() {
         // Restore or load initial fragment
         if (savedInstanceState == null) {
             // First time - load Firewall fragment
-            loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
+            loadFragment(Tab.FIREWALL)
         } else {
             // Restoring from saved state - restore the current tab
             val tabOrdinal = savedInstanceState.getInt(KEY_CURRENT_TAB, Tab.FIREWALL.ordinal)
             currentTab = Tab.values()[tabOrdinal]
-            // Update UI to match restored tab (fragment is automatically restored by FragmentManager)
+
+            // Restore fragment references (Firewall and Packages only need caching)
+            firewallFragment = supportFragmentManager.findFragmentByTag("FIREWALL") as? FirewallFragmentViews
+            packagesFragment = supportFragmentManager.findFragmentByTag("APPS") as? PackagesFragmentViews
+
+            // Update UI to match restored tab
             updateToolbar()
             updateBottomNavigationSelection()
         }
@@ -213,15 +222,15 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.firewallFragment -> {
-                    loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
+                    loadFragment(Tab.FIREWALL)
                     true
                 }
                 R.id.packagesFragment -> {
-                    loadFragment(PackagesFragmentViews(), Tab.APPS)
+                    loadFragment(Tab.APPS)
                     true
                 }
                 R.id.settingsFragment -> {
-                    loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
+                    loadFragment(Tab.SETTINGS)
                     true
                 }
                 else -> false
@@ -274,19 +283,48 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    private fun loadFragment(fragment: androidx.fragment.app.Fragment, tab: Tab) {
+    private fun loadFragment(tab: Tab) {
         currentTab = tab
+
         supportFragmentManager.commit {
-            replace(R.id.fragment_container, fragment)
+            // Get or create cached fragments (Firewall and Packages only)
+            val firewall = firewallFragment ?: FirewallFragmentViews().also {
+                firewallFragment = it
+                add(R.id.fragment_container, it, "FIREWALL")
+            }
+            val packages = packagesFragment ?: PackagesFragmentViews().also {
+                packagesFragment = it
+                add(R.id.fragment_container, it, "APPS")
+            }
+
+            // For Settings always use replace() since it doesn't need state preservation
+            if (tab == Tab.SETTINGS) {
+                hide(firewall)
+                hide(packages)
+                replace(R.id.fragment_container, SettingsFragmentViews())
+            } else {
+                // Remove any Settings fragment if present
+                supportFragmentManager.findFragmentById(R.id.fragment_container)?.let { current ->
+                    if (current is SettingsFragmentViews) {
+                        remove(current)
+                    }
+                }
+
+                // Hide all cached fragments
+                hide(firewall)
+                hide(packages)
+
+                // Show the selected cached fragment
+                when (tab) {
+                    Tab.FIREWALL -> show(firewall)
+                    Tab.APPS -> show(packages)
+                    Tab.SETTINGS -> {} // Already handled above
+                }
+            }
         }
+
         updateToolbar()
         updateBottomNavigationSelection()
-
-        // Scroll to top when fragment is loaded
-        // Use post to ensure fragment view is created
-        binding.root.post {
-            (fragment as? io.github.dorumrr.de1984.ui.base.BaseFragment<*>)?.scrollToTop()
-        }
     }
 
     private fun updateBottomNavigationSelection() {
@@ -305,15 +343,15 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.firewallFragment -> {
-                    loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
+                    loadFragment(Tab.FIREWALL)
                     true
                 }
                 R.id.packagesFragment -> {
-                    loadFragment(PackagesFragmentViews(), Tab.APPS)
+                    loadFragment(Tab.APPS)
                     true
                 }
                 R.id.settingsFragment -> {
-                    loadFragment(SettingsFragmentViews(), Tab.SETTINGS)
+                    loadFragment(Tab.SETTINGS)
                     true
                 }
                 else -> false
@@ -415,14 +453,11 @@ class MainActivity : AppCompatActivity() {
      */
     fun navigateToFirewallWithApp(packageName: String) {
         Log.d(TAG, "[MAIN] navigateToFirewallWithApp called for: $packageName")
-        loadFragment(FirewallFragmentViews(), Tab.FIREWALL)
+        loadFragment(Tab.FIREWALL)
 
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
-            val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
-            if (fragment is FirewallFragmentViews) {
-                fragment.openAppDialog(packageName)
-            }
+            firewallFragment?.openAppDialog(packageName)
         }, 100)
     }
 
@@ -432,14 +467,11 @@ class MainActivity : AppCompatActivity() {
      */
     fun navigateToPackagesWithApp(packageName: String) {
         Log.d(TAG, "[MAIN] navigateToPackagesWithApp called for: $packageName")
-        loadFragment(PackagesFragmentViews(), Tab.APPS)
+        loadFragment(Tab.APPS)
 
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
-            val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
-            if (fragment is PackagesFragmentViews) {
-                fragment.openAppDialog(packageName)
-            }
+            packagesFragment?.openAppDialog(packageName)
         }, 100)
     }
 

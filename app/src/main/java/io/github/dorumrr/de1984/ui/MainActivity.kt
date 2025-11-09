@@ -452,9 +452,7 @@ class MainActivity : AppCompatActivity() {
      * Used for cross-navigation from notifications and other screens.
      */
     fun navigateToFirewallWithApp(packageName: String) {
-        Log.d(TAG, "[MAIN] navigateToFirewallWithApp called for: $packageName")
         loadFragment(Tab.FIREWALL)
-
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
             firewallFragment?.openAppDialog(packageName)
@@ -466,9 +464,7 @@ class MainActivity : AppCompatActivity() {
      * Used for cross-navigation from Firewall screen.
      */
     fun navigateToPackagesWithApp(packageName: String) {
-        Log.d(TAG, "[MAIN] navigateToPackagesWithApp called for: $packageName")
         loadFragment(Tab.APPS)
-
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
             packagesFragment?.openAppDialog(packageName)

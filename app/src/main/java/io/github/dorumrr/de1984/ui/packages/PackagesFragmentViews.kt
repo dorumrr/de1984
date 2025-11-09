@@ -71,6 +71,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     private var currentStateFilter: String? = null
     private var lastSubmittedPackages: List<Package> = emptyList()
 
+    // Dialog tracking to prevent dialogs stacking
+    private var currentDialog: BottomSheetDialog? = null
+    private var dialogOpenTimestamp: Long = 0
+    private var pendingDialogPackageName: String? = null
+
 
 
     override fun getViewBinding(
@@ -83,6 +88,23 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     override fun scrollToTop() {
         // Only scroll if binding is available (fragment view is created)
         _binding?.packagesRecyclerView?.scrollToPosition(0)
+    }
+
+    /**
+     * Scroll to a specific package in the list.
+     * Used for cross-navigation to keep the same app in view.
+     */
+    private fun scrollToPackage(packageName: String) {
+        _binding?.let { binding ->
+            binding.packagesRecyclerView.post {
+                val displayedPackages = viewModel.uiState.value.packages
+                val index = displayedPackages.indexOfFirst { it.packageName == packageName }
+
+                if (index >= 0) {
+                    (binding.packagesRecyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(index, 100)
+                }
+            }
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -430,18 +452,23 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
      * by loading it directly from the repository and automatically switching filters if needed.
      */
     fun openAppDialog(packageName: String) {
-        Log.d(TAG, "[PACKAGES] openAppDialog called for: $packageName")
-        Log.d(TAG, "[PACKAGES] Current filter: ${viewModel.uiState.value.filterState.packageType}")
-        Log.d(TAG, "[PACKAGES] Current packages in list: ${viewModel.uiState.value.packages.size}")
+        // Prevent multiple dialogs from stacking
+        if (currentDialog?.isShowing == true) {
+            Log.w(TAG, "[PACKAGES] Dialog already open, dismissing before opening new one")
+            currentDialog?.dismiss()
+            currentDialog = null
+        }
 
         // Find the package in the current list
         val pkg = viewModel.uiState.value.packages.find { it.packageName == packageName }
 
         if (pkg != null) {
-            Log.d(TAG, "[PACKAGES] Package found: ${pkg.name}, opening dialog")
+            pendingDialogPackageName = null
+            scrollToPackage(packageName)
             showPackageActionSheet(pkg)
         } else {
-            Log.w(TAG, "[PACKAGES] Package not found in filtered list. Trying to load package directly...")
+            // Package not in filtered list - need to load it and possibly change filter
+            pendingDialogPackageName = packageName
 
             // Package not in filtered list - try to get it directly from repository
             lifecycleScope.launch {
@@ -452,34 +479,45 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     val result = packageRepository.getPackage(packageName)
 
                     result.onSuccess { foundPkg ->
-                        Log.d(TAG, "[PACKAGES] Package loaded from repository: ${foundPkg.name} (${foundPkg.type})")
+                        // Check if this request is still valid
+                        if (pendingDialogPackageName != packageName) {
+                            return@onSuccess
+                        }
 
                         // Check if we need to change filter to show this package
                         val currentFilter = viewModel.uiState.value.filterState.packageType
-                        val packageType = foundPkg.type.toString() // "USER" or "SYSTEM"
+                        val packageType = foundPkg.type.toString()
 
                         if (currentFilter.equals(packageType, ignoreCase = true)) {
                             // Filter already matches - just wait for data to load
-                            Log.d(TAG, "[PACKAGES] Filter already correct, waiting for data...")
                             viewModel.uiState.collect { state ->
+                                if (pendingDialogPackageName != packageName) {
+                                    return@collect
+                                }
+
                                 val foundPackage = state.packages.find { it.packageName == packageName }
                                 if (foundPackage != null) {
-                                    Log.d(TAG, "[PACKAGES] Package found after waiting: ${foundPackage.name}")
+                                    pendingDialogPackageName = null
+                                    scrollToPackage(packageName)
                                     showPackageActionSheet(foundPackage)
                                     return@collect
                                 }
                             }
                         } else {
                             // Need to change filter
-                            Log.d(TAG, "[PACKAGES] Changing filter from $currentFilter to $packageType")
                             viewModel.setPackageTypeFilter(packageType)
 
                             // Wait for filter change and data load
                             viewModel.uiState.collect { state ->
+                                if (pendingDialogPackageName != packageName) {
+                                    return@collect
+                                }
+
                                 if (state.filterState.packageType.equals(packageType, ignoreCase = true) && !state.isLoading) {
                                     val foundPackage = state.packages.find { it.packageName == packageName }
                                     if (foundPackage != null) {
-                                        Log.d(TAG, "[PACKAGES] Package found after filter change: ${foundPackage.name}")
+                                        pendingDialogPackageName = null
+                                        scrollToPackage(packageName)
                                         showPackageActionSheet(foundPackage)
                                         return@collect
                                     }
@@ -487,10 +525,16 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                             }
                         }
                     }.onFailure { error ->
-                        Log.e(TAG, "[PACKAGES] Failed to load package: ${error.message}")
+                        Log.e(TAG, "Failed to load package for dialog: ${error.message}")
+                        if (pendingDialogPackageName == packageName) {
+                            pendingDialogPackageName = null
+                        }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "[PACKAGES] Exception in openAppDialog: ${e.message}")
+                    Log.e(TAG, "Exception opening dialog: ${e.message}")
+                    if (pendingDialogPackageName == packageName) {
+                        pendingDialogPackageName = null
+                    }
                 }
             }
         }
@@ -499,6 +543,14 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     private fun showPackageActionSheet(pkg: Package) {
         val dialog = BottomSheetDialog(requireContext())
         val binding = BottomSheetPackageActionsBinding.inflate(layoutInflater)
+
+        currentDialog = dialog
+
+        dialog.setOnDismissListener {
+            if (currentDialog == dialog) {
+                currentDialog = null
+            }
+        }
 
         // Set app info
         binding.actionSheetAppName.text = pkg.name

@@ -34,6 +34,12 @@
         <item name="boxCollapsedPaddingTop">8dp</item>
         <item name="android:paddingTop">0dp</item>
         <item name="android:paddingBottom">0dp</item>
+        <item name="suffixTextAppearance">@style/TextAppearance.De1984.SuffixText</item>
+    </style>
+
+    <!-- Text appearance for suffix text in search boxes -->
+    <style name="TextAppearance.De1984.SuffixText" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textSize">14sp</item>
     </style>
 
     <!-- Material Design 3 Bottom Navigation -->

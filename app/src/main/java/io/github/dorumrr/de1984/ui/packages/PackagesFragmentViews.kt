@@ -375,6 +375,19 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             }
         }
 
+        // Update package count in search field
+        // Hide count if 0 results AND no search query (empty state)
+        val count = displayedPackages.size
+        binding.searchLayout.suffixText = if (count == 0 && state.searchQuery.isBlank()) {
+            ""
+        } else {
+            resources.getQuantityString(
+                R.plurals.package_count,
+                count,
+                count
+            )
+        }
+
         // Update RecyclerView only if list changed
         val listChanged = displayedPackages != lastSubmittedPackages
         if (!listChanged) {

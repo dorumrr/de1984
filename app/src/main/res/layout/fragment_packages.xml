@@ -43,6 +43,8 @@
         android:hint="Search..."
         app:startIconDrawable="@android:drawable/ic_menu_search"
         app:endIconMode="clear_text"
+        app:suffixText=""
+        app:suffixTextColor="?android:attr/textColorHint"
         app:boxBackgroundMode="outline"
         app:boxCornerRadiusTopStart="12dp"
         app:boxCornerRadiusTopEnd="12dp"

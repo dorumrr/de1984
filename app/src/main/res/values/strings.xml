@@ -66,4 +66,10 @@
     <string name="footer_tagline">Late nights for brighter days.\nCreated by Doru Moraru</string>
     <string name="footer_author_name">Doru Moraru</string>
     <string name="footer_author_url">https://github.com/dorumrr/de1984</string>
+
+    <!-- Plurals -->
+    <plurals name="package_count">
+        <item quantity="one">%d app</item>
+        <item quantity="other">%d apps</item>
+    </plurals>
 </resources>

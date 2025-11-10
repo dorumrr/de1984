@@ -32,6 +32,7 @@ import io.github.dorumrr.de1984.ui.common.PermissionSetupDialog
 import io.github.dorumrr.de1984.ui.common.StandardDialog
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
+import io.github.dorumrr.de1984.utils.copyToClipboard
 import io.github.dorumrr.de1984.utils.openAppSettings
 import kotlinx.coroutines.launch
 import androidx.core.widget.addTextChangedListener
@@ -556,6 +557,13 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         // Set app info
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
+
+        // ============================================================================
+        // Click package name to copy to clipboard
+        // ============================================================================
+        binding.actionSheetPackageName.setOnClickListener {
+            requireContext().copyToClipboard(pkg.packageName, "Package Name")
+        }
 
         val realIcon = PackageUtils.getPackageIcon(requireContext(), pkg.packageName)
         if (realIcon != null) {

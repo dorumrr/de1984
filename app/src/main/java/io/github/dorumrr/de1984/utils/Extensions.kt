@@ -1,11 +1,14 @@
 package io.github.dorumrr.de1984.utils
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
 
 fun String.formatPackageName(): String {
     return this.substringAfterLast(".")
@@ -52,4 +55,14 @@ fun Context.openAppSettings(packageName: String) {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK
     }
     startActivity(intent)
+}
+
+/**
+ * Copy text to clipboard and show a toast message.
+ */
+fun Context.copyToClipboard(text: String, label: String = "De1984") {
+    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clip = ClipData.newPlainText(label, text)
+    clipboard.setPrimaryClip(clip)
+    Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
 }

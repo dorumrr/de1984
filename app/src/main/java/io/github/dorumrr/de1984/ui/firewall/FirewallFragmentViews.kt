@@ -30,6 +30,7 @@ import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 import io.github.dorumrr.de1984.ui.common.FilterChipsHelper
 import io.github.dorumrr.de1984.utils.Constants
+import io.github.dorumrr.de1984.utils.copyToClipboard
 import io.github.dorumrr.de1984.utils.openAppSettings
 import kotlinx.coroutines.launch
 import androidx.core.widget.addTextChangedListener
@@ -503,6 +504,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         binding.actionSheetPackageName.text = pkg.packageName
 
         // ============================================================================
+        // Click package name to copy to clipboard
+        // ============================================================================
+        binding.actionSheetPackageName.setOnClickListener {
+            requireContext().copyToClipboard(pkg.packageName, "Package Name")
+        }
+
+        // ============================================================================
         // Click settings icon to open Android system settings
         // ============================================================================
         binding.actionSheetSettingsIcon.setOnClickListener {
@@ -640,6 +648,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
+
+        // ============================================================================
+        // Click package name to copy to clipboard
+        // ============================================================================
+        binding.actionSheetPackageName.setOnClickListener {
+            requireContext().copyToClipboard(pkg.packageName, "Package Name")
+        }
 
         // ============================================================================
         // IMPORTANT: Click settings icon to open Android system settings

@@ -7,7 +7,9 @@ import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.SystemClock
 import android.provider.Settings
+import android.view.View
 import android.widget.Toast
 
 fun String.formatPackageName(): String {
@@ -65,4 +67,22 @@ fun Context.copyToClipboard(text: String, label: String = "De1984") {
     val clip = ClipData.newPlainText(label, text)
     clipboard.setPrimaryClip(clip)
     Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+}
+
+/**
+ * Set a debounced click listener on a View to prevent multiple rapid clicks.
+ * Uses SystemClock.elapsedRealtime() for accurate timing that's not affected by time changes.
+ *
+ * @param debounceTime Time in milliseconds to wait before allowing another click (default: 500ms)
+ * @param action The action to perform on click
+ */
+fun View.setOnClickListenerDebounced(debounceTime: Long = 500L, action: (View) -> Unit) {
+    var lastClickTime = 0L
+    setOnClickListener { view ->
+        val currentTime = SystemClock.elapsedRealtime()
+        if (currentTime - lastClickTime >= debounceTime) {
+            lastClickTime = currentTime
+            action(view)
+        }
+    }
 }

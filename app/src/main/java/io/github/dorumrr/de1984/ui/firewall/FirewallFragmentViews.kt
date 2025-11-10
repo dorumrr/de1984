@@ -32,6 +32,7 @@ import io.github.dorumrr.de1984.ui.common.FilterChipsHelper
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.copyToClipboard
 import io.github.dorumrr.de1984.utils.openAppSettings
+import io.github.dorumrr.de1984.utils.setOnClickListenerDebounced
 import kotlinx.coroutines.launch
 import androidx.core.widget.addTextChangedListener
 
@@ -506,7 +507,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // ============================================================================
         // Click package name to copy to clipboard
         // ============================================================================
-        binding.actionSheetPackageName.setOnClickListener {
+        binding.actionSheetPackageName.setOnClickListenerDebounced {
             requireContext().copyToClipboard(pkg.packageName, "Package Name")
         }
 
@@ -652,7 +653,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // ============================================================================
         // Click package name to copy to clipboard
         // ============================================================================
-        binding.actionSheetPackageName.setOnClickListener {
+        binding.actionSheetPackageName.setOnClickListenerDebounced {
             requireContext().copyToClipboard(pkg.packageName, "Package Name")
         }
 

@@ -158,6 +158,11 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             }
         }
 
+        // Show firewall start prompt switch
+        binding.showFirewallStartPromptSwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setShowFirewallStartPrompt(isChecked)
+        }
+
         // New app notifications switch
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setNewAppNotifications(isChecked)
@@ -255,6 +260,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             } else {
                 viewModel.setAllowCriticalPackageUninstall(false)
             }
+        }
+
+        binding.showFirewallStartPromptSwitch.setOnCheckedChangeListener(null)
+        binding.showFirewallStartPromptSwitch.isChecked = state.showFirewallStartPrompt
+        binding.showFirewallStartPromptSwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setShowFirewallStartPrompt(isChecked)
         }
 
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener(null)

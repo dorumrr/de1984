@@ -117,7 +117,8 @@ class SettingsViewModel(
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY,
                 newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS),
                 firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO,
-                allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL)
+                allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
+                showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT)
             )
         }
     }
@@ -232,6 +233,11 @@ class SettingsViewModel(
     fun setAllowCriticalPackageUninstall(allow: Boolean) {
         _uiState.value = _uiState.value.copy(allowCriticalPackageUninstall = allow)
         saveSetting(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, allow)
+    }
+
+    fun setShowFirewallStartPrompt(show: Boolean) {
+        _uiState.value = _uiState.value.copy(showFirewallStartPrompt = show)
+        saveSetting(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, show)
     }
 
     fun setFirewallMode(mode: FirewallMode) {
@@ -513,6 +519,7 @@ data class SettingsUiState(
     val newAppNotifications: Boolean = Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS,
     val firewallMode: FirewallMode = FirewallMode.AUTO,
     val allowCriticalPackageUninstall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL,
+    val showFirewallStartPrompt: Boolean = Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT,
 
     val refreshInterval: Int = 30,
 

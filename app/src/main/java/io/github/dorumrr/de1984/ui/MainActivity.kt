@@ -1,6 +1,7 @@
 package io.github.dorumrr.de1984.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
@@ -150,9 +151,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun onPermissionsComplete() {
         permissionsCompleted = true
-        // Only show firewall start dialog if firewall is not already running
+
+        // Check if we should show the firewall start prompt
+        val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val shouldShowPrompt = prefs.getBoolean(
+            Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT,
+            Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT
+        )
+
+        // Only show firewall start dialog if setting is enabled and firewall is not running
         val isFirewallRunning = firewallViewModel.uiState.value.isFirewallEnabled
-        shouldShowFirewallStartDialog = !isFirewallRunning
+        shouldShowFirewallStartDialog = shouldShowPrompt && !isFirewallRunning
+
         // UI is already setup in onCreate, just show dialog if needed
         if (shouldShowFirewallStartDialog) {
             shouldShowFirewallStartDialog = false

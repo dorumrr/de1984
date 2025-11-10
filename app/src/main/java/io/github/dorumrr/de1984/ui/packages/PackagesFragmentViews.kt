@@ -78,6 +78,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     private var dialogOpenTimestamp: Long = 0
     private var pendingDialogPackageName: String? = null
 
+    // Selection mode state
+    private var isSelectionMode = false
+    private val selectedPackages = mutableSetOf<String>()
+    private var progressDialog: androidx.appcompat.app.AlertDialog? = null
+
 
 
     override fun getViewBinding(
@@ -123,6 +128,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         setupPermissionDialog()
         observeUiState()
         observeSettings()
+        setupBackPressHandler()
 
         // Check root access on start
         // Note: Don't load packages here - let ViewModel's init{} handle first load
@@ -134,19 +140,58 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         }
     }
 
+    private fun setupBackPressHandler() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : androidx.activity.OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (isSelectionMode) {
+                        exitSelectionMode()
+                    } else {
+                        isEnabled = false
+                        requireActivity().onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            }
+        )
+    }
+
     private fun setupRecyclerView() {
         adapter = PackageAdapter(
             showIcons = true, // Will be updated from settings
             onPackageClick = { pkg ->
                 showPackageActionSheet(pkg)
+            },
+            onPackageLongClick = { pkg ->
+                enterSelectionMode(pkg)
+                true
             }
         )
+
+        // Set selection change listener
+        adapter.setOnSelectionChangedListener { selected ->
+            selectedPackages.clear()
+            selectedPackages.addAll(selected)
+            updateSelectionToolbar()
+        }
+
+        // Set selection limit reached listener
+        adapter.setOnSelectionLimitReachedListener {
+            android.widget.Toast.makeText(
+                requireContext(),
+                Constants.Packages.MultiSelect.TOAST_SELECTION_LIMIT,
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
 
         binding.packagesRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@PackagesFragmentViews.adapter
             setHasFixedSize(true)
         }
+
+        // Setup selection toolbar
+        setupSelectionToolbar()
     }
 
     private fun setupFilterChips() {
@@ -416,6 +461,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         // Update RecyclerView only if list changed
         val listChanged = displayedPackages != lastSubmittedPackages
         if (!listChanged) {
+            // Even if list didn't change, still handle batch result and errors
+            handleBatchUninstallResult(state)
+            handleError(state)
             return
         }
 
@@ -425,9 +473,24 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             viewModel.setUIReady()
         }
 
-
+        // Handle batch uninstall result
+        handleBatchUninstallResult(state)
 
         // Show error if any
+        handleError(state)
+    }
+
+    private fun handleBatchUninstallResult(state: PackagesUiState) {
+        state.batchUninstallResult?.let { result ->
+            progressDialog?.dismiss()
+            progressDialog = null
+            showBatchUninstallResults(result)
+            viewModel.clearBatchUninstallResult()
+            exitSelectionMode()
+        }
+    }
+
+    private fun handleError(state: PackagesUiState) {
         state.error?.let { error ->
             showError(error)
             viewModel.clearError()
@@ -860,6 +923,169 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 message = message
             )
         }
+    }
+
+    // ========== MULTI-SELECT FUNCTIONALITY ==========
+
+    private fun setupSelectionToolbar() {
+        binding.selectionToolbar.setNavigationOnClickListener {
+            exitSelectionMode()
+        }
+
+        binding.uninstallButton.setOnClickListener {
+            if (selectedPackages.isNotEmpty()) {
+                showMultiUninstallConfirmation()
+            }
+        }
+    }
+
+    private fun enterSelectionMode(initialPackage: Package? = null) {
+        isSelectionMode = true
+        adapter.setSelectionMode(true)
+
+        // Auto-select the long-pressed package if provided and selectable
+        initialPackage?.let { pkg ->
+            if (adapter.canSelectPackage(pkg)) {
+                adapter.selectPackage(pkg.packageName)
+                selectedPackages.add(pkg.packageName)
+            }
+        }
+
+        binding.selectionToolbar.visibility = View.VISIBLE
+        updateSelectionToolbar()
+    }
+
+    private fun exitSelectionMode() {
+        isSelectionMode = false
+        selectedPackages.clear()
+        adapter.setSelectionMode(false)
+        adapter.clearSelection()
+        binding.selectionToolbar.visibility = View.GONE
+    }
+
+    private fun updateSelectionToolbar() {
+        val count = selectedPackages.size
+        binding.selectionCount.text = String.format(
+            Constants.Packages.MultiSelect.TOOLBAR_TITLE_FORMAT,
+            count
+        )
+        binding.uninstallButton.isEnabled = count > 0
+    }
+
+    private fun showMultiUninstallConfirmation() {
+        val packages = lastSubmittedPackages.filter { selectedPackages.contains(it.packageName) }
+
+        // Group packages by type and criticality
+        val userApps = packages.filter { it.type == PackageType.USER }
+        val bloatware = packages.filter { it.criticality == PackageCriticality.BLOATWARE }
+        val optional = packages.filter { it.criticality == PackageCriticality.OPTIONAL }
+
+        val message = buildString {
+            append(Constants.Packages.MultiSelect.DIALOG_MESSAGE_CANNOT_UNDO)
+            append("\n\n")
+
+            if (userApps.isNotEmpty()) {
+                append("📱 User Apps (${userApps.size}):\n")
+                userApps.take(3).forEach { append("• ${it.name}\n") }
+                if (userApps.size > 3) append("... and ${userApps.size - 3} more\n")
+                append("\n")
+            }
+
+            if (bloatware.isNotEmpty()) {
+                append("✓ Bloatware (${bloatware.size}):\n")
+                bloatware.take(3).forEach { append("• ${it.name}\n") }
+                if (bloatware.size > 3) append("... and ${bloatware.size - 3} more\n")
+                append("\n")
+            }
+
+            if (optional.isNotEmpty()) {
+                append("⚠️ Optional System Apps (${optional.size}):\n")
+                optional.take(3).forEach { append("• ${it.name}\n") }
+                if (optional.size > 3) append("... and ${optional.size - 3} more\n")
+                append("\n")
+            }
+
+            append("Are you sure you want to uninstall these ${packages.size} apps?")
+        }
+
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = String.format(
+                Constants.Packages.MultiSelect.DIALOG_TITLE_UNINSTALL_MULTIPLE,
+                packages.size
+            ),
+            message = message,
+            confirmButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_UNINSTALL_ALL,
+            onConfirm = {
+                performBatchUninstall(selectedPackages.toList())
+            },
+            cancelButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_CANCEL
+        )
+    }
+
+    private fun performBatchUninstall(packageNames: List<String>) {
+        // Dismiss any existing progress dialog
+        progressDialog?.dismiss()
+
+        // Show progress dialog
+        progressDialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(Constants.Packages.MultiSelect.PROGRESS_DIALOG_TITLE)
+            .setMessage(String.format(
+                Constants.Packages.MultiSelect.PROGRESS_MESSAGE_FORMAT,
+                0,
+                packageNames.size
+            ))
+            .setCancelable(false)
+            .create()
+
+        progressDialog?.show()
+
+        // Start batch uninstall
+        // Result will be handled by the existing observer in observeUiState() -> updateUI()
+        viewModel.uninstallMultiplePackages(packageNames)
+    }
+
+    private fun showBatchUninstallResults(result: io.github.dorumrr.de1984.domain.model.UninstallBatchResult) {
+        val message = buildString {
+            if (result.succeeded.isNotEmpty()) {
+                append(String.format(
+                    Constants.Packages.MultiSelect.DIALOG_MESSAGE_SUCCESS_FORMAT,
+                    result.succeeded.size
+                ))
+                append("\n")
+                result.succeeded.take(5).forEach { packageName ->
+                    val pkg = lastSubmittedPackages.find { it.packageName == packageName }
+                    append("• ${pkg?.name ?: packageName}\n")
+                }
+                if (result.succeeded.size > 5) {
+                    append("... and ${result.succeeded.size - 5} more\n")
+                }
+                append("\n")
+            }
+
+            if (result.failed.isNotEmpty()) {
+                append(String.format(
+                    Constants.Packages.MultiSelect.DIALOG_MESSAGE_FAILED_FORMAT,
+                    result.failed.size
+                ))
+                append("\n")
+                result.failed.take(5).forEach { (packageName, error) ->
+                    val pkg = lastSubmittedPackages.find { it.packageName == packageName }
+                    append("• ${pkg?.name ?: packageName}\n")
+                    append("  Error: $error\n")
+                }
+                if (result.failed.size > 5) {
+                    append("... and ${result.failed.size - 5} more\n")
+                }
+            }
+        }
+
+        StandardDialog.show(
+            context = requireContext(),
+            title = Constants.Packages.MultiSelect.DIALOG_TITLE_RESULTS,
+            message = message,
+            positiveButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_OK
+        )
     }
 }
 

@@ -41,13 +41,38 @@ object Constants {
 
         const val STATE_ENABLED = "Enabled"
         const val STATE_DISABLED = "Disabled"
-        
+
         val PACKAGE_TYPE_FILTERS = listOf("User", "System")
         val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled")
-        
+
         const val ANDROID_PACKAGE_PREFIX = "com.android"
         const val GOOGLE_PACKAGE_PREFIX = "com.google"
         const val SYSTEM_PACKAGE_PREFIX = "android"
+
+        object MultiSelect {
+            const val MAX_SELECTION_COUNT = 50
+            const val TOAST_CANNOT_SELECT_CRITICAL = "Important/Essential packages must be uninstalled individually"
+            const val TOAST_SELECTION_LIMIT = "Maximum 50 packages can be selected at once"
+
+            const val TOOLBAR_TITLE_FORMAT = "%d selected"
+            const val TOOLBAR_BUTTON_UNINSTALL = "Uninstall"
+            const val TOOLBAR_BUTTON_CLEAR = "Clear"
+
+            const val DIALOG_TITLE_UNINSTALL_MULTIPLE = "Uninstall %d Selected Apps?"
+            const val DIALOG_MESSAGE_CANNOT_UNDO = "This action cannot be undone."
+            const val DIALOG_BUTTON_UNINSTALL_ALL = "Uninstall All"
+            const val DIALOG_BUTTON_CANCEL = "Cancel"
+
+            const val DIALOG_TITLE_RESULTS = "Uninstall Results"
+            const val DIALOG_MESSAGE_SUCCESS_FORMAT = "✓ Successfully uninstalled: %d"
+            const val DIALOG_MESSAGE_FAILED_FORMAT = "✗ Failed to uninstall: %d"
+            const val DIALOG_BUTTON_OK = "OK"
+
+            const val PROGRESS_DIALOG_TITLE = "Uninstalling Packages"
+            const val PROGRESS_MESSAGE_FORMAT = "Uninstalling %d of %d..."
+
+            const val CHECKBOX_CONTENT_DESCRIPTION = "Select package"
+        }
     }
     
     object Settings {

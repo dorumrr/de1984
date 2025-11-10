@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.domain.model.Package
+import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.usecase.GetPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManagePackageUseCase
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
@@ -163,6 +164,44 @@ class PackagesViewModel(
         }
     }
 
+    fun uninstallMultiplePackages(packageNames: List<String>): Job {
+        return viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoadingData = true,
+                isRenderingUI = false
+            )
+
+            // Call the batch uninstall use case
+            managePackageUseCase.uninstallMultiplePackages(packageNames)
+                .onSuccess { result ->
+                    // Reload packages to reflect changes
+                    loadPackages()
+
+                    // Update UI state with result
+                    _uiState.value = _uiState.value.copy(
+                        batchUninstallResult = result,
+                        isLoadingData = false,
+                        isRenderingUI = false
+                    )
+                }
+                .onFailure { error ->
+                    if (superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingData = false,
+                        isRenderingUI = false,
+                        error = error.message
+                    )
+                }
+        }
+    }
+
+    fun clearBatchUninstallResult() {
+        _uiState.value = _uiState.value.copy(batchUninstallResult = null)
+    }
+
     fun forceStopPackage(packageName: String) {
         viewModelScope.launch {
             // Force stop doesn't change package state, so no optimistic update needed
@@ -238,7 +277,8 @@ data class PackagesUiState(
     val searchQuery: String = "",
     val isLoadingData: Boolean = true,
     val isRenderingUI: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val batchUninstallResult: UninstallBatchResult? = null
 ) {
     val isLoading: Boolean get() = isLoadingData || isRenderingUI
 }

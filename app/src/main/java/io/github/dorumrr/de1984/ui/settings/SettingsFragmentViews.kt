@@ -47,6 +47,10 @@ import java.util.Locale
  */
 class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
+    companion object {
+        private const val TAG = "SettingsFragment"
+    }
+
     private val viewModel: SettingsViewModel by viewModels {
         val app = requireActivity().application as De1984Application
         SettingsViewModel.Factory(
@@ -108,10 +112,32 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        Log.d(TAG, "onViewCreated: Settings fragment view created")
 
         setupViews()
         observeUiState()
         observePermissionState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume: Settings fragment resumed")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, "onPause: Settings fragment paused")
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        Log.d(TAG, "onHiddenChanged: hidden=$hidden")
+
+        // When fragment becomes visible, update UI with current state
+        if (!hidden) {
+            Log.d(TAG, "onHiddenChanged: Fragment became visible, updating UI")
+            updateUI(viewModel.uiState.value)
+        }
     }
 
     private fun setupViews() {
@@ -146,17 +172,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             viewModel.setShowAppIcons(isChecked)
         }
 
-        // Allow critical package uninstall switch
-        binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                // Show warning dialog when enabling
-                showCriticalUninstallWarning {
-                    viewModel.setAllowCriticalPackageUninstall(true)
-                }
-            } else {
-                viewModel.setAllowCriticalPackageUninstall(false)
-            }
-        }
+        // Allow critical package uninstall switch - listener is set in updateUI() to avoid triggering during initialization
 
         // Show firewall start prompt switch
         binding.showFirewallStartPromptSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -219,7 +235,13 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
-                    updateUI(state)
+                    // Only update UI if fragment is visible (not hidden)
+                    if (!isHidden) {
+                        Log.d(TAG, "observeUiState: Fragment is visible, updating UI")
+                        updateUI(state)
+                    } else {
+                        Log.d(TAG, "observeUiState: Fragment is hidden, skipping UI update")
+                    }
                 }
             }
         }
@@ -251,13 +273,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         }
 
         binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener(null)
+        Log.d(TAG, "updateUI: Setting allowCriticalUninstallSwitch.isChecked = ${state.allowCriticalPackageUninstall}")
         binding.allowCriticalUninstallSwitch.isChecked = state.allowCriticalPackageUninstall
         binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener { _, isChecked ->
+            Log.d(TAG, "allowCriticalUninstallSwitch listener (from updateUI) triggered: isChecked=$isChecked")
             if (isChecked) {
+                Log.d(TAG, "Showing critical uninstall warning dialog (from updateUI)")
                 showCriticalUninstallWarning {
                     viewModel.setAllowCriticalPackageUninstall(true)
                 }
             } else {
+                Log.d(TAG, "Disabling critical package uninstall (from updateUI)")
                 viewModel.setAllowCriticalPackageUninstall(false)
             }
         }
@@ -1101,14 +1127,19 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun showCriticalUninstallWarning(onConfirm: () -> Unit) {
+        Log.d(TAG, "showCriticalUninstallWarning: Displaying warning dialog")
         StandardDialog.showConfirmation(
             context = requireContext(),
             title = "⚠️ Warning",
             message = "This allows uninstalling system-critical packages that may brick your device. Only enable if you know what you're doing.\n\nAre you sure you want to enable this?",
             confirmButtonText = "Enable",
-            onConfirm = onConfirm,
+            onConfirm = {
+                Log.d(TAG, "showCriticalUninstallWarning: User confirmed")
+                onConfirm()
+            },
             cancelButtonText = "Cancel",
             onCancel = {
+                Log.d(TAG, "showCriticalUninstallWarning: User cancelled, reverting switch")
                 // Revert switch state
                 binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener(null)
                 binding.allowCriticalUninstallSwitch.isChecked = false
@@ -1123,10 +1154,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 }
             }
         )
-    }
-
-    companion object {
-        private const val TAG = "SettingsFragmentViews"
     }
 }
 

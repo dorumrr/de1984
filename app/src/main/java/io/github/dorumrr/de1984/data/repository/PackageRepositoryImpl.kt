@@ -5,6 +5,7 @@ import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.model.toDomain
 import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.model.PackageType
+import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.Flow
@@ -77,7 +78,26 @@ class PackageRepositoryImpl(
             Result.failure(e)
         }
     }
-    
+
+    override suspend fun uninstallMultiplePackages(packageNames: List<String>): Result<UninstallBatchResult> {
+        return try {
+            val succeeded = mutableListOf<String>()
+            val failed = mutableListOf<Pair<String, String>>()
+
+            packageNames.forEach { packageName ->
+                val result = uninstallPackage(packageName)
+                result.fold(
+                    onSuccess = { succeeded.add(packageName) },
+                    onFailure = { error -> failed.add(packageName to (error.message ?: "Unknown error")) }
+                )
+            }
+
+            Result.success(UninstallBatchResult(succeeded, failed))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun forceStopPackage(packageName: String): Result<Unit> {
         return try {
             val success = packageDataSource.forceStopPackage(packageName)

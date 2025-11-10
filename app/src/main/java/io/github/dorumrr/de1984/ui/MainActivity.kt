@@ -200,9 +200,19 @@ class MainActivity : AppCompatActivity() {
             val tabOrdinal = savedInstanceState.getInt(KEY_CURRENT_TAB, Tab.FIREWALL.ordinal)
             currentTab = Tab.values()[tabOrdinal]
 
-            // Restore fragment references (Firewall and Packages only need caching)
+            // Restore fragment references from FragmentManager
             firewallFragment = supportFragmentManager.findFragmentByTag("FIREWALL") as? FirewallFragmentViews
             packagesFragment = supportFragmentManager.findFragmentByTag("APPS") as? PackagesFragmentViews
+            settingsFragment = supportFragmentManager.findFragmentByTag("SETTINGS") as? SettingsFragmentViews
+
+            Log.d(TAG, "setupMainUI: Restored fragments - firewall=${firewallFragment != null}, packages=${packagesFragment != null}, settings=${settingsFragment != null}")
+
+            // Ensure fragments are properly shown/hidden for current tab
+            supportFragmentManager.commit {
+                firewallFragment?.let { if (currentTab != Tab.FIREWALL) hide(it) else show(it) }
+                packagesFragment?.let { if (currentTab != Tab.APPS) hide(it) else show(it) }
+                settingsFragment?.let { if (currentTab != Tab.SETTINGS) hide(it) else show(it) }
+            }
 
             // Update UI to match restored tab
             updateToolbar()
@@ -295,33 +305,64 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun loadFragment(tab: Tab) {
+        Log.d(TAG, "loadFragment: Switching to tab $tab")
         currentTab = tab
 
         supportFragmentManager.commit {
-            // Get or create cached fragments
-            val firewall = firewallFragment ?: FirewallFragmentViews().also {
-                firewallFragment = it
-                add(R.id.fragment_container, it, "FIREWALL")
-            }
-            val packages = packagesFragment ?: PackagesFragmentViews().also {
-                packagesFragment = it
-                add(R.id.fragment_container, it, "APPS")
-            }
-            val settings = settingsFragment ?: SettingsFragmentViews().also {
-                settingsFragment = it
-                add(R.id.fragment_container, it, "SETTINGS")
-            }
+            // Get or create cached fragments - check FragmentManager first to avoid duplicates
+            val firewall = firewallFragment
+                ?: (supportFragmentManager.findFragmentByTag("FIREWALL") as? FirewallFragmentViews)?.also {
+                    firewallFragment = it
+                    Log.d(TAG, "loadFragment: Found existing Firewall fragment in FragmentManager")
+                }
+                ?: FirewallFragmentViews().also {
+                    firewallFragment = it
+                    add(R.id.fragment_container, it, "FIREWALL")
+                    Log.d(TAG, "loadFragment: Created new Firewall fragment")
+                }
+
+            val packages = packagesFragment
+                ?: (supportFragmentManager.findFragmentByTag("APPS") as? PackagesFragmentViews)?.also {
+                    packagesFragment = it
+                    Log.d(TAG, "loadFragment: Found existing Packages fragment in FragmentManager")
+                }
+                ?: PackagesFragmentViews().also {
+                    packagesFragment = it
+                    add(R.id.fragment_container, it, "APPS")
+                    Log.d(TAG, "loadFragment: Created new Packages fragment")
+                }
+
+            val settings = settingsFragment
+                ?: (supportFragmentManager.findFragmentByTag("SETTINGS") as? SettingsFragmentViews)?.also {
+                    settingsFragment = it
+                    Log.d(TAG, "loadFragment: Found existing Settings fragment in FragmentManager")
+                }
+                ?: SettingsFragmentViews().also {
+                    settingsFragment = it
+                    add(R.id.fragment_container, it, "SETTINGS")
+                    Log.d(TAG, "loadFragment: Created new Settings fragment")
+                }
 
             // Hide all fragments
             hide(firewall)
             hide(packages)
             hide(settings)
+            Log.d(TAG, "loadFragment: Hidden all fragments")
 
             // Show the selected fragment
             when (tab) {
-                Tab.FIREWALL -> show(firewall)
-                Tab.APPS -> show(packages)
-                Tab.SETTINGS -> show(settings)
+                Tab.FIREWALL -> {
+                    show(firewall)
+                    Log.d(TAG, "loadFragment: Showing Firewall fragment")
+                }
+                Tab.APPS -> {
+                    show(packages)
+                    Log.d(TAG, "loadFragment: Showing Packages fragment")
+                }
+                Tab.SETTINGS -> {
+                    show(settings)
+                    Log.d(TAG, "loadFragment: Showing Settings fragment")
+                }
             }
         }
 

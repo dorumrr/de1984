@@ -18,12 +18,18 @@ import io.github.dorumrr.de1984.utils.PackageUtils
 
 class PackageAdapter(
     private var showIcons: Boolean,
-    private val onPackageClick: (Package) -> Unit
+    private val onPackageClick: (Package) -> Unit,
+    private val onPackageLongClick: (Package) -> Boolean = { false }
 ) : ListAdapter<Package, PackageAdapter.PackageViewHolder>(PackageDiffCallback()) {
 
     companion object {
         private const val TAG = "PackageAdapter"
     }
+
+    private var isSelectionMode = false
+    private val selectedPackages = mutableSetOf<String>()
+    private var onSelectionChanged: ((Set<String>) -> Unit)? = null
+    private var onSelectionLimitReached: (() -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PackageViewHolder {
         val binding = ItemPackageBinding.inflate(
@@ -31,12 +37,23 @@ class PackageAdapter(
             parent,
             false
         )
-        return PackageViewHolder(binding, onPackageClick)
+        return PackageViewHolder(
+            binding,
+            onPackageClick,
+            onPackageLongClick,
+            ::isPackageSelected,
+            ::canSelectPackage,
+            ::togglePackageSelection
+        )
+    }
+
+    fun setOnSelectionLimitReachedListener(listener: () -> Unit) {
+        onSelectionLimitReached = listener
     }
 
     override fun onBindViewHolder(holder: PackageViewHolder, position: Int) {
         val item = getItem(position)
-        holder.bind(item, showIcons)
+        holder.bind(item, showIcons, isSelectionMode)
     }
 
     override fun submitList(list: List<Package>?) {
@@ -54,14 +71,103 @@ class PackageAdapter(
         }
     }
 
+    fun setSelectionMode(enabled: Boolean) {
+        if (isSelectionMode != enabled) {
+            isSelectionMode = enabled
+            if (!enabled) {
+                selectedPackages.clear()
+            }
+            notifyDataSetChanged()
+        }
+    }
+
+    fun setOnSelectionChangedListener(listener: (Set<String>) -> Unit) {
+        onSelectionChanged = listener
+    }
+
+    fun getSelectedPackages(): Set<String> = selectedPackages.toSet()
+
+    fun clearSelection() {
+        selectedPackages.clear()
+        onSelectionChanged?.invoke(selectedPackages)
+        notifyDataSetChanged()
+    }
+
+    /**
+     * Programmatically select a package (used when entering selection mode via long press)
+     */
+    fun selectPackage(packageName: String) {
+        if (!selectedPackages.contains(packageName) &&
+            selectedPackages.size < Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
+            selectedPackages.add(packageName)
+            onSelectionChanged?.invoke(selectedPackages)
+            notifyDataSetChanged()
+        }
+    }
+
+    /**
+     * Check if a package can be selected (public for fragment access)
+     */
+    fun canSelectPackage(pkg: Package): Boolean {
+        // User apps: always selectable
+        if (pkg.type == PackageType.USER) return true
+
+        // System apps: only Bloatware and Optional
+        return when (pkg.criticality) {
+            PackageCriticality.BLOATWARE, PackageCriticality.OPTIONAL -> true
+            else -> false
+        }
+    }
+
+    private fun isPackageSelected(packageName: String): Boolean {
+        return selectedPackages.contains(packageName)
+    }
+
+    private fun togglePackageSelection(pkg: Package) {
+        if (!isSelectionMode) return
+
+        if (selectedPackages.contains(pkg.packageName)) {
+            selectedPackages.remove(pkg.packageName)
+        } else {
+            if (selectedPackages.size >= Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
+                // Notify listener when limit is reached
+                onSelectionLimitReached?.invoke()
+                return
+            }
+            selectedPackages.add(pkg.packageName)
+        }
+        onSelectionChanged?.invoke(selectedPackages)
+        notifyDataSetChanged()
+    }
+
     class PackageViewHolder(
         private val binding: ItemPackageBinding,
-        private val onPackageClick: (Package) -> Unit
+        private val onPackageClick: (Package) -> Unit,
+        private val onPackageLongClick: (Package) -> Boolean,
+        private val isPackageSelected: (String) -> Boolean,
+        private val canSelectPackage: (Package) -> Boolean,
+        private val togglePackageSelection: (Package) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(pkg: Package, showIcons: Boolean) {
+        fun bind(pkg: Package, showIcons: Boolean, isSelectionMode: Boolean) {
             binding.appName.text = pkg.name
             binding.packageName.text = pkg.packageName
+
+            // Handle selection mode
+            if (isSelectionMode) {
+                binding.selectionCheckbox.visibility = View.VISIBLE
+                val isSelected = isPackageSelected(pkg.packageName)
+                val canSelect = canSelectPackage(pkg)
+
+                binding.selectionCheckbox.isChecked = isSelected
+                binding.selectionCheckbox.isEnabled = canSelect
+
+                // Dim the entire card if not selectable
+                binding.root.alpha = if (canSelect) 1.0f else 0.5f
+            } else {
+                binding.selectionCheckbox.visibility = View.GONE
+                binding.root.alpha = 1.0f
+            }
 
             // Set app icon
             if (showIcons) {
@@ -146,9 +252,26 @@ class PackageAdapter(
                 binding.safetyBadge.visibility = View.GONE
             }
 
-            // Set click listener
+            // Set click listeners
             binding.root.setOnClickListener {
-                onPackageClick(pkg)
+                if (isSelectionMode) {
+                    if (canSelectPackage(pkg)) {
+                        togglePackageSelection(pkg)
+                    } else {
+                        // Show toast for non-selectable packages
+                        android.widget.Toast.makeText(
+                            binding.root.context,
+                            Constants.Packages.MultiSelect.TOAST_CANNOT_SELECT_CRITICAL,
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    onPackageClick(pkg)
+                }
+            }
+
+            binding.root.setOnLongClickListener {
+                onPackageLongClick(pkg)
             }
         }
     }

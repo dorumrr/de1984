@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Teal background -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/lineage_teal" />
+        </shape>
+    </item>
+    
+    <!-- Dark top border for dark mode -->
+    <item android:top="0dp" android:height="2dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface_dark" />
+        </shape>
+    </item>
+</layer-list>
+

@@ -37,6 +37,8 @@
     <string name="action_disable">Disable</string>
     <string name="action_uninstall">Uninstall</string>
     <string name="action_reinstall">Reinstall</string>
+    <string name="select_package">Select package</string>
+    <string name="close_selection">Close selection mode</string>
     
     <!-- Theme -->
     <string name="theme_light">Light Theme</string>

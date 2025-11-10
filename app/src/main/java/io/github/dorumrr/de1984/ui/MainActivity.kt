@@ -114,9 +114,10 @@ class MainActivity : AppCompatActivity() {
     private var permissionsCompleted = false
     private var shouldShowFirewallStartDialog = false
 
-    // Fragment cache to preserve scroll state (Firewall and Packages only)
+    // Fragment cache to preserve scroll state
     private var firewallFragment: FirewallFragmentViews? = null
     private var packagesFragment: PackagesFragmentViews? = null
+    private var settingsFragment: SettingsFragmentViews? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -287,7 +288,7 @@ class MainActivity : AppCompatActivity() {
         currentTab = tab
 
         supportFragmentManager.commit {
-            // Get or create cached fragments (Firewall and Packages only)
+            // Get or create cached fragments
             val firewall = firewallFragment ?: FirewallFragmentViews().also {
                 firewallFragment = it
                 add(R.id.fragment_container, it, "FIREWALL")
@@ -296,30 +297,21 @@ class MainActivity : AppCompatActivity() {
                 packagesFragment = it
                 add(R.id.fragment_container, it, "APPS")
             }
+            val settings = settingsFragment ?: SettingsFragmentViews().also {
+                settingsFragment = it
+                add(R.id.fragment_container, it, "SETTINGS")
+            }
 
-            // For Settings always use replace() since it doesn't need state preservation
-            if (tab == Tab.SETTINGS) {
-                hide(firewall)
-                hide(packages)
-                replace(R.id.fragment_container, SettingsFragmentViews())
-            } else {
-                // Remove any Settings fragment if present
-                supportFragmentManager.findFragmentById(R.id.fragment_container)?.let { current ->
-                    if (current is SettingsFragmentViews) {
-                        remove(current)
-                    }
-                }
+            // Hide all fragments
+            hide(firewall)
+            hide(packages)
+            hide(settings)
 
-                // Hide all cached fragments
-                hide(firewall)
-                hide(packages)
-
-                // Show the selected cached fragment
-                when (tab) {
-                    Tab.FIREWALL -> show(firewall)
-                    Tab.APPS -> show(packages)
-                    Tab.SETTINGS -> {} // Already handled above
-                }
+            // Show the selected fragment
+            when (tab) {
+                Tab.FIREWALL -> show(firewall)
+                Tab.APPS -> show(packages)
+                Tab.SETTINGS -> show(settings)
             }
         }
 

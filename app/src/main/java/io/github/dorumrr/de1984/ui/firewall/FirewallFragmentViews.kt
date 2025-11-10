@@ -124,6 +124,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         observeSettingsState()
 
         // Refresh default policy on start
+        // Note: Don't load packages here - let ViewModel's init{} handle first load
         viewModel.refreshDefaultPolicy()
     }
 

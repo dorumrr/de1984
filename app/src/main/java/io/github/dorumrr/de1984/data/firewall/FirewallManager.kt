@@ -8,7 +8,6 @@ import android.util.Log
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.ShizukuManager
-import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
 import io.github.dorumrr.de1984.data.monitor.ScreenStateMonitor
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
@@ -393,14 +392,6 @@ class FirewallManager(
     private suspend fun selectBackend(mode: FirewallMode): Result<FirewallBackend> {
         return try {
             Log.d(TAG, "Selecting backend for mode: $mode")
-
-            // Refresh Shizuku status if not already confirmed as RUNNING_WITH_PERMISSION
-            // This ensures we have fresh status before checking backend availability
-            if (shizukuManager.shizukuStatus.value != ShizukuStatus.RUNNING_WITH_PERMISSION) {
-                Log.d(TAG, "Refreshing Shizuku status before backend selection (current: ${shizukuManager.shizukuStatus.value})")
-                shizukuManager.checkShizukuStatus()
-                Log.d(TAG, "Shizuku status after refresh: ${shizukuManager.shizukuStatus.value}")
-            }
 
             val backend = when (mode) {
                 FirewallMode.AUTO -> {

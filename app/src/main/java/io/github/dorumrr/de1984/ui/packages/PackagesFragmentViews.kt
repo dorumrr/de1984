@@ -122,7 +122,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         observeUiState()
         observeSettings()
 
-        // Check root access
+        // Check root access on start
+        // Note: Don't load packages here - let ViewModel's init{} handle first load
         viewModel.checkRootAccess()
 
         // Add layout change listener to track when RecyclerView actually renders

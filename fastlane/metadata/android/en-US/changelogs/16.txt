@@ -1,0 +1,6 @@
+• Added an option to suppress the start firewall prompt when firewall is disabled by user
+• Dynamic update for Shizuku state before firewall backend selection
+• Fixed auto-restart issues for Shizuku edge cases
+• Implemented scroll preservation when cross-navigating between Firewall and Packages screens
+• Added copy package name to clipboard (click on package name)
+• Added package count display

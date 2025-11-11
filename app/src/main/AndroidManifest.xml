@@ -88,6 +88,16 @@
                 android:value="firewall" />
         </service>
 
+        <!-- Backend Monitoring Service for automatic backend switching after boot -->
+        <service
+            android:name=".data.service.BackendMonitoringService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="firewall" />
+        </service>
+
         <!-- Package monitoring service for new app notifications -->
         <service
             android:name=".data.service.PackageMonitoringService"

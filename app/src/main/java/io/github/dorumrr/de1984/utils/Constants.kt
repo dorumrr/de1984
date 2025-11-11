@@ -324,4 +324,45 @@ object Constants {
         const val BUTTON_DISMISS = "Dismiss"
     }
 
+    object BackendMonitoring {
+        // Service Actions
+        const val ACTION_START = "io.github.dorumrr.de1984.action.START_BACKEND_MONITORING"
+        const val ACTION_STOP = "io.github.dorumrr.de1984.action.STOP_BACKEND_MONITORING"
+        const val ACTION_RETRY = "io.github.dorumrr.de1984.action.RETRY_BACKEND_SWITCH"
+
+        // Intent Extras
+        const val EXTRA_SHIZUKU_STATUS = "shizuku_status"
+
+        // Notification
+        const val CHANNEL_ID = "backend_monitoring_channel"
+        const val CHANNEL_NAME = "Backend Monitoring"
+        const val NOTIFICATION_ID = 1003
+
+        // Timeouts
+        const val TIMEOUT_NO_SHIZUKU_MS = 600_000L  // 10 minutes if Shizuku not installed
+        const val SUCCESS_NOTIFICATION_DURATION_MS = 3_000L  // 3 seconds
+
+        // Notification Titles
+        const val NOTIFICATION_TITLE_WAITING = "De1984 Firewall Active (VPN Mode)"
+        const val NOTIFICATION_TITLE_SWITCHING = "De1984 is switching backend..."
+        const val NOTIFICATION_TITLE_SUCCESS = "De1984 Firewall backend switched"
+        const val NOTIFICATION_TITLE_FAILED = "De1984 Firewall backend switch failed"
+
+        // Notification Texts
+        const val NOTIFICATION_TEXT_SHIZUKU_NOT_RUNNING = "Waiting for Shizuku to start. Tap to retry."
+        const val NOTIFICATION_TEXT_SHIZUKU_NO_PERMISSION = "Waiting for Shizuku permission. Tap to retry."
+        const val NOTIFICATION_TEXT_SWITCHING = "Shizuku is now available. Switching to preferred backend..."
+        const val NOTIFICATION_TEXT_SUCCESS_CONNECTIVITY_MANAGER = "De1984 Firewall is now using ConnectivityManager backend"
+        const val NOTIFICATION_TEXT_SUCCESS_IPTABLES = "De1984 Firewall is now using iptables backend"
+        const val NOTIFICATION_TEXT_FAILED = "De1984 Firewall failed to switch backend. Still using VPN."
+
+        // Action Button Text
+        const val ACTION_BUTTON_RETRY = "Retry"
+
+        // Toast Messages
+        const val TOAST_SUCCESS_CONNECTIVITY_MANAGER = "De1984 Firewall switched to ConnectivityManager"
+        const val TOAST_SUCCESS_IPTABLES = "De1984 Firewall switched to iptables"
+        const val TOAST_FAILED = "De1984 Firewall failed to switch backend"
+    }
+
 }

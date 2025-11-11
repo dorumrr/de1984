@@ -64,15 +64,13 @@ class FirewallViewModel(
     private val rootManager = (getApplication<Application>() as io.github.dorumrr.de1984.De1984Application).dependencies.rootManager
     private val shizukuManager = (getApplication<Application>() as io.github.dorumrr.de1984.De1984Application).dependencies.shizukuManager
 
-    // Track last processed status to prevent duplicate restarts
-    private var lastProcessedRootStatus: RootStatus? = null
-    private var lastProcessedShizukuStatus: ShizukuStatus? = null
-
     init {
         loadNetworkPackages()
         loadDefaultPolicy()
         loadFirewallState()
-        observePrivilegeChanges()
+        // NOTE: Privilege monitoring for automatic backend switching is now handled
+        // at the application level in FirewallManager, not in the ViewModel.
+        // This ensures automatic switching works even when the app is not open.
     }
 
     private fun loadDefaultPolicy() {
@@ -449,125 +447,6 @@ class FirewallViewModel(
 
     fun setSearchQuery(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
-    }
-
-    private fun observePrivilegeChanges() {
-        viewModelScope.launch {
-            combine(
-                rootManager.rootStatus,
-                shizukuManager.shizukuStatus
-            ) { rootStatus, shizukuStatus ->
-                Pair(rootStatus, shizukuStatus)
-            }.collect { (rootStatus, shizukuStatus) ->
-                handlePrivilegeChange(rootStatus, shizukuStatus)
-            }
-        }
-    }
-
-    private suspend fun handlePrivilegeChange(
-        rootStatus: RootStatus,
-        shizukuStatus: ShizukuStatus
-    ) {
-        // Skip if we've already processed this exact status combination
-        if (rootStatus == lastProcessedRootStatus &&
-            shizukuStatus == lastProcessedShizukuStatus) {
-            return
-        }
-
-        lastProcessedRootStatus = rootStatus
-        lastProcessedShizukuStatus = shizukuStatus
-
-        // Only act if firewall is running
-        if (!firewallManager.isActive()) {
-            Log.d(TAG, "Firewall not active, skipping privilege change handling")
-            return
-        }
-
-        // Check if backend would change (handles both privilege gain AND loss)
-        val currentBackend = firewallManager.activeBackendType.value
-        val wouldChange = wouldBackendChange(currentBackend)
-
-        if (wouldChange) {
-            // Determine if this is privilege gain or loss
-            val hasPrivileges =
-                rootStatus == RootStatus.ROOTED_WITH_PERMISSION ||
-                shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION
-
-            if (hasPrivileges) {
-                Log.d(TAG, "Backend would change due to NEW privileges, restarting firewall...")
-            } else {
-                Log.d(TAG, "Backend would change due to LOST privileges (Shizuku/root unavailable), restarting with fallback backend...")
-            }
-            restartFirewallWithNewBackend()
-        } else {
-            Log.d(TAG, "Backend would not change, no restart needed")
-        }
-    }
-
-    private fun wouldBackendChange(currentBackend: FirewallBackendType?): Boolean {
-        val mode = firewallManager.getCurrentMode()
-
-        // Only care about AUTO mode (manual modes are user's explicit choice)
-        if (mode != io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO) {
-            Log.d(TAG, "Firewall mode is $mode (not AUTO), skipping backend change check")
-            return false
-        }
-
-        val hasRoot = rootManager.hasRootPermission
-        val hasShizuku = shizukuManager.hasShizukuPermission
-        val isAndroid13Plus = android.os.Build.VERSION.SDK_INT >= 33
-
-        // Determine what backend would be selected now (matches FirewallManager.selectBackend logic)
-        val newBackend = when {
-            hasRoot || (hasShizuku && shizukuManager.isShizukuRootMode()) ->
-                FirewallBackendType.IPTABLES
-            hasShizuku && isAndroid13Plus ->
-                FirewallBackendType.CONNECTIVITY_MANAGER
-            else ->
-                FirewallBackendType.VPN
-        }
-
-        val wouldChange = currentBackend != newBackend
-        Log.d(TAG, "Backend check: current=$currentBackend, new=$newBackend, wouldChange=$wouldChange")
-        return wouldChange
-    }
-
-    private suspend fun restartFirewallWithNewBackend() {
-        try {
-            Log.d(TAG, "=== Restarting firewall due to privilege change ===")
-
-            // Stop current firewall
-            firewallManager.stopFirewall()
-
-            // Small delay to ensure clean shutdown
-            delay(500)
-
-            // Start with new backend (will auto-select based on new privileges)
-            val result = firewallManager.startFirewall()
-
-            result.onSuccess { backendType ->
-                Log.d(TAG, "✅ Firewall restarted successfully with backend: $backendType")
-                _uiState.value = _uiState.value.copy(isFirewallEnabled = true)
-                saveFirewallState(true)
-
-                // Reload packages to refresh UI with correct controls
-                loadNetworkPackages()
-            }.onFailure { error ->
-                Log.e(TAG, "❌ Failed to restart firewall: ${error.message}")
-                _uiState.value = _uiState.value.copy(
-                    isFirewallEnabled = false,
-                    error = "Failed to restart firewall with new backend: ${error.message}"
-                )
-                saveFirewallState(false)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception during firewall restart", e)
-            _uiState.value = _uiState.value.copy(
-                isFirewallEnabled = false,
-                error = "Failed to restart firewall: ${e.message}"
-            )
-            saveFirewallState(false)
-        }
     }
 
     class Factory(

@@ -375,11 +375,12 @@ class FirewallVpnService : VpnService() {
             val rule = rulesMap[packageName]
 
             val shouldBlock = if (rule != null && rule.enabled) {
-                // Has explicit rule - use it as-is (absolute blocking state)
+                // Has explicit rule - use same logic as applyFirewallRules() for consistency
+                // When network is NONE (e.g., at boot), block if app has ANY blocking rules
                 when {
                     !isScreenOn && rule.blockWhenScreenOff -> true
-                    rule.isBlockedOn(currentNetworkType) -> true
-                    else -> false
+                    currentNetworkType == NetworkType.NONE -> rule.wifiBlocked || rule.mobileBlocked
+                    else -> rule.isBlockedOn(currentNetworkType)
                 }
             } else {
                 // No rule - apply default policy
@@ -517,13 +518,15 @@ class FirewallVpnService : VpnService() {
                 val rule = rulesMap[packageName]
 
                 val shouldBlock = if (rule != null && rule.enabled) {
-                    // Has explicit rule - use it as-is (absolute blocking state)
+                    // Has explicit rule - determine blocking based on rule configuration
                     val blocked = when {
                         !isScreenOn && rule.blockWhenScreenOff -> true
-                        rule.isBlockedOn(currentNetworkType) -> true
-                        else -> false
+                        // For VPN backend: When network is NONE (e.g., at boot), block if app has ANY blocking rules
+                        // Otherwise, use network-specific blocking to support WiFi-only or Mobile-only rules
+                        currentNetworkType == NetworkType.NONE -> rule.wifiBlocked || rule.mobileBlocked
+                        else -> rule.isBlockedOn(currentNetworkType)
                     }
-                    Log.d(TAG, "  $packageName: explicit rule, shouldBlock=$blocked (wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked})")
+                    Log.d(TAG, "  $packageName: explicit rule, shouldBlock=$blocked (wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, currentNetwork=$currentNetworkType)")
                     blocked
                 } else {
                     // No explicit rule - use default policy

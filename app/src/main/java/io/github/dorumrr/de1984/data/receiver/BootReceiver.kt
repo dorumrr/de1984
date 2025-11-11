@@ -5,7 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.data.common.ShizukuStatus
+import io.github.dorumrr.de1984.data.service.BackendMonitoringService
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
+import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.FirewallMode
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +70,36 @@ class BootReceiver : BroadcastReceiver() {
                             val result = firewallManager.startFirewall()
                             result.onSuccess { backendType ->
                                 Log.d(TAG, "Firewall restored successfully with backend: $backendType")
+
+                                // Check if we fell back to VPN and should start monitoring service
+                                if (backendType == FirewallBackendType.VPN) {
+                                    val currentMode = firewallManager.getCurrentMode()
+                                    val shizukuStatus = shizukuManager.shizukuStatus.value
+
+                                    // Only start monitoring if:
+                                    // 1. Mode is AUTO (not manually selected VPN)
+                                    // 2. Shizuku is installed but not running or no permission
+                                    val shouldMonitor = currentMode == FirewallMode.AUTO &&
+                                        (shizukuStatus == ShizukuStatus.INSTALLED_NOT_RUNNING ||
+                                         shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION)
+
+                                    if (shouldMonitor) {
+                                        Log.d(TAG, "Started with VPN fallback (Shizuku status: $shizukuStatus). Starting backend monitoring service...")
+                                        val monitorIntent = Intent(context, BackendMonitoringService::class.java).apply {
+                                            action = Constants.BackendMonitoring.ACTION_START
+                                            putExtra(Constants.BackendMonitoring.EXTRA_SHIZUKU_STATUS, shizukuStatus.name)
+                                        }
+
+                                        try {
+                                            context.startForegroundService(monitorIntent)
+                                            Log.d(TAG, "Backend monitoring service started successfully")
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "Failed to start backend monitoring service", e)
+                                        }
+                                    } else {
+                                        Log.d(TAG, "Backend monitoring not needed. Mode: $currentMode, Shizuku: $shizukuStatus")
+                                    }
+                                }
                             }.onFailure { error ->
                                 Log.e(TAG, "Failed to restore firewall: ${error.message}")
                             }

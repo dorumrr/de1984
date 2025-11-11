@@ -137,6 +137,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         if (!hidden) {
             Log.d(TAG, "onHiddenChanged: Fragment became visible, updating UI")
             updateUI(viewModel.uiState.value)
+            // Refresh permission state to show current status (fixes UI not updating after granting permissions)
+            permissionViewModel.refreshPermissions()
         }
     }
 

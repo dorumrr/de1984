@@ -522,8 +522,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Unregister Shizuku listeners to prevent memory leaks
-        (application as De1984Application).dependencies.shizukuManager.unregisterListeners()
+        // NOTE: We do NOT unregister Shizuku listeners here because they need to survive
+        // for the entire application process lifetime to enable automatic backend switching
+        // even when the app is not open. The listeners are registered in De1984Application.onCreate()
+        // and will be cleaned up when the process is killed by Android.
     }
 
     enum class Tab {

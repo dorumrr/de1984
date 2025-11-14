@@ -2,4 +2,5 @@
 • Fixed VPN firewall reliability during network transitions (cellular/wifi toggle, airplane mode)
 • Added automatic VPN retry with exponential backoff (1s, 2s, 5s, 30s intervals)
 • Show notification when VPN interface fails (automatic retry preserved for reliability)
-•
+• Added an extra permission check to Settings screen in case of VPN fallback.
+• 

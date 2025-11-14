@@ -45,6 +45,11 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_CURRENT_TAB = "current_tab"
     }
 
+    private enum class VpnPermissionContext {
+        FIREWALL_START,
+        VPN_FALLBACK
+    }
+
     private lateinit var binding: ActivityMainViewsBinding
     
     private val permissionManager: PermissionManager by lazy {
@@ -96,11 +101,29 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            // Start firewall after VPN permission is granted
-            // Battery optimization will be requested automatically via shouldRequestBatteryOptimization flag
-            firewallViewModel.onVpnPermissionGranted()
+            // Handle based on context
+            when (vpnPermissionContext) {
+                VpnPermissionContext.FIREWALL_START -> {
+                    // Start firewall after VPN permission is granted
+                    // Battery optimization will be requested automatically via shouldRequestBatteryOptimization flag
+                    firewallViewModel.onVpnPermissionGranted()
+                }
+                VpnPermissionContext.VPN_FALLBACK -> {
+                    // Start VPN fallback after permission granted
+                    startVpnFallbackAfterPermission()
+                }
+            }
         } else {
-            firewallViewModel.onVpnPermissionDenied()
+            // Handle based on context
+            when (vpnPermissionContext) {
+                VpnPermissionContext.FIREWALL_START -> {
+                    firewallViewModel.onVpnPermissionDenied()
+                }
+                VpnPermissionContext.VPN_FALLBACK -> {
+                    // User denied VPN permission for fallback - nothing to do
+                    Log.w(TAG, "User denied VPN permission for fallback")
+                }
+            }
         }
     }
 
@@ -113,6 +136,7 @@ class MainActivity : AppCompatActivity() {
     // State
     private var currentTab: Tab = Tab.FIREWALL
     private var permissionsCompleted = false
+    private var vpnPermissionContext: VpnPermissionContext = VpnPermissionContext.FIREWALL_START
     private var shouldShowFirewallStartDialog = false
 
     // Fragment cache to preserve scroll state
@@ -137,6 +161,25 @@ class MainActivity : AppCompatActivity() {
             requestNotificationPermission()
         } else {
             onPermissionsComplete()
+        }
+
+        // Handle intent (e.g., from notification)
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        intent?.action?.let { action ->
+            when (action) {
+                Constants.Notifications.ACTION_ENABLE_VPN_FALLBACK -> {
+                    handleVpnFallbackRequest()
+                }
+            }
         }
     }
 
@@ -548,6 +591,48 @@ class MainActivity : AppCompatActivity() {
         // for the entire application process lifetime to enable automatic backend switching
         // even when the app is not open. The listeners are registered in De1984Application.onCreate()
         // and will be cleaned up when the process is killed by Android.
+    }
+
+    private fun handleVpnFallbackRequest() {
+        Log.d(TAG, "Handling VPN fallback request from notification")
+
+        // Check if VPN permission is already granted
+        val prepareIntent = try {
+            android.net.VpnService.prepare(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check VPN permission", e)
+            return
+        }
+
+        if (prepareIntent != null) {
+            // VPN permission not granted - request it
+            vpnPermissionContext = VpnPermissionContext.VPN_FALLBACK
+            vpnPermissionLauncher.launch(prepareIntent)
+        } else {
+            // VPN permission already granted - start fallback immediately
+            startVpnFallbackAfterPermission()
+        }
+    }
+
+    private fun startVpnFallbackAfterPermission() {
+        Log.d(TAG, "Starting VPN fallback after permission granted")
+
+        val firewallManager = (application as De1984Application).dependencies.firewallManager
+
+        lifecycleScope.launch {
+            try {
+                firewallManager.startVpnFallbackManually()
+                Log.d(TAG, "VPN fallback started successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start VPN fallback", e)
+                // Show error to user
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("VPN Fallback Failed")
+                    .setMessage("Failed to start VPN fallback: ${e.message}")
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }
     }
 
     enum class Tab {

@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -82,6 +83,19 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     ) { _ ->
         // Refresh permissions when user returns from battery settings
         permissionViewModel.refreshPermissions()
+    }
+
+    // Activity result launcher for VPN permission
+    private val vpnPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // VPN permission granted
+            permissionViewModel.refreshPermissions()
+        } else {
+            // VPN permission denied - refresh anyway to update UI
+            permissionViewModel.refreshPermissions()
+        }
     }
 
     // Backup launcher - creates a new JSON file
@@ -626,6 +640,20 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 { handleRootAccessRequest() }
             } else null
         )
+
+        // Setup VPN Tier
+        setupPermissionTier(
+            binding.permissionTierVpn,
+            title = Constants.VpnFallback.TIER_TITLE,
+            description = Constants.VpnFallback.TIER_DESCRIPTION,
+            status = if (state.hasVpnPermission) Constants.VpnFallback.TIER_STATUS_GRANTED else Constants.VpnFallback.TIER_STATUS_NOT_GRANTED,
+            isComplete = state.hasVpnPermission,
+            permissions = state.vpnPermissionInfo,
+            setupButtonText = Constants.VpnFallback.TIER_BUTTON_TEXT,
+            onSetupClick = if (!state.hasVpnPermission) {
+                { handleVpnPermissionRequest() }
+            } else null
+        )
     }
 
     private fun setupPermissionTier(
@@ -883,6 +911,27 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             } catch (e2: Exception) {
                 openAppSettings()
             }
+        }
+    }
+
+    private fun handleVpnPermissionRequest() {
+        try {
+            val prepareIntent = VpnService.prepare(requireContext())
+            if (prepareIntent != null) {
+                // VPN permission not granted - request it
+                vpnPermissionLauncher.launch(prepareIntent)
+            } else {
+                // VPN permission already granted
+                permissionViewModel.refreshPermissions()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to request VPN permission", e)
+            // Show error to user
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("VPN Permission Error")
+                .setMessage("Failed to request VPN permission: ${e.message}")
+                .setPositiveButton("OK", null)
+                .show()
         }
     }
 

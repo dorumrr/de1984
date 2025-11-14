@@ -291,6 +291,7 @@ object Constants {
         // Notification actions
         const val ACTION_OPEN_FIREWALL = "io.github.dorumrr.de1984.OPEN_FIREWALL"
         const val ACTION_TOGGLE_NETWORK_ACCESS = "io.github.dorumrr.de1984.TOGGLE_NETWORK_ACCESS"
+        const val ACTION_ENABLE_VPN_FALLBACK = "io.github.dorumrr.de1984.ENABLE_VPN_FALLBACK"
 
         // Intent extras
         const val EXTRA_PACKAGE_NAME = "package_name"
@@ -365,6 +366,29 @@ object Constants {
         const val TOAST_SUCCESS_CONNECTIVITY_MANAGER = "De1984 Firewall switched to ConnectivityManager"
         const val TOAST_SUCCESS_IPTABLES = "De1984 Firewall switched to iptables"
         const val TOAST_FAILED = "De1984 Firewall failed to switch backend"
+    }
+
+    object VpnFallback {
+        // Notification Channel
+        const val CHANNEL_ID = "vpn_fallback_channel"
+        const val CHANNEL_NAME = "VPN Fallback"
+        const val NOTIFICATION_ID = 1004
+
+        // Notification Content
+        const val NOTIFICATION_TITLE = "De1984 Firewall Down"
+        const val NOTIFICATION_TEXT = "Privileged backend failed. Tap to enable VPN fallback and restore firewall protection."
+        const val NOTIFICATION_ACTION_TEXT = "Enable VPN Fallback"
+
+        // Permission Tier
+        const val TIER_TITLE = "VPN Fallback"
+        const val TIER_DESCRIPTION = "Allows automatic fallback to VPN when privileged backends (iptables/ConnectivityManager) fail. Ensures firewall stays active."
+        const val TIER_STATUS_GRANTED = "Completed"
+        const val TIER_STATUS_NOT_GRANTED = "Permission Required"
+        const val TIER_BUTTON_TEXT = "Grant VPN Permission"
+
+        // Permission Info
+        const val PERMISSION_NAME = "VPN Permission"
+        const val PERMISSION_DESCRIPTION = "Create VPN connection for firewall fallback"
     }
 
 }

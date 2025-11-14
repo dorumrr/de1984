@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.dorumrr.de1984.data.common.PermissionInfo
 import io.github.dorumrr.de1984.data.common.PermissionManager
+import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,16 +28,19 @@ class PermissionSetupViewModel constructor(
             val basicPermissions = getBasicPermissionInfo()
             val advancedPermissions = getAdvancedPermissionInfo()
             val batteryOptimizationInfo = getBatteryOptimizationInfo()
+            val vpnPermissionInfo = getVpnPermissionInfo()
 
             _uiState.value = _uiState.value.copy(
                 hasBasicPermissions = permissionManager.hasBasicPermissions(),
                 hasEnhancedPermissions = true,
                 hasAdvancedPermissions = permissionManager.hasRootAccess() || permissionManager.hasShizukuAccess() || permissionManager.hasSystemPermissions(),
                 hasBatteryOptimizationExemption = permissionManager.isBatteryOptimizationDisabled(),
+                hasVpnPermission = permissionManager.hasVpnPermission(),
                 basicPermissions = basicPermissions,
                 enhancedPermissions = emptyList(),
                 advancedPermissions = advancedPermissions,
                 batteryOptimizationInfo = batteryOptimizationInfo,
+                vpnPermissionInfo = vpnPermissionInfo,
                 isLoading = false
             )
         }
@@ -116,6 +120,18 @@ class PermissionSetupViewModel constructor(
         )
     }
 
+    private fun getVpnPermissionInfo(): List<PermissionInfo> {
+        val hasVpn = permissionManager.hasVpnPermission()
+        return listOf(
+            PermissionInfo(
+                permission = "android.permission.BIND_VPN_SERVICE",
+                name = Constants.VpnFallback.PERMISSION_NAME,
+                description = Constants.VpnFallback.PERMISSION_DESCRIPTION,
+                isGranted = hasVpn
+            )
+        )
+    }
+
     class Factory(
         private val permissionManager: PermissionManager
     ) : ViewModelProvider.Factory {
@@ -135,9 +151,11 @@ data class PermissionSetupUiState(
     val hasEnhancedPermissions: Boolean = false,
     val hasAdvancedPermissions: Boolean = false,
     val hasBatteryOptimizationExemption: Boolean = false,
+    val hasVpnPermission: Boolean = false,
     val basicPermissions: List<PermissionInfo> = emptyList(),
     val enhancedPermissions: List<PermissionInfo> = emptyList(),
     val advancedPermissions: List<PermissionInfo> = emptyList(),
     val batteryOptimizationInfo: List<PermissionInfo> = emptyList(),
+    val vpnPermissionInfo: List<PermissionInfo> = emptyList(),
     val errorMessage: String? = null
 )

@@ -1,10 +1,17 @@
 package io.github.dorumrr.de1984.data.firewall
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.VpnService
 import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.RootStatus
@@ -65,6 +72,10 @@ class FirewallManager(
     private var privilegeMonitoringJob: Job? = null
 
     private var currentBackend: FirewallBackend? = null
+
+    private val notificationManager: NotificationManager by lazy {
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    }
 
     private val _activeBackendType = MutableStateFlow<FirewallBackendType?>(null)
     val activeBackendType: StateFlow<FirewallBackendType?> = _activeBackendType.asStateFlow()
@@ -630,7 +641,9 @@ class FirewallManager(
     }
 
     /**
-     * Handle backend failure by automatically falling back to VPN.
+     * Handle backend failure by checking VPN permission and either:
+     * - Automatically falling back to VPN if permission granted
+     * - Showing notification to request VPN permission if not granted
      * Per FIREWALL.md lines 46, 80-96: If manually selected backend fails, switch to AUTO mode.
      *
      * IMPORTANT: This method acquires startStopMutex to prevent race conditions with manual
@@ -649,8 +662,42 @@ class FirewallManager(
             setMode(FirewallMode.AUTO)
         }
 
-        Log.e(TAG, "Attempting automatic fallback to VPN...")
+        Log.e(TAG, "Checking VPN permission for fallback...")
 
+        // Check VPN permission
+        val prepareIntent = try {
+            VpnService.prepare(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check VPN permission", e)
+            null
+        }
+
+        if (prepareIntent == null) {
+            // VPN permission granted - automatic fallback
+            Log.d(TAG, "VPN permission granted - attempting automatic fallback...")
+            startVpnFallback(wasManualSelection, failedBackendType)
+        } else {
+            // VPN permission not granted - show notification
+            Log.e(TAG, "VPN permission not granted - showing notification...")
+            showVpnFallbackNotification()
+
+            // Update state to reflect firewall is down
+            currentBackend = null
+            _activeBackendType.value = null
+            _backendHealthWarning.value = "FIREWALL DOWN: VPN permission required. Tap notification to enable fallback."
+
+            // Update SharedPreferences to reflect firewall is stopped
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
+        }
+    }
+
+    /**
+     * Start VPN fallback after permission is confirmed granted.
+     * This is called either automatically (when permission already granted) or
+     * manually (after user grants permission via notification).
+     */
+    private suspend fun startVpnFallback(wasManualSelection: Boolean, failedBackendType: FirewallBackendType) {
         try {
             // Stop monitoring to prevent interference
             stopMonitoring()
@@ -661,7 +708,7 @@ class FirewallManager(
             Log.d(TAG, "Starting VPN backend as fallback...")
             vpnBackend.start().getOrElse { error ->
                 Log.e(TAG, "❌ CRITICAL: VPN fallback FAILED: ${error.message}")
-                _backendHealthWarning.value = "FIREWALL DOWN: All backends failed. Your apps are UNBLOCKED!"
+                _backendHealthWarning.value = "FIREWALL DOWN: VPN fallback failed. Your apps are UNBLOCKED!"
 
                 // Update state to reflect firewall is down
                 currentBackend = null
@@ -671,7 +718,7 @@ class FirewallManager(
                 val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                 prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
 
-                return@withLock
+                return
             }
 
             // Wait for VPN to establish
@@ -688,7 +735,7 @@ class FirewallManager(
                 val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                 prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
 
-                return@withLock
+                return
             }
 
             Log.d(TAG, "✅ VPN fallback successful!")
@@ -696,6 +743,13 @@ class FirewallManager(
             // Update current backend
             currentBackend = vpnBackend
             _activeBackendType.value = FirewallBackendType.VPN
+
+            // Update SharedPreferences to reflect firewall is running
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
+
+            // Dismiss notification if it was shown
+            dismissVpnFallbackNotification()
 
             // Show warning to user
             val warningMessage = if (wasManualSelection) {
@@ -708,7 +762,7 @@ class FirewallManager(
             // VPN monitors internally, no need to start monitoring
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ CRITICAL: Exception during backend fallback", e)
+            Log.e(TAG, "❌ CRITICAL: Exception during VPN fallback", e)
             _backendHealthWarning.value = "FIREWALL DOWN: Fallback failed. Your apps are UNBLOCKED!"
 
             currentBackend = null
@@ -719,7 +773,89 @@ class FirewallManager(
             prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
         }
     }
-    
+
+    /**
+     * Show notification to request VPN permission for fallback.
+     */
+    private fun showVpnFallbackNotification() {
+        Log.d(TAG, "Showing VPN fallback notification")
+
+        // Create notification channel (Android O+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                Constants.VpnFallback.CHANNEL_ID,
+                Constants.VpnFallback.CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for VPN fallback when privileged backends fail"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Create intent to open MainActivity and request VPN permission
+        val intent = Intent(Constants.Notifications.ACTION_ENABLE_VPN_FALLBACK).apply {
+            setPackage(context.packageName)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Build notification
+        val notification = NotificationCompat.Builder(context, Constants.VpnFallback.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_shield)
+            .setContentTitle(Constants.VpnFallback.NOTIFICATION_TITLE)
+            .setContentText(Constants.VpnFallback.NOTIFICATION_TEXT)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(Constants.VpnFallback.NOTIFICATION_TEXT))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .addAction(
+                R.drawable.ic_shield,
+                Constants.VpnFallback.NOTIFICATION_ACTION_TEXT,
+                pendingIntent
+            )
+            .build()
+
+        notificationManager.notify(Constants.VpnFallback.NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Dismiss VPN fallback notification.
+     */
+    private fun dismissVpnFallbackNotification() {
+        Log.d(TAG, "Dismissing VPN fallback notification")
+        notificationManager.cancel(Constants.VpnFallback.NOTIFICATION_ID)
+    }
+
+    /**
+     * Start VPN fallback manually after user grants permission via notification.
+     * This is called from MainActivity when user taps the notification and grants permission.
+     */
+    suspend fun startVpnFallbackManually() = startStopMutex.withLock {
+        Log.d(TAG, "Starting VPN fallback manually after permission grant")
+
+        // Check VPN permission again to be safe
+        val prepareIntent = try {
+            VpnService.prepare(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check VPN permission", e)
+            return@withLock
+        }
+
+        if (prepareIntent != null) {
+            Log.e(TAG, "VPN permission still not granted - cannot start fallback")
+            return@withLock
+        }
+
+        // Start VPN fallback (wasManualSelection = false since this is a fallback scenario)
+        startVpnFallback(wasManualSelection = false, failedBackendType = FirewallBackendType.VPN)
+    }
+
     /**
      * Schedule rule application with debouncing.
      */
@@ -730,7 +866,7 @@ class FirewallManager(
             applyRules()
         }
     }
-    
+
     /**
      * Trigger rule re-application (e.g., when policy changes).
      * This is a public method that can be called from outside to force rule re-application.

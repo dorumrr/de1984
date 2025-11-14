@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.VpnService
 import android.os.Build
 import android.os.Process
 import androidx.core.content.ContextCompat
@@ -141,6 +142,14 @@ class PermissionManager(
         return try {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
             powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    fun hasVpnPermission(): Boolean {
+        return try {
+            VpnService.prepare(context) == null
         } catch (e: Exception) {
             false
         }

@@ -60,7 +60,6 @@ class FirewallManager(
     companion object {
         private const val TAG = "FirewallManager"
         private const val RULE_APPLICATION_DEBOUNCE_MS = 300L
-        private const val BACKEND_HEALTH_CHECK_INTERVAL_MS = 30_000L // 30 seconds
     }
 
     private val scope = CoroutineScope(SupervisorJob())
@@ -70,6 +69,10 @@ class FirewallManager(
     private var ruleApplicationJob: Job? = null
     private var healthMonitoringJob: Job? = null
     private var privilegeMonitoringJob: Job? = null
+
+    // Adaptive health check tracking
+    private var consecutiveSuccessfulHealthChecks = 0
+    private var currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
 
     private var currentBackend: FirewallBackend? = null
 
@@ -586,10 +589,15 @@ class FirewallManager(
         ruleApplicationJob = null
         healthMonitoringJob?.cancel()
         healthMonitoringJob = null
+
+        // Reset adaptive health check tracking
+        consecutiveSuccessfulHealthChecks = 0
+        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
     }
 
     /**
-     * Start continuous backend health monitoring.
+     * Start continuous backend health monitoring with adaptive interval.
+     * Starts with fast checks (30s) for first 5 minutes, then increases to 5 minutes for battery savings.
      * Periodically checks if the current backend is still available and active.
      * If backend fails, automatically fallback to VPN.
      * Per FIREWALL.md lines 92-96.
@@ -598,15 +606,31 @@ class FirewallManager(
         val backend = currentBackend ?: return
         val backendType = backend.getType()
 
-        Log.d(TAG, "Starting backend health monitoring for $backendType (every ${BACKEND_HEALTH_CHECK_INTERVAL_MS}ms)")
+        // VPN backend doesn't need health monitoring - it has built-in failure detection via onRevoke()
+        if (backendType == FirewallBackendType.VPN) {
+            Log.d(TAG, "Skipping health monitoring for VPN backend (has built-in onRevoke() callback)")
+            return
+        }
+
+        // Reset adaptive tracking when starting new monitoring
+        consecutiveSuccessfulHealthChecks = 0
+        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  🔍 STARTING ADAPTIVE HEALTH MONITORING                      ║")
+        Log.d(TAG, "║  Backend: $backendType")
+        Log.d(TAG, "║  Initial interval: ${currentHealthCheckInterval}ms (30 seconds)")
+        Log.d(TAG, "║  Stable interval: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_STABLE_MS}ms (5 minutes)")
+        Log.d(TAG, "║  Threshold: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD} successful checks")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
         healthMonitoringJob?.cancel()
         healthMonitoringJob = scope.launch {
             while (true) {
-                delay(BACKEND_HEALTH_CHECK_INTERVAL_MS)
+                delay(currentHealthCheckInterval)
 
                 try {
-                    Log.d(TAG, "Health check: Testing $backendType backend availability...")
+                    Log.d(TAG, "Health check: Testing $backendType backend availability... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
 
                     // Check if backend is still available
                     val availabilityResult = backend.checkAvailability()
@@ -614,6 +638,11 @@ class FirewallManager(
                     if (availabilityResult.isFailure) {
                         Log.e(TAG, "❌ Health check FAILED: $backendType backend is no longer available!")
                         Log.e(TAG, "Error: ${availabilityResult.exceptionOrNull()?.message}")
+                        Log.e(TAG, "Resetting health check interval to initial value (${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS}ms)")
+
+                        // Reset adaptive tracking on failure
+                        consecutiveSuccessfulHealthChecks = 0
+                        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
 
                         // Backend failed - trigger automatic fallback to VPN
                         handleBackendFailure(backendType)
@@ -623,18 +652,40 @@ class FirewallManager(
                     // Check if backend is still active
                     if (!backend.isActive()) {
                         Log.e(TAG, "❌ Health check FAILED: $backendType backend is not active!")
+                        Log.e(TAG, "Resetting health check interval to initial value (${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS}ms)")
+
+                        // Reset adaptive tracking on failure
+                        consecutiveSuccessfulHealthChecks = 0
+                        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
 
                         // Backend became inactive - trigger automatic fallback
                         handleBackendFailure(backendType)
                         break
                     }
 
-                    Log.d(TAG, "✅ Health check passed: $backendType backend is healthy")
+                    // Health check passed - increment success counter
+                    consecutiveSuccessfulHealthChecks++
+                    Log.d(TAG, "✅ Health check passed: $backendType backend is healthy (consecutive successes: $consecutiveSuccessfulHealthChecks)")
                     _backendHealthWarning.value = null // Clear any previous warnings
+
+                    // Check if we should increase interval (backend is stable)
+                    if (consecutiveSuccessfulHealthChecks >= Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD &&
+                        currentHealthCheckInterval == Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS) {
+                        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_STABLE_MS
+                        Log.d(TAG, "")
+                        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+                        Log.d(TAG, "║  ⚡ BACKEND STABLE - INCREASING HEALTH CHECK INTERVAL       ║")
+                        Log.d(TAG, "║  Backend: $backendType")
+                        Log.d(TAG, "║  New interval: ${currentHealthCheckInterval}ms (5 minutes)")
+                        Log.d(TAG, "║  Battery savings: ~90% reduction in wake-ups                 ║")
+                        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+                        Log.d(TAG, "")
+                    }
 
                 } catch (e: Exception) {
                     Log.e(TAG, "Health check exception for $backendType", e)
                     // Don't trigger fallback on exceptions - might be temporary
+                    // Don't reset counter either - exception doesn't mean backend is unstable
                 }
             }
         }

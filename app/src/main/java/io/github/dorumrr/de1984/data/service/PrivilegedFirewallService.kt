@@ -61,6 +61,10 @@ class PrivilegedFirewallService : Service() {
     private var isServiceActive = false
     private var wasExplicitlyStopped = false
 
+    // Adaptive health check tracking
+    private var consecutiveSuccessfulHealthChecks = 0
+    private var currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+
     private var currentNetworkType: NetworkType = NetworkType.NONE
     private var isScreenOn: Boolean = true
 
@@ -79,7 +83,6 @@ class PrivilegedFirewallService : Service() {
         private const val NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "firewall_privileged_channel"
         private const val CHANNEL_NAME = "Firewall Service"
-        private const val BACKEND_HEALTH_CHECK_INTERVAL_MS = 30_000L  // 30 seconds
 
         const val ACTION_START = "io.github.dorumrr.de1984.action.START_PRIVILEGED_FIREWALL"
         const val ACTION_STOP = "io.github.dorumrr.de1984.action.STOP_PRIVILEGED_FIREWALL"
@@ -310,6 +313,10 @@ class PrivilegedFirewallService : Service() {
         ruleApplicationJob?.cancel()
         ruleApplicationJob = null
 
+        // Reset adaptive health check tracking
+        consecutiveSuccessfulHealthChecks = 0
+        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+
         // Stop backend
         serviceScope.launch {
             val backend = currentBackend
@@ -389,15 +396,21 @@ class PrivilegedFirewallService : Service() {
     }
 
     private fun startBackendHealthMonitoring() {
+        // Reset adaptive tracking when starting new monitoring
+        consecutiveSuccessfulHealthChecks = 0
+        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+
         Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        Log.d(TAG, "║  🔍 STARTING SERVICE HEALTH MONITORING                       ║")
-        Log.d(TAG, "║  Interval: ${BACKEND_HEALTH_CHECK_INTERVAL_MS}ms (30 seconds)")
+        Log.d(TAG, "║  🔍 STARTING ADAPTIVE SERVICE HEALTH MONITORING              ║")
+        Log.d(TAG, "║  Initial interval: ${currentHealthCheckInterval}ms (30 seconds)")
+        Log.d(TAG, "║  Stable interval: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_STABLE_MS}ms (5 minutes)")
+        Log.d(TAG, "║  Threshold: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD} successful checks")
         Log.d(TAG, "║  Purpose: Detect permission loss within service              ║")
         Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
         healthMonitoringJob = serviceScope.launch {
             while (isServiceActive) {
-                delay(BACKEND_HEALTH_CHECK_INTERVAL_MS)
+                delay(currentHealthCheckInterval)
 
                 val backend = currentBackend
                 val backendType = currentBackendType
@@ -410,7 +423,7 @@ class PrivilegedFirewallService : Service() {
                 try {
                     Log.d(TAG, "")
                     Log.d(TAG, "=== SERVICE HEALTH CHECK: $backendType ===")
-                    Log.d(TAG, "Checking if backend still has required permissions...")
+                    Log.d(TAG, "Checking if backend still has required permissions... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
 
                     // Check if backend is still available (root/Shizuku access, iptables binary, etc.)
                     val availabilityResult = backend.checkAvailability()
@@ -424,6 +437,11 @@ class PrivilegedFirewallService : Service() {
                         Log.e(TAG, "║  Action: Stopping service to trigger FirewallManager fallback║")
                         Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
                         Log.e(TAG, "")
+
+                        // Reset adaptive tracking on failure
+                        consecutiveSuccessfulHealthChecks = 0
+                        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+
                         handleBackendFailure(backendType)
                         break
                     }
@@ -432,8 +450,25 @@ class PrivilegedFirewallService : Service() {
                     // is running (circular check). The checkAvailability() above is sufficient to
                     // verify the backend can still function (root/Shizuku access, APIs available, etc.)
 
-                    Log.d(TAG, "✅ SERVICE: Health check passed - $backendType is healthy")
+                    // Health check passed - increment success counter
+                    consecutiveSuccessfulHealthChecks++
+                    Log.d(TAG, "✅ SERVICE: Health check passed - $backendType is healthy (consecutive successes: $consecutiveSuccessfulHealthChecks)")
                     Log.d(TAG, "")
+
+                    // Check if we should increase interval (backend is stable)
+                    if (consecutiveSuccessfulHealthChecks >= Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD &&
+                        currentHealthCheckInterval == Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS) {
+                        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_STABLE_MS
+                        Log.d(TAG, "")
+                        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+                        Log.d(TAG, "║  ⚡ SERVICE: BACKEND STABLE - INCREASING INTERVAL            ║")
+                        Log.d(TAG, "║  Backend: $backendType")
+                        Log.d(TAG, "║  New interval: ${currentHealthCheckInterval}ms (5 minutes)")
+                        Log.d(TAG, "║  Battery savings: ~90% reduction in wake-ups                 ║")
+                        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+                        Log.d(TAG, "")
+                    }
+
                 } catch (e: Exception) {
                     Log.e(TAG, "")
                     Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
@@ -443,6 +478,11 @@ class PrivilegedFirewallService : Service() {
                     Log.e(TAG, "║  Action: Stopping service to trigger FirewallManager fallback║")
                     Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
                     Log.e(TAG, "", e)
+
+                    // Reset adaptive tracking on exception
+                    consecutiveSuccessfulHealthChecks = 0
+                    currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+
                     handleBackendFailure(backendType)
                     break
                 }

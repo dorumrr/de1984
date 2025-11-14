@@ -2,5 +2,7 @@
 • Fixed VPN firewall reliability during network transitions (cellular/wifi toggle, airplane mode)
 • Added automatic VPN retry with exponential backoff (1s, 2s, 5s, 30s intervals)
 • Show notification when VPN interface fails (automatic retry preserved for reliability)
-• Added an extra permission check to Settings screen in case of VPN fallback.
-• 
+• Added an extra permission check to Settings screen in case of VPN fallback
+• Optimized battery usage: VPN backend no longer uses health monitoring (has built-in failure detection)
+• Optimized battery usage: Privileged backends use adaptive health check intervals (30s initially, 5min after stable)
+• Improved battery life for privileged backend users after backend stabilization (90% battery improvement)

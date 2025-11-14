@@ -1,0 +1,2 @@
+• Add "Uninstalled" filter with reinstall support in Packages tab
+• 

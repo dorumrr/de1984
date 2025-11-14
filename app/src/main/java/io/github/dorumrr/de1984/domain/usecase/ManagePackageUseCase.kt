@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984.domain.usecase
 
+import io.github.dorumrr.de1984.domain.model.ReinstallBatchResult
 import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
 
@@ -17,6 +18,14 @@ class ManagePackageUseCase constructor(
 
     suspend fun uninstallMultiplePackages(packageNames: List<String>): Result<UninstallBatchResult> {
         return packageRepository.uninstallMultiplePackages(packageNames)
+    }
+
+    suspend fun reinstallPackage(packageName: String): Result<Unit> {
+        return packageRepository.reinstallPackage(packageName)
+    }
+
+    suspend fun reinstallMultiplePackages(packageNames: List<String>): Result<ReinstallBatchResult> {
+        return packageRepository.reinstallMultiplePackages(packageNames)
     }
 
     suspend fun forceStopPackage(packageName: String): Result<Unit> {

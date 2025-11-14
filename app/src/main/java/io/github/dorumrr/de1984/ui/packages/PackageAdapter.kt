@@ -181,8 +181,12 @@ class PackageAdapter(
                 binding.appIcon.setImageResource(R.drawable.de1984_icon)
             }
 
-            // Row 1 Right: Enabled/Disabled Badge (always shown)
-            if (pkg.isEnabled) {
+            // Row 1 Right: Enabled/Disabled/Uninstalled Badge (always shown)
+            // Check if package is uninstalled (versionName is null for uninstalled packages)
+            if (pkg.versionName == null && !pkg.isEnabled && pkg.type == PackageType.SYSTEM) {
+                binding.enabledBadge.text = Constants.Packages.STATE_UNINSTALLED
+                binding.enabledBadge.setBackgroundResource(R.drawable.status_badge_background)
+            } else if (pkg.isEnabled) {
                 binding.enabledBadge.text = Constants.Packages.STATE_ENABLED
                 binding.enabledBadge.setBackgroundResource(R.drawable.status_badge_complete)
             } else {

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.domain.model.Package
+import io.github.dorumrr.de1984.domain.model.ReinstallBatchResult
 import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.usecase.GetPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManagePackageUseCase
@@ -140,7 +141,7 @@ class PackagesViewModel(
         }
     }
 
-    fun uninstallPackage(packageName: String) {
+    fun uninstallPackage(packageName: String, appName: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoadingData = true,
@@ -149,6 +150,9 @@ class PackagesViewModel(
 
             managePackageUseCase.uninstallPackage(packageName)
                 .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        uninstallSuccess = "$appName uninstalled"
+                    )
                     loadPackages()
                 }
                 .onFailure { error ->
@@ -201,6 +205,74 @@ class PackagesViewModel(
 
     fun clearBatchUninstallResult() {
         _uiState.value = _uiState.value.copy(batchUninstallResult = null)
+    }
+
+    fun reinstallPackage(packageName: String, appName: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoadingData = true,
+                isRenderingUI = false
+            )
+
+            managePackageUseCase.reinstallPackage(packageName)
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        reinstallSuccess = "$appName reinstalled"
+                    )
+                    loadPackages()
+                }
+                .onFailure { error ->
+                    if (superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingData = false,
+                        isRenderingUI = false,
+                        error = error.message
+                    )
+                }
+        }
+    }
+
+    fun reinstallMultiplePackages(packageNames: List<String>): Job {
+        return viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoadingData = true,
+                isRenderingUI = false
+            )
+
+            managePackageUseCase.reinstallMultiplePackages(packageNames)
+                .onSuccess { result ->
+                    _uiState.value = _uiState.value.copy(
+                        batchReinstallResult = result
+                    )
+                    loadPackages()
+                }
+                .onFailure { error ->
+                    if (superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingData = false,
+                        isRenderingUI = false,
+                        error = error.message
+                    )
+                }
+        }
+    }
+
+    fun clearBatchReinstallResult() {
+        _uiState.value = _uiState.value.copy(batchReinstallResult = null)
+    }
+
+    fun clearUninstallSuccess() {
+        _uiState.value = _uiState.value.copy(uninstallSuccess = null)
+    }
+
+    fun clearReinstallSuccess() {
+        _uiState.value = _uiState.value.copy(reinstallSuccess = null)
     }
 
     fun forceStopPackage(packageName: String) {
@@ -279,7 +351,10 @@ data class PackagesUiState(
     val isLoadingData: Boolean = true,
     val isRenderingUI: Boolean = false,
     val error: String? = null,
-    val batchUninstallResult: UninstallBatchResult? = null
+    val batchUninstallResult: UninstallBatchResult? = null,
+    val batchReinstallResult: ReinstallBatchResult? = null,
+    val uninstallSuccess: String? = null,
+    val reinstallSuccess: String? = null
 ) {
     val isLoading: Boolean get() = isLoadingData || isRenderingUI
 }

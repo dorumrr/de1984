@@ -6,8 +6,10 @@ import kotlinx.coroutines.flow.Flow
 interface PackageDataSource {
     fun getPackages(): Flow<List<PackageEntity>>
     suspend fun getPackage(packageName: String): PackageEntity?
+    suspend fun getUninstalledSystemPackages(): List<PackageEntity>
     suspend fun setPackageEnabled(packageName: String, enabled: Boolean): Boolean
     suspend fun uninstallPackage(packageName: String): Boolean
+    suspend fun reinstallPackage(packageName: String): Boolean
     suspend fun forceStopPackage(packageName: String): Boolean
 
     suspend fun setNetworkAccess(packageName: String, allowed: Boolean): Boolean

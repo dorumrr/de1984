@@ -306,7 +306,84 @@ class AndroidPackageDataSource(
             false
         }
     }
-    
+
+    override suspend fun getUninstalledSystemPackages(): List<PackageEntity> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Get all system packages (including uninstalled) using -s flag
+                val allSystemPackagesOutput = if (shizukuManager.isShizukuAvailable() && shizukuManager.hasShizukuPermission) {
+                    val (exitCode, output) = shizukuManager.executeShellCommand("pm list packages -u -s")
+                    if (exitCode == 0) output else ""
+                } else {
+                    try {
+                        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "pm list packages -u -s"))
+                        process.inputStream.bufferedReader().readText()
+                    } catch (e: Exception) {
+                        ""
+                    }
+                }
+
+                // Get currently installed system packages
+                val installedSystemPackagesOutput = if (shizukuManager.isShizukuAvailable() && shizukuManager.hasShizukuPermission) {
+                    val (exitCode, output) = shizukuManager.executeShellCommand("pm list packages -s")
+                    if (exitCode == 0) output else ""
+                } else {
+                    try {
+                        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "pm list packages -s"))
+                        process.inputStream.bufferedReader().readText()
+                    } catch (e: Exception) {
+                        ""
+                    }
+                }
+
+                // Parse package names
+                val allSystemPackages = allSystemPackagesOutput.lines()
+                    .filter { it.startsWith("package:") }
+                    .map { it.removePrefix("package:").trim() }
+                    .toSet()
+
+                val installedSystemPackages = installedSystemPackagesOutput.lines()
+                    .filter { it.startsWith("package:") }
+                    .map { it.removePrefix("package:").trim() }
+                    .toSet()
+
+                // Find uninstalled system packages (difference between the two sets)
+                val uninstalledSystemPackages = allSystemPackages - installedSystemPackages
+
+                // Map to PackageEntity (no need for isSystemPackage() check - already filtered by -s flag)
+                uninstalledSystemPackages
+                    .filter { !Constants.App.isOwnApp(it) }
+                    .map { packageName ->
+                        PackageEntity(
+                            packageName = packageName,
+                            name = packageName, // Use package name as display name
+                            icon = "⚙️", // System app icon
+                            isEnabled = false, // Uninstalled packages are disabled
+                            type = Constants.Packages.TYPE_SYSTEM,
+                            versionName = null,
+                            versionCode = null,
+                            installTime = null,
+                            updateTime = null,
+                            permissions = emptyList(),
+                            hasNetworkAccess = false,
+                            isNetworkBlocked = false,
+                            wifiBlocked = false,
+                            mobileBlocked = false,
+                            roamingBlocked = false,
+                            isVpnApp = false,
+                            criticality = null,
+                            category = null,
+                            affects = emptyList()
+                        )
+                    }
+                    .sortedBy { it.name.lowercase() }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get uninstalled system packages: ${e.message}")
+                emptyList()
+            }
+        }
+    }
+
     override suspend fun uninstallPackage(packageName: String): Boolean {
         if (Constants.App.isOwnApp(packageName)) {
             return false
@@ -351,7 +428,52 @@ class AndroidPackageDataSource(
             false
         }
     }
-    
+
+    override suspend fun reinstallPackage(packageName: String): Boolean {
+        if (Constants.App.isOwnApp(packageName)) {
+            return false
+        }
+
+        return withContext(Dispatchers.IO) {
+            // Try Shizuku
+            if (shizukuManager.isShizukuAvailable()) {
+                // Request permission if not granted yet
+                if (!shizukuManager.hasShizukuPermission) {
+                    shizukuManager.requestShizukuPermission()
+                    // Wait a bit for permission dialog
+                    kotlinx.coroutines.delay(500)
+                }
+
+                if (shizukuManager.hasShizukuPermission) {
+                    try {
+                        val command = "cmd package install-existing $packageName"
+                        val (exitCode, _) = shizukuManager.executeShellCommand(command)
+                        if (exitCode == 0) {
+                            return@withContext true
+                        }
+                    } catch (e: Exception) {
+                        // Shizuku method failed
+                    }
+                }
+            }
+
+            // Try root shell
+            try {
+                val command = "cmd package install-existing $packageName"
+                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+                val exitCode = process.waitFor()
+
+                if (exitCode == 0) {
+                    return@withContext true
+                }
+            } catch (e: Exception) {
+                // Root shell method failed
+            }
+
+            false
+        }
+    }
+
     override suspend fun forceStopPackage(packageName: String): Boolean {
         if (Constants.App.isOwnApp(packageName)) {
             return false
@@ -758,3 +880,4 @@ class AndroidPackageDataSource(
         }
     }
 }
+

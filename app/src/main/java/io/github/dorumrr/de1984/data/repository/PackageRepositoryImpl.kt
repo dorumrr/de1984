@@ -5,6 +5,7 @@ import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.model.toDomain
 import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.model.PackageType
+import io.github.dorumrr.de1984.domain.model.ReinstallBatchResult
 import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
 import io.github.dorumrr.de1984.utils.Constants
@@ -36,7 +37,17 @@ class PackageRepositoryImpl(
         return getPackages()
             .map { packages -> packages.filter { it.isEnabled == enabled } }
     }
-    
+
+    override suspend fun getUninstalledSystemPackages(): Result<List<Package>> {
+        return try {
+            val entities = packageDataSource.getUninstalledSystemPackages()
+            val packages = entities.map { it.toDomain() }
+            Result.success(packages)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun setPackageEnabled(packageName: String, enabled: Boolean): Result<Unit> {
         return try {
             val success = packageDataSource.setPackageEnabled(packageName, enabled)
@@ -93,6 +104,39 @@ class PackageRepositoryImpl(
             }
 
             Result.success(UninstallBatchResult(succeeded, failed))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun reinstallPackage(packageName: String): Result<Unit> {
+        return try {
+            val success = packageDataSource.reinstallPackage(packageName)
+            if (success) {
+                Result.success(Unit)
+            } else {
+                val errorMessage = "Unable to reinstall package. Shizuku or root access required for package management."
+                Result.failure(SecurityException(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun reinstallMultiplePackages(packageNames: List<String>): Result<ReinstallBatchResult> {
+        return try {
+            val succeeded = mutableListOf<String>()
+            val failed = mutableListOf<Pair<String, String>>()
+
+            packageNames.forEach { packageName ->
+                val result = reinstallPackage(packageName)
+                result.fold(
+                    onSuccess = { succeeded.add(packageName) },
+                    onFailure = { error -> failed.add(packageName to (error.message ?: "Unknown error")) }
+                )
+            }
+
+            Result.success(ReinstallBatchResult(succeeded, failed))
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -7,6 +7,7 @@ import io.github.dorumrr.de1984.domain.repository.PackageRepository
 import io.github.dorumrr.de1984.presentation.viewmodel.PackageFilterState
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 
@@ -27,6 +28,17 @@ class GetPackagesUseCase constructor(
     }
 
     fun getFilteredByState(filterState: PackageFilterState): Flow<List<Package>> {
+        // Special case: Uninstalled filter
+        if (filterState.packageState?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()) {
+            return flow {
+                val result = packageRepository.getUninstalledSystemPackages()
+                result.fold(
+                    onSuccess = { packages -> emit(packages) },
+                    onFailure = { emit(emptyList()) }
+                )
+            }
+        }
+
         val baseFlow = when (filterState.packageType.lowercase()) {
             Constants.Packages.TYPE_USER -> getByType(PackageType.USER)
             Constants.Packages.TYPE_SYSTEM -> getByType(PackageType.SYSTEM)

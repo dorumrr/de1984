@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
@@ -449,6 +450,14 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             binding.packagesRecyclerView.visibility = View.INVISIBLE
             binding.loadingState.visibility = View.GONE
             binding.emptyState.visibility = View.VISIBLE
+
+            // Update empty state message based on filter
+            val emptyMessage = if (state.filterState.packageState?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()) {
+                Constants.Packages.EMPTY_STATE_NO_UNINSTALLED
+            } else {
+                "No packages found"
+            }
+            binding.emptyStateMessage.text = emptyMessage
         } else {
             binding.packagesRecyclerView.visibility = View.VISIBLE
             binding.loadingState.visibility = View.GONE
@@ -502,6 +511,12 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         // Handle batch uninstall result
         handleBatchUninstallResult(state)
 
+        // Handle batch reinstall result
+        handleBatchReinstallResult(state)
+
+        // Handle success toasts
+        handleSuccessToasts(state)
+
         // Show error if any
         handleError(state)
     }
@@ -513,6 +528,28 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             showBatchUninstallResults(result)
             viewModel.clearBatchUninstallResult()
             exitSelectionMode()
+        }
+    }
+
+    private fun handleBatchReinstallResult(state: PackagesUiState) {
+        state.batchReinstallResult?.let { result ->
+            progressDialog?.dismiss()
+            progressDialog = null
+            showBatchReinstallResults(result)
+            viewModel.clearBatchReinstallResult()
+            exitSelectionMode()
+        }
+    }
+
+    private fun handleSuccessToasts(state: PackagesUiState) {
+        state.uninstallSuccess?.let { message ->
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            viewModel.clearUninstallSuccess()
+        }
+
+        state.reinstallSuccess?.let { message ->
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            viewModel.clearReinstallSuccess()
         }
     }
 
@@ -787,25 +824,48 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             showEnableDisableConfirmation(pkg, !pkg.isEnabled)
         }
 
-        // Setup Uninstall action - conditionally show based on criticality and settings
+        // Setup Uninstall/Reinstall action - conditionally show based on criticality and settings
         val allowCriticalUninstall = settingsViewModel.uiState.value.allowCriticalPackageUninstall
         val isCriticalPackage = pkg.criticality == PackageCriticality.ESSENTIAL ||
                                 pkg.criticality == PackageCriticality.IMPORTANT
+        val isUninstalled = pkg.versionName == null && !pkg.isEnabled && pkg.type == PackageType.SYSTEM
 
-        if (isCriticalPackage && !allowCriticalUninstall) {
+        if (isCriticalPackage && !allowCriticalUninstall && !isUninstalled) {
             // Hide uninstall button for critical packages when setting is OFF
             binding.uninstallAction.visibility = View.GONE
         } else {
             binding.uninstallAction.visibility = View.VISIBLE
-            binding.uninstallDescription.text = if (pkg.type == PackageType.SYSTEM) {
-                "Remove system package (DANGEROUS)"
-            } else {
-                "Remove this app from device"
-            }
 
-            binding.uninstallAction.setOnClickListener {
-                dialog.dismiss()
-                showUninstallConfirmation(pkg)
+            if (isUninstalled) {
+                // Show Reinstall action for uninstalled packages
+                binding.uninstallIcon.setImageResource(R.drawable.ic_check_circle)
+                val tealColor = ContextCompat.getColor(requireContext(), R.color.lineage_teal)
+                binding.uninstallIcon.setColorFilter(tealColor)
+                binding.uninstallTitle.text = getString(R.string.action_reinstall)
+                binding.uninstallTitle.setTextColor(tealColor)
+                binding.uninstallDescription.text = "Restore this system app"
+
+                binding.uninstallAction.setOnClickListener {
+                    dialog.dismiss()
+                    showReinstallConfirmation(pkg)
+                }
+            } else {
+                // Show Uninstall action for installed packages
+                binding.uninstallIcon.setImageResource(R.drawable.ic_delete)
+                val redColor = ContextCompat.getColor(requireContext(), R.color.error_red)
+                binding.uninstallIcon.setColorFilter(redColor)
+                binding.uninstallTitle.text = getString(R.string.action_uninstall)
+                binding.uninstallTitle.setTextColor(redColor)
+                binding.uninstallDescription.text = if (pkg.type == PackageType.SYSTEM) {
+                    "Remove system package (DANGEROUS)"
+                } else {
+                    "Remove this app from device"
+                }
+
+                binding.uninstallAction.setOnClickListener {
+                    dialog.dismiss()
+                    showUninstallConfirmation(pkg)
+                }
             }
         }
 
@@ -870,7 +930,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     confirmWord = "UNINSTALL",
                     confirmButtonText = "Uninstall",
                     onConfirm = {
-                        viewModel.uninstallPackage(pkg.packageName)
+                        viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
                 )
             }
@@ -886,7 +946,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                             "This may require a factory reset to restore functionality.\n\nAre you sure?",
                     confirmButtonText = "Uninstall",
                     onConfirm = {
-                        viewModel.uninstallPackage(pkg.packageName)
+                        viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
                 )
             }
@@ -902,7 +962,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     },
                     confirmButtonText = "Uninstall",
                     onConfirm = {
-                        viewModel.uninstallPackage(pkg.packageName)
+                        viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
                 )
             }
@@ -914,7 +974,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     message = "✓ Safe to remove\n\nThis package is considered bloatware and can be safely uninstalled.\n\nAre you sure?",
                     confirmButtonText = "Uninstall",
                     onConfirm = {
-                        viewModel.uninstallPackage(pkg.packageName)
+                        viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
                 )
             }
@@ -931,11 +991,23 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     },
                     confirmButtonText = "Uninstall",
                     onConfirm = {
-                        viewModel.uninstallPackage(pkg.packageName)
+                        viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
                 )
             }
         }
+    }
+
+    private fun showReinstallConfirmation(pkg: Package) {
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = "Reinstall ${pkg.name}?",
+            message = "This will restore the system app to your device.\n\nAre you sure?",
+            confirmButtonText = "Reinstall",
+            onConfirm = {
+                viewModel.reinstallPackage(pkg.packageName, pkg.name)
+            }
+        )
     }
 
     private fun showError(message: String) {
@@ -960,7 +1032,14 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         binding.uninstallButton.setOnClickListener {
             if (selectedPackages.isNotEmpty()) {
-                showMultiUninstallConfirmation()
+                val currentState = viewModel.uiState.value
+                val isUninstalledFilter = currentState.filterState.packageState?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()
+
+                if (isUninstalledFilter) {
+                    showMultiReinstallConfirmation()
+                } else {
+                    showMultiUninstallConfirmation()
+                }
             }
         }
     }
@@ -996,6 +1075,15 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             count
         )
         binding.uninstallButton.isEnabled = count > 0
+
+        // Update button text based on filter
+        val currentState = viewModel.uiState.value
+        val isUninstalledFilter = currentState.filterState.packageState?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()
+        binding.uninstallButton.text = if (isUninstalledFilter) {
+            Constants.Packages.MultiSelect.TOOLBAR_BUTTON_REINSTALL
+        } else {
+            Constants.Packages.MultiSelect.TOOLBAR_BUTTON_UNINSTALL
+        }
     }
 
     private fun showMultiUninstallConfirmation() {
@@ -1109,6 +1197,98 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         StandardDialog.show(
             context = requireContext(),
             title = Constants.Packages.MultiSelect.DIALOG_TITLE_RESULTS,
+            message = message,
+            positiveButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_OK
+        )
+    }
+
+    private fun showMultiReinstallConfirmation() {
+        val packages = lastSubmittedPackages.filter { selectedPackages.contains(it.packageName) }
+        val count = packages.size
+
+        val message = buildString {
+            append("Reinstall $count selected system app${if (count > 1) "s" else ""}?\n\n")
+            append("The following apps will be reinstalled:\n\n")
+            packages.take(10).forEach { pkg ->
+                append("• ${pkg.name}\n")
+            }
+            if (count > 10) {
+                append("... and ${count - 10} more\n")
+            }
+        }
+
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = "Reinstall $count Selected Apps?",
+            message = message,
+            confirmButtonText = "Reinstall All",
+            onConfirm = {
+                performBatchReinstall(selectedPackages.toList())
+            },
+            cancelButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_CANCEL
+        )
+    }
+
+    private fun performBatchReinstall(packageNames: List<String>) {
+        // Dismiss any existing progress dialog
+        progressDialog?.dismiss()
+
+        // Show progress dialog
+        progressDialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(Constants.Packages.MultiSelect.PROGRESS_DIALOG_TITLE_REINSTALL)
+            .setMessage(String.format(
+                Constants.Packages.MultiSelect.PROGRESS_MESSAGE_FORMAT_REINSTALL,
+                0,
+                packageNames.size
+            ))
+            .setCancelable(false)
+            .create()
+
+        progressDialog?.show()
+
+        // Start batch reinstall
+        // Result will be handled by the existing observer in observeUiState() -> updateUI()
+        viewModel.reinstallMultiplePackages(packageNames)
+    }
+
+    private fun showBatchReinstallResults(result: io.github.dorumrr.de1984.domain.model.ReinstallBatchResult) {
+        val message = buildString {
+            if (result.succeeded.isNotEmpty()) {
+                append(String.format(
+                    Constants.Packages.MultiSelect.DIALOG_MESSAGE_REINSTALL_SUCCESS_FORMAT,
+                    result.succeeded.size
+                ))
+                append("\n")
+                result.succeeded.take(5).forEach { packageName ->
+                    val pkg = lastSubmittedPackages.find { it.packageName == packageName }
+                    append("• ${pkg?.name ?: packageName}\n")
+                }
+                if (result.succeeded.size > 5) {
+                    append("... and ${result.succeeded.size - 5} more\n")
+                }
+                append("\n")
+            }
+
+            if (result.failed.isNotEmpty()) {
+                append(String.format(
+                    Constants.Packages.MultiSelect.DIALOG_MESSAGE_REINSTALL_FAILED_FORMAT,
+                    result.failed.size
+                ))
+                append("\n")
+                result.failed.take(5).forEach { (packageName, error) ->
+                    val pkg = lastSubmittedPackages.find { it.packageName == packageName }
+                    append("• ${pkg?.name ?: packageName}\n")
+                    append("  Error: $error\n")
+                }
+                if (result.failed.size > 5) {
+                    append("... and ${result.failed.size - 5} more\n")
+                }
+            }
+        }
+
+        StandardDialog.show(
+            context = requireContext(),
+            title = Constants.Packages.MultiSelect.DIALOG_TITLE_REINSTALL_RESULTS,
             message = message,
             positiveButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_OK
         )

@@ -42,9 +42,10 @@ object Constants {
 
         const val STATE_ENABLED = "Enabled"
         const val STATE_DISABLED = "Disabled"
+        const val STATE_UNINSTALLED = "Uninstalled"
 
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
-        val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled")
+        val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled", "Uninstalled")
 
         const val ANDROID_PACKAGE_PREFIX = "com.android"
         const val GOOGLE_PACKAGE_PREFIX = "com.google"
@@ -57,6 +58,7 @@ object Constants {
 
             const val TOOLBAR_TITLE_FORMAT = "%d selected"
             const val TOOLBAR_BUTTON_UNINSTALL = "Uninstall"
+            const val TOOLBAR_BUTTON_REINSTALL = "Reinstall"
             const val TOOLBAR_BUTTON_CLEAR = "Clear"
 
             const val DIALOG_TITLE_UNINSTALL_MULTIPLE = "Uninstall %d Selected Apps?"
@@ -72,8 +74,17 @@ object Constants {
             const val PROGRESS_DIALOG_TITLE = "Uninstalling Packages"
             const val PROGRESS_MESSAGE_FORMAT = "Uninstalling %d of %d..."
 
+            const val DIALOG_TITLE_REINSTALL_RESULTS = "Reinstall Results"
+            const val DIALOG_MESSAGE_REINSTALL_SUCCESS_FORMAT = "✓ Successfully reinstalled: %d"
+            const val DIALOG_MESSAGE_REINSTALL_FAILED_FORMAT = "✗ Failed to reinstall: %d"
+
+            const val PROGRESS_DIALOG_TITLE_REINSTALL = "Reinstalling Packages"
+            const val PROGRESS_MESSAGE_FORMAT_REINSTALL = "Reinstalling %d of %d..."
+
             const val CHECKBOX_CONTENT_DESCRIPTION = "Select package"
         }
+
+        const val EMPTY_STATE_NO_UNINSTALLED = "No uninstalled system apps"
     }
     
     object Settings {

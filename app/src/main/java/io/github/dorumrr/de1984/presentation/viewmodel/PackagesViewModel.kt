@@ -101,9 +101,10 @@ class PackagesViewModel(
     }
     
     fun setPackageTypeFilter(packageType: String) {
-        val newFilterState = PackageFilterState(
-            packageType = packageType,
-            packageState = null
+        val currentFilterState = _uiState.value.filterState
+        val newFilterState = currentFilterState.copy(
+            packageType = packageType
+            // Preserve packageState when switching type filters
         )
         pendingFilterState = newFilterState
         loadPackages()
@@ -267,7 +268,7 @@ class PackagesViewModel(
 }
 
 data class PackageFilterState(
-    val packageType: String = "User",
+    val packageType: String = "All",
     val packageState: String? = null
 )
 

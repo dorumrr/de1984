@@ -56,7 +56,7 @@ enum class NetworkAccessState {
 }
 
 data class FirewallFilterState(
-    val packageType: String = "User",
+    val packageType: String = "All",
     val networkState: String? = null,  // "Allowed" or "Blocked" only
-    val internetOnly: Boolean = false   // Independent permission filter
+    val internetOnly: Boolean = true   // Independent permission filter
 )

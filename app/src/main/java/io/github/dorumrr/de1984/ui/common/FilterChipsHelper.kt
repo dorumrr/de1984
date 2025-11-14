@@ -113,6 +113,22 @@ object FilterChipsHelper {
             chipGroup.addView(chip)
         }
 
+        // Add permission filters BEFORE state filters (independent toggle - can be combined with other filters)
+        permissionFilters.forEach { filter ->
+            val chip = createFilterChip(chipGroup, filter, selectedPermissionFilter)
+            chip.tag = "permission:$filter" // Tag to identify chip type
+            chip.setOnCheckedChangeListener { _, isChecked ->
+                // Skip if this is a programmatic update
+                if (isUpdatingProgrammatically) {
+                    return@setOnCheckedChangeListener
+                }
+
+                // Permission chips are independent - just notify the callback
+                onPermissionFilterSelected(isChecked)
+            }
+            chipGroup.addView(chip)
+        }
+
         // Add state filters (single selection with optional deselection)
         stateFilters.forEach { filter ->
             val chip = createFilterChip(chipGroup, filter, filter == selectedStateFilter)
@@ -145,22 +161,6 @@ object FilterChipsHelper {
                     // Allow unchecking state chips (optional filter)
                     onStateFilterSelected(null)
                 }
-            }
-            chipGroup.addView(chip)
-        }
-
-        // Add permission filters (independent toggle - can be combined with other filters)
-        permissionFilters.forEach { filter ->
-            val chip = createFilterChip(chipGroup, filter, selectedPermissionFilter)
-            chip.tag = "permission:$filter" // Tag to identify chip type
-            chip.setOnCheckedChangeListener { _, isChecked ->
-                // Skip if this is a programmatic update
-                if (isUpdatingProgrammatically) {
-                    return@setOnCheckedChangeListener
-                }
-
-                // Permission chips are independent - just notify the callback
-                onPermissionFilterSelected(isChecked)
             }
             chipGroup.addView(chip)
         }

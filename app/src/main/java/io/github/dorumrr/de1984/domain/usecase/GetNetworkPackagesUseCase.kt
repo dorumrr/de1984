@@ -42,11 +42,12 @@ class GetNetworkPackagesUseCase constructor(
     }
 
     fun getFilteredByState(filterState: FirewallFilterState): Flow<List<NetworkPackage>> {
-        // Step 1: Apply package type filter (User or System)
+        // Step 1: Apply package type filter (All, User, or System)
         val baseFlow = when (filterState.packageType.lowercase()) {
             "user" -> getByType(PackageType.USER)
             "system" -> getByType(PackageType.SYSTEM)
-            else -> getByType(PackageType.USER)
+            "all" -> invoke()  // Return all packages
+            else -> invoke()   // Default to all packages
         }
 
         // Step 2: Apply network state filter (Allowed or Blocked) if selected

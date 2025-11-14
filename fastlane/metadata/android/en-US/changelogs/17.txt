@@ -1,0 +1,6 @@
+• Added "All" filter option (alongside User/System)
+• Filters now preserved when switching between All/User/System
+• Firewall defaults to "All" + "Internet"
+• Packages defaults to "All" with no state filter
+• Reordered chips: All, User, System | Internet | Allowed, Blocked
+• Clear icon appears only when text is entered

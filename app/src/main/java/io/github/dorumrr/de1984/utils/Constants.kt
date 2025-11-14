@@ -38,11 +38,12 @@ object Constants {
     object Packages {
         const val TYPE_SYSTEM = "system"
         const val TYPE_USER = "user"
+        const val TYPE_ALL = "all"
 
         const val STATE_ENABLED = "Enabled"
         const val STATE_DISABLED = "Disabled"
 
-        val PACKAGE_TYPE_FILTERS = listOf("User", "System")
+        val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled")
 
         const val ANDROID_PACKAGE_PREFIX = "com.android"
@@ -157,11 +158,11 @@ object Constants {
     object Firewall {
         const val STATE_BLOCKED = "Blocked"
         const val STATE_ALLOWED = "Allowed"
-        const val STATE_INTERNET_ONLY = "Internet Only"
+        const val STATE_INTERNET = "Internet"
 
-        val PACKAGE_TYPE_FILTERS = listOf("User", "System")
+        val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val NETWORK_STATE_FILTERS = listOf("Allowed", "Blocked")
-        val PERMISSION_FILTERS = listOf("Internet Only")
+        val PERMISSION_FILTERS = listOf("Internet")
 
         val NETWORK_PERMISSIONS = listOf(
             "android.permission.INTERNET",

@@ -30,7 +30,8 @@ class GetPackagesUseCase constructor(
         val baseFlow = when (filterState.packageType.lowercase()) {
             Constants.Packages.TYPE_USER -> getByType(PackageType.USER)
             Constants.Packages.TYPE_SYSTEM -> getByType(PackageType.SYSTEM)
-            else -> getByType(PackageType.USER)
+            Constants.Packages.TYPE_ALL -> invoke()  // Return all packages
+            else -> invoke()   // Default to all packages
         }
 
         return if (filterState.packageState != null) {

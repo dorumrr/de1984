@@ -140,10 +140,10 @@ class FirewallViewModel(
     }
     
     fun setPackageTypeFilter(packageType: String) {
-        val newFilterState = FirewallFilterState(
-            packageType = packageType,
-            networkState = null,
-            internetOnly = false  // Reset Internet Only when switching User/System
+        val currentFilterState = _uiState.value.filterState
+        val newFilterState = currentFilterState.copy(
+            packageType = packageType
+            // Preserve networkState and internetOnly when switching type filters
         )
         // Store filter in pending state - DO NOT update StateFlow yet
         pendingFilterState = newFilterState

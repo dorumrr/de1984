@@ -199,7 +199,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         val packageStateFilters = Constants.Packages.PACKAGE_STATE_FILTERS
 
         // Initial setup - only called once
-        currentTypeFilter = "User"
+        currentTypeFilter = "All"
         currentStateFilter = null
 
         FilterChipsHelper.setupMultiSelectFilterChips(
@@ -233,10 +233,22 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun setupSearchBox() {
+        // Initially hide clear icon
+        binding.searchLayout.isEndIconVisible = false
+
         // Text change listener for real-time search
         binding.searchInput.addTextChangedListener { text ->
             val query = text?.toString() ?: ""
             viewModel.setSearchQuery(query)
+
+            // Show/hide clear icon based on text length
+            binding.searchLayout.isEndIconVisible = query.isNotEmpty()
+        }
+
+        // Clear icon click listener
+        binding.searchLayout.setEndIconOnClickListener {
+            binding.searchInput.text?.clear()
+            binding.searchLayout.isEndIconVisible = false
         }
 
         // Handle keyboard "Search" or "Done" button

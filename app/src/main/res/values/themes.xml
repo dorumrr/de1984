@@ -35,6 +35,8 @@
         <item name="android:paddingTop">0dp</item>
         <item name="android:paddingBottom">0dp</item>
         <item name="suffixTextAppearance">@style/TextAppearance.De1984.SuffixText</item>
+        <!-- Disable border color change on focus - keep same color as unfocused -->
+        <item name="boxStrokeColor">@color/search_box_stroke</item>
     </style>
 
     <!-- Text appearance for suffix text in search boxes -->

@@ -60,6 +60,15 @@ class FirewallVpnService : VpnService() {
     private var lastAppliedNetworkType: NetworkType = NetworkType.NONE
     private var lastAppliedScreenState: Boolean = true
 
+    // Track blocked count to distinguish zero-app optimization from failures
+    private var lastBlockedCount: Int = 0
+
+    // Track consecutive VPN interface failures for notification debouncing
+    private var consecutiveFailures: Int = 0
+
+    // Track retry attempts for exponential backoff
+    private var retryAttempt: Int = 0
+
     private val rulesChangedReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
             if (intent?.action == "io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED") {
@@ -147,9 +156,29 @@ class FirewallVpnService : VpnService() {
     }
 
     override fun onRevoke() {
-        // Called when VPN permission is revoked (e.g., user starts another VPN app)
+        // Called when VPN permission is revoked
+        // This can happen for multiple reasons:
+        // 1. User starts another VPN app (should NOT auto-restart)
+        // 2. Airplane mode enabled (SHOULD auto-restart when network restored)
+        // 3. Network temporarily unavailable (SHOULD auto-restart)
+
         Log.w(TAG, "VPN permission revoked by system")
-        wasExplicitlyStopped = true
+
+        // Check if another VPN is active
+        // VpnService.prepare() returns:
+        // - null: VPN permission still granted (no other VPN active) → likely airplane mode
+        // - Intent: VPN permission NOT granted (another VPN active) → user chose different VPN
+        val prepareIntent = VpnService.prepare(this@FirewallVpnService)
+        if (prepareIntent != null) {
+            // Permission NOT granted - another VPN is active
+            Log.w(TAG, "Another VPN app is active - will not auto-restart")
+            wasExplicitlyStopped = true
+        } else {
+            // Permission still granted - likely airplane mode or network issue
+            Log.w(TAG, "VPN permission still available - will allow auto-restart when network restored")
+            wasExplicitlyStopped = false
+        }
+
         stopVpn()
         stopSelf()
         super.onRevoke()
@@ -196,6 +225,12 @@ class FirewallVpnService : VpnService() {
 
         isServiceActive = true
 
+        // Reset retry counters on fresh start
+        // This ensures that if user manually restarts firewall, retry starts from 1s instead of 30s
+        consecutiveFailures = 0
+        retryAttempt = 0
+        Log.d(TAG, "Reset retry counters: consecutiveFailures=0, retryAttempt=0")
+
         // Update SharedPreferences to indicate VPN service is running
         // IMPORTANT: Use commit() instead of apply() to ensure synchronous write
         // FirewallManager checks isActive() shortly after starting the service
@@ -203,11 +238,11 @@ class FirewallVpnService : VpnService() {
             io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
             Context.MODE_PRIVATE
         )
-        prefs.edit().putBoolean(
-            io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
-            true
-        ).commit()
-        Log.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=true")
+        prefs.edit()
+            .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING, true)
+            .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE, false)  // Will be set to true when interface established
+            .commit()
+        Log.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=true, VPN_INTERFACE_ACTIVE=false (pending)")
 
         vpnSetupJob = serviceScope.launch {
             try {
@@ -226,10 +261,32 @@ class FirewallVpnService : VpnService() {
                 }
 
                 if (vpnInterface == null) {
-                    Log.w(TAG, "VPN interface is null - no apps to block or permission denied")
+                    // Distinguish between zero-app optimization and failure
+                    if (lastBlockedCount > 0) {
+                        // This is a FAILURE - we expected VPN but establish() returned null
+                        Log.e(TAG, "startVpn: VPN interface FAILED (blockedCount=$lastBlockedCount)")
+                        handleVpnInterfaceFailure()
+                    } else {
+                        // This is zero-app optimization - expected behavior
+                        Log.w(TAG, "VPN interface is null - no apps to block (zero-app optimization)")
+                        consecutiveFailures = 0
+                        retryAttempt = 0
+
+                        // IMPORTANT: Set KEY_VPN_INTERFACE_ACTIVE = true even for zero-app optimization
+                        // This ensures isActive() returns true (firewall IS active, just not blocking anything)
+                        prefs.edit().putBoolean(
+                            io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
+                            true
+                        ).commit()
+                        Log.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
+                    }
                     lastAppliedBlockedApps = emptySet()
                 } else {
                     Log.d(TAG, "VPN interface established successfully")
+
+                    // Track successful VPN establishment
+                    onVpnInterfaceSuccess()
+
                     startPacketDropping()
 
                     lastAppliedBlockedApps = getBlockedAppsForCurrentState()
@@ -282,13 +339,41 @@ class FirewallVpnService : VpnService() {
                     }
 
                     if (newVpnInterface == null) {
-                        Log.e(TAG, "restartVpn: buildVpnInterface() returned NULL - VPN is DOWN!")
+                        // Close old interface to prevent resource leak
+                        oldVpnInterface?.close()
+                        vpnInterface = null
+
+                        // Distinguish between zero-app optimization and failure
+                        if (lastBlockedCount > 0) {
+                            // This is a FAILURE - we expected VPN but establish() returned null
+                            Log.e(TAG, "restartVpn: VPN interface FAILED (blockedCount=$lastBlockedCount)")
+                            handleVpnInterfaceFailure()
+                        } else {
+                            // This is zero-app optimization - expected behavior
+                            Log.d(TAG, "restartVpn: No apps to block (zero-app optimization)")
+                            consecutiveFailures = 0
+                            retryAttempt = 0
+
+                            // IMPORTANT: Set KEY_VPN_INTERFACE_ACTIVE = true even for zero-app optimization
+                            val prefs = getSharedPreferences(
+                                io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
+                                Context.MODE_PRIVATE
+                            )
+                            prefs.edit().putBoolean(
+                                io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
+                                true
+                            ).commit()
+                            Log.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
+                        }
+
                         lastAppliedBlockedApps = emptySet()
                     } else {
                         // Close old VPN AFTER new one is established
-                        // This prevents the system from thinking the service is stopping
                         oldVpnInterface?.close()
                         vpnInterface = newVpnInterface
+
+                        // Track successful VPN establishment
+                        onVpnInterfaceSuccess()
 
                         Log.d(TAG, "restartVpn: VPN interface established, starting packet dropping")
                         startPacketDropping()
@@ -306,6 +391,89 @@ class FirewallVpnService : VpnService() {
                 }
             }
         }
+    }
+
+    private fun handleVpnInterfaceFailure() {
+        consecutiveFailures++
+
+        Log.e(TAG, "handleVpnInterfaceFailure: consecutiveFailures=$consecutiveFailures")
+
+        // Update SharedPreferences to indicate VPN interface is down
+        val prefs = getSharedPreferences(
+            io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        prefs.edit().putBoolean(
+            io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
+            false
+        ).commit()
+
+        // Show notification after 2 consecutive failures (debouncing)
+        if (consecutiveFailures >= 2) {
+            showVpnFailureNotification()
+        }
+
+        // Schedule retry with exponential backoff
+        scheduleVpnRetry()
+    }
+
+    private fun scheduleVpnRetry() {
+        serviceScope.launch {
+            val delay = when (retryAttempt) {
+                0 -> 1000L      // 1 second
+                1 -> 2000L      // 2 seconds
+                2 -> 5000L      // 5 seconds
+                else -> 30000L  // 30 seconds (steady state)
+            }
+
+            retryAttempt++
+            Log.d(TAG, "scheduleVpnRetry: attempt=$retryAttempt, delay=${delay}ms")
+
+            delay(delay)
+
+            if (isServiceActive) {
+                Log.d(TAG, "scheduleVpnRetry: Attempting VPN restart...")
+                restartVpn()
+            }
+        }
+    }
+
+    private fun onVpnInterfaceSuccess() {
+        // Reset failure tracking
+        consecutiveFailures = 0
+        retryAttempt = 0
+
+        // Update SharedPreferences
+        val prefs = getSharedPreferences(
+            io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        prefs.edit().putBoolean(
+            io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
+            true
+        ).commit()
+
+        // Dismiss failure notification
+        dismissVpnFailureNotification()
+    }
+
+    private fun showVpnFailureNotification() {
+        val notification = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Firewall VPN Failed")
+            .setContentText("VPN interface failed. Retrying automatically...")
+            .setSmallIcon(R.drawable.ic_notification_de1984)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(false)
+            .setAutoCancel(false)
+            .build()
+
+        val notificationManager = getSystemService(android.app.NotificationManager::class.java)
+        notificationManager.notify(NOTIFICATION_ID + 1, notification)
+    }
+
+    private fun dismissVpnFailureNotification() {
+        val notificationManager = getSystemService(android.app.NotificationManager::class.java)
+        notificationManager.cancel(NOTIFICATION_ID + 1)
     }
 
     private suspend fun shouldRestartVpn(): Boolean {
@@ -405,7 +573,7 @@ class FirewallVpnService : VpnService() {
                 .setBlocking(false)
 
             val blockedCount = applyFirewallRules(builder)
-
+            lastBlockedCount = blockedCount  // Track for failure detection
             Log.d(TAG, "buildVpnInterface: blockedCount=$blockedCount")
 
             // If blockedCount is -1, it means no apps need to be blocked
@@ -575,10 +743,16 @@ class FirewallVpnService : VpnService() {
             io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
             Context.MODE_PRIVATE
         )
-        prefs.edit().putBoolean(
-            io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
-            false
-        ).commit()
+        prefs.edit()
+            .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING, false)
+            .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE, false)
+            .commit()
+        Log.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=false, VPN_INTERFACE_ACTIVE=false")
+
+        // Dismiss failure notification if it's showing
+        // This prevents notification from persisting after manual stop
+        dismissVpnFailureNotification()
+        Log.d(TAG, "Dismissed VPN failure notification (if any)")
 
         vpnSetupJob?.cancel()
         vpnSetupJob = null

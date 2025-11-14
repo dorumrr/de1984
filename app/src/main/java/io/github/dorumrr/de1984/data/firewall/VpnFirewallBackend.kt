@@ -111,56 +111,52 @@ class VpnFirewallBackend(
     }
     
     override fun isActive(): Boolean {
-        // Check if OUR VPN service is running by checking SharedPreferences flag
-        // (FirewallVpnService updates this when starting/stopping)
-        //
-        // IMPORTANT: We only check if the service is running, NOT if VPN connection is active.
-        // This is because of zero-app optimization (FIREWALL.md line 115):
-        // When zero apps need blocking, VPN interface is not established, but the service
-        // is still running and monitoring for changes. In this case, firewall IS active
-        // (it's just not blocking anything because there's nothing to block).
         return try {
             val prefs = context.getSharedPreferences(
                 io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
                 Context.MODE_PRIVATE
             )
-            val isRunningInPrefs = prefs.getBoolean(
+
+            // Check if service is running
+            val isServiceRunning = prefs.getBoolean(
                 io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
                 false
             )
 
-            // If SharedPreferences says service is not running, it's definitely not active
-            if (!isRunningInPrefs) {
+            if (!isServiceRunning) {
                 return false
             }
 
-            // SharedPreferences says service is running, but verify the service is actually alive
-            // This is important after app reinstall (e.g., dev.sh update) where SharedPreferences
-            // persist but the service process is killed
+            // Check if VPN interface is active
+            val isInterfaceActive = prefs.getBoolean(
+                io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
+                false
+            )
+
+            // Verify service is actually alive
             val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
             if (activityManager != null) {
                 @Suppress("DEPRECATION")
                 val runningServices = activityManager.getRunningServices(Integer.MAX_VALUE)
                 val serviceClassName = "io.github.dorumrr.de1984.data.service.FirewallVpnService"
-                val isServiceRunning = runningServices.any { service ->
+                val isServiceActuallyRunning = runningServices.any { service ->
                     service.service.className == serviceClassName
                 }
 
-                // If service is not actually running, clear the SharedPreferences flag
-                if (!isServiceRunning) {
-                    Log.w(TAG, "SharedPreferences says VPN service is running, but service is not actually running. Clearing flag.")
-                    prefs.edit().putBoolean(
-                        io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING,
-                        false
-                    ).apply()
+                if (!isServiceActuallyRunning) {
+                    Log.w(TAG, "Service not actually running. Clearing flags.")
+                    prefs.edit()
+                        .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING, false)
+                        .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE, false)
+                        .apply()
                     return false
                 }
 
-                return true
+                return isInterfaceActive
             }
 
-            // Fallback: if we can't check running services, trust SharedPreferences
-            return isRunningInPrefs
+            // Fallback: trust SharedPreferences
+            return isServiceRunning && isInterfaceActive
         } catch (e: Exception) {
             Log.e(TAG, "Failed to check if VPN is active", e)
             false

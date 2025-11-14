@@ -587,13 +587,6 @@ class FirewallManager(
         val backend = currentBackend ?: return
         val backendType = backend.getType()
 
-        // Only monitor privileged backends (iptables, ConnectivityManager)
-        // VPN backend doesn't need health monitoring (always available)
-        if (backendType == FirewallBackendType.VPN) {
-            Log.d(TAG, "VPN backend doesn't need health monitoring")
-            return
-        }
-
         Log.d(TAG, "Starting backend health monitoring for $backendType (every ${BACKEND_HEALTH_CHECK_INTERVAL_MS}ms)")
 
         healthMonitoringJob?.cancel()

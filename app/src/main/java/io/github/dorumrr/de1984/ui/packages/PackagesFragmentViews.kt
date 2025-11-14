@@ -125,6 +125,16 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         setupRecyclerView()
         setupFilterChips()
         setupSearchBox()
+
+        // Sync search query with EditText after restoration
+        // Fix: EditText state is restored by Android before TextWatcher is attached,
+        // so TextWatcher doesn't fire for restored text. Manually sync ViewModel.
+        val currentSearchText = binding.searchInput.text?.toString() ?: ""
+        if (currentSearchText.isNotEmpty()) {
+            viewModel.setSearchQuery(currentSearchText)
+            binding.searchLayout.isEndIconVisible = true
+        }
+
         setupPermissionDialog()
         observeUiState()
         observeSettings()
@@ -183,6 +193,10 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
+
+        // Reset last submitted packages when creating new adapter
+        // This ensures the new adapter gets populated even if the list hasn't changed
+        lastSubmittedPackages = emptyList()
 
         binding.packagesRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())

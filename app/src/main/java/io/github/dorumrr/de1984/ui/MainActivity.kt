@@ -140,6 +140,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        // Re-check privileges when app comes to foreground
+        // This ensures we detect newly available Shizuku/root and request permissions
+        // The managers' hasCheckedOnce optimization prevents redundant checks when we already have permission
+        lifecycleScope.launch {
+            val deps = (application as De1984Application).dependencies
+
+            // Check Shizuku first (preferred method)
+            deps.shizukuManager.checkShizukuStatus()
+
+            // If Shizuku is available but permission not granted, request it
+            if (deps.shizukuManager.isShizukuAvailable() && !deps.shizukuManager.hasShizukuPermission) {
+                deps.shizukuManager.requestShizukuPermission()
+            }
+
+            // Also check root as fallback
+            deps.rootManager.checkRootStatus()
+        }
+    }
+
     private fun requestNotificationPermission() {
         val permissions = permissionManager.getRuntimePermissions()
         if (permissions.isNotEmpty()) {

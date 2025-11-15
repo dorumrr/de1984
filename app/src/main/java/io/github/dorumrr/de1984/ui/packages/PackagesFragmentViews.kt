@@ -1026,6 +1026,13 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     // ========== MULTI-SELECT FUNCTIONALITY ==========
 
     private fun setupSelectionToolbar() {
+        // Set background color to match Material 3 theme (supports Dynamic Colors)
+        val primaryColor = com.google.android.material.color.MaterialColors.getColor(
+            binding.selectionToolbar,
+            com.google.android.material.R.attr.colorPrimaryContainer
+        )
+        binding.selectionToolbar.setBackgroundColor(primaryColor)
+
         binding.selectionToolbar.setNavigationOnClickListener {
             exitSelectionMode()
         }

@@ -114,6 +114,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     private var lastRootTestTime = 0L
 
+    // Flag to track if we've attached the dynamic colors switch listener
+    private var isDynamicColorsSwitchListenerAttached = false
+
     override fun getViewBinding(
         inflater: LayoutInflater,
         container: ViewGroup?
@@ -188,6 +191,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             viewModel.setShowAppIcons(isChecked)
         }
 
+        // Use dynamic colors switch
+        // Note: Don't attach listener here - it will be attached in updateUI() after the initial state is set
+        // This prevents the listener from firing when the switch state is restored from instance state
+
         // Allow critical package uninstall switch - listener is set in updateUI() to avoid triggering during initialization
 
         // Show firewall start prompt switch
@@ -253,8 +260,15 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 viewModel.uiState.collect { state ->
                     // Only update UI if fragment is visible (not hidden)
                     if (!isHidden) {
-                        Log.d(TAG, "observeUiState: Fragment is visible, updating UI")
+                        Log.d(TAG, "observeUiState: Fragment is visible, updating UI (requiresRestart=${state.requiresRestart})")
                         updateUI(state)
+
+                        // Show restart dialog if needed (only when user toggles the switch)
+                        if (state.requiresRestart) {
+                            Log.d(TAG, "observeUiState: Showing restart dialog")
+                            showRestartDialog()
+                            viewModel.clearRestartPrompt()
+                        }
                     } else {
                         Log.d(TAG, "observeUiState: Fragment is hidden, skipping UI update")
                     }
@@ -287,6 +301,24 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.showAppIconsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowAppIcons(isChecked)
         }
+
+        // Update dynamic colors switch state
+        // First time: set the state and attach the listener
+        // Subsequent times: temporarily remove listener, update state, re-attach listener
+        val wasListenerAttached = isDynamicColorsSwitchListenerAttached
+        if (wasListenerAttached) {
+            binding.useDynamicColorsSwitch.setOnCheckedChangeListener(null)
+        }
+
+        Log.d(TAG, "updateUI: Setting useDynamicColorsSwitch.isChecked = ${state.useDynamicColors}")
+        binding.useDynamicColorsSwitch.isChecked = state.useDynamicColors
+
+        // Attach listener (only if not already attached, or re-attach after removing)
+        binding.useDynamicColorsSwitch.setOnCheckedChangeListener { _, isChecked ->
+            Log.d(TAG, "updateUI: Dynamic colors switch toggled to $isChecked by user")
+            viewModel.setUseDynamicColors(isChecked, showRestartDialog = true)
+        }
+        isDynamicColorsSwitchListenerAttached = true
 
         binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener(null)
         Log.d(TAG, "updateUI: Setting allowCriticalUninstallSwitch.isChecked = ${state.allowCriticalPackageUninstall}")
@@ -1205,6 +1237,41 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 }
             }
         )
+    }
+
+    private fun showRestartDialog() {
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = "Restart Required",
+            message = "The app needs to restart to apply the new color theme. Restart now?",
+            confirmButtonText = "Restart",
+            onConfirm = {
+                Log.d(TAG, "showRestartDialog: User confirmed restart")
+                restartApp()
+            },
+            cancelButtonText = "Later",
+            onCancel = {
+                Log.d(TAG, "showRestartDialog: User cancelled restart")
+            }
+        )
+    }
+
+    private fun restartApp() {
+        try {
+            // To fully restart the app and trigger Application.onCreate() (which applies/removes dynamic colors),
+            // we need to kill the process and start a new one
+            val intent = requireActivity().packageManager.getLaunchIntentForPackage(requireActivity().packageName)
+            if (intent != null) {
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                startActivity(intent)
+                // Kill the current process to ensure a full restart
+                android.os.Process.killProcess(android.os.Process.myPid())
+            } else {
+                Log.e(TAG, "Failed to get launch intent for restart")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to restart app: ${e.message}")
+        }
     }
 }
 

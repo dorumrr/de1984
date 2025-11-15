@@ -9,7 +9,7 @@
         <!-- Navigation bar -->
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightNavigationBar">true</item>
-        
+
         <!-- Enable edge-to-edge -->
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:enforceNavigationBarContrast">false</item>
@@ -17,6 +17,14 @@
 
         <!-- Window background -->
         <item name="android:windowBackground">@color/white</item>
+
+        <!-- Material 3 color scheme - De1984 teal theme (used when Dynamic Colors are disabled) -->
+        <item name="colorPrimary">@color/lineage_teal</item>
+        <item name="colorOnPrimary">@color/text_white</item>
+        <item name="colorPrimaryContainer">@color/lineage_teal</item>
+        <item name="colorOnPrimaryContainer">@color/text_white</item>
+        <item name="colorSurface">@color/white</item>
+        <item name="colorOnSurface">@color/black</item>
     </style>
 </resources>
 

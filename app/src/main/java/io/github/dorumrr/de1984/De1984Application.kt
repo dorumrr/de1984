@@ -1,7 +1,10 @@
 package io.github.dorumrr.de1984
 
 import android.app.Application
+import android.content.Context
+import android.os.Build
 import android.util.Log
+import com.google.android.material.color.DynamicColors
 import io.github.dorumrr.de1984.data.firewall.ConnectivityManagerFirewallBackend
 import io.github.dorumrr.de1984.data.firewall.IptablesFirewallBackend
 import io.github.dorumrr.de1984.utils.Constants
@@ -21,6 +24,9 @@ class De1984Application : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Apply dynamic colors if enabled
+        applyDynamicColorsIfEnabled()
 
         // Initialize dependencies
         dependencies = De1984Dependencies.getInstance(this)
@@ -81,6 +87,37 @@ class De1984Application : Application() {
                 Log.w(TAG, "Failed to clean up orphaned firewall rules: ${e.message}")
                 // Ignore errors - this is best-effort cleanup
             }
+        }
+    }
+
+    /**
+     * Apply dynamic colors if enabled in settings.
+     * This must be called before any activities are created.
+     */
+    private fun applyDynamicColorsIfEnabled() {
+        try {
+            val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val useDynamicColors = prefs.getBoolean(
+                Constants.Settings.KEY_USE_DYNAMIC_COLORS,
+                Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS
+            )
+
+            Log.d(TAG, "applyDynamicColorsIfEnabled: useDynamicColors=$useDynamicColors, SDK=${Build.VERSION.SDK_INT}")
+
+            if (useDynamicColors) {
+                // Check if Dynamic Colors is available (Android 12+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    DynamicColors.applyToActivitiesIfAvailable(this)
+                    Log.d(TAG, "Dynamic colors enabled and applied (Android 12+)")
+                } else {
+                    Log.d(TAG, "Dynamic colors enabled but not available (Android < 12)")
+                }
+            } else {
+                Log.d(TAG, "Dynamic colors disabled by user")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to apply dynamic colors: ${e.message}", e)
+            // Ignore errors - dynamic colors are optional
         }
     }
 }

@@ -24,14 +24,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="64dp"
-            android:background="@color/lineage_teal"
+            android:background="?attr/colorPrimaryContainer"
             android:clipToPadding="false"
             android:contentInsetStart="0dp"
             android:contentInsetStartWithNavigation="0dp"
-            android:theme="@style/ThemeOverlay.Material3.Dark"
             app:contentInsetStart="0dp"
             app:contentInsetStartWithNavigation="0dp"
-            app:titleTextColor="@color/text_white">
+            app:titleTextColor="?attr/colorOnPrimaryContainer">
 
             <!-- Custom toolbar content -->
             <LinearLayout
@@ -64,7 +63,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="De1984"
-                        android:textColor="@color/text_white"
+                        android:textColor="?attr/colorOnPrimaryContainer"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -143,7 +142,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="FIREWALL"
-                    android:textColor="@color/text_white"
+                    android:textColor="?attr/colorOnPrimaryContainer"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 

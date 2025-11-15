@@ -1,2 +1,2 @@
-• Add "Uninstalled" filter with reinstall support in Packages tab
-• 
+• Added "Uninstalled" filter with reinstall support in Packages tab
+• Added Dynamic Color support and a toggle in Settings to enable or disable Dynamic Color 

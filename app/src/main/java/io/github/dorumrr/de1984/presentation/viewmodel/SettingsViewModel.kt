@@ -118,7 +118,8 @@ class SettingsViewModel(
                 newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS),
                 firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO,
                 allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
-                showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT)
+                showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT),
+                useDynamicColors = prefs.getBoolean(Constants.Settings.KEY_USE_DYNAMIC_COLORS, Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS)
             )
         }
     }
@@ -238,6 +239,15 @@ class SettingsViewModel(
     fun setShowFirewallStartPrompt(show: Boolean) {
         _uiState.value = _uiState.value.copy(showFirewallStartPrompt = show)
         saveSetting(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, show)
+    }
+
+    fun setUseDynamicColors(enabled: Boolean, showRestartDialog: Boolean = false) {
+        _uiState.value = _uiState.value.copy(useDynamicColors = enabled, requiresRestart = showRestartDialog)
+        saveSetting(Constants.Settings.KEY_USE_DYNAMIC_COLORS, enabled)
+    }
+
+    fun clearRestartPrompt() {
+        _uiState.value = _uiState.value.copy(requiresRestart = false)
     }
 
     fun setFirewallMode(mode: FirewallMode) {
@@ -520,8 +530,11 @@ data class SettingsUiState(
     val firewallMode: FirewallMode = FirewallMode.AUTO,
     val allowCriticalPackageUninstall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL,
     val showFirewallStartPrompt: Boolean = Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT,
+    val useDynamicColors: Boolean = Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS,
 
     val refreshInterval: Int = 30,
+
+    val requiresRestart: Boolean = false,
 
     val systemInfo: SystemInfo = SystemInfo(
         deviceModel = "Unknown",

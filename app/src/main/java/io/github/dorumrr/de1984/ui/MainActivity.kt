@@ -327,6 +327,61 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNavigation.post {
             customizeBottomNavSpacing()
         }
+
+        // Set icon colors based on dynamic colors setting
+        applyBottomNavigationColors()
+    }
+
+    private fun applyBottomNavigationColors() {
+        val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val useDynamicColors = prefs.getBoolean(
+            Constants.Settings.KEY_USE_DYNAMIC_COLORS,
+            Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS
+        )
+
+        if (useDynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Dynamic colors enabled - use colorOnPrimaryContainer from Material 3's dynamic theme
+            val typedValue = android.util.TypedValue()
+            theme.resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true)
+            val onPrimaryContainer = typedValue.data
+
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),  // Selected
+                intArrayOf()  // Unselected
+            )
+            val colors = intArrayOf(
+                onPrimaryContainer,  // Selected - full opacity
+                applyAlpha(onPrimaryContainer, 0.6f)  // Unselected - 60% opacity
+            )
+            val colorStateList = android.content.res.ColorStateList(states, colors)
+            binding.bottomNavigation.itemIconTintList = colorStateList
+            binding.bottomNavigation.itemTextColor = colorStateList
+        } else {
+            // Dynamic colors disabled - use white for teal background
+            val white = ContextCompat.getColor(this, R.color.text_white)
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),  // Selected
+                intArrayOf()  // Unselected
+            )
+            val colors = intArrayOf(
+                white,  // Selected - full opacity
+                applyAlpha(white, 0.6f)  // Unselected - 60% opacity
+            )
+            val colorStateList = android.content.res.ColorStateList(states, colors)
+            binding.bottomNavigation.itemIconTintList = colorStateList
+            binding.bottomNavigation.itemTextColor = colorStateList
+        }
+    }
+
+    /**
+     * Apply alpha (opacity) to a color
+     * @param color The original color
+     * @param alpha Alpha value from 0.0 (transparent) to 1.0 (opaque)
+     * @return Color with applied alpha
+     */
+    private fun applyAlpha(color: Int, alpha: Float): Int {
+        val alphaInt = (alpha * 255).toInt()
+        return (color and 0x00FFFFFF) or (alphaInt shl 24)
     }
 
     private fun customizeBottomNavSpacing() {

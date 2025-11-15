@@ -101,6 +101,7 @@ object Constants {
         const val KEY_FIREWALL_MODE = "firewall_mode"
         const val KEY_ALLOW_CRITICAL_UNINSTALL = "allow_critical_package_uninstall"
         const val KEY_SHOW_FIREWALL_START_PROMPT = "show_firewall_start_prompt"
+        const val KEY_USE_DYNAMIC_COLORS = "use_dynamic_colors"
 
         const val POLICY_BLOCK_ALL = "block_all"
         const val POLICY_ALLOW_ALL = "allow_all"
@@ -116,6 +117,7 @@ object Constants {
         const val DEFAULT_FIREWALL_MODE = MODE_AUTO
         const val DEFAULT_ALLOW_CRITICAL_UNINSTALL = false
         const val DEFAULT_SHOW_FIREWALL_START_PROMPT = true
+        const val DEFAULT_USE_DYNAMIC_COLORS = false
 
     }
 

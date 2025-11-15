@@ -29,6 +29,14 @@
 
         <!-- Window background -->
         <item name="android:windowBackground">@color/background_dark</item>
+
+        <!-- Material 3 color scheme - De1984 teal theme (used when Dynamic Colors are disabled) -->
+        <item name="colorPrimary">@color/lineage_teal</item>
+        <item name="colorOnPrimary">@color/text_white</item>
+        <item name="colorPrimaryContainer">@color/lineage_teal</item>
+        <item name="colorOnPrimaryContainer">@color/text_white</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        <item name="colorOnSurface">@color/text_white</item>
     </style>
 </resources>
 

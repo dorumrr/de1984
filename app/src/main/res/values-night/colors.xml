@@ -6,10 +6,6 @@
     <color name="white">#2C2C2C</color> <!-- Dark gray background for dark mode -->
     <color name="background_dark">#2C2C2C</color> <!-- Dark gray background -->
 
-    <!-- Bottom Navigation Colors (Dark Mode) -->
-    <color name="bottom_nav_selected_background">#424242</color> <!-- Dark gray pill for selected item -->
-    <color name="bottom_nav_indicator">#FFFFFF</color> <!-- White indicator line in dark mode -->
-
     <!-- Chip Colors (Dark Mode) -->
     <color name="chip_background_unchecked">#00FFFFFF</color> <!-- Transparent background for unselected chips -->
     <color name="chip_text_unchecked">#B0BEC5</color> <!-- Light gray text for unselected chips -->

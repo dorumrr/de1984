@@ -106,12 +106,23 @@ class RootManager(private val context: Context) {
 
             if (completed == null) {
                 Log.d(TAG, "Root check timed out - ROOTED_NO_PERMISSION")
+                // Drain streams before destroying (best practice)
+                try {
+                    process.inputStream.bufferedReader().use { it.readText() }
+                    process.errorStream.bufferedReader().use { it.readText() }
+                } catch (e: Exception) {
+                    // Ignore stream read errors on timeout
+                }
                 process.destroy()
                 return@withContext RootStatus.ROOTED_NO_PERMISSION
             }
 
             if (completed == 0) {
-                val output = process.inputStream.bufferedReader().readText().trim()
+                // Read both streams to prevent blocking
+                val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+                process.errorStream.bufferedReader().use { it.readText() } // Drain error stream
+                process.destroy()
+
                 val hasPermission = output.contains("uid=0")
                 Log.d(TAG, "Root check exit code 0, output: $output, hasPermission: $hasPermission")
                 return@withContext if (hasPermission) {
@@ -121,6 +132,10 @@ class RootManager(private val context: Context) {
                 }
             } else {
                 Log.d(TAG, "Root check failed with exit code: $completed - ROOTED_NO_PERMISSION")
+                // Drain streams before destroying
+                process.inputStream.bufferedReader().use { it.readText() }
+                process.errorStream.bufferedReader().use { it.readText() }
+                process.destroy()
                 return@withContext RootStatus.ROOTED_NO_PERMISSION
             }
         } catch (e: Exception) {
@@ -134,12 +149,23 @@ class RootManager(private val context: Context) {
         if (!hasRootPermission) {
             return@withContext Pair(-1, "No root permission")
         }
-        
+
         try {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+
+            // Read both output and error streams to prevent blocking
+            // If error stream is not read, the process can block when stderr buffer fills up
+            val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+            val error = process.errorStream.bufferedReader().use { it.readText().trim() }
+
             val exitCode = process.waitFor()
-            val output = process.inputStream.bufferedReader().readText().trim()
-            Pair(exitCode, output)
+
+            // Explicitly destroy process to ensure cleanup
+            process.destroy()
+
+            // Return stdout if available, otherwise stderr
+            val result = if (output.isNotEmpty()) output else error
+            Pair(exitCode, result)
         } catch (e: Exception) {
             Pair(-1, e.message ?: "Unknown error")
         }

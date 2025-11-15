@@ -55,6 +55,10 @@ class ConnectivityManagerFirewallBackend(
 
     private val mutex = Mutex()
 
+    // Track applied policies to avoid redundant shell commands (memory leak fix)
+    // Maps packageName -> isBlocked
+    private val appliedPolicies = mutableMapOf<String, Boolean>()
+
     /**
      * Start the firewall by starting the PrivilegedFirewallService.
      * The service will call startInternal() to actually enable the firewall chain.
@@ -139,6 +143,10 @@ class ConnectivityManagerFirewallBackend(
                 // Don't fail on stop - just log the warning
             }
 
+            // Clear applied policies cache when stopping firewall
+            appliedPolicies.clear()
+            Log.d(TAG, "Cleared applied policies cache")
+
             Log.d(TAG, "Firewall chain disabled")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -168,6 +176,7 @@ class ConnectivityManagerFirewallBackend(
 
             var appliedCount = 0
             var errorCount = 0
+            var skippedCount = 0
 
             // Create a map of rules by package name for quick lookup
             val rulesByPackage = rules.filter { it.enabled }.associateBy { it.packageName }
@@ -191,55 +200,58 @@ class ConnectivityManagerFirewallBackend(
 
             Log.d(TAG, "Found ${allPackages.size} packages with network permissions")
 
-            // Apply rules to all packages
+            // Calculate desired policies for all packages
+            val desiredPolicies = mutableMapOf<String, Boolean>()  // packageName -> shouldBlock
+
+            // First pass: Calculate what the policy should be for each package
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
 
-                // Never block system-critical packages
+                // Never block system-critical packages - always allow
                 if (Constants.Firewall.isSystemCritical(packageName)) {
+                    desiredPolicies[packageName] = false  // false = allow
                     return@forEach
                 }
 
                 // Never block VPN apps to prevent VPN reconnection issues
                 if (hasVpnService(packageName)) {
-                    // Explicitly allow VPN apps (clear any old blocking rules)
-                    try {
-                        val (exitCode, output) = shizukuManager.executeShellCommand(
-                            "cmd connectivity set-package-networking-enabled true $packageName"
-                        )
-                        if (exitCode == 0) {
-                            appliedCount++
-                            Log.d(TAG, "VPN app $packageName explicitly allowed")
-                        } else {
-                            errorCount++
-                            Log.e(TAG, "Failed to allow VPN app $packageName: $output")
-                        }
-                    } catch (e: Exception) {
-                        errorCount++
-                        Log.e(TAG, "Failed to allow VPN app $packageName", e)
+                    desiredPolicies[packageName] = false  // false = allow
+                    return@forEach
+                }
+
+                val rule = rulesByPackage[packageName]
+
+                val shouldBlock = if (rule != null) {
+                    // Has explicit rule - use it
+                    // Per FIREWALL.md lines 220-230: ConnectivityManager is all-or-nothing
+                    when {
+                        !screenOn && rule.blockWhenScreenOff -> true
+                        rule.isBlockedOn(networkType) -> true
+                        else -> false
                     }
+                } else {
+                    // No rule - apply default policy
+                    // Per FIREWALL.md lines 220-230:
+                    // - Block All mode: Apps without rules are blocked on all networks
+                    // - Allow All mode: Apps without rules are allowed on all networks
+                    isBlockAllDefault
+                }
+
+                desiredPolicies[packageName] = shouldBlock
+            }
+
+            // Second pass: Only apply changes for packages whose policy changed
+            // This drastically reduces shell command execution (memory leak fix)
+            desiredPolicies.forEach { (packageName, shouldBlock) ->
+                val currentPolicy = appliedPolicies[packageName]
+
+                // Skip if policy hasn't changed
+                if (currentPolicy == shouldBlock) {
+                    skippedCount++
                     return@forEach
                 }
 
                 try {
-                    val rule = rulesByPackage[packageName]
-
-                    val shouldBlock = if (rule != null) {
-                        // Has explicit rule - use it
-                        // Per FIREWALL.md lines 220-230: ConnectivityManager is all-or-nothing
-                        when {
-                            !screenOn && rule.blockWhenScreenOff -> true
-                            rule.isBlockedOn(networkType) -> true
-                            else -> false
-                        }
-                    } else {
-                        // No rule - apply default policy
-                        // Per FIREWALL.md lines 220-230:
-                        // - Block All mode: Apps without rules are blocked on all networks
-                        // - Allow All mode: Apps without rules are allowed on all networks
-                        isBlockAllDefault
-                    }
-
                     // Set package networking enabled/disabled using shell command
                     val enabled = !shouldBlock  // true = allow, false = block
                     val (exitCode, output) = shizukuManager.executeShellCommand(
@@ -248,6 +260,8 @@ class ConnectivityManagerFirewallBackend(
 
                     if (exitCode == 0) {
                         appliedCount++
+                        appliedPolicies[packageName] = shouldBlock  // Track applied policy
+                        val rule = rulesByPackage[packageName]
                         val ruleStatus = if (rule != null) "has rule" else "no rule (default policy)"
                         Log.d(TAG, "Applied policy for $packageName ($ruleStatus): " +
                                 "policy=${if (shouldBlock) "BLOCK (all networks)" else "ALLOW"}")
@@ -261,7 +275,7 @@ class ConnectivityManagerFirewallBackend(
                 }
             }
 
-            Log.d(TAG, "✅ Applied $appliedCount policies, $errorCount errors")
+            Log.d(TAG, "✅ Applied $appliedCount policies, skipped $skippedCount unchanged, $errorCount errors")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply rules", e)
@@ -347,6 +361,15 @@ class ConnectivityManagerFirewallBackend(
     }
 
     override fun supportsGranularControl(): Boolean = false  // All-or-nothing blocking
+
+    /**
+     * Clear the applied policies cache.
+     * This should be called when the default policy changes to force re-evaluation of all packages.
+     */
+    fun clearAppliedPoliciesCache() {
+        appliedPolicies.clear()
+        Log.d(TAG, "Cleared applied policies cache (forced)")
+    }
 
     /**
      * Check if an app has a VPN service by looking for services with BIND_VPN_SERVICE permission.

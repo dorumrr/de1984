@@ -1048,12 +1048,25 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             }
 
             if (completed == null) {
+                // Drain streams before destroying
+                try {
+                    process.inputStream.bufferedReader().use { it.readText() }
+                    process.errorStream.bufferedReader().use { it.readText() }
+                } catch (e: Exception) {
+                    // Ignore stream read errors on timeout
+                }
                 process.destroy()
                 "⏱️ Root Test Timeout\n\nThe root permission request timed out. This may happen if:\n• You didn't respond to the permission dialog\n• Your root manager is not responding\n\nPlease try again."
             } else if (completed == 0) {
-                val output = process.inputStream.bufferedReader().readText()
+                val output = process.inputStream.bufferedReader().use { it.readText() }
+                process.errorStream.bufferedReader().use { it.readText() } // Drain error stream
+                process.destroy()
                 "✅ Root Access Granted!\n\nYour device is rooted and De1984 has been granted superuser permission.\n\nOutput: $output"
             } else {
+                // Drain streams before destroying
+                process.inputStream.bufferedReader().use { it.readText() }
+                process.errorStream.bufferedReader().use { it.readText() }
+                process.destroy()
                 // Return a marker that we'll use to show the reusable dialog
                 "ROOT_ACCESS_DENIED"
             }

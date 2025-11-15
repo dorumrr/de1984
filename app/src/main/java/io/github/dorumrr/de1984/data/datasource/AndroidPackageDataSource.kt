@@ -294,7 +294,13 @@ class AndroidPackageDataSource(
                 }
 
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+
+                // Drain both streams to prevent blocking
+                process.inputStream.bufferedReader().use { it.readText() }
+                process.errorStream.bufferedReader().use { it.readText() }
+
                 val exitCode = process.waitFor()
+                process.destroy()
 
                 if (exitCode == 0) {
                     return@withContext true
@@ -317,7 +323,11 @@ class AndroidPackageDataSource(
                 } else {
                     try {
                         val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "pm list packages -u -s"))
-                        process.inputStream.bufferedReader().readText()
+                        val output = process.inputStream.bufferedReader().use { it.readText() }
+                        process.errorStream.bufferedReader().use { it.readText() } // Drain error stream
+                        process.waitFor()
+                        process.destroy()
+                        output
                     } catch (e: Exception) {
                         ""
                     }
@@ -330,7 +340,11 @@ class AndroidPackageDataSource(
                 } else {
                     try {
                         val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "pm list packages -s"))
-                        process.inputStream.bufferedReader().readText()
+                        val output = process.inputStream.bufferedReader().use { it.readText() }
+                        process.errorStream.bufferedReader().use { it.readText() } // Drain error stream
+                        process.waitFor()
+                        process.destroy()
+                        output
                     } catch (e: Exception) {
                         ""
                     }
@@ -416,7 +430,13 @@ class AndroidPackageDataSource(
             try {
                 val command = "pm uninstall --user 0 $packageName"
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+
+                // Drain both streams to prevent blocking
+                process.inputStream.bufferedReader().use { it.readText() }
+                process.errorStream.bufferedReader().use { it.readText() }
+
                 val exitCode = process.waitFor()
+                process.destroy()
 
                 if (exitCode == 0) {
                     return@withContext true
@@ -461,7 +481,13 @@ class AndroidPackageDataSource(
             try {
                 val command = "cmd package install-existing $packageName"
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+
+                // Drain both streams to prevent blocking
+                process.inputStream.bufferedReader().use { it.readText() }
+                process.errorStream.bufferedReader().use { it.readText() }
+
                 val exitCode = process.waitFor()
+                process.destroy()
 
                 if (exitCode == 0) {
                     return@withContext true
@@ -506,7 +532,13 @@ class AndroidPackageDataSource(
             try {
                 val command = "am force-stop $packageName"
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+
+                // Drain both streams to prevent blocking
+                process.inputStream.bufferedReader().use { it.readText() }
+                process.errorStream.bufferedReader().use { it.readText() }
+
                 val exitCode = process.waitFor()
+                process.destroy()
 
                 if (exitCode == 0) {
                     return@withContext true

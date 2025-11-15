@@ -59,6 +59,10 @@ class NetworkPolicyManagerFirewallBackend(
 
     private val mutex = Mutex()
 
+    // Track applied policies to avoid redundant reflection calls (memory leak fix)
+    // Maps UID -> isBlocked (boolean, not policy constant to avoid mismatch issues)
+    private val appliedPolicies = mutableMapOf<Int, Boolean>()
+
     // Track which policy constant works on this device
     private var blockingPolicy: Int = POLICY_REJECT_ALL  // Try POLICY_REJECT_ALL first
     private var policyTested: Boolean = false
@@ -152,6 +156,10 @@ class NetworkPolicyManagerFirewallBackend(
             // Note: We don't track which apps we modified, so we can't clean up perfectly
             // This is acceptable as the policies will be reapplied when firewall starts again
 
+            // Clear applied policies cache when stopping firewall
+            appliedPolicies.clear()
+            Log.d(TAG, "Cleared applied policies cache")
+
             Log.d(TAG, "Cleanup complete")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -221,9 +229,11 @@ class NetworkPolicyManagerFirewallBackend(
 
             Log.d(TAG, "Found ${allPackages.size} packages with network permissions")
 
-            // Apply rules to all packages
+            // First pass: Calculate desired policies for all UIDs
+            // This is done separately to enable differential application (memory leak fix)
+            val desiredPolicies = mutableMapOf<Int, Boolean>()  // uid -> shouldBlock
+
             allPackages.forEach { appInfo ->
-                val packageName = appInfo.packageName
                 val uid = appInfo.uid
 
                 // Never block UIDs that contain system-critical packages or VPN apps
@@ -232,27 +242,42 @@ class NetworkPolicyManagerFirewallBackend(
                     return@forEach
                 }
 
-                try {
-                    val rulesForUid = rulesByUid[uid]
+                val rulesForUid = rulesByUid[uid]
 
-                    val shouldBlock = if (rulesForUid != null && rulesForUid.isNotEmpty()) {
-                        // Has explicit rules - use them
-                        // For shared UIDs, block if ANY rule says to block (most restrictive)
-                        rulesForUid.any { rule ->
-                            when {
-                                !screenOn && rule.blockWhenScreenOff -> true
-                                rule.isBlockedOn(networkType) -> true
-                                else -> false
-                            }
+                val shouldBlock = if (rulesForUid != null && rulesForUid.isNotEmpty()) {
+                    // Has explicit rules - use them
+                    // For shared UIDs, block if ANY rule says to block (most restrictive)
+                    rulesForUid.any { rule ->
+                        when {
+                            !screenOn && rule.blockWhenScreenOff -> true
+                            rule.isBlockedOn(networkType) -> true
+                            else -> false
                         }
-                    } else {
-                        // No rule - apply default policy
-                        // Per FIREWALL.md lines 220-230:
-                        // - Block All mode: Apps without rules are blocked on all networks
-                        // - Allow All mode: Apps without rules are allowed on all networks
-                        isBlockAllDefault
                     }
+                } else {
+                    // No rule - apply default policy
+                    // Per FIREWALL.md lines 220-230:
+                    // - Block All mode: Apps without rules are blocked on all networks
+                    // - Allow All mode: Apps without rules are allowed on all networks
+                    isBlockAllDefault
+                }
 
+                desiredPolicies[uid] = shouldBlock
+            }
+
+            // Second pass: Only apply changes for UIDs whose policy changed
+            // This drastically reduces reflection calls (memory leak fix)
+            var skippedCount = 0
+            desiredPolicies.forEach { (uid, shouldBlock) ->
+                val currentPolicy = appliedPolicies[uid]
+
+                // Skip if policy hasn't changed
+                if (currentPolicy == shouldBlock) {
+                    skippedCount++
+                    return@forEach
+                }
+
+                try {
                     // Set policy
                     val policy = if (shouldBlock) {
                         blockingPolicy
@@ -261,6 +286,7 @@ class NetworkPolicyManagerFirewallBackend(
                     }
 
                     setUidPolicyMethod?.invoke(networkPolicyManager, uid, policy)
+                    appliedPolicies[uid] = shouldBlock  // Track applied policy
                     appliedCount++
 
                     val policyName = when (blockingPolicy) {
@@ -269,16 +295,22 @@ class NetworkPolicyManagerFirewallBackend(
                         else -> "UNKNOWN"
                     }
 
+                    val rulesForUid = rulesByUid[uid]
                     val ruleStatus = if (rulesForUid != null) "has rule" else "no rule (default policy)"
+
+                    // Find package name for logging (may be multiple packages with same UID)
+                    val packageName = allPackages.find { it.uid == uid }?.packageName ?: "UID $uid"
+
                     Log.d(TAG, "Applied policy for $packageName (UID $uid, $ruleStatus): " +
                             "policy=${if (shouldBlock) "BLOCK ($policyName)" else "ALLOW"}")
                 } catch (e: Exception) {
                     errorCount++
+                    val packageName = allPackages.find { it.uid == uid }?.packageName ?: "UID $uid"
                     Log.e(TAG, "Failed to apply policy for $packageName (UID $uid)", e)
                 }
             }
 
-            Log.d(TAG, "✅ Applied $appliedCount policies, $errorCount errors")
+            Log.d(TAG, "✅ Applied $appliedCount policies, skipped $skippedCount unchanged, $errorCount errors")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply rules", e)
@@ -510,6 +542,15 @@ class NetworkPolicyManagerFirewallBackend(
     }
 
     override fun supportsGranularControl(): Boolean = false  // Only Mobile/Roaming (WiFi doesn't work on stock Android)
+
+    /**
+     * Clear the applied policies cache.
+     * This should be called when the default policy changes to force re-evaluation of all packages.
+     */
+    fun clearAppliedPoliciesCache() {
+        appliedPolicies.clear()
+        Log.d(TAG, "Cleared applied policies cache (forced)")
+    }
 
     /**
      * Check if an app has a VPN service by looking for services with BIND_VPN_SERVICE permission.

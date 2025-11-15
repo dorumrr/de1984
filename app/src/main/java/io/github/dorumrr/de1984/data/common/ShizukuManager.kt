@@ -31,6 +31,22 @@ class ShizukuManager(private val context: Context) {
     private var hasCheckedOnce = false
     private var listenersRegistered = false
 
+    // Cache the reflection method to avoid repeated lookups
+    // This is accessed via Shizuku.newProcess() which is private, so we use reflection
+    private val newProcessMethod by lazy {
+        try {
+            Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to cache Shizuku.newProcess() method: ${e.message}")
+            null
+        }
+    }
+
     val hasShizukuPermission: Boolean
         get() = _shizukuStatus.value == ShizukuStatus.RUNNING_WITH_PERMISSION
 
@@ -249,18 +265,12 @@ class ShizukuManager(private val context: Context) {
         }
 
         try {
-
-            // Use reflection to access private Shizuku.newProcess() method
-            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            )
-            newProcessMethod.isAccessible = true
+            // Use cached reflection method to access private Shizuku.newProcess()
+            val method = newProcessMethod
+                ?: return@withContext Pair(-1, "Shizuku.newProcess() method not available")
 
             // Execute command using sh -c to handle complex commands
-            val process = newProcessMethod.invoke(
+            val process = method.invoke(
                 null,
                 arrayOf("sh", "-c", command),
                 null,

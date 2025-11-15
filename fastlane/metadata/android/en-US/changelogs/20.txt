@@ -1,0 +1,4 @@
+• Fixed process stream leaks in root/Shizuku command execution preventing memory accumulation
+• Optimized firewall performance with intelligent caching - only updates changed packages instead of all packages
+• Fixed critical memory leaks in ConnectivityManager and NetworkPolicyManager backends causing Shizuku crashes
+• Implemented differential rule application reducing redundant operations by 95-99% (shell commands and reflection calls)

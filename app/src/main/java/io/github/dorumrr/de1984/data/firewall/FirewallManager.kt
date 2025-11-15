@@ -921,9 +921,24 @@ class FirewallManager(
     /**
      * Trigger rule re-application (e.g., when policy changes).
      * This is a public method that can be called from outside to force rule re-application.
+     *
+     * When the default policy changes, we need to clear the ConnectivityManager backend's
+     * applied policies cache to force re-evaluation of all packages.
      */
     fun triggerRuleReapplication() {
-        Log.d(TAG, "Triggering rule re-application")
+        Log.d(TAG, "Triggering rule re-application (policy change)")
+
+        // Clear backend caches to force re-evaluation of all packages
+        // This is critical to prevent memory leaks from redundant operations
+        val backend = currentBackend
+        if (backend is ConnectivityManagerFirewallBackend) {
+            backend.clearAppliedPoliciesCache()
+            Log.d(TAG, "Cleared ConnectivityManager applied policies cache")
+        } else if (backend is NetworkPolicyManagerFirewallBackend) {
+            backend.clearAppliedPoliciesCache()
+            Log.d(TAG, "Cleared NetworkPolicyManager applied policies cache")
+        }
+
         scheduleRuleApplication()
     }
 

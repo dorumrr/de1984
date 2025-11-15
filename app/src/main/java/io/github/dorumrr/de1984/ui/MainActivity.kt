@@ -77,7 +77,8 @@ class MainActivity : AppCompatActivity() {
             rootManager = deps.rootManager,
             shizukuManager = deps.shizukuManager,
             firewallManager = deps.firewallManager,
-            firewallRepository = deps.firewallRepository
+            firewallRepository = deps.firewallRepository,
+            captivePortalManager = deps.captivePortalManager
         )
     }
 

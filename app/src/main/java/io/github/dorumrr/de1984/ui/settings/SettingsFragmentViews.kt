@@ -13,8 +13,11 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -31,6 +34,8 @@ import io.github.dorumrr.de1984.data.common.PermissionInfo
 import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.databinding.FragmentSettingsBinding
+import io.github.dorumrr.de1984.domain.model.CaptivePortalMode
+import io.github.dorumrr.de1984.domain.model.CaptivePortalPreset
 import io.github.dorumrr.de1984.databinding.PermissionTierSectionBinding
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
@@ -60,7 +65,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             app.dependencies.rootManager,
             app.dependencies.shizukuManager,
             app.dependencies.firewallManager,
-            app.dependencies.firewallRepository
+            app.dependencies.firewallRepository,
+            app.dependencies.captivePortalManager
         )
     }
 
@@ -217,6 +223,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.restoreRulesButton.setOnClickListener {
             restoreLauncher.launch(arrayOf("application/json"))
         }
+
+        // Captive Portal Controller
+        setupCaptivePortalSection()
 
         // Footer (author link) - make only "Doru Moraru" clickable
         setupFooterLink()
@@ -1284,6 +1293,152 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to restart app: ${e.message}")
+        }
+    }
+
+    // =============================================================================================
+    // Captive Portal Controller
+    // =============================================================================================
+
+    private fun setupCaptivePortalSection() {
+        // Load initial settings
+        viewModel.loadCaptivePortalSettings()
+
+        // Setup detection mode dropdown
+        val modeDropdown = binding.root.findViewById<AutoCompleteTextView>(R.id.captivePortalModeDropdown)
+        val modeOptions = CaptivePortalMode.values().map { it.displayName }
+        val modeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modeOptions)
+        modeDropdown?.setAdapter(modeAdapter)
+        modeDropdown?.setOnItemClickListener { _, _, position, _ ->
+            val selectedMode = CaptivePortalMode.values()[position]
+            viewModel.setCaptivePortalDetectionMode(selectedMode)
+        }
+
+        // Setup server preset dropdown
+        val presetDropdown = binding.root.findViewById<AutoCompleteTextView>(R.id.captivePortalPresetDropdown)
+        val presetOptions = CaptivePortalPreset.values().map { it.displayName }
+        val presetAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, presetOptions)
+        presetDropdown?.setAdapter(presetAdapter)
+        presetDropdown?.setOnItemClickListener { _, _, position, _ ->
+            val selectedPreset = CaptivePortalPreset.values()[position]
+
+            if (selectedPreset == CaptivePortalPreset.CUSTOM) {
+                // Show custom URLs section
+                binding.root.findViewById<LinearLayout>(R.id.captivePortalCustomUrlsSection)?.visibility = View.VISIBLE
+            } else {
+                // Hide custom URLs section and apply preset
+                binding.root.findViewById<LinearLayout>(R.id.captivePortalCustomUrlsSection)?.visibility = View.GONE
+                viewModel.applyCaptivePortalPreset(selectedPreset)
+            }
+        }
+
+        // Setup custom URL inputs
+        val customHttpUrl = binding.root.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.captivePortalCustomHttpUrl)
+        val customHttpsUrl = binding.root.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.captivePortalCustomHttpsUrl)
+
+        // Apply custom URLs when text changes (with debounce would be better, but keeping it simple)
+        customHttpUrl?.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val httpUrl = customHttpUrl.text?.toString() ?: ""
+                val httpsUrl = customHttpsUrl?.text?.toString() ?: ""
+                if (httpUrl.isNotBlank() && httpsUrl.isNotBlank()) {
+                    viewModel.setCustomCaptivePortalUrls(httpUrl, httpsUrl)
+                }
+            }
+        }
+
+        customHttpsUrl?.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val httpUrl = customHttpUrl?.text?.toString() ?: ""
+                val httpsUrl = customHttpsUrl.text?.toString() ?: ""
+                if (httpUrl.isNotBlank() && httpsUrl.isNotBlank()) {
+                    viewModel.setCustomCaptivePortalUrls(httpUrl, httpsUrl)
+                }
+            }
+        }
+
+        // Restore Original button
+        binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.captivePortalRestoreButton)?.setOnClickListener {
+            StandardDialog.showConfirmation(
+                context = requireContext(),
+                title = "Restore Original Settings?",
+                message = "This will restore your device's original captive portal settings that were captured when you first opened this feature.",
+                confirmButtonText = "Restore",
+                onConfirm = {
+                    viewModel.restoreOriginalCaptivePortalSettings()
+                }
+            )
+        }
+
+        // Reset to Google button
+        binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.captivePortalResetButton)?.setOnClickListener {
+            StandardDialog.showConfirmation(
+                context = requireContext(),
+                title = "Reset to Google Defaults?",
+                message = "This will reset captive portal settings to Google's default servers. Your original settings will remain saved and can be restored later.",
+                confirmButtonText = "Reset",
+                onConfirm = {
+                    viewModel.resetCaptivePortalToGoogleDefaults()
+                }
+            )
+        }
+
+        // Observe captive portal state
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    updateCaptivePortalUI(state)
+                }
+            }
+        }
+    }
+
+    private fun updateCaptivePortalUI(state: io.github.dorumrr.de1984.presentation.viewmodel.SettingsUiState) {
+        val currentMode = binding.root.findViewById<TextView>(R.id.captivePortalCurrentMode)
+        val currentHttpUrl = binding.root.findViewById<TextView>(R.id.captivePortalCurrentHttpUrl)
+        val currentHttpsUrl = binding.root.findViewById<TextView>(R.id.captivePortalCurrentHttpsUrl)
+        val currentPreset = binding.root.findViewById<TextView>(R.id.captivePortalCurrentPreset)
+        val loadingIndicator = binding.root.findViewById<ProgressBar>(R.id.captivePortalLoadingIndicator)
+        val errorText = binding.root.findViewById<TextView>(R.id.captivePortalErrorText)
+        val modeDropdown = binding.root.findViewById<AutoCompleteTextView>(R.id.captivePortalModeDropdown)
+        val presetDropdown = binding.root.findViewById<AutoCompleteTextView>(R.id.captivePortalPresetDropdown)
+        val restoreButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.captivePortalRestoreButton)
+        val resetButton = binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.captivePortalResetButton)
+
+        // Show/hide loading indicator
+        loadingIndicator?.visibility = if (state.captivePortalLoading) View.VISIBLE else View.GONE
+
+        // Show/hide error
+        if (state.captivePortalError != null) {
+            errorText?.text = state.captivePortalError
+            errorText?.visibility = View.VISIBLE
+        } else {
+            errorText?.visibility = View.GONE
+        }
+
+        // Update current settings display
+        state.captivePortalSettings?.let { settings ->
+            currentMode?.text = "Detection Mode: ${settings.mode.displayName}"
+            currentHttpUrl?.text = "HTTP URL: ${settings.httpUrl ?: "Not set"}"
+            currentHttpsUrl?.text = "HTTPS URL: ${settings.httpsUrl ?: "Not set"}"
+            currentPreset?.text = "Preset: ${settings.getMatchingPreset().displayName}"
+
+            // Update dropdown selections (without triggering listeners)
+            modeDropdown?.setText(settings.mode.displayName, false)
+            presetDropdown?.setText(settings.getMatchingPreset().displayName, false)
+        }
+
+        // Enable/disable controls based on privileges
+        val hasPrivileges = state.captivePortalHasPrivileges
+        modeDropdown?.isEnabled = hasPrivileges
+        presetDropdown?.isEnabled = hasPrivileges
+        restoreButton?.isEnabled = hasPrivileges && state.captivePortalOriginalCaptured
+        resetButton?.isEnabled = hasPrivileges
+
+        // Show message if no privileges
+        if (!hasPrivileges && state.captivePortalSettings != null) {
+            errorText?.text = "Root or Shizuku access required to modify settings"
+            errorText?.visibility = View.VISIBLE
         }
     }
 }

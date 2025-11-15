@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.dorumrr.de1984.BuildConfig
+import io.github.dorumrr.de1984.data.common.CaptivePortalManager
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.RootStatus
@@ -18,6 +19,9 @@ import io.github.dorumrr.de1984.data.firewall.FirewallManager
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
+import io.github.dorumrr.de1984.domain.model.CaptivePortalMode
+import io.github.dorumrr.de1984.domain.model.CaptivePortalPreset
+import io.github.dorumrr.de1984.domain.model.CaptivePortalSettings
 import io.github.dorumrr.de1984.domain.model.FirewallRulesBackup
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.utils.Constants
@@ -42,7 +46,8 @@ class SettingsViewModel(
     private val rootManager: RootManager,
     private val shizukuManager: ShizukuManager,
     private val firewallManager: FirewallManager,
-    private val firewallRepository: FirewallRepository
+    private val firewallRepository: FirewallRepository,
+    private val captivePortalManager: CaptivePortalManager
 ) : ViewModel() {
 
     companion object {
@@ -495,13 +500,231 @@ class SettingsViewModel(
             .apply()
     }
 
+    // =============================================================================================
+    // Captive Portal Controller
+    // =============================================================================================
+
+    /**
+     * Load current captive portal settings from the system.
+     * Also captures original settings if not already captured.
+     */
+    fun loadCaptivePortalSettings() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = true,
+                    captivePortalError = null
+                )
+
+                // Capture original settings if not already captured
+                if (!captivePortalManager.hasOriginalSettings()) {
+                    captivePortalManager.captureOriginalSettings()
+                }
+
+                // Load current settings
+                val result = captivePortalManager.getCurrentSettings()
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(
+                        captivePortalSettings = result.getOrNull(),
+                        captivePortalOriginalCaptured = captivePortalManager.hasOriginalSettings(),
+                        captivePortalHasPrivileges = captivePortalManager.hasPrivileges(),
+                        captivePortalLoading = false,
+                        captivePortalError = null
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        captivePortalLoading = false,
+                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to load settings"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load captive portal settings", e)
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = false,
+                    captivePortalError = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
+    /**
+     * Apply a captive portal server preset.
+     */
+    fun applyCaptivePortalPreset(preset: CaptivePortalPreset) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = true,
+                    captivePortalError = null
+                )
+
+                val result = captivePortalManager.applyPreset(preset)
+                if (result.isSuccess) {
+                    // Reload settings to reflect changes
+                    loadCaptivePortalSettings()
+                    _uiState.value = _uiState.value.copy(
+                        message = "Applied ${preset.displayName} preset successfully"
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        captivePortalLoading = false,
+                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to apply preset"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to apply preset", e)
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = false,
+                    captivePortalError = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
+    /**
+     * Set captive portal detection mode.
+     */
+    fun setCaptivePortalDetectionMode(mode: CaptivePortalMode) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = true,
+                    captivePortalError = null
+                )
+
+                val result = captivePortalManager.setDetectionMode(mode)
+                if (result.isSuccess) {
+                    // Reload settings to reflect changes
+                    loadCaptivePortalSettings()
+                    _uiState.value = _uiState.value.copy(
+                        message = "Detection mode set to ${mode.displayName}"
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        captivePortalLoading = false,
+                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to set detection mode"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to set detection mode", e)
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = false,
+                    captivePortalError = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
+    /**
+     * Set custom captive portal URLs.
+     */
+    fun setCustomCaptivePortalUrls(httpUrl: String, httpsUrl: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = true,
+                    captivePortalError = null
+                )
+
+                val result = captivePortalManager.setCustomUrls(httpUrl, httpsUrl)
+                if (result.isSuccess) {
+                    // Reload settings to reflect changes
+                    loadCaptivePortalSettings()
+                    _uiState.value = _uiState.value.copy(
+                        message = "Custom URLs applied successfully"
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        captivePortalLoading = false,
+                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to set custom URLs"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to set custom URLs", e)
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = false,
+                    captivePortalError = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
+    /**
+     * Restore original captive portal settings.
+     */
+    fun restoreOriginalCaptivePortalSettings() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = true,
+                    captivePortalError = null
+                )
+
+                val result = captivePortalManager.restoreOriginalSettings()
+                if (result.isSuccess) {
+                    // Reload settings to reflect changes
+                    loadCaptivePortalSettings()
+                    _uiState.value = _uiState.value.copy(
+                        message = "Original settings restored successfully"
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        captivePortalLoading = false,
+                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to restore original settings"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to restore original settings", e)
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = false,
+                    captivePortalError = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
+    /**
+     * Reset to Google's default captive portal settings.
+     */
+    fun resetCaptivePortalToGoogleDefaults() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = true,
+                    captivePortalError = null
+                )
+
+                val result = captivePortalManager.resetToGoogleDefaults()
+                if (result.isSuccess) {
+                    // Reload settings to reflect changes
+                    loadCaptivePortalSettings()
+                    _uiState.value = _uiState.value.copy(
+                        message = "Reset to Google defaults successfully"
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        captivePortalLoading = false,
+                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to reset to Google defaults"
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to reset to Google defaults", e)
+                _uiState.value = _uiState.value.copy(
+                    captivePortalLoading = false,
+                    captivePortalError = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
     class Factory(
         private val context: Context,
         private val permissionManager: PermissionManager,
         private val rootManager: RootManager,
         private val shizukuManager: ShizukuManager,
         private val firewallManager: FirewallManager,
-        private val firewallRepository: FirewallRepository
+        private val firewallRepository: FirewallRepository,
+        private val captivePortalManager: CaptivePortalManager
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -512,7 +735,8 @@ class SettingsViewModel(
                     rootManager,
                     shizukuManager,
                     firewallManager,
-                    firewallRepository
+                    firewallRepository,
+                    captivePortalManager
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
@@ -553,7 +777,14 @@ data class SettingsUiState(
 
     val hasBasicPermissions: Boolean = true,
     val hasEnhancedPermissions: Boolean = false,
-    val hasAdvancedPermissions: Boolean = false
+    val hasAdvancedPermissions: Boolean = false,
+
+    // Captive Portal Controller
+    val captivePortalSettings: CaptivePortalSettings? = null,
+    val captivePortalOriginalCaptured: Boolean = false,
+    val captivePortalHasPrivileges: Boolean = false,
+    val captivePortalLoading: Boolean = false,
+    val captivePortalError: String? = null
 )
 
 data class SystemInfo(

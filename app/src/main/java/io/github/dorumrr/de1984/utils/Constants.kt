@@ -121,6 +121,37 @@ object Constants {
 
     }
 
+    object CaptivePortal {
+        // SharedPreferences name (reuse same prefs file as Settings)
+        const val PREFS_NAME = "de1984_prefs"
+
+        // Keys for original settings backup (stored in SharedPreferences)
+        const val KEY_ORIGINAL_CAPTURED = "captive_portal_original_captured"
+        const val KEY_ORIGINAL_MODE = "captive_portal_original_mode"
+        const val KEY_ORIGINAL_HTTP_URL = "captive_portal_original_http_url"
+        const val KEY_ORIGINAL_HTTPS_URL = "captive_portal_original_https_url"
+        const val KEY_ORIGINAL_FALLBACK_URL = "captive_portal_original_fallback_url"
+        const val KEY_ORIGINAL_OTHER_FALLBACK_URLS = "captive_portal_original_other_fallback_urls"
+        const val KEY_ORIGINAL_USE_HTTPS = "captive_portal_original_use_https"
+        const val KEY_ORIGINAL_DEVICE_MODEL = "captive_portal_original_device_model"
+        const val KEY_ORIGINAL_SDK_INT = "captive_portal_original_sdk_int"
+        const val KEY_ORIGINAL_ROM_NAME = "captive_portal_original_rom_name"
+
+        // Android system settings keys (used with "settings get/put global")
+        const val SYSTEM_KEY_MODE = "captive_portal_mode"
+        const val SYSTEM_KEY_HTTP_URL = "captive_portal_http_url"
+        const val SYSTEM_KEY_HTTPS_URL = "captive_portal_https_url"
+        const val SYSTEM_KEY_FALLBACK_URL = "captive_portal_fallback_url"
+        const val SYSTEM_KEY_OTHER_FALLBACK_URLS = "captive_portal_other_fallback_urls"
+        const val SYSTEM_KEY_USE_HTTPS = "captive_portal_use_https"
+
+        // Default values (Google's defaults)
+        const val DEFAULT_MODE = 1  // ENABLED
+        const val DEFAULT_HTTP_URL = "http://connectivitycheck.gstatic.com/generate_204"
+        const val DEFAULT_HTTPS_URL = "https://www.google.com/generate_204"
+        const val DEFAULT_USE_HTTPS = true
+    }
+
     object HealthCheck {
         // Adaptive health check intervals for privileged backends
         // Start with fast checks (30s) for first 5 minutes, then slow down to 5 minutes

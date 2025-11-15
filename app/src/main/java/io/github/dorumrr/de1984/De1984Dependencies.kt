@@ -2,6 +2,7 @@ package io.github.dorumrr.de1984
 
 import android.content.Context
 import androidx.room.Room
+import io.github.dorumrr.de1984.data.common.CaptivePortalManager
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.common.RootManager
@@ -69,6 +70,10 @@ class De1984Dependencies(private val context: Context) {
 
     val superuserBannerState: SuperuserBannerState by lazy {
         SuperuserBannerState()
+    }
+
+    val captivePortalManager: CaptivePortalManager by lazy {
+        CaptivePortalManager(context, rootManager, shizukuManager)
     }
 
     // =============================================================================================

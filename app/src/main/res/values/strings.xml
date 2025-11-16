@@ -375,8 +375,8 @@
     <string name="settings_backup_button">Backup</string>
     <string name="settings_restore_button">Restore</string>
 
-    <string name="settings_captive_portal_title">🌐 Captive Portal Controller</string>
-    <string name="settings_captive_portal_description">Control Android\'s captive portal detection system</string>
+    <string name="settings_captive_portal_title">Captive Portal Controller</string>
+    <string name="settings_captive_portal_description">Control Captive Portal detection system</string>
     <string name="settings_captive_portal_current_settings">Current Settings</string>
     <string name="settings_captive_portal_detection_mode">Detection Mode: %s</string>
     <string name="settings_captive_portal_http_url">HTTP URL: %s</string>

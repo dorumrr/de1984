@@ -1461,8 +1461,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         // Enable/disable controls based on privileges
         val hasPrivileges = state.captivePortalHasPrivileges
+        val modeLayout = binding.root.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.captivePortalModeLayout)
+        val presetLayout = binding.root.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.captivePortalPresetLayout)
+
         modeDropdown?.isEnabled = hasPrivileges
+        modeDropdown?.isClickable = hasPrivileges
+        modeLayout?.isEnabled = hasPrivileges
+
         presetDropdown?.isEnabled = hasPrivileges
+        presetDropdown?.isClickable = hasPrivileges
+        presetLayout?.isEnabled = hasPrivileges
+
         restoreButton?.isEnabled = hasPrivileges && state.captivePortalOriginalCaptured
         resetButton?.isEnabled = hasPrivileges
 

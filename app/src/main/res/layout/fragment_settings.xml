@@ -671,6 +671,7 @@
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
+                    android:layout_marginTop="16dp"
                     android:layout_marginBottom="8dp" />
 
                 <TextView

@@ -211,11 +211,20 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun setupFilterChips() {
-        val packageTypeFilters = Constants.Packages.PACKAGE_TYPE_FILTERS
-        val packageStateFilters = Constants.Packages.PACKAGE_STATE_FILTERS
+        // Get translated filter strings
+        val packageTypeFilters = listOf(
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_all),
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_user),
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_system)
+        )
+        val packageStateFilters = listOf(
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_enabled),
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_disabled),
+            getString(io.github.dorumrr.de1984.R.string.status_uninstalled)
+        )
 
         // Initial setup - only called once
-        currentTypeFilter = "All"
+        currentTypeFilter = getString(io.github.dorumrr.de1984.R.string.packages_filter_all)
         currentStateFilter = null
 
         FilterChipsHelper.setupMultiSelectFilterChips(
@@ -231,7 +240,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 if (filter != currentTypeFilter) {
                     // Don't clear adapter - let ViewModel handle the state transition
                     currentTypeFilter = filter
-                    viewModel.setPackageTypeFilter(filter)
+                    // Map translated string to internal constant
+                    val internalFilter = mapTypeFilterToInternal(filter)
+                    viewModel.setPackageTypeFilter(internalFilter)
                 }
             },
             onStateFilterSelected = { filter ->
@@ -239,7 +250,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 if (filter != currentStateFilter) {
                     // Don't clear adapter - let ViewModel handle the state transition
                     currentStateFilter = filter
-                    viewModel.setPackageStateFilter(filter)
+                    // Map translated string to internal constant
+                    val internalFilter = filter?.let { mapStateFilterToInternal(it) }
+                    viewModel.setPackageStateFilter(internalFilter)
                 }
             },
             onPermissionFilterSelected = { _ ->
@@ -331,19 +344,23 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun updateFilterChips(packageTypeFilter: String, packageStateFilter: String?) {
+        // Map internal constants to translated strings
+        val translatedTypeFilter = mapInternalToTypeFilter(packageTypeFilter)
+        val translatedStateFilter = packageStateFilter?.let { mapInternalToStateFilter(it) }
+
         // Only update if filters have changed
-        if (packageTypeFilter == currentTypeFilter && packageStateFilter == currentStateFilter) {
+        if (translatedTypeFilter == currentTypeFilter && translatedStateFilter == currentStateFilter) {
             return
         }
 
-        currentTypeFilter = packageTypeFilter
-        currentStateFilter = packageStateFilter
+        currentTypeFilter = translatedTypeFilter
+        currentStateFilter = translatedStateFilter
 
         // Update chip selection without recreating or triggering listeners
         FilterChipsHelper.updateMultiSelectFilterChips(
             chipGroup = binding.filterChips,
-            selectedTypeFilter = packageTypeFilter,
-            selectedStateFilter = packageStateFilter,
+            selectedTypeFilter = translatedTypeFilter,
+            selectedStateFilter = translatedStateFilter,
             selectedPermissionFilter = false  // Not used in Packages screen
         )
     }
@@ -690,7 +707,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         // Click package name to copy to clipboard
         // ============================================================================
         binding.actionSheetPackageName.setOnClickListenerDebounced {
-            requireContext().copyToClipboard(pkg.packageName, "Package Name")
+            requireContext().copyToClipboard(pkg.packageName, getString(io.github.dorumrr.de1984.R.string.action_sheet_package_name_label))
         }
 
         val realIcon = PackageUtils.getPackageIcon(requireContext(), pkg.packageName)
@@ -715,28 +732,28 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
             when (pkg.criticality) {
                 PackageCriticality.ESSENTIAL -> {
-                    binding.actionSheetSafetyBadge.text = "Essential"
+                    binding.actionSheetSafetyBadge.text = getString(R.string.action_sheet_safety_badge_essential)
                     binding.actionSheetSafetyBadge.setBackgroundResource(R.drawable.safety_badge_essential)
                     binding.actionSheetSafetyBadge.setTextColor(
                         ContextCompat.getColor(requireContext(), R.color.badge_essential_text)
                     )
                 }
                 PackageCriticality.IMPORTANT -> {
-                    binding.actionSheetSafetyBadge.text = "Important"
+                    binding.actionSheetSafetyBadge.text = getString(R.string.action_sheet_safety_badge_important)
                     binding.actionSheetSafetyBadge.setBackgroundResource(R.drawable.safety_badge_important)
                     binding.actionSheetSafetyBadge.setTextColor(
                         ContextCompat.getColor(requireContext(), R.color.badge_important_text)
                     )
                 }
                 PackageCriticality.OPTIONAL -> {
-                    binding.actionSheetSafetyBadge.text = "Optional"
+                    binding.actionSheetSafetyBadge.text = getString(R.string.action_sheet_safety_badge_optional)
                     binding.actionSheetSafetyBadge.setBackgroundResource(R.drawable.safety_badge_optional)
                     binding.actionSheetSafetyBadge.setTextColor(
                         ContextCompat.getColor(requireContext(), R.color.badge_optional_text)
                     )
                 }
                 PackageCriticality.BLOATWARE -> {
-                    binding.actionSheetSafetyBadge.text = "Bloatware"
+                    binding.actionSheetSafetyBadge.text = getString(R.string.action_sheet_safety_badge_bloatware)
                     binding.actionSheetSafetyBadge.setBackgroundResource(R.drawable.safety_badge_bloatware)
                     binding.actionSheetSafetyBadge.setTextColor(
                         ContextCompat.getColor(requireContext(), R.color.badge_bloatware_text)
@@ -747,8 +764,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
             if (!pkg.category.isNullOrEmpty()) {
                 binding.actionSheetCategoryBadge.visibility = View.VISIBLE
-                binding.actionSheetCategoryBadge.text = pkg.category.replace("-", " ").split(" ")
-                    .joinToString(" ") { word -> word.replaceFirstChar { char -> char.uppercase() } }
+                binding.actionSheetCategoryBadge.text = getCategoryDisplayName(pkg.category)
             } else {
                 binding.actionSheetCategoryBadge.visibility = View.GONE
             }
@@ -756,8 +772,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             binding.actionSheetBadgesContainer.visibility = View.GONE
         }
 
-        // Show affects list if available
-        if (pkg.affects.isNotEmpty()) {
+        // Show affects list if available (English only - JSON data is not translated)
+        val currentLocale = resources.configuration.locales[0]
+        val isEnglish = currentLocale.language == "en"
+
+        if (pkg.affects.isNotEmpty() && isEnglish) {
             binding.affectsSection.visibility = View.VISIBLE
             binding.affectsList.removeAllViews()
 
@@ -799,9 +818,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Setup Force Stop action
         binding.forceStopDescription.text = if (pkg.isEnabled) {
-            "Immediately stop all processes"
+            getString(io.github.dorumrr.de1984.R.string.action_sheet_force_stop_desc_running)
         } else {
-            "Force stop (if running)"
+            getString(io.github.dorumrr.de1984.R.string.action_sheet_force_stop_desc_not_running)
         }
 
         binding.forceStopAction.setOnClickListener {
@@ -812,12 +831,12 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         // Setup Enable/Disable action
         if (pkg.isEnabled) {
             binding.enableDisableIcon.setImageResource(R.drawable.ic_block)
-            binding.enableDisableTitle.text = "Disable"
-            binding.enableDisableDescription.text = "Prevent this app from running"
+            binding.enableDisableTitle.text = getString(io.github.dorumrr.de1984.R.string.action_disable)
+            binding.enableDisableDescription.text = getString(io.github.dorumrr.de1984.R.string.action_sheet_disable_desc)
         } else {
             binding.enableDisableIcon.setImageResource(R.drawable.ic_check_circle)
-            binding.enableDisableTitle.text = "Enable"
-            binding.enableDisableDescription.text = "Allow this app to run"
+            binding.enableDisableTitle.text = getString(io.github.dorumrr.de1984.R.string.action_enable)
+            binding.enableDisableDescription.text = getString(io.github.dorumrr.de1984.R.string.action_sheet_enable_desc)
         }
 
         binding.enableDisableAction.setOnClickListener {
@@ -844,7 +863,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 binding.uninstallIcon.setColorFilter(tealColor)
                 binding.uninstallTitle.text = getString(R.string.action_reinstall)
                 binding.uninstallTitle.setTextColor(tealColor)
-                binding.uninstallDescription.text = "Restore this system app"
+                binding.uninstallDescription.text = getString(io.github.dorumrr.de1984.R.string.action_sheet_reinstall_desc)
 
                 binding.uninstallAction.setOnClickListener {
                     dialog.dismiss()
@@ -857,11 +876,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 binding.uninstallIcon.setColorFilter(redColor)
                 binding.uninstallTitle.text = getString(R.string.action_uninstall)
                 binding.uninstallTitle.setTextColor(redColor)
-                binding.uninstallDescription.text = if (pkg.type == PackageType.SYSTEM) {
-                    "Remove system package (DANGEROUS)"
-                } else {
-                    "Remove this app from device"
-                }
+                binding.uninstallDescription.text = getString(io.github.dorumrr.de1984.R.string.action_sheet_uninstall_desc)
 
                 binding.uninstallAction.setOnClickListener {
                     dialog.dismiss()
@@ -879,13 +894,13 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         StandardDialog.showConfirmation(
             context = requireContext(),
-            title = "Force Stop ${pkg.name}?",
+            title = getString(io.github.dorumrr.de1984.R.string.dialog_force_stop_title, pkg.name),
             message = if (isSystemPackage) {
-                "⚠️ This is a system package. Force stopping it may cause system instability.\n\nAre you sure you want to continue?"
+                getString(io.github.dorumrr.de1984.R.string.dialog_force_stop_system_message)
             } else {
-                "This will immediately stop all processes for ${pkg.name}.\n\nAre you sure?"
+                getString(io.github.dorumrr.de1984.R.string.dialog_force_stop_message, pkg.name)
             },
-            confirmButtonText = "Force Stop",
+            confirmButtonText = getString(io.github.dorumrr.de1984.R.string.action_force_stop),
             onConfirm = {
                 viewModel.forceStopPackage(pkg.packageName)
             }
@@ -893,18 +908,22 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     }
 
     private fun showEnableDisableConfirmation(pkg: Package, enable: Boolean) {
-        val action = if (enable) "Enable" else "Disable"
+        val action = if (enable) {
+            getString(io.github.dorumrr.de1984.R.string.action_enable)
+        } else {
+            getString(io.github.dorumrr.de1984.R.string.action_disable)
+        }
         val isSystemPackage = pkg.type == PackageType.SYSTEM
 
         StandardDialog.showConfirmation(
             context = requireContext(),
-            title = "$action ${pkg.name}?",
+            title = getString(io.github.dorumrr.de1984.R.string.dialog_enable_disable_title, action, pkg.name),
             message = if (isSystemPackage && !enable) {
-                "⚠️ This is a system package. Disabling it may cause system instability or prevent other apps from working.\n\nAre you sure you want to continue?"
+                getString(io.github.dorumrr.de1984.R.string.dialog_disable_system_message)
             } else if (enable) {
-                "This will allow ${pkg.name} to run normally.\n\nAre you sure?"
+                getString(io.github.dorumrr.de1984.R.string.dialog_enable_message, pkg.name)
             } else {
-                "This will prevent ${pkg.name} from running.\n\nAre you sure?"
+                getString(io.github.dorumrr.de1984.R.string.dialog_disable_message, pkg.name)
             },
             confirmButtonText = action,
             onConfirm = {
@@ -918,18 +937,16 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         when (pkg.criticality) {
             PackageCriticality.ESSENTIAL -> {
                 // Type-to-confirm for Essential packages
+                val affectsText = if (pkg.affects.isNotEmpty()) {
+                    getString(R.string.uninstall_dialog_affects_prefix, pkg.affects.joinToString("\n") { "• $it" })
+                } else ""
+
                 StandardDialog.showTypeToConfirm(
                     context = requireContext(),
-                    title = "🚨 CRITICAL WARNING",
-                    message = "⚠️ ESSENTIAL SYSTEM PACKAGE ⚠️\n\n" +
-                            "Uninstalling ${pkg.name} WILL BRICK YOUR DEVICE!\n\n" +
-                            "This package is critical for system operation. Removing it will make your device unusable and may require a factory reset or reflashing.\n\n" +
-                            if (pkg.affects.isNotEmpty()) {
-                                "Affects:\n${pkg.affects.joinToString("\n") { "• $it" }}\n\n"
-                            } else "" +
-                            "Type \"UNINSTALL\" to confirm this dangerous action:",
-                    confirmWord = "UNINSTALL",
-                    confirmButtonText = "Uninstall",
+                    title = getString(R.string.uninstall_dialog_title_critical),
+                    message = getString(R.string.uninstall_dialog_message_essential, pkg.name, affectsText),
+                    confirmWord = getString(R.string.uninstall_dialog_confirm_word),
+                    confirmButtonText = getString(R.string.uninstall_dialog_button_uninstall),
                     onConfirm = {
                         viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
@@ -937,15 +954,15 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             }
             PackageCriticality.IMPORTANT -> {
                 // Strong warning for Important packages
+                val affectsText = if (pkg.affects.isNotEmpty()) {
+                    getString(R.string.uninstall_dialog_affects_prefix, pkg.affects.joinToString("\n") { "• $it" })
+                } else ""
+
                 StandardDialog.showConfirmation(
                     context = requireContext(),
-                    title = "⚠️ Warning: Important Package",
-                    message = "Uninstalling ${pkg.name} will cause major system features to stop working.\n\n" +
-                            if (pkg.affects.isNotEmpty()) {
-                                "Affects:\n${pkg.affects.joinToString("\n") { "• $it" }}\n\n"
-                            } else "" +
-                            "This may require a factory reset to restore functionality.\n\nAre you sure?",
-                    confirmButtonText = "Uninstall",
+                    title = getString(R.string.uninstall_dialog_title_important),
+                    message = getString(R.string.uninstall_dialog_message_important, pkg.name, affectsText),
+                    confirmButtonText = getString(R.string.uninstall_dialog_button_uninstall),
                     onConfirm = {
                         viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
@@ -955,13 +972,13 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 // Informational for Optional packages
                 StandardDialog.showConfirmation(
                     context = requireContext(),
-                    title = "Uninstall ${pkg.name}?",
+                    title = getString(R.string.uninstall_dialog_title_optional, pkg.name),
                     message = if (pkg.affects.isNotEmpty()) {
-                        "This may affect:\n${pkg.affects.joinToString("\n") { "• $it" }}\n\nAre you sure?"
+                        getString(R.string.uninstall_dialog_message_optional_with_affects, pkg.affects.joinToString("\n") { "• $it" })
                     } else {
-                        "This will remove ${pkg.name} from your device.\n\nAre you sure?"
+                        getString(R.string.uninstall_dialog_message_optional, pkg.name)
                     },
-                    confirmButtonText = "Uninstall",
+                    confirmButtonText = getString(R.string.uninstall_dialog_button_uninstall),
                     onConfirm = {
                         viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
@@ -971,9 +988,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 // Positive message for Bloatware
                 StandardDialog.showConfirmation(
                     context = requireContext(),
-                    title = "Uninstall ${pkg.name}?",
-                    message = "✓ Safe to remove\n\nThis package is considered bloatware and can be safely uninstalled.\n\nAre you sure?",
-                    confirmButtonText = "Uninstall",
+                    title = getString(R.string.uninstall_dialog_title_bloatware, pkg.name),
+                    message = getString(R.string.uninstall_dialog_message_bloatware),
+                    confirmButtonText = getString(R.string.uninstall_dialog_button_uninstall),
                     onConfirm = {
                         viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
@@ -984,13 +1001,13 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 val isSystemPackage = pkg.type == PackageType.SYSTEM
                 StandardDialog.showConfirmation(
                     context = requireContext(),
-                    title = "Uninstall ${pkg.name}?",
+                    title = getString(R.string.uninstall_dialog_title_unknown, pkg.name),
                     message = if (isSystemPackage) {
-                        "⚠️ DANGER: This is a system package. Uninstalling it may brick your device or cause severe system instability.\n\nThis action cannot be easily undone.\n\nAre you absolutely sure?"
+                        getString(R.string.uninstall_dialog_message_unknown_system)
                     } else {
-                        "This will remove ${pkg.name} from your device.\n\nAre you sure?"
+                        getString(R.string.uninstall_dialog_message_unknown_user, pkg.name)
                     },
-                    confirmButtonText = "Uninstall",
+                    confirmButtonText = getString(R.string.uninstall_dialog_button_uninstall),
                     onConfirm = {
                         viewModel.uninstallPackage(pkg.packageName, pkg.name)
                     }
@@ -1002,9 +1019,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
     private fun showReinstallConfirmation(pkg: Package) {
         StandardDialog.showConfirmation(
             context = requireContext(),
-            title = "Reinstall ${pkg.name}?",
-            message = "This will restore the system app to your device.\n\nAre you sure?",
-            confirmButtonText = "Reinstall",
+            title = getString(R.string.reinstall_dialog_title, pkg.name),
+            message = getString(R.string.reinstall_dialog_message),
+            confirmButtonText = getString(R.string.reinstall_dialog_button_reinstall),
             onConfirm = {
                 viewModel.reinstallPackage(pkg.packageName, pkg.name)
             }
@@ -1078,19 +1095,16 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
     private fun updateSelectionToolbar() {
         val count = selectedPackages.size
-        binding.selectionCount.text = String.format(
-            Constants.Packages.MultiSelect.TOOLBAR_TITLE_FORMAT,
-            count
-        )
+        binding.selectionCount.text = getString(R.string.multiselect_toolbar_title_format, count)
         binding.uninstallButton.isEnabled = count > 0
 
         // Update button text based on filter
         val currentState = viewModel.uiState.value
         val isUninstalledFilter = currentState.filterState.packageState?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()
         binding.uninstallButton.text = if (isUninstalledFilter) {
-            Constants.Packages.MultiSelect.TOOLBAR_BUTTON_REINSTALL
+            getString(R.string.multiselect_toolbar_button_reinstall)
         } else {
-            Constants.Packages.MultiSelect.TOOLBAR_BUTTON_UNINSTALL
+            getString(R.string.multiselect_toolbar_button_uninstall)
         }
     }
 
@@ -1107,27 +1121,30 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             append("\n\n")
 
             if (userApps.isNotEmpty()) {
-                append("📱 User Apps (${userApps.size}):\n")
+                append(getString(R.string.batch_uninstall_dialog_category_user_apps, userApps.size))
+                append("\n")
                 userApps.take(3).forEach { append("• ${it.name}\n") }
-                if (userApps.size > 3) append("... and ${userApps.size - 3} more\n")
+                if (userApps.size > 3) append(getString(R.string.batch_uninstall_dialog_and_more, userApps.size - 3) + "\n")
                 append("\n")
             }
 
             if (bloatware.isNotEmpty()) {
-                append("✓ Bloatware (${bloatware.size}):\n")
+                append(getString(R.string.batch_uninstall_dialog_category_bloatware, bloatware.size))
+                append("\n")
                 bloatware.take(3).forEach { append("• ${it.name}\n") }
-                if (bloatware.size > 3) append("... and ${bloatware.size - 3} more\n")
+                if (bloatware.size > 3) append(getString(R.string.batch_uninstall_dialog_and_more, bloatware.size - 3) + "\n")
                 append("\n")
             }
 
             if (optional.isNotEmpty()) {
-                append("⚠️ Optional System Apps (${optional.size}):\n")
+                append(getString(R.string.batch_uninstall_dialog_category_optional, optional.size))
+                append("\n")
                 optional.take(3).forEach { append("• ${it.name}\n") }
-                if (optional.size > 3) append("... and ${optional.size - 3} more\n")
+                if (optional.size > 3) append(getString(R.string.batch_uninstall_dialog_and_more, optional.size - 3) + "\n")
                 append("\n")
             }
 
-            append("Are you sure you want to uninstall these ${packages.size} apps?")
+            append(getString(R.string.batch_uninstall_dialog_message_question, packages.size))
         }
 
         StandardDialog.showConfirmation(
@@ -1180,7 +1197,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     append("• ${pkg?.name ?: packageName}\n")
                 }
                 if (result.succeeded.size > 5) {
-                    append("... and ${result.succeeded.size - 5} more\n")
+                    append(getString(R.string.batch_uninstall_results_and_more, result.succeeded.size - 5) + "\n")
                 }
                 append("\n")
             }
@@ -1194,10 +1211,10 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 result.failed.take(5).forEach { (packageName, error) ->
                     val pkg = lastSubmittedPackages.find { it.packageName == packageName }
                     append("• ${pkg?.name ?: packageName}\n")
-                    append("  Error: $error\n")
+                    append(getString(R.string.batch_uninstall_results_error_prefix, error) + "\n")
                 }
                 if (result.failed.size > 5) {
-                    append("... and ${result.failed.size - 5} more\n")
+                    append(getString(R.string.batch_uninstall_results_and_more, result.failed.size - 5) + "\n")
                 }
             }
         }
@@ -1206,7 +1223,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             context = requireContext(),
             title = Constants.Packages.MultiSelect.DIALOG_TITLE_RESULTS,
             message = message,
-            positiveButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_OK
+            positiveButtonText = getString(R.string.dialog_ok)
         )
     }
 
@@ -1215,25 +1232,25 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         val count = packages.size
 
         val message = buildString {
-            append("Reinstall $count selected system app${if (count > 1) "s" else ""}?\n\n")
-            append("The following apps will be reinstalled:\n\n")
+            val pluralSuffix = if (count > 1) "s" else ""
+            append(getString(R.string.batch_reinstall_dialog_message_prefix, count, pluralSuffix))
             packages.take(10).forEach { pkg ->
-                append("• ${pkg.name}\n")
+                append(getString(R.string.batch_reinstall_dialog_message_item, pkg.name))
             }
             if (count > 10) {
-                append("... and ${count - 10} more\n")
+                append(getString(R.string.batch_reinstall_dialog_message_more, count - 10))
             }
         }
 
         StandardDialog.showConfirmation(
             context = requireContext(),
-            title = "Reinstall $count Selected Apps?",
+            title = getString(R.string.batch_reinstall_dialog_title, count),
             message = message,
-            confirmButtonText = "Reinstall All",
+            confirmButtonText = getString(R.string.batch_reinstall_dialog_button_reinstall_all),
             onConfirm = {
                 performBatchReinstall(selectedPackages.toList())
             },
-            cancelButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_CANCEL
+            cancelButtonText = getString(R.string.dialog_cancel)
         )
     }
 
@@ -1272,7 +1289,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                     append("• ${pkg?.name ?: packageName}\n")
                 }
                 if (result.succeeded.size > 5) {
-                    append("... and ${result.succeeded.size - 5} more\n")
+                    append(getString(R.string.batch_uninstall_results_and_more, result.succeeded.size - 5) + "\n")
                 }
                 append("\n")
             }
@@ -1286,10 +1303,10 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 result.failed.take(5).forEach { (packageName, error) ->
                     val pkg = lastSubmittedPackages.find { it.packageName == packageName }
                     append("• ${pkg?.name ?: packageName}\n")
-                    append("  Error: $error\n")
+                    append(getString(R.string.batch_uninstall_results_error_prefix, error) + "\n")
                 }
                 if (result.failed.size > 5) {
-                    append("... and ${result.failed.size - 5} more\n")
+                    append(getString(R.string.batch_uninstall_results_and_more, result.failed.size - 5) + "\n")
                 }
             }
         }
@@ -1298,8 +1315,80 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             context = requireContext(),
             title = Constants.Packages.MultiSelect.DIALOG_TITLE_REINSTALL_RESULTS,
             message = message,
-            positiveButtonText = Constants.Packages.MultiSelect.DIALOG_BUTTON_OK
+            positiveButtonText = getString(R.string.dialog_ok)
         )
+    }
+
+    /**
+     * Map translated type filter string to internal constant
+     */
+    private fun mapTypeFilterToInternal(translatedFilter: String): String {
+        return when (translatedFilter) {
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_all) -> Constants.Packages.TYPE_ALL
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_user) -> Constants.Packages.TYPE_USER
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_system) -> Constants.Packages.TYPE_SYSTEM
+            else -> Constants.Packages.TYPE_ALL // Default fallback
+        }
+    }
+
+    /**
+     * Map translated state filter string to internal constant
+     */
+    private fun mapStateFilterToInternal(translatedFilter: String): String {
+        return when (translatedFilter) {
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_enabled) -> Constants.Packages.STATE_ENABLED
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_disabled) -> Constants.Packages.STATE_DISABLED
+            getString(io.github.dorumrr.de1984.R.string.status_uninstalled) -> Constants.Packages.STATE_UNINSTALLED
+            else -> translatedFilter // Fallback to original
+        }
+    }
+
+    /**
+     * Map internal constant to translated type filter string
+     */
+    private fun mapInternalToTypeFilter(internalFilter: String): String {
+        return when (internalFilter) {
+            Constants.Packages.TYPE_ALL -> getString(io.github.dorumrr.de1984.R.string.packages_filter_all)
+            Constants.Packages.TYPE_USER -> getString(io.github.dorumrr.de1984.R.string.packages_filter_user)
+            Constants.Packages.TYPE_SYSTEM -> getString(io.github.dorumrr.de1984.R.string.packages_filter_system)
+            else -> getString(io.github.dorumrr.de1984.R.string.packages_filter_all) // Default fallback
+        }
+    }
+
+    /**
+     * Map internal constant to translated state filter string
+     */
+    private fun mapInternalToStateFilter(internalFilter: String): String {
+        return when (internalFilter) {
+            Constants.Packages.STATE_ENABLED -> getString(io.github.dorumrr.de1984.R.string.packages_filter_enabled)
+            Constants.Packages.STATE_DISABLED -> getString(io.github.dorumrr.de1984.R.string.packages_filter_disabled)
+            Constants.Packages.STATE_UNINSTALLED -> getString(io.github.dorumrr.de1984.R.string.status_uninstalled)
+            else -> internalFilter // Fallback to original
+        }
+    }
+
+    /**
+     * Get translated display name for package category
+     */
+    private fun getCategoryDisplayName(category: String): String {
+        val stringResId = when (category) {
+            "system-core" -> R.string.category_system_core
+            "system-ui" -> R.string.category_system_ui
+            "google-services" -> R.string.category_google_services
+            "connectivity" -> R.string.category_connectivity
+            "telephony" -> R.string.category_telephony
+            "media" -> R.string.category_media
+            "social" -> R.string.category_social
+            "assistant" -> R.string.category_assistant
+            "vendor" -> R.string.category_vendor
+            "unknown" -> R.string.category_unknown
+            else -> {
+                // Fallback: format the category string (capitalize words, replace dashes)
+                return category.replace("-", " ").split(" ")
+                    .joinToString(" ") { word -> word.replaceFirstChar { char -> char.uppercase() } }
+            }
+        }
+        return getString(stringResId)
     }
 }
 

@@ -1,5 +1,7 @@
 package io.github.dorumrr.de1984.data.repository
 
+import android.content.Context
+import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.PackageType
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class NetworkPackageRepositoryImpl(
+    private val context: Context,
     private val packageDataSource: PackageDataSource
 ) : NetworkPackageRepository {
     
@@ -52,8 +55,11 @@ class NetworkPackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val action = if (allowed) "allow" else "block"
-                val errorMessage = "Unable to $action network access. Root access required for firewall operations."
+                val errorMessage = if (allowed) {
+                    context.getString(R.string.error_unable_to_allow_network)
+                } else {
+                    context.getString(R.string.error_unable_to_block_network)
+                }
                 Result.failure(SecurityException(errorMessage))
             }
         } catch (e: Exception) {

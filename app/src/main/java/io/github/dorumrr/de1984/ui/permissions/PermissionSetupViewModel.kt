@@ -1,8 +1,10 @@
 package io.github.dorumrr.de1984.ui.permissions
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.PermissionInfo
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.utils.Constants
@@ -13,6 +15,7 @@ import kotlinx.coroutines.launch
 
 
 class PermissionSetupViewModel constructor(
+    private val context: Context,
     private val permissionManager: PermissionManager
 ) : ViewModel() {
 
@@ -58,20 +61,20 @@ class PermissionSetupViewModel constructor(
         return listOf(
             PermissionInfo(
                 permission = "android.permission.ACCESS_NETWORK_STATE",
-                name = "Network State",
-                description = "Monitor network connectivity (WiFi/Mobile/Roaming)",
+                name = context.getString(R.string.permission_network_state),
+                description = context.getString(R.string.permission_network_state_desc),
                 isGranted = true
             ),
             PermissionInfo(
                 permission = "android.permission.ACCESS_WIFI_STATE",
-                name = "WiFi State",
-                description = "Detect WiFi network status",
+                name = context.getString(R.string.permission_wifi_state),
+                description = context.getString(R.string.permission_wifi_state_desc),
                 isGranted = true
             ),
             PermissionInfo(
                 permission = "android.permission.POST_NOTIFICATIONS",
-                name = "Notification Permission",
-                description = "Show notifications for new app installations",
+                name = context.getString(R.string.permission_notification),
+                description = context.getString(R.string.permission_notification_desc),
                 isGranted = permissionManager.hasNotificationPermission()
             )
         )
@@ -89,20 +92,20 @@ class PermissionSetupViewModel constructor(
         return listOf(
             PermissionInfo(
                 permission = "android.permission.WRITE_SECURE_SETTINGS",
-                name = "Modify System Settings",
-                description = "Change system-level security settings",
+                name = context.getString(R.string.permission_modify_system_settings),
+                description = context.getString(R.string.permission_modify_system_settings_desc),
                 isGranted = hasAdvanced
             ),
             PermissionInfo(
                 permission = "android.permission.CHANGE_COMPONENT_ENABLED_STATE",
-                name = "Enable/Disable Components",
-                description = "Enable or disable app components",
+                name = context.getString(R.string.permission_enable_disable_components),
+                description = context.getString(R.string.permission_enable_disable_components_desc),
                 isGranted = hasAdvanced
             ),
             PermissionInfo(
                 permission = "Superuser Access",
-                name = "Superuser Access",
-                description = "Full system access for advanced operations",
+                name = context.getString(R.string.permission_superuser_access),
+                description = context.getString(R.string.permission_superuser_access_desc),
                 isGranted = hasAdvanced
             )
         )
@@ -113,8 +116,8 @@ class PermissionSetupViewModel constructor(
         return listOf(
             PermissionInfo(
                 permission = "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
-                name = "Battery Optimization Exemption",
-                description = "Prevents Android from killing the firewall service to save battery. Critical for VPN reliability.",
+                name = context.getString(R.string.permission_battery_optimization),
+                description = context.getString(R.string.permission_battery_optimization_desc),
                 isGranted = isExempt
             )
         )
@@ -125,20 +128,21 @@ class PermissionSetupViewModel constructor(
         return listOf(
             PermissionInfo(
                 permission = "android.permission.BIND_VPN_SERVICE",
-                name = Constants.VpnFallback.PERMISSION_NAME,
-                description = Constants.VpnFallback.PERMISSION_DESCRIPTION,
+                name = context.getString(R.string.permission_vpn),
+                description = context.getString(R.string.permission_vpn_desc),
                 isGranted = hasVpn
             )
         )
     }
 
     class Factory(
+        private val context: Context,
         private val permissionManager: PermissionManager
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(PermissionSetupViewModel::class.java)) {
-                return PermissionSetupViewModel(permissionManager) as T
+                return PermissionSetupViewModel(context, permissionManager) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.firewall.FirewallManager
@@ -222,7 +223,10 @@ class FirewallViewModel(
                             superuserBannerState.showSuperuserRequiredBanner()
                         }
                         _uiState.value = _uiState.value.copy(
-                            error = "Failed to block mobile data: ${error.message ?: "Unknown error"}"
+                            error = getApplication<Application>().getString(
+                                R.string.error_failed_to_block_mobile,
+                                error.message ?: getApplication<Application>().getString(R.string.error_unknown)
+                            )
                         )
                     }
             } else {
@@ -269,7 +273,10 @@ class FirewallViewModel(
                             superuserBannerState.showSuperuserRequiredBanner()
                         }
                         _uiState.value = _uiState.value.copy(
-                            error = "Failed to unblock roaming: ${error.message ?: "Unknown error"}"
+                            error = getApplication<Application>().getString(
+                                R.string.error_failed_to_unblock_roaming,
+                                error.message ?: getApplication<Application>().getString(R.string.error_unknown)
+                            )
                         )
                     }
             } else {

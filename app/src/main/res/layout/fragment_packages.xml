@@ -33,7 +33,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="0 selected"
+                android:text="@string/multiselect_toolbar_title_format"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnPrimary" />
 
@@ -42,7 +42,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:text="Uninstall"
+                android:text="@string/multiselect_toolbar_button_uninstall"
                 android:textColor="?attr/colorOnPrimary"
                 style="@style/Widget.Material3.Button.TextButton"
                 app:icon="@drawable/ic_delete_multiple"
@@ -81,7 +81,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginTop="1dp"
         android:layout_marginBottom="9dp"
-        android:hint="Search..."
+        android:hint="@string/packages_search_hint"
         app:startIconDrawable="@android:drawable/ic_menu_search"
         app:endIconMode="custom"
         app:endIconDrawable="@drawable/ic_clear_search"
@@ -102,7 +102,7 @@
             android:id="@+id/search_input"
             android:layout_width="match_parent"
             android:layout_height="41dp"
-            android:hint="Search..."
+            android:hint="@string/packages_search_hint"
             android:inputType="text"
             android:maxLines="1"
             android:textSize="14sp"
@@ -149,7 +149,7 @@
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:src="@drawable/ic_apps"
-                android:contentDescription="Apps icon"
+                android:contentDescription="@string/cd_apps_icon"
                 app:tint="?android:attr/textColorSecondary" />
 
             <TextView
@@ -157,7 +157,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="No packages found"
+                android:text="@string/packages_empty_state_title"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary" />
@@ -166,7 +166,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Try adjusting your filters"
+                android:text="@string/packages_empty_state_subtitle"
                 android:textSize="14sp"
                 android:textColor="?android:attr/textColorSecondary" />
 

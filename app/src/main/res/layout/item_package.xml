@@ -37,7 +37,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/de1984_icon"
-            android:contentDescription="App icon" />
+            android:contentDescription="@string/cd_app_icon" />
 
         <!-- Package Info (Left Side) -->
         <LinearLayout
@@ -52,7 +52,7 @@
                 android:id="@+id/app_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="App Name"
+                android:text="@string/action_sheet_placeholder_app_name"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary"
@@ -65,7 +65,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="com.example.app"
+                android:text="@string/action_sheet_placeholder_package_name"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:maxLines="1"
@@ -86,7 +86,7 @@
                 android:id="@+id/enabled_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Enabled"
+                android:text="@string/package_state_enabled"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:paddingStart="8dp"
@@ -102,7 +102,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Essential"
+                android:text="@string/action_sheet_safety_badge_essential"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:paddingStart="8dp"
@@ -119,7 +119,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="User"
+                android:text="@string/package_type_user"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:paddingStart="8dp"

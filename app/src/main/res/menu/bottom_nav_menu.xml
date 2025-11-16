@@ -3,16 +3,16 @@
     <item
         android:id="@+id/firewallFragment"
         android:icon="@drawable/ic_shield"
-        android:title="Firewall" />
+        android:title="@string/nav_firewall" />
 
     <item
         android:id="@+id/packagesFragment"
         android:icon="@drawable/ic_apps"
-        android:title="Packages" />
+        android:title="@string/nav_packages" />
 
     <item
         android:id="@+id/settingsFragment"
         android:icon="@drawable/ic_settings"
-        android:title="Settings" />
+        android:title="@string/nav_settings" />
 </menu>
 

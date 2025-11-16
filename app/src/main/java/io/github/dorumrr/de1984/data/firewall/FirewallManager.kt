@@ -857,17 +857,21 @@ class FirewallManager(
         )
 
         // Build notification
+        val notificationTitle = context.getString(R.string.vpn_fallback_notification_title)
+        val notificationText = context.getString(R.string.vpn_fallback_notification_text)
+        val notificationAction = context.getString(R.string.vpn_fallback_notification_action_text)
+
         val notification = NotificationCompat.Builder(context, Constants.VpnFallback.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_shield)
-            .setContentTitle(Constants.VpnFallback.NOTIFICATION_TITLE)
-            .setContentText(Constants.VpnFallback.NOTIFICATION_TEXT)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(Constants.VpnFallback.NOTIFICATION_TEXT))
+            .setContentTitle(notificationTitle)
+            .setContentText(notificationText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(
                 R.drawable.ic_shield,
-                Constants.VpnFallback.NOTIFICATION_ACTION_TEXT,
+                notificationAction,
                 pendingIntent
             )
             .build()

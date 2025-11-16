@@ -205,28 +205,28 @@ class PackageAdapter(
                     binding.safetyBadge.visibility = View.VISIBLE
                     when (pkg.criticality) {
                         PackageCriticality.ESSENTIAL -> {
-                            binding.safetyBadge.text = "Essential"
+                            binding.safetyBadge.text = binding.root.context.getString(R.string.action_sheet_safety_badge_essential)
                             binding.safetyBadge.setBackgroundResource(R.drawable.safety_badge_essential)
                             binding.safetyBadge.setTextColor(
                                 ContextCompat.getColor(binding.root.context, R.color.badge_essential_text)
                             )
                         }
                         PackageCriticality.IMPORTANT -> {
-                            binding.safetyBadge.text = "Important"
+                            binding.safetyBadge.text = binding.root.context.getString(R.string.action_sheet_safety_badge_important)
                             binding.safetyBadge.setBackgroundResource(R.drawable.safety_badge_important)
                             binding.safetyBadge.setTextColor(
                                 ContextCompat.getColor(binding.root.context, R.color.badge_important_text)
                             )
                         }
                         PackageCriticality.OPTIONAL -> {
-                            binding.safetyBadge.text = "Optional"
+                            binding.safetyBadge.text = binding.root.context.getString(R.string.action_sheet_safety_badge_optional)
                             binding.safetyBadge.setBackgroundResource(R.drawable.safety_badge_optional)
                             binding.safetyBadge.setTextColor(
                                 ContextCompat.getColor(binding.root.context, R.color.badge_optional_text)
                             )
                         }
                         PackageCriticality.BLOATWARE -> {
-                            binding.safetyBadge.text = "Bloatware"
+                            binding.safetyBadge.text = binding.root.context.getString(R.string.action_sheet_safety_badge_bloatware)
                             binding.safetyBadge.setBackgroundResource(R.drawable.safety_badge_bloatware)
                             binding.safetyBadge.setTextColor(
                                 ContextCompat.getColor(binding.root.context, R.color.badge_bloatware_text)
@@ -250,7 +250,7 @@ class PackageAdapter(
 
                 // Row 2 Right: Show "User" badge for user packages
                 binding.packageTypeBadge.visibility = View.VISIBLE
-                binding.packageTypeBadge.text = "User"
+                binding.packageTypeBadge.text = binding.root.context.getString(R.string.action_sheet_type_badge_user)
 
                 // Hide criticality badge for user packages
                 binding.safetyBadge.visibility = View.GONE

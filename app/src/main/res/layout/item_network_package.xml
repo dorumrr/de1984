@@ -26,7 +26,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/de1984_icon"
-            android:contentDescription="App icon" />
+            android:contentDescription="@string/cd_app_icon" />
 
         <!-- Package Info -->
         <LinearLayout
@@ -42,7 +42,7 @@
                 android:id="@+id/app_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="App Name"
+                android:text="@string/action_sheet_placeholder_app_name"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary"
@@ -55,7 +55,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="com.example.app"
+                android:text="@string/action_sheet_placeholder_package_name"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:maxLines="1"
@@ -67,7 +67,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="System Critical"
+                android:text="@string/firewall_badge_system_critical"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:textColor="@color/error_red"
@@ -84,7 +84,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="VPN App"
+                android:text="@string/firewall_badge_vpn_app"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:textColor="#1976D2"
@@ -122,7 +122,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:src="@drawable/ic_wifi"
-                        android:contentDescription="WiFi status" />
+                        android:contentDescription="@string/cd_wifi_status" />
 
                     <ImageView
                         android:id="@+id/wifi_blocked_overlay"
@@ -130,7 +130,7 @@
                         android:layout_height="match_parent"
                         android:src="@drawable/ic_blocked_overlay"
                         android:visibility="gone"
-                        android:contentDescription="WiFi blocked" />
+                        android:contentDescription="@string/cd_wifi_blocked" />
                 </FrameLayout>
 
                 <!-- Mobile Icon with overlay -->
@@ -144,7 +144,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:src="@drawable/ic_mobile"
-                        android:contentDescription="Mobile data status" />
+                        android:contentDescription="@string/cd_mobile_data_status" />
 
                     <ImageView
                         android:id="@+id/mobile_blocked_overlay"
@@ -152,7 +152,7 @@
                         android:layout_height="match_parent"
                         android:src="@drawable/ic_blocked_overlay"
                         android:visibility="gone"
-                        android:contentDescription="Mobile blocked" />
+                        android:contentDescription="@string/cd_mobile_blocked" />
                 </FrameLayout>
 
                 <!-- Roaming Icon with overlay (conditionally visible) -->
@@ -168,7 +168,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:src="@drawable/ic_roaming"
-                        android:contentDescription="Roaming status" />
+                        android:contentDescription="@string/cd_roaming_status" />
 
                     <ImageView
                         android:id="@+id/roaming_blocked_overlay"
@@ -176,7 +176,7 @@
                         android:layout_height="match_parent"
                         android:src="@drawable/ic_blocked_overlay"
                         android:visibility="gone"
-                        android:contentDescription="Roaming blocked" />
+                        android:contentDescription="@string/cd_roaming_blocked" />
                 </FrameLayout>
 
             </LinearLayout>

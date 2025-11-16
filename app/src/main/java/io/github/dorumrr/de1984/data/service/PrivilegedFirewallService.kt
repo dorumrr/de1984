@@ -201,8 +201,8 @@ class PrivilegedFirewallService : Service() {
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("De1984 Firewall Active")
-            .setContentText("Using $backendName backend")
+            .setContentTitle(getString(R.string.privileged_firewall_notification_title))
+            .setContentText(getString(R.string.privileged_firewall_notification_text, backendName))
             .setSmallIcon(R.drawable.ic_notification_de1984)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -520,8 +520,8 @@ class PrivilegedFirewallService : Service() {
         }
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Firewall Backend Failed")
-            .setContentText("$backendName backend stopped working. Tap to restart.")
+            .setContentTitle(getString(R.string.privileged_firewall_failure_notification_title))
+            .setContentText(getString(R.string.privileged_firewall_failure_notification_text, backendName))
             .setSmallIcon(R.drawable.ic_notification_de1984)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)

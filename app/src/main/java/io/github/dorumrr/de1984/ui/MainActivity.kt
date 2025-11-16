@@ -85,6 +85,7 @@ class MainActivity : AppCompatActivity() {
     private val permissionSetupViewModel: PermissionSetupViewModel by viewModels {
         val deps = (application as De1984Application).dependencies
         PermissionSetupViewModel.Factory(
+            context = applicationContext,
             permissionManager = deps.permissionManager
         )
     }
@@ -526,7 +527,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateToolbar() {
         when (currentTab) {
             Tab.FIREWALL -> {
-                binding.toolbarSectionName.text = "FIREWALL"
+                binding.toolbarSectionName.text = getString(R.string.nav_firewall).uppercase()
                 binding.firewallToggleGroup.visibility = View.VISIBLE
                 // Update badges based on current firewall state
                 val isEnabled = firewallViewModel.uiState.value.isFirewallEnabled
@@ -534,13 +535,13 @@ class MainActivity : AppCompatActivity() {
                 binding.firewallOffBadge.visibility = if (isEnabled) View.GONE else View.VISIBLE
             }
             Tab.APPS -> {
-                binding.toolbarSectionName.text = "PACKAGES"
+                binding.toolbarSectionName.text = getString(R.string.nav_packages).uppercase()
                 binding.firewallToggleGroup.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
             }
             Tab.SETTINGS -> {
-                binding.toolbarSectionName.text = "SETTINGS"
+                binding.toolbarSectionName.text = getString(R.string.nav_settings).uppercase()
                 binding.firewallToggleGroup.visibility = View.GONE
                 binding.firewallActiveBadge.visibility = View.GONE
                 binding.firewallOffBadge.visibility = View.GONE
@@ -598,16 +599,16 @@ class MainActivity : AppCompatActivity() {
     private fun showFirewallStartDialog() {
         StandardDialog.showConfirmation(
             context = this,
-            title = Constants.UI.Dialogs.FIREWALL_START_TITLE,
-            message = Constants.UI.Dialogs.FIREWALL_START_MESSAGE,
-            confirmButtonText = Constants.UI.Dialogs.FIREWALL_START_CONFIRM,
+            title = getString(R.string.dialog_firewall_start_title),
+            message = getString(R.string.dialog_firewall_start_message),
+            confirmButtonText = getString(R.string.dialog_firewall_start_confirm),
             onConfirm = {
                 val prepareIntent = firewallViewModel.startFirewall()
                 if (prepareIntent != null) {
                     vpnPermissionLauncher.launch(prepareIntent)
                 }
             },
-            cancelButtonText = Constants.UI.Dialogs.FIREWALL_START_SKIP
+            cancelButtonText = getString(R.string.dialog_firewall_start_skip)
         )
     }
 
@@ -683,9 +684,9 @@ class MainActivity : AppCompatActivity() {
                 Log.e(TAG, "Failed to start VPN fallback", e)
                 // Show error to user
                 MaterialAlertDialogBuilder(this@MainActivity)
-                    .setTitle("VPN Fallback Failed")
-                    .setMessage("Failed to start VPN fallback: ${e.message}")
-                    .setPositiveButton("OK", null)
+                    .setTitle(getString(R.string.vpn_fallback_failed_title))
+                    .setMessage(getString(R.string.vpn_fallback_failed_message, e.message))
+                    .setPositiveButton(getString(R.string.dialog_ok), null)
                     .show()
             }
         }

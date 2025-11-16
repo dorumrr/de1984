@@ -1,8 +1,11 @@
 <resources>
     <!-- App Identity -->
-    <string name="app_name">De1984</string>
+    <string name="app_name" translatable="false">De1984</string>
     <string name="app_tagline">Privacy isn’t default. Take it back with De1984 Firewall and Package Control.</string>
-    
+
+    <!-- Donate Button -->
+    <string name="donate_button">Donate</string>
+
     <!-- Navigation -->
     <string name="nav_firewall">Firewall</string>
     <string name="nav_packages">Packages</string>
@@ -10,10 +13,42 @@
     <string name="nav_drawer_open">Open navigation drawer</string>
     <string name="nav_drawer_close">Close navigation drawer</string>
 
+    <!-- Navigation Labels -->
+    <string name="label_firewall">Firewall</string>
+    <string name="label_packages">Packages</string>
+    <string name="label_settings">Settings</string>
+
+    <!-- Toolbar Titles -->
+    <string name="title_firewall">De1984 FIREWALL</string>
+    <string name="title_packages">De1984 PACKAGES</string>
+    <string name="title_settings">De1984 SETTINGS</string>
+
     <!-- Firewall Toggle Button -->
     <string name="firewall_button_on">ON</string>
     <string name="firewall_button_off">OFF</string>
-    
+    <string name="firewall_status_active">ACTIVE</string>
+
+    <!-- Firewall States -->
+    <string name="firewall_state_blocked">Blocked</string>
+    <string name="firewall_state_allowed">Allowed</string>
+    <string name="firewall_state_internet">Internet</string>
+    <string name="firewall_search_hint">Search apps…</string>
+
+    <!-- Firewall Dialogs -->
+    <string name="dialog_firewall_start_title">Start De1984 Firewall?</string>
+    <string name="dialog_firewall_start_message">Welcome to De1984! Would you like to start the firewall now to protect your privacy?</string>
+    <string name="dialog_firewall_start_confirm">Start Firewall</string>
+    <string name="dialog_firewall_start_skip">Later</string>
+
+    <string name="dialog_policy_change_title">Change Default Policy?</string>
+    <string name="dialog_policy_change_confirm">Change Policy</string>
+    <string name="dialog_policy_change_cancel">Cancel</string>
+
+    <string name="dialog_vpn_warning_title">WARNING: A VPN is currently active!</string>
+    <string name="dialog_vpn_warning_message">Please allow your VPN app in the firewall to avoid connectivity issues.</string>
+
+    <string name="firewall_system_package_warning">⚠️ System Package Warning</string>
+
     <!-- Package Management -->
     <string name="packages_title">Package Management</string>
     <string name="packages_search_hint">Search packages…</string>
@@ -23,7 +58,8 @@
     <string name="packages_filter_enabled">Enabled</string>
     <string name="packages_filter_disabled">Disabled</string>
     <string name="packages_filter_threats">Threats</string>
-    
+    <string name="packages_empty_state_no_uninstalled">No uninstalled system apps</string>
+
     <!-- Package Status -->
     <string name="status_enabled">Enabled</string>
     <string name="status_disabled">Disabled</string>
@@ -31,20 +67,112 @@
     <string name="status_system">System</string>
     <string name="status_user">User</string>
     <string name="status_threat">Threat</string>
-    
+
     <!-- Package Actions -->
     <string name="action_enable">Enable</string>
     <string name="action_disable">Disable</string>
     <string name="action_uninstall">Uninstall</string>
     <string name="action_reinstall">Reinstall</string>
+    <string name="action_force_stop">Force Stop</string>
     <string name="select_package">Select package</string>
     <string name="close_selection">Close selection mode</string>
-    
+
+    <!-- Package Action Sheet -->
+    <string name="action_sheet_package_name_label">Package Name</string>
+    <string name="action_sheet_force_stop_desc_running">Immediately stop all processes</string>
+    <string name="action_sheet_force_stop_desc_not_running">Force stop (if running)</string>
+    <string name="action_sheet_disable_desc">Prevent this app from running</string>
+    <string name="action_sheet_enable_desc">Allow this app to run</string>
+    <string name="action_sheet_uninstall_desc">Remove this app from your device</string>
+    <string name="action_sheet_reinstall_desc">Restore this system app</string>
+
+    <!-- Package Action Confirmations -->
+    <string name="dialog_force_stop_title">Force Stop %s?</string>
+    <string name="dialog_force_stop_system_message">⚠️ This is a system package. Force stopping it may cause system instability.\n\nAre you sure you want to continue?</string>
+    <string name="dialog_force_stop_message">This will immediately stop all processes for %s.\n\nAre you sure?</string>
+    <string name="dialog_enable_disable_title">%1$s %2$s?</string>
+    <string name="dialog_disable_system_message">⚠️ This is a system package. Disabling it may cause system instability or prevent other apps from working.\n\nAre you sure you want to continue?</string>
+    <string name="dialog_enable_message">This will allow %s to run normally.\n\nAre you sure?</string>
+    <string name="dialog_disable_message">This will prevent %s from running.\n\nAre you sure?</string>
+
+    <!-- Permission Names -->
+    <string name="permission_network_state">Network State</string>
+    <string name="permission_wifi_state">WiFi State</string>
+    <string name="permission_notification">Notification Permission</string>
+    <string name="permission_battery_optimization">Battery Optimization Exemption</string>
+    <string name="permission_modify_system_settings">Modify System Settings</string>
+    <string name="permission_enable_disable_components">Enable/Disable Components</string>
+    <string name="permission_superuser_access">Superuser Access</string>
+    <string name="permission_vpn">VPN Permission</string>
+
+    <!-- Permission Descriptions -->
+    <string name="permission_network_state_desc">Monitor network connectivity (WiFi/Mobile/Roaming)</string>
+    <string name="permission_wifi_state_desc">Detect WiFi network status</string>
+    <string name="permission_notification_desc">Show notifications for new app installations</string>
+    <string name="permission_battery_optimization_desc">Prevents Android from killing the firewall service to save battery. Critical for VPN reliability.</string>
+    <string name="permission_modify_system_settings_desc">Change system-level security settings</string>
+    <string name="permission_enable_disable_components_desc">Enable or disable app components</string>
+    <string name="permission_superuser_access_desc">Full system access for advanced operations</string>
+    <string name="permission_vpn_desc">Allows automatic fallback to VPN when privileged backends (iptables/ConnectivityManager) fail. Ensures firewall stays active.</string>
+
+    <!-- Permission Tier Titles -->
+    <string name="permission_tier_basic_title">Basic Functionality</string>
+    <string name="permission_tier_battery_title">Background Process</string>
+    <string name="permission_tier_advanced_title">Advanced Operations</string>
+    <string name="permission_tier_vpn_title">VPN Fallback</string>
+
+    <!-- Permission Tier Descriptions -->
+    <string name="permission_tier_basic_desc">View installed packages and basic information</string>
+    <string name="permission_tier_battery_desc">Prevents Android from killing the firewall service to save battery. Critical for VPN reliability.</string>
+    <string name="permission_tier_advanced_desc">Package management and system-level operations (via Shizuku or root)</string>
+    <string name="permission_tier_vpn_desc">Allows automatic fallback to VPN when privileged backends (iptables/ConnectivityManager) fail. Ensures firewall stays active.</string>
+
+    <!-- Permission Tier Status -->
+    <string name="permission_status_completed">Completed</string>
+    <string name="permission_status_required">Permission Required</string>
+    <string name="permission_status_shizuku_or_root_required">Shizuku or Root Required</string>
+
+    <!-- Permission Tier Buttons -->
+    <string name="permission_button_grant">Grant Permission</string>
+    <string name="permission_button_grant_shizuku">Grant Shizuku Permission</string>
+    <string name="permission_button_grant_privileged">Grant Privileged Access</string>
+    <string name="permission_button_grant_vpn">Grant VPN Permission</string>
+
+    <!-- Multi-Select Package Operations -->
+    <string name="multiselect_toast_cannot_select_critical">Important/Essential packages must be uninstalled individually</string>
+    <string name="multiselect_toast_selection_limit">Maximum 50 packages can be selected at once</string>
+    <string name="multiselect_toolbar_title_format">%d selected</string>
+    <string name="multiselect_toolbar_button_uninstall">Uninstall</string>
+    <string name="multiselect_toolbar_button_reinstall">Reinstall</string>
+    <string name="multiselect_toolbar_button_clear">Clear</string>
+
+    <string name="multiselect_dialog_title_uninstall">Uninstall %d Selected Apps?</string>
+    <string name="multiselect_dialog_message_cannot_undo">This action cannot be undone.</string>
+    <string name="multiselect_dialog_button_uninstall_all">Uninstall All</string>
+    <string name="multiselect_dialog_button_cancel">Cancel</string>
+
+    <string name="multiselect_dialog_title_results">Uninstall Results</string>
+    <string name="multiselect_dialog_message_success_format">✓ Successfully uninstalled: %d</string>
+    <string name="multiselect_dialog_message_failed_format">✗ Failed to uninstall: %d</string>
+    <string name="multiselect_dialog_button_ok">OK</string>
+
+    <string name="multiselect_progress_dialog_title">Uninstalling Packages</string>
+    <string name="multiselect_progress_message_format">Uninstalling %1$d of %2$d…</string>
+
+    <string name="multiselect_dialog_title_reinstall_results">Reinstall Results</string>
+    <string name="multiselect_dialog_message_reinstall_success_format">✓ Successfully reinstalled: %d</string>
+    <string name="multiselect_dialog_message_reinstall_failed_format">✗ Failed to reinstall: %d</string>
+
+    <string name="multiselect_progress_dialog_title_reinstall">Reinstalling Packages</string>
+    <string name="multiselect_progress_message_format_reinstall">Reinstalling %1$d of %2$d…</string>
+
+    <string name="multiselect_checkbox_content_description">Select package</string>
+
     <!-- Theme -->
     <string name="theme_light">Light Theme</string>
     <string name="theme_dark">Dark Theme</string>
     <string name="theme_toggle">Toggle Theme</string>
-    
+
     <!-- Common -->
     <string name="search">Search</string>
     <string name="filter">Filter</string>
@@ -55,7 +183,11 @@
     <string name="loading">Loading…</string>
     <string name="error">Error</string>
     <string name="retry">Retry</string>
-    
+    <string name="success">Success</string>
+    <string name="later">Later</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="grant">Grant</string>
+
     <!-- Content Descriptions -->
     <string name="cd_app_icon">App icon</string>
     <string name="cd_theme_toggle">Theme toggle button</string>
@@ -63,15 +195,448 @@
     <string name="cd_filter_icon">Filter icon</string>
     <string name="cd_status_indicator">Status indicator</string>
     <string name="cd_navigation_icon">Navigation icon</string>
+    <string name="cd_wifi_status">WiFi status</string>
+    <string name="cd_wifi_blocked">WiFi blocked</string>
+    <string name="cd_mobile_data_status">Mobile data status</string>
+    <string name="cd_mobile_blocked">Mobile blocked</string>
+    <string name="cd_roaming_status">Roaming status</string>
+    <string name="cd_roaming_blocked">Roaming blocked</string>
+    <string name="cd_shield_icon">Shield icon</string>
+    <string name="cd_open_app_settings">Open app settings</string>
+    <string name="cd_package_control_icon">Package control icon</string>
+    <string name="cd_status_icon">Status icon</string>
+    <string name="cd_de1984_logo">De1984 Logo</string>
+    <string name="cd_force_stop_icon">Force stop icon</string>
+    <string name="cd_enable_disable_icon">Enable/Disable icon</string>
+    <string name="cd_uninstall_icon">Uninstall icon</string>
+    <string name="cd_firewall_rules_icon">Firewall rules icon</string>
+    <string name="cd_settings_icon">Settings icon</string>
+    <string name="cd_backend_information">Backend information</string>
+    <string name="cd_captive_portal_icon">Captive Portal icon</string>
+    <string name="cd_apps_icon">Apps icon</string>
+    <string name="cd_permission_status">Permission status</string>
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">Late nights for brighter days.\nCreated by Doru Moraru</string>
-    <string name="footer_author_name">Doru Moraru</string>
-    <string name="footer_author_url">https://github.com/dorumrr/de1984</string>
+    <string name="footer_author_name" translatable="false">Doru Moraru</string>
+    <string name="footer_author_url" translatable="false">https://github.com/dorumrr/de1984</string>
 
     <!-- Plurals -->
     <plurals name="package_count">
         <item quantity="one">%d app</item>
         <item quantity="other">%d apps</item>
     </plurals>
+
+    <!-- Root Access -->
+    <string name="root_status_granted">Root Access: Granted</string>
+    <string name="root_status_denied">Root Access: Denied</string>
+    <string name="root_status_not_available">Root Access: Not Available</string>
+    <string name="root_status_checking">Root Access: Checking…</string>
+
+    <string name="root_desc_granted">Advanced operations are available</string>
+    <string name="root_desc_denied">Root permission was denied. Follow the instructions below to grant access.</string>
+    <string name="root_desc_not_available">Your device is not rooted. Root access is required for advanced package management operations.</string>
+    <string name="root_desc_checking">Please wait…</string>
+
+    <string name="root_grant_instructions_title">To grant root access:</string>
+    <string name="root_grant_instructions_body">• Reinstall the app to trigger the permission dialog again\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)</string>
+
+    <string name="root_rooting_tools_title"><![CDATA[<b>Recommended rooting tools:</b>]]></string>
+    <string name="root_rooting_tools_body">• Magisk - Most popular and widely supported root solution. Works on Android 5.0+ and supports modules for additional features.\n• KernelSU - Modern kernel-based root management. Provides better security isolation and doesn\'t modify system partition.\n• APatch - Newer alternative with kernel patching approach. Good for devices with strict security policies.</string>
+
+    <string name="root_setup_instructions">To enable package disable/enable functionality:\n\n1. Root your device using your preferred method\n2. Grant superuser access to De1984 when prompted\n3. Restart the app to use advanced operations</string>
+
+    <!-- Shizuku Access -->
+    <string name="shizuku_status_granted">Shizuku: Granted</string>
+    <string name="shizuku_status_denied">Shizuku: Denied</string>
+    <string name="shizuku_status_not_available">Shizuku: Not Installed</string>
+    <string name="shizuku_status_not_running">Shizuku: Not Running</string>
+    <string name="shizuku_status_checking">Shizuku: Checking…</string>
+
+    <string name="shizuku_desc_granted">Advanced operations are available via Shizuku</string>
+    <string name="shizuku_desc_denied">Shizuku permission was denied. Tap \'Grant Shizuku Permission\' to try again.</string>
+    <string name="shizuku_desc_not_available">Shizuku is not installed. Install Shizuku to enable package management without root.</string>
+    <string name="shizuku_desc_not_running">Shizuku is installed but not running. Start Shizuku to enable package management.</string>
+    <string name="shizuku_desc_checking">Please wait…</string>
+
+    <string name="shizuku_instructions_not_running">Start Shizuku app to enable package management</string>
+
+    <string name="shizuku_what_is">Shizuku allows apps to use system APIs with elevated privileges (ADB or root). It\'s a safer alternative to traditional root access for package management.</string>
+
+    <!-- Privileged Access Banner -->
+    <string name="banner_no_access_available">No privileged access available. Install Shizuku or root your device to enable package management.</string>
+    <string name="banner_shizuku_not_running">Shizuku is installed but not running. Start Shizuku or root your device to enable package management.</string>
+    <string name="banner_permission_required">Shizuku or root access required for package management</string>
+
+    <string name="banner_button_go_to_settings">Go to Settings</string>
+    <string name="banner_button_grant">Grant</string>
+    <string name="banner_button_dismiss">Dismiss</string>
+
+    <!-- Backend Monitoring -->
+    <string name="backend_monitoring_channel_name">Backend Monitoring</string>
+
+    <string name="backend_notification_title_waiting">De1984 Firewall Active (VPN Mode)</string>
+    <string name="backend_notification_title_switching">De1984 is switching backend…</string>
+    <string name="backend_notification_title_success">De1984 Firewall backend switched</string>
+    <string name="backend_notification_title_failed">De1984 Firewall backend switch failed</string>
+
+    <string name="backend_notification_text_shizuku_not_running">Waiting for Shizuku to start. Tap to retry.</string>
+    <string name="backend_notification_text_shizuku_no_permission">Waiting for Shizuku permission. Tap to retry.</string>
+    <string name="backend_notification_text_switching">Shizuku is now available. Switching to preferred backend…</string>
+    <string name="backend_notification_text_success_connectivity_manager">De1984 Firewall is now using ConnectivityManager backend</string>
+    <string name="backend_notification_text_success_iptables">De1984 Firewall is now using iptables backend</string>
+    <string name="backend_notification_text_failed">De1984 Firewall failed to switch backend. Still using VPN.</string>
+
+    <string name="backend_action_button_retry">Retry</string>
+
+    <string name="backend_toast_success_connectivity_manager">De1984 Firewall switched to ConnectivityManager</string>
+    <string name="backend_toast_success_iptables">De1984 Firewall switched to iptables</string>
+    <string name="backend_toast_failed">De1984 Firewall failed to switch backend</string>
+
+    <!-- VPN Fallback -->
+    <string name="vpn_fallback_channel_name">VPN Fallback</string>
+
+    <string name="vpn_fallback_notification_title">De1984 Firewall Down</string>
+    <string name="vpn_fallback_notification_text">Privileged backend failed. Tap to enable VPN fallback and restore firewall protection.</string>
+    <string name="vpn_fallback_notification_action_text">Enable VPN Fallback</string>
+
+    <string name="vpn_fallback_tier_title">VPN Fallback</string>
+    <string name="vpn_fallback_tier_description">Allows automatic fallback to VPN when privileged backends (iptables/ConnectivityManager) fail. Ensures firewall stays active.</string>
+    <string name="vpn_fallback_tier_status_granted">Completed</string>
+    <string name="vpn_fallback_tier_status_not_granted">Permission Required</string>
+    <string name="vpn_fallback_tier_button_text">Grant VPN Permission</string>
+
+    <string name="vpn_fallback_permission_name">VPN Permission</string>
+    <string name="vpn_fallback_permission_description">Create VPN connection for firewall fallback</string>
+
+    <!-- Language Switcher -->
+    <string name="language_title">App Language</string>
+    <string name="language_description">Choose your preferred language for the app</string>
+    <string name="language_system_default">System Default</string>
+    <string name="language_english">English</string>
+    <string name="language_romanian">Română (Romanian)</string>
+    <string name="language_portuguese">Português (Portuguese)</string>
+    <string name="language_chinese">中文 (Chinese)</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_app_version">Version %s</string>
+    <string name="settings_app_description">Privacy isn\'t the default. Take it back with De1984 Firewall and Package Control. A truly free and open-source project made with ♥️ for privacy. Consider donating to support its development if you find it useful.</string>
+
+    <string name="settings_options_title">Options</string>
+    <string name="settings_options_description">Configure behavior and settings</string>
+
+    <string name="settings_firewall_policy_title">Firewall Blocks All by Default</string>
+    <string name="settings_firewall_policy_description_block_all">Block All, Allow Wanted</string>
+    <string name="settings_firewall_policy_description_allow_all">Allow All, Block Unwanted</string>
+
+    <string name="settings_backend_title">Firewall Backend</string>
+    <string name="settings_backend_description">Select which backend to use for blocking apps</string>
+    <string name="settings_backend_current">Current: %s</string>
+    <string name="settings_backend_active">Active: %s</string>
+    <string name="settings_backend_not_running">Firewall not running.</string>
+    <string name="settings_backend_loading">Loading...</string>
+
+    <!-- Backend Options -->
+    <string name="backend_auto_name">AUTO (Recommended)</string>
+    <string name="backend_auto_description">Automatically select best available backend</string>
+    <string name="backend_vpn_name">VPN</string>
+    <string name="backend_vpn_description">Always use VPN backend</string>
+    <string name="backend_connectivity_manager_name">ConnectivityManager</string>
+    <string name="backend_connectivity_manager_description">System-level blocking (requires Shizuku + Android 13+)</string>
+    <string name="backend_connectivity_manager_requirement">Requires Shizuku + Android 13+</string>
+    <string name="backend_requires_android_13">Requires Android 13+</string>
+    <string name="backend_requires_shizuku">Requires Shizuku</string>
+    <string name="backend_iptables_name">iptables</string>
+    <string name="backend_iptables_description">Kernel-level blocking (requires root)</string>
+    <string name="backend_iptables_requirement">Requires root or Shizuku in root mode</string>
+    <string name="backend_network_policy_manager_name">NetworkPolicyManager (Legacy)</string>
+    <string name="backend_network_policy_manager_description">For Android 12 and below (use ConnectivityManager on Android 13+)</string>
+    <string name="backend_network_policy_manager_requirement">Requires Shizuku</string>
+    <string name="backend_not_available_title">%s Not Available</string>
+    <string name="backend_not_available_message">This backend is not available on your device.</string>
+
+    <string name="settings_show_icons_title">Show App Icons</string>
+    <string name="settings_show_icons_description">Might speed up the app when disabled</string>
+
+    <string name="settings_new_app_notifications_title">New App Notifications</string>
+    <string name="settings_new_app_notifications_description">Show notifications when new apps with network permissions are installed</string>
+
+    <string name="settings_allow_uninstall_critical_title">Allow Uninstalling Critical Packages</string>
+    <string name="settings_allow_uninstall_critical_description">Show uninstall option for Essential and Important packages</string>
+
+    <string name="settings_show_firewall_prompt_title">Show Firewall Start Prompt</string>
+    <string name="settings_show_firewall_prompt_description">Show a prompt to start the firewall when the app opens and firewall is inactive</string>
+
+    <string name="settings_dynamic_color_title">Use Dynamic Color</string>
+    <string name="settings_dynamic_color_description">Adapt app colors to match your device wallpaper (Android 12+). Requires app restart.</string>
+
+    <string name="settings_backup_restore_title">Backup &amp; Restore</string>
+    <string name="settings_backup_restore_description">Save and restore your firewall rules</string>
+    <string name="settings_backup_button">Backup</string>
+    <string name="settings_restore_button">Restore</string>
+
+    <string name="settings_captive_portal_title">🌐 Captive Portal Controller</string>
+    <string name="settings_captive_portal_description">Control Android\'s captive portal detection system</string>
+    <string name="settings_captive_portal_current_settings">Current Settings</string>
+    <string name="settings_captive_portal_detection_mode">Detection Mode: %s</string>
+    <string name="settings_captive_portal_http_url">HTTP URL: %s</string>
+    <string name="settings_captive_portal_https_url">HTTPS URL: %s</string>
+    <string name="settings_captive_portal_preset">Preset: %s</string>
+    <string name="settings_captive_portal_loading">Loading...</string>
+    <string name="settings_captive_portal_not_set">Not set</string>
+
+    <!-- Captive Portal Mode Options -->
+    <string name="captive_portal_mode_forced_off">Forced Off</string>
+    <string name="captive_portal_mode_forced_off_description">Captive portal detection is completely disabled</string>
+    <string name="captive_portal_mode_disabled">Disabled</string>
+    <string name="captive_portal_mode_disabled_description">Captive portal detection is disabled</string>
+    <string name="captive_portal_mode_enabled">Enabled</string>
+    <string name="captive_portal_mode_enabled_description">Captive portal detection is enabled (default)</string>
+
+    <!-- Captive Portal Preset Options -->
+    <string name="captive_portal_preset_google">Google (Default)</string>
+    <string name="captive_portal_preset_google_description">Google\'s default captive portal detection servers</string>
+    <string name="captive_portal_preset_grapheneos">GrapheneOS</string>
+    <string name="captive_portal_preset_grapheneos_description">Privacy-focused servers from GrapheneOS project</string>
+    <string name="captive_portal_preset_kuketz">Kuketz</string>
+    <string name="captive_portal_preset_kuketz_description">Privacy-focused servers from Mike Kuketz (Germany)</string>
+    <string name="captive_portal_preset_cloudflare">Cloudflare</string>
+    <string name="captive_portal_preset_cloudflare_description">Cloudflare\'s captive portal detection servers</string>
+    <string name="captive_portal_preset_custom">Custom URLs</string>
+    <string name="captive_portal_preset_custom_description">Use your own custom captive portal URLs</string>
+
+    <!-- Captive Portal Success Messages -->
+    <string name="captive_portal_preset_applied">Applied %s preset successfully</string>
+    <string name="captive_portal_mode_set">Detection mode set to %s</string>
+    <string name="settings_captive_portal_restore_original">Restore Original</string>
+    <string name="settings_captive_portal_reset_google">Reset to Google</string>
+    <string name="settings_captive_portal_no_privileges">Root or Shizuku access required to modify settings</string>
+
+    <string name="settings_permissions_title">Permissions</string>
+    <string name="settings_permissions_description">Status and advanced configuration</string>
+
+    <string name="settings_contribute_title">Questions, features, bugs?</string>
+    <string name="settings_contribute_description">Get involved and help improve De1984</string>
+    <string name="settings_contribute_message">Contribute code, report bugs, or suggest features to make this app better for everyone.</string>
+    <string name="settings_contribute_button">Contribute on GitHub</string>
+
+    <!-- Dialog Titles and Messages -->
+    <string name="dialog_success">Success</string>
+    <string name="dialog_firewall_backends_title">Firewall Backends</string>
+    <string name="dialog_firewall_backends_message">💡 AUTO Mode (Recommended)\nAutomatically selects the best available backend:\n1. iptables (if root/Shizuku available)\n2. ConnectivityManager (if Shizuku + Android 13+)\n3. VPN (fallback)\n\nDe1984 supports four firewall backends:\n\n🔹 VPN Backend\n• Always available (no root required)\n• Uses Android VpnService API\n• Supports granular control (WiFi/Mobile/Roaming)\n• Occupies VPN slot (can\'t use other VPN apps)\n• User-space packet filtering\n\n🔹 iptables Backend\n• Requires root or Shizuku in root mode\n• Kernel-level blocking (most efficient)\n• Supports granular control (WiFi/Mobile/Roaming)\n• Doesn\'t occupy VPN slot\n• Works with other VPN apps\n\n🔹 ConnectivityManager Backend\n• Requires Shizuku + Android 13+\n• System-level blocking (blocks all networks reliably)\n• All-or-nothing blocking only (no granular control)\n• Doesn\'t occupy VPN slot\n• Works with other VPN apps\n\n🔹 NetworkPolicyManager Backend (Legacy)\n• Requires Shizuku\n• For Android 12 and below\n• May not block WiFi on some devices\n• Use ConnectivityManager on Android 13+ instead\n• Doesn\'t occupy VPN slot</string>
+    <string name="dialog_privileged_access_title">Privileged Access</string>
+    <string name="dialog_privileged_access_testing">🔄 Testing privileged access...\n\nPlease grant permission in the popup dialog if prompted.</string>
+    <string name="dialog_privileged_access_failed">❌ Root test failed.\n\nError: %s</string>
+    <string name="dialog_restore_rules_title">Restore Firewall Rules?</string>
+    <string name="dialog_restore_rules_message">📦 Backup Information:\n\n• Created: %1$s\n• App Version: %2$s\n• Rules Count: %3$d\n\nChoose restore mode:\n\n• Merge: Keep existing rules and add/update from backup\n• Replace All: Delete all existing rules first (⚠️ destructive)</string>
+    <string name="dialog_restore_rules_merge">Merge</string>
+    <string name="dialog_restore_rules_replace">Replace All</string>
+    <string name="dialog_replace_all_title">⚠️ Replace All Rules?</string>
+    <string name="dialog_replace_all_message">This will DELETE all existing firewall rules and replace them with the backup.\n\nThis action cannot be undone.\n\nAre you sure?</string>
+    <string name="dialog_replace_all_confirm">Replace All</string>
+    <string name="dialog_critical_uninstall_title">⚠️ Warning</string>
+    <string name="dialog_critical_uninstall_message">This allows uninstalling system-critical packages that may brick your device. Only enable if you know what you\'re doing.\n\nAre you sure you want to enable this?</string>
+    <string name="dialog_critical_uninstall_enable">Enable</string>
+    <string name="dialog_restart_title">Restart Required</string>
+    <string name="dialog_restart_message">The app needs to restart to apply the new color theme. Restart now?</string>
+    <string name="dialog_restart_confirm">Restart</string>
+    <string name="dialog_captive_portal_restore_title">Restore Original Settings?</string>
+    <string name="dialog_captive_portal_restore_message">This will restore your device\'s original captive portal settings that were captured when you first opened this feature.</string>
+    <string name="dialog_captive_portal_restore_confirm">Restore</string>
+    <string name="dialog_captive_portal_reset_title">Reset to Google Defaults?</string>
+    <string name="dialog_captive_portal_reset_message">This will reset captive portal settings to Google\'s default servers. Your original settings will remain saved and can be restored later.</string>
+    <string name="dialog_captive_portal_reset_confirm">Reset</string>
+    <string name="dialog_backup_read_error">Failed to read backup file: %s</string>
+    <string name="dialog_backup_load_error">Failed to load backup: %s</string>
+    <string name="dialog_loading_backup_title">Loading Backup...</string>
+    <string name="dialog_loading_backup_message">Please wait...</string>
+    <string name="dialog_vpn_permission_error_title">VPN Permission Error</string>
+    <string name="dialog_vpn_permission_error_message">Failed to request VPN permission: %s</string>
+
+    <!-- Licenses (unused but kept for future) -->
+    <string name="licenses_coming_soon">Open source licenses screen coming soon</string>
+
+    <!-- Packages Screen -->
+    <string name="packages_empty_state_title">No packages found</string>
+    <string name="packages_empty_state_subtitle">Try adjusting your filters</string>
+    <string name="package_state_enabled">Enabled</string>
+    <string name="package_type_user">User</string>
+
+    <!-- Firewall Screen -->
+    <string name="firewall_empty_state_title">No packages found</string>
+    <string name="firewall_empty_state_subtitle">Try adjusting your filters</string>
+    <string name="firewall_vpn_info_message">Using VPN-based firewall because your device is not rooted or doesn\'t have Shizuku. You cannot use another VPN app while De1984 Firewall is active.</string>
+    <string name="firewall_network_label_wifi">WiFi</string>
+    <string name="firewall_network_label_mobile">Mobile Data</string>
+    <string name="firewall_network_label_roaming">Roaming</string>
+    <string name="firewall_network_label_block_internet">Block Internet</string>
+    <string name="firewall_connectivity_manager_info">This blocks all network types (WiFi, Mobile, Roaming).\n\nYour device uses a system-level firewall that doesn\'t support per-network blocking. For granular control, root access is required.</string>
+    <string name="firewall_block_all_info">This blocks all network types (WiFi, Mobile, Roaming).</string>
+    <string name="firewall_system_critical_info">⚠️ System Critical Package - Network access cannot be modified to prevent system instability.</string>
+    <string name="firewall_vpn_app_info">🔒 VPN App - Always allowed to prevent VPN reconnection issues after device lock/unlock.</string>
+    <string name="firewall_badge_system_critical">System Critical</string>
+    <string name="firewall_badge_vpn_app">VPN App</string>
+
+    <!-- Package Categories -->
+    <string name="category_system_core">System Core</string>
+    <string name="category_system_ui">System UI</string>
+    <string name="category_google_services">Google Services</string>
+    <string name="category_connectivity">Connectivity</string>
+    <string name="category_telephony">Telephony</string>
+    <string name="category_media">Media</string>
+    <string name="category_social">Social</string>
+    <string name="category_assistant">Assistant</string>
+    <string name="category_vendor">Vendor</string>
+    <string name="category_unknown">Unknown</string>
+
+    <!-- Package Action Sheet -->
+    <string name="action_sheet_placeholder_app_name">App Name</string>
+    <string name="action_sheet_placeholder_package_name">com.example.app</string>
+    <string name="action_sheet_safety_badge_essential">Essential</string>
+    <string name="action_sheet_safety_badge_important">Important</string>
+    <string name="action_sheet_safety_badge_optional">Optional</string>
+    <string name="action_sheet_safety_badge_bloatware">Bloatware</string>
+    <string name="action_sheet_type_badge_user">User</string>
+    <string name="action_sheet_type_badge_system">System UI</string>
+    <string name="action_sheet_action_force_stop">Force Stop</string>
+    <string name="action_sheet_action_force_stop_desc">Immediately stop all processes</string>
+    <string name="action_sheet_action_disable">Disable</string>
+    <string name="action_sheet_action_disable_desc">Prevent this app from running</string>
+    <string name="action_sheet_action_uninstall">Uninstall</string>
+    <string name="action_sheet_action_uninstall_desc">Remove this app from device</string>
+    <string name="action_sheet_action_firewall">Firewall Rules</string>
+    <string name="action_sheet_action_firewall_desc">Control network access</string>
+    <string name="action_sheet_section_network_access">Network Access Control</string>
+    <string name="action_sheet_section_package_control">Package Control</string>
+    <string name="action_sheet_section_package_control_desc">Force stop, disable, or uninstall</string>
+    <string name="action_sheet_status_updating">Updating...</string>
+
+    <!-- Clipboard -->
+    <string name="clipboard_label_package_name">Package Name</string>
+
+    <!-- Uninstall Dialogs -->
+    <string name="uninstall_dialog_title_critical">🚨 CRITICAL WARNING</string>
+    <string name="uninstall_dialog_message_essential">⚠️ ESSENTIAL SYSTEM PACKAGE ⚠️\n\nUninstalling %1$s WILL BRICK YOUR DEVICE!\n\nThis package is critical for system operation. Removing it will make your device unusable and may require a factory reset or reflashing.\n\n%2$sType \"UNINSTALL\" to confirm this dangerous action:</string>
+    <string name="uninstall_dialog_affects_prefix">Affects:\n%s\n\n</string>
+    <string name="uninstall_dialog_confirm_word">UNINSTALL</string>
+    <string name="uninstall_dialog_button_uninstall">Uninstall</string>
+
+    <string name="uninstall_dialog_title_important">⚠️ Warning: Important Package</string>
+    <string name="uninstall_dialog_message_important">Uninstalling %1$s will cause major system features to stop working.\n\n%2$sThis may require a factory reset to restore functionality.\n\nAre you sure?</string>
+
+    <string name="uninstall_dialog_title_optional">Uninstall %s?</string>
+    <string name="uninstall_dialog_message_optional_with_affects">This may affect:\n%s\n\nAre you sure?</string>
+    <string name="uninstall_dialog_message_optional">This will remove %s from your device.\n\nAre you sure?</string>
+
+    <string name="uninstall_dialog_title_bloatware">Uninstall %s?</string>
+    <string name="uninstall_dialog_message_bloatware">✓ Safe to remove\n\nThis package is considered bloatware and can be safely uninstalled.\n\nAre you sure?</string>
+
+    <string name="uninstall_dialog_title_unknown">Uninstall %s?</string>
+    <string name="uninstall_dialog_message_unknown_system">⚠️ DANGER: This is a system package. Uninstalling it may brick your device or cause severe system instability.\n\nThis action cannot be easily undone.\n\nAre you absolutely sure?</string>
+    <string name="uninstall_dialog_message_unknown_user">This will remove %s from your device.\n\nAre you sure?</string>
+
+    <!-- Reinstall Dialog -->
+    <string name="reinstall_dialog_title">Reinstall %s?</string>
+    <string name="reinstall_dialog_message">This will restore the system app to your device.\n\nAre you sure?</string>
+    <string name="reinstall_dialog_button_reinstall">Reinstall</string>
+
+    <!-- Batch Reinstall Dialog -->
+    <string name="batch_reinstall_dialog_title">Reinstall %d Selected Apps?</string>
+    <string name="batch_reinstall_dialog_message_prefix">Reinstall %1$d selected system app%2$s?\n\nThe following apps will be reinstalled:\n\n</string>
+    <string name="batch_reinstall_dialog_message_item">• %s\n</string>
+    <string name="batch_reinstall_dialog_message_more">\n…and %d more</string>
+    <string name="batch_reinstall_dialog_button_reinstall_all">Reinstall All</string>
+
+    <!-- Batch Uninstall Dialog -->
+    <string name="batch_uninstall_dialog_message_question">Are you sure you want to uninstall these %d apps?</string>
+    <string name="batch_uninstall_dialog_category_user_apps">📱 User Apps (%d):</string>
+    <string name="batch_uninstall_dialog_category_bloatware">✓ Bloatware (%d):</string>
+    <string name="batch_uninstall_dialog_category_optional">⚠️ Optional System Apps (%d):</string>
+    <string name="batch_uninstall_dialog_and_more">... and %d more</string>
+    <string name="batch_uninstall_results_and_more">... and %d more</string>
+    <string name="batch_uninstall_results_error_prefix">  Error: %s</string>
+
+    <!-- Common Dialog Strings -->
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_error_title">Error</string>
+    <string name="dialog_no_access_message">❌ No Privileged Access Available\n\nYour device does not appear to be rooted. To enable advanced package management features:\n• Install and configure Shizuku (recommended - no root required)\n• Or root your device using Magisk, KernelSU, or APatch</string>
+    <string name="dialog_root_denied_message">❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission.\n\nTo grant access:\n• Open your superuser app (Magisk, KernelSU, APatch, etc.) and grant permission to De1984\n• If the permission prompt doesn\'t appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)</string>
+    <string name="dialog_type_to_confirm_hint">Type \"%s\" to confirm</string>
+
+    <!-- Toast Messages -->
+    <string name="toast_copied_to_clipboard">Copied to clipboard</string>
+
+    <!-- VPN Fallback -->
+    <string name="vpn_fallback_failed_title">VPN Fallback Failed</string>
+    <string name="vpn_fallback_failed_message">Failed to start VPN fallback: %s</string>
+
+    <!-- Privileged Access Banner -->
+    <string name="privileged_access_banner_no_access">No privileged access available. Install Shizuku or root your device to enable package management.</string>
+    <string name="privileged_access_banner_shizuku_not_running">Shizuku is installed but not running. Start Shizuku or root your device to enable package management.</string>
+    <string name="privileged_access_banner_permission_required">Shizuku or root access required for package management</string>
+    <string name="privileged_access_banner_button_settings">Go to Settings</string>
+    <string name="privileged_access_banner_button_grant">Grant</string>
+    <string name="privileged_access_banner_button_dismiss">Dismiss</string>
+    <string name="privileged_access_dialog_title">Privileged Access</string>
+    <string name="privileged_access_tier_title">Package Management</string>
+    <string name="privileged_access_status_setup_required">Setup Required</string>
+    <string name="privileged_access_status_permission_required">Permission Required</string>
+
+    <!-- Firewall Service Notifications -->
+    <string name="privileged_firewall_notification_title">De1984 Firewall Active</string>
+    <string name="privileged_firewall_notification_text">Using %s backend</string>
+    <string name="privileged_firewall_failure_notification_title">Firewall Backend Failed</string>
+    <string name="privileged_firewall_failure_notification_text">%s backend stopped working. Tap to restart.</string>
+    <string name="vpn_firewall_notification_title">De1984 Firewall Active</string>
+    <string name="vpn_firewall_notification_text">Protecting your privacy</string>
+    <string name="vpn_failure_notification_title">Firewall VPN Failed</string>
+    <string name="vpn_failure_notification_text">VPN interface failed. Retrying automatically...</string>
+    <string name="new_app_notification_title">De1984 Firewall detected a new app</string>
+    <string name="new_app_notification_text">%s was installed. Tap to configure firewall rules.</string>
+    <string name="new_app_notification_action_block">Block Network</string>
+    <string name="new_app_notification_action_allow">Allow Network</string>
+
+    <!-- Backup/Restore Error Messages -->
+    <string name="error_firewall_restart_failed">Failed to restart firewall with new backend: %s</string>
+    <string name="error_no_rules_to_backup">No firewall rules to backup</string>
+    <string name="error_backup_failed">Backup failed: %s</string>
+    <string name="error_unsupported_backup_version">Unsupported backup version: %d</string>
+    <string name="error_backup_no_rules">Backup file contains no rules</string>
+    <string name="error_invalid_backup_format">Invalid backup file format</string>
+    <string name="error_restore_failed">Restore failed: %s</string>
+
+    <!-- Package Management Error Messages -->
+    <string name="error_unable_to_enable_package">Unable to enable package. Shizuku or root access required for package management.</string>
+    <string name="error_unable_to_disable_package">Unable to disable package. Shizuku or root access required for package management.</string>
+    <string name="error_unable_to_uninstall_package">Unable to uninstall package. Shizuku or root access required for package management.</string>
+    <string name="error_unable_to_reinstall_package">Unable to reinstall package. Shizuku or root access required for package management.</string>
+    <string name="error_unable_to_force_stop_package">Unable to force stop package. Shizuku or root access required for package management.</string>
+    <string name="error_unknown">Unknown error</string>
+
+    <!-- Firewall Error Messages -->
+    <string name="error_unable_to_allow_network">Unable to allow network access. Root access required for firewall operations.</string>
+    <string name="error_unable_to_block_network">Unable to block network access. Root access required for firewall operations.</string>
+    <string name="error_failed_to_block_mobile">Failed to block mobile data: %s</string>
+    <string name="error_failed_to_unblock_roaming">Failed to unblock roaming: %s</string>
+
+    <!-- Captive Portal Error Messages -->
+    <string name="error_failed_to_load_settings">Failed to load settings</string>
+    <string name="error_failed_to_apply_preset">Failed to apply preset</string>
+    <string name="error_failed_to_set_detection_mode">Failed to set detection mode</string>
+    <string name="error_failed_to_set_custom_urls">Failed to set custom URLs</string>
+    <string name="error_failed_to_restore_original_settings">Failed to restore original settings</string>
+    <string name="error_failed_to_reset_to_google_defaults">Failed to reset to Google defaults</string>
+
+    <!-- Captive Portal Success Messages -->
+    <string name="success_custom_urls_applied">Custom URLs applied successfully</string>
+    <string name="success_original_settings_restored">Original settings restored successfully</string>
+    <string name="success_reset_to_google_defaults">Reset to Google defaults successfully</string>
+
+    <!-- Input Hints -->
+    <string name="hint_detection_mode">Detection Mode</string>
+    <string name="hint_server_preset">Server Preset</string>
+    <string name="hint_custom_http_url">Custom HTTP URL</string>
+    <string name="hint_custom_https_url">Custom HTTPS URL</string>
+
 </resources>

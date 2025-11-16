@@ -33,7 +33,7 @@ object PermissionSetupDialog {
      */
     fun show(
         context: Context,
-        title: String = "Privileged Access",
+        title: String = context.getString(R.string.privileged_access_dialog_title),
         tierTitle: String,
         description: String,
         status: String,
@@ -91,10 +91,10 @@ object PermissionSetupDialog {
             shizukuStatus == ShizukuStatus.NOT_INSTALLED && rootStatus == RootStatus.NOT_ROOTED -> {
                 show(
                     context = context,
-                    tierTitle = "Package Management",
-                    description = Constants.PrivilegedAccessBanner.MESSAGE_NO_ACCESS_AVAILABLE,
-                    status = "Setup Required",
-                    buttonText = Constants.PrivilegedAccessBanner.BUTTON_GO_TO_SETTINGS,
+                    tierTitle = context.getString(R.string.privileged_access_tier_title),
+                    description = context.getString(R.string.privileged_access_banner_no_access),
+                    status = context.getString(R.string.privileged_access_status_setup_required),
+                    buttonText = context.getString(R.string.privileged_access_banner_button_settings),
                     onButtonClick = onSettingsClick,
                     onDismiss = onDismiss
                 )
@@ -103,10 +103,10 @@ object PermissionSetupDialog {
             shizukuStatus == ShizukuStatus.INSTALLED_NOT_RUNNING && rootStatus == RootStatus.NOT_ROOTED -> {
                 show(
                     context = context,
-                    tierTitle = "Package Management",
-                    description = Constants.PrivilegedAccessBanner.MESSAGE_SHIZUKU_NOT_RUNNING,
-                    status = "Setup Required",
-                    buttonText = Constants.PrivilegedAccessBanner.BUTTON_GO_TO_SETTINGS,
+                    tierTitle = context.getString(R.string.privileged_access_tier_title),
+                    description = context.getString(R.string.privileged_access_banner_shizuku_not_running),
+                    status = context.getString(R.string.privileged_access_status_setup_required),
+                    buttonText = context.getString(R.string.privileged_access_banner_button_settings),
                     onButtonClick = onSettingsClick,
                     onDismiss = onDismiss
                 )
@@ -116,10 +116,10 @@ object PermissionSetupDialog {
             rootStatus == RootStatus.ROOTED_NO_PERMISSION -> {
                 show(
                     context = context,
-                    tierTitle = "Package Management",
-                    description = Constants.PrivilegedAccessBanner.MESSAGE_PERMISSION_REQUIRED,
-                    status = "Permission Required",
-                    buttonText = Constants.PrivilegedAccessBanner.BUTTON_GRANT,
+                    tierTitle = context.getString(R.string.privileged_access_tier_title),
+                    description = context.getString(R.string.privileged_access_banner_permission_required),
+                    status = context.getString(R.string.privileged_access_status_permission_required),
+                    buttonText = context.getString(R.string.privileged_access_banner_button_grant),
                     onButtonClick = onGrantClick,
                     onDismiss = onDismiss
                 )
@@ -128,10 +128,10 @@ object PermissionSetupDialog {
             else -> {
                 show(
                     context = context,
-                    tierTitle = "Package Management",
-                    description = Constants.PrivilegedAccessBanner.MESSAGE_PERMISSION_REQUIRED,
-                    status = "Setup Required",
-                    buttonText = Constants.PrivilegedAccessBanner.BUTTON_GO_TO_SETTINGS,
+                    tierTitle = context.getString(R.string.privileged_access_tier_title),
+                    description = context.getString(R.string.privileged_access_banner_permission_required),
+                    status = context.getString(R.string.privileged_access_status_setup_required),
+                    buttonText = context.getString(R.string.privileged_access_banner_button_settings),
                     onButtonClick = onSettingsClick,
                     onDismiss = onDismiss
                 )

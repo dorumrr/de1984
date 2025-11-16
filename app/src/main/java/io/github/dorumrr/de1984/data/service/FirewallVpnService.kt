@@ -459,8 +459,8 @@ class FirewallVpnService : VpnService() {
 
     private fun showVpnFailureNotification() {
         val notification = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Firewall VPN Failed")
-            .setContentText("VPN interface failed. Retrying automatically...")
+            .setContentTitle(getString(R.string.vpn_failure_notification_title))
+            .setContentText(getString(R.string.vpn_failure_notification_text))
             .setSmallIcon(R.drawable.ic_notification_de1984)
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
             .setOngoing(false)
@@ -790,10 +790,10 @@ class FirewallVpnService : VpnService() {
             intent,
             PendingIntent.FLAG_IMMUTABLE
         )
-        
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("De1984 Firewall Active")
-            .setContentText("Protecting your privacy")
+            .setContentTitle(getString(R.string.vpn_firewall_notification_title))
+            .setContentText(getString(R.string.vpn_firewall_notification_text))
             .setSmallIcon(R.drawable.ic_notification_de1984)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

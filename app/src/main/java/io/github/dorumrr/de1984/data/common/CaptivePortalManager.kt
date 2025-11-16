@@ -154,7 +154,7 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Cannot apply CUSTOM preset directly. Use setCustomUrls() instead."))
             }
 
-            Log.d(TAG, "Applying preset: ${preset.displayName}")
+            Log.d(TAG, "Applying preset: ${preset.name}")
 
             // Set HTTP URL
             val httpResult = setSystemSetting(Constants.CaptivePortal.SYSTEM_KEY_HTTP_URL, preset.httpUrl)
@@ -168,7 +168,7 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Failed to set HTTPS URL: ${httpsResult.second}"))
             }
 
-            Log.d(TAG, "Preset applied successfully: ${preset.displayName}")
+            Log.d(TAG, "Preset applied successfully: ${preset.name}")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply preset", e)
@@ -186,7 +186,7 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Root or Shizuku access required"))
             }
 
-            Log.d(TAG, "Setting detection mode: ${mode.displayName} (${mode.value})")
+            Log.d(TAG, "Setting detection mode: ${mode.name} (${mode.value})")
 
             val result = setSystemSetting(Constants.CaptivePortal.SYSTEM_KEY_MODE, mode.value.toString())
             if (result.first != 0) {

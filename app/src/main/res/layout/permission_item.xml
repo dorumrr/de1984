@@ -14,7 +14,7 @@
         android:layout_height="16dp"
         android:src="@android:drawable/ic_menu_close_clear_cancel"
         app:tint="#E57373"
-        android:contentDescription="Permission status" />
+        android:contentDescription="@string/cd_permission_status" />
 
     <TextView
         android:id="@+id/permission_name"

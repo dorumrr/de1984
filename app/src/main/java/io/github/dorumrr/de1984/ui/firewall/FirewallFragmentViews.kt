@@ -161,29 +161,47 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private fun setupFilterChips() {
+        // Get translated filter strings
+        val packageTypeFilters = listOf(
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_all),
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_user),
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_system)
+        )
+        val networkStateFilters = listOf(
+            getString(io.github.dorumrr.de1984.R.string.firewall_state_allowed),
+            getString(io.github.dorumrr.de1984.R.string.firewall_state_blocked)
+        )
+        val permissionFilters = listOf(
+            getString(io.github.dorumrr.de1984.R.string.firewall_state_internet)
+        )
+
         // Initial setup - only called once
-        currentTypeFilter = "All"
+        currentTypeFilter = getString(io.github.dorumrr.de1984.R.string.packages_filter_all)
         currentStateFilter = null
         currentPermissionFilter = true
 
         FilterChipsHelper.setupMultiSelectFilterChips(
             chipGroup = binding.filterChips,
-            typeFilters = Constants.Firewall.PACKAGE_TYPE_FILTERS,
-            stateFilters = Constants.Firewall.NETWORK_STATE_FILTERS,
-            permissionFilters = Constants.Firewall.PERMISSION_FILTERS,
+            typeFilters = packageTypeFilters,
+            stateFilters = networkStateFilters,
+            permissionFilters = permissionFilters,
             selectedTypeFilter = currentTypeFilter,
             selectedStateFilter = currentStateFilter,
             selectedPermissionFilter = currentPermissionFilter,
             onTypeFilterSelected = { filter ->
                 if (filter != currentTypeFilter) {
                     currentTypeFilter = filter
-                    viewModel.setPackageTypeFilter(filter)
+                    // Map translated string to internal constant
+                    val internalFilter = mapTypeFilterToInternal(filter)
+                    viewModel.setPackageTypeFilter(internalFilter)
                 }
             },
             onStateFilterSelected = { filter ->
                 if (filter != currentStateFilter) {
                     currentStateFilter = filter
-                    viewModel.setNetworkStateFilter(filter)
+                    // Map translated string to internal constant
+                    val internalFilter = filter?.let { mapStateFilterToInternal(it) }
+                    viewModel.setNetworkStateFilter(internalFilter)
                 }
             },
             onPermissionFilterSelected = { enabled ->
@@ -282,22 +300,26 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         networkStateFilter: String?,
         internetOnlyFilter: Boolean
     ) {
+        // Map internal constants to translated strings
+        val translatedTypeFilter = mapInternalToTypeFilter(packageTypeFilter)
+        val translatedStateFilter = networkStateFilter?.let { mapInternalToStateFilter(it) }
+
         // Only update if filters have changed
-        if (packageTypeFilter == currentTypeFilter &&
-            networkStateFilter == currentStateFilter &&
+        if (translatedTypeFilter == currentTypeFilter &&
+            translatedStateFilter == currentStateFilter &&
             internetOnlyFilter == currentPermissionFilter) {
             return
         }
 
-        currentTypeFilter = packageTypeFilter
-        currentStateFilter = networkStateFilter
+        currentTypeFilter = translatedTypeFilter
+        currentStateFilter = translatedStateFilter
         currentPermissionFilter = internetOnlyFilter
 
         // Update chip selection without recreating or triggering listeners
         FilterChipsHelper.updateMultiSelectFilterChips(
             chipGroup = binding.filterChips,
-            selectedTypeFilter = packageTypeFilter,
-            selectedStateFilter = networkStateFilter,
+            selectedTypeFilter = translatedTypeFilter,
+            selectedStateFilter = translatedStateFilter,
             selectedPermissionFilter = internetOnlyFilter
         )
     }
@@ -537,7 +559,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Click package name to copy to clipboard
         // ============================================================================
         binding.actionSheetPackageName.setOnClickListenerDebounced {
-            requireContext().copyToClipboard(pkg.packageName, "Package Name")
+            requireContext().copyToClipboard(pkg.packageName, getString(R.string.clipboard_label_package_name))
         }
 
         // ============================================================================
@@ -597,7 +619,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Setup WiFi toggle
         setupNetworkToggle(
             binding = binding.wifiToggle,
-            label = "WiFi",
+            label = getString(R.string.firewall_network_label_wifi),
             isBlocked = pkg.wifiBlocked,
             enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
             onToggle = { blocked ->
@@ -609,7 +631,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Setup Mobile Data toggle
         setupNetworkToggle(
             binding = binding.mobileToggle,
-            label = "Mobile Data",
+            label = getString(R.string.firewall_network_label_mobile),
             isBlocked = pkg.mobileBlocked,
             enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
             onToggle = { blocked ->
@@ -624,7 +646,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         if (hasCellular) {
             setupNetworkToggle(
                 binding = binding.roamingToggle,
-                label = "Roaming",
+                label = getString(R.string.firewall_network_label_roaming),
                 isBlocked = pkg.roamingBlocked,
                 enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
                 onToggle = { blocked ->
@@ -643,13 +665,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         if (pkg.isSystemCritical) {
             binding.infoMessage.visibility = View.VISIBLE
-            binding.infoMessage.text = "⚠️ System Critical Package - Network access cannot be modified to prevent system instability."
+            binding.infoMessage.text = getString(R.string.firewall_system_critical_info)
         } else if (pkg.isVpnApp) {
             binding.infoMessage.visibility = View.VISIBLE
-            binding.infoMessage.text = "🔒 VPN App - Always allowed to prevent VPN reconnection issues after device lock/unlock."
+            binding.infoMessage.text = getString(R.string.firewall_vpn_app_info)
         } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
             binding.infoMessage.visibility = View.VISIBLE
-            binding.infoMessage.text = "Using VPN-based firewall because your device is not rooted or doesn't have Shizuku. You cannot use another VPN app while De1984 Firewall is active."
+            binding.infoMessage.text = getString(R.string.firewall_vpn_info_message)
         } else {
             binding.infoMessage.visibility = View.GONE
         }
@@ -683,7 +705,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Click package name to copy to clipboard
         // ============================================================================
         binding.actionSheetPackageName.setOnClickListenerDebounced {
-            requireContext().copyToClipboard(pkg.packageName, "Package Name")
+            requireContext().copyToClipboard(pkg.packageName, getString(R.string.clipboard_label_package_name))
         }
 
         // ============================================================================
@@ -702,18 +724,16 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val backendType = firewallManager.getActiveBackendType()
 
         val infoMessage = if (pkg.isSystemCritical) {
-            "⚠️ System Critical Package - Network access cannot be modified to prevent system instability."
+            getString(R.string.firewall_system_critical_info)
         } else if (pkg.isVpnApp) {
-            "🔒 VPN App - Always allowed to prevent VPN reconnection issues after device lock/unlock."
+            getString(R.string.firewall_vpn_app_info)
         } else {
             when (backendType) {
                 io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER -> {
-                    "This blocks all network types (WiFi, Mobile, Roaming).\n\n" +
-                    "Your device uses a system-level firewall that doesn't support per-network blocking. " +
-                    "For granular control, root access is required."
+                    getString(R.string.firewall_connectivity_manager_info)
                 }
                 else -> {
-                    "This blocks all network types (WiFi, Mobile, Roaming)."
+                    getString(R.string.firewall_block_all_info)
                 }
             }
         }
@@ -750,7 +770,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Setup single "Block Internet" toggle
         setupNetworkToggle(
             binding = binding.internetToggle,
-            label = "Block Internet",
+            label = getString(R.string.firewall_network_label_block_internet),
             isBlocked = pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked,
             enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
             onToggle = { blocked ->
@@ -823,6 +843,52 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Set thumb (the circle) and track (the background) colors
         switch.thumbTintList = thumbColorStateList
         switch.trackTintList = trackColorStateList
+    }
+
+    /**
+     * Map translated type filter string to internal constant
+     */
+    private fun mapTypeFilterToInternal(translatedFilter: String): String {
+        return when (translatedFilter) {
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_all) -> Constants.Packages.TYPE_ALL
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_user) -> Constants.Packages.TYPE_USER
+            getString(io.github.dorumrr.de1984.R.string.packages_filter_system) -> Constants.Packages.TYPE_SYSTEM
+            else -> Constants.Packages.TYPE_ALL // Default fallback
+        }
+    }
+
+    /**
+     * Map translated state filter string to internal constant
+     */
+    private fun mapStateFilterToInternal(translatedFilter: String): String {
+        return when (translatedFilter) {
+            getString(io.github.dorumrr.de1984.R.string.firewall_state_allowed) -> Constants.Firewall.STATE_ALLOWED
+            getString(io.github.dorumrr.de1984.R.string.firewall_state_blocked) -> Constants.Firewall.STATE_BLOCKED
+            else -> translatedFilter // Fallback to original
+        }
+    }
+
+    /**
+     * Map internal constant to translated type filter string
+     */
+    private fun mapInternalToTypeFilter(internalFilter: String): String {
+        return when (internalFilter) {
+            Constants.Packages.TYPE_ALL -> getString(io.github.dorumrr.de1984.R.string.packages_filter_all)
+            Constants.Packages.TYPE_USER -> getString(io.github.dorumrr.de1984.R.string.packages_filter_user)
+            Constants.Packages.TYPE_SYSTEM -> getString(io.github.dorumrr.de1984.R.string.packages_filter_system)
+            else -> getString(io.github.dorumrr.de1984.R.string.packages_filter_all) // Default fallback
+        }
+    }
+
+    /**
+     * Map internal constant to translated state filter string
+     */
+    private fun mapInternalToStateFilter(internalFilter: String): String {
+        return when (internalFilter) {
+            Constants.Firewall.STATE_ALLOWED -> getString(io.github.dorumrr.de1984.R.string.firewall_state_allowed)
+            Constants.Firewall.STATE_BLOCKED -> getString(io.github.dorumrr.de1984.R.string.firewall_state_blocked)
+            else -> internalFilter // Fallback to original
+        }
     }
 
     companion object {

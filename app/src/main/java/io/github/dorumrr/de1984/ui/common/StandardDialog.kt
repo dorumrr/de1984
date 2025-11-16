@@ -76,14 +76,14 @@ object StandardDialog {
     fun showError(
         context: Context,
         message: String,
-        title: String = "Error",
+        title: String = context.getString(io.github.dorumrr.de1984.R.string.dialog_error_title),
         onDismiss: (() -> Unit)? = null
     ) {
         show(
             context = context,
             title = title,
             message = message,
-            positiveButtonText = "OK",
+            positiveButtonText = context.getString(io.github.dorumrr.de1984.R.string.dialog_ok),
             onPositiveClick = { onDismiss?.invoke() },
             cancelable = true,
             onDismiss = onDismiss
@@ -108,7 +108,7 @@ object StandardDialog {
             context = context,
             title = title,
             message = message,
-            positiveButtonText = "OK",
+            positiveButtonText = context.getString(io.github.dorumrr.de1984.R.string.dialog_ok),
             onPositiveClick = { onDismiss?.invoke() },
             cancelable = true,
             onDismiss = onDismiss
@@ -160,12 +160,9 @@ object StandardDialog {
     ) {
         show(
             context = context,
-            title = "Privileged Access",
-            message = "❌ No Privileged Access Available\n\n" +
-                    "Your device does not appear to be rooted. To enable advanced package management features:\n" +
-                    "• Install and configure Shizuku (recommended - no root required)\n" +
-                    "• Or root your device using Magisk, KernelSU, or APatch",
-            positiveButtonText = "OK",
+            title = context.getString(io.github.dorumrr.de1984.R.string.dialog_privileged_access_title),
+            message = context.getString(io.github.dorumrr.de1984.R.string.dialog_no_access_message),
+            positiveButtonText = context.getString(io.github.dorumrr.de1984.R.string.dialog_ok),
             onPositiveClick = { onDismiss?.invoke() },
             cancelable = true,
             onDismiss = onDismiss
@@ -185,14 +182,9 @@ object StandardDialog {
     ) {
         show(
             context = context,
-            title = "Privileged Access",
-            message = "❌ Root Access Denied\n\n" +
-                    "Your device is rooted but De1984 was denied superuser permission.\n\n" +
-                    "To grant access:\n" +
-                    "• Try clicking \"Grant Privileged Access\" again and approve the prompt\n" +
-                    "• If the permission prompt doesn't appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n" +
-                    "• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)",
-            positiveButtonText = "OK",
+            title = context.getString(io.github.dorumrr.de1984.R.string.dialog_privileged_access_title),
+            message = context.getString(io.github.dorumrr.de1984.R.string.dialog_root_denied_message),
+            positiveButtonText = context.getString(io.github.dorumrr.de1984.R.string.dialog_ok),
             onPositiveClick = { onOkClick?.invoke() },
             cancelable = true,
             onDismiss = onOkClick
@@ -222,7 +214,7 @@ object StandardDialog {
     ) {
         // Create EditText for user input
         val editText = android.widget.EditText(context).apply {
-            hint = "Type \"$confirmWord\" to confirm"
+            hint = context.getString(io.github.dorumrr.de1984.R.string.dialog_type_to_confirm_hint, confirmWord)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or
                        android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
             setPadding(40, 20, 40, 20)
@@ -233,7 +225,7 @@ object StandardDialog {
             .setMessage(message)
             .setView(editText)
             .setPositiveButton(confirmButtonText, null) // Set to null initially
-            .setNegativeButton("Cancel") { _, _ ->
+            .setNegativeButton(context.getString(io.github.dorumrr.de1984.R.string.dialog_cancel)) { _, _ ->
                 onCancel?.invoke()
             }
             .setCancelable(true)

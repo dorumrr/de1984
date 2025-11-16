@@ -13,7 +13,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="WiFi"
+        android:text="@string/firewall_network_label_wifi"
         android:textSize="16sp"
         android:textColor="?android:attr/textColorPrimary" />
 
@@ -21,7 +21,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Allow"
+        android:text="@string/firewall_state_allowed"
         android:textSize="14sp"
         android:textColor="?android:attr/textColorSecondary"
         android:layout_marginEnd="8dp" />
@@ -37,7 +37,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Block"
+        android:text="@string/firewall_state_blocked"
         android:textSize="14sp"
         android:textColor="?android:attr/textColorSecondary" />
 

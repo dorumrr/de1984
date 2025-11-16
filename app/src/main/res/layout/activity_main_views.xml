@@ -55,14 +55,14 @@
                         android:layout_height="32dp"
                         android:layout_marginEnd="8dp"
                         android:src="@drawable/de1984_logo"
-                        android:contentDescription="De1984 Logo" />
+                        android:contentDescription="@string/cd_de1984_logo" />
 
                     <!-- App Name -->
                     <TextView
                         android:id="@+id/app_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="De1984"
+                        android:text="@string/app_name"
                         android:textColor="?attr/colorOnPrimaryContainer"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -90,7 +90,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="8dp"
-                        android:text="ACTIVE"
+                        android:text="@string/firewall_status_active"
                         android:textSize="10sp"
                         android:textStyle="bold"
                         android:textColor="@color/badge_text_success"
@@ -107,7 +107,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="8dp"
-                        android:text="OFF"
+                        android:text="@string/firewall_button_off"
                         android:textSize="10sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_white"
@@ -141,7 +141,7 @@
                     android:id="@+id/toolbar_section_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="FIREWALL"
+                    android:text="@string/nav_firewall"
                     android:textColor="?attr/colorOnPrimaryContainer"
                     android:textSize="18sp"
                     android:textStyle="bold" />

@@ -5,7 +5,7 @@
     android:id="@+id/donate_button"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:text="Donate"
+    android:text="@string/donate_button"
     android:textColor="#000000"
     app:backgroundTint="#FFD700"
     app:strokeColor="#000000"

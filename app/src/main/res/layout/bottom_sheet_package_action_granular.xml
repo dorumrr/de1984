@@ -24,7 +24,7 @@
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:src="@drawable/de1984_icon"
-                android:contentDescription="App icon" />
+                android:contentDescription="@string/cd_app_icon" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -37,7 +37,7 @@
                     android:id="@+id/action_sheet_app_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="App Name"
+                    android:text="@string/action_sheet_placeholder_app_name"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="?android:attr/textColorPrimary"
@@ -49,7 +49,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="com.example.app"
+                    android:text="@string/action_sheet_placeholder_package_name"
                     android:textSize="12sp"
                     android:textColor="?android:attr/textColorSecondary"
                     android:maxLines="1"
@@ -66,7 +66,7 @@
                 android:src="@drawable/ic_settings"
                 android:padding="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Open app settings"
+                android:contentDescription="@string/cd_open_app_settings"
                 app:tint="?android:attr/textColorSecondary" />
 
         </LinearLayout>
@@ -83,7 +83,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Network Access Control"
+            android:text="@string/action_sheet_section_network_access"
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="?android:attr/textColorPrimary"
@@ -150,7 +150,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
-                android:text="Updating..."
+                android:text="@string/action_sheet_status_updating"
                 android:textSize="14sp"
                 android:textColor="?android:attr/textColorSecondary" />
 
@@ -195,7 +195,7 @@
                 android:layout_height="24dp"
                 android:src="@drawable/ic_apps"
                 app:tint="?android:attr/textColorPrimary"
-                android:contentDescription="Package control icon" />
+                android:contentDescription="@string/cd_package_control_icon" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -207,7 +207,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Package Control"
+                    android:text="@string/action_sheet_section_package_control"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="?android:attr/textColorPrimary" />
@@ -216,7 +216,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="Force stop, disable, or uninstall"
+                    android:text="@string/action_sheet_section_package_control_desc"
                     android:textSize="12sp"
                     android:textColor="?android:attr/textColorSecondary" />
 

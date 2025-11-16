@@ -121,6 +121,7 @@ class SettingsViewModel(
                     Constants.Settings.DEFAULT_FIREWALL_POLICY
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY,
                 newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS),
+                appLanguage = prefs.getString(Constants.Settings.KEY_APP_LANGUAGE, Constants.Settings.DEFAULT_APP_LANGUAGE) ?: Constants.Settings.DEFAULT_APP_LANGUAGE,
                 firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO,
                 allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
                 showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT),
@@ -197,6 +198,11 @@ class SettingsViewModel(
     fun setShowAppIcons(show: Boolean) {
         _uiState.value = _uiState.value.copy(showAppIcons = show)
         saveSetting(Constants.Settings.KEY_SHOW_APP_ICONS, show)
+    }
+
+    fun setAppLanguage(languageCode: String) {
+        _uiState.value = _uiState.value.copy(appLanguage = languageCode)
+        saveSetting(Constants.Settings.KEY_APP_LANGUAGE, languageCode)
     }
 
     /**
@@ -299,7 +305,7 @@ class SettingsViewModel(
 
                 // Show error to user
                 _uiState.value = _uiState.value.copy(
-                    error = "Failed to restart firewall with new backend: ${error.message}"
+                    error = context.getString(io.github.dorumrr.de1984.R.string.error_firewall_restart_failed, error.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
                 )
             }
         } catch (e: Exception) {
@@ -317,7 +323,7 @@ class SettingsViewModel(
     fun showLicenses() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
-                message = "Open source licenses screen coming soon"
+                message = context.getString(io.github.dorumrr.de1984.R.string.licenses_coming_soon)
             )
         }
     }
@@ -344,7 +350,7 @@ class SettingsViewModel(
                 if (rules.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "No firewall rules to backup"
+                        error = context.getString(io.github.dorumrr.de1984.R.string.error_no_rules_to_backup)
                     )
                     return@launch
                 }
@@ -372,7 +378,7 @@ class SettingsViewModel(
                 Log.e(TAG, "Backup failed", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Backup failed: ${e.message}"
+                    error = context.getString(io.github.dorumrr.de1984.R.string.error_backup_failed, e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
                 )
             }
         }
@@ -398,7 +404,7 @@ class SettingsViewModel(
                 if (backup.version > 1) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "Unsupported backup version: ${backup.version}"
+                        error = context.getString(io.github.dorumrr.de1984.R.string.error_unsupported_backup_version, backup.version)
                     )
                     return@launch
                 }
@@ -407,7 +413,7 @@ class SettingsViewModel(
                 if (backup.rules.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "Backup file contains no rules"
+                        error = context.getString(io.github.dorumrr.de1984.R.string.error_backup_no_rules)
                     )
                     return@launch
                 }
@@ -429,13 +435,13 @@ class SettingsViewModel(
                 Log.e(TAG, "Invalid backup file format", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Invalid backup file format"
+                    error = context.getString(io.github.dorumrr.de1984.R.string.error_invalid_backup_format)
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Restore failed", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Restore failed: ${e.message}"
+                    error = context.getString(io.github.dorumrr.de1984.R.string.error_restore_failed, e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
                 )
             }
         }
@@ -534,14 +540,14 @@ class SettingsViewModel(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         captivePortalLoading = false,
-                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to load settings"
+                        captivePortalError = result.exceptionOrNull()?.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_failed_to_load_settings)
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load captive portal settings", e)
                 _uiState.value = _uiState.value.copy(
                     captivePortalLoading = false,
-                    captivePortalError = e.message ?: "Unknown error"
+                    captivePortalError = e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown)
                 )
             }
         }
@@ -563,19 +569,19 @@ class SettingsViewModel(
                     // Reload settings to reflect changes
                     loadCaptivePortalSettings()
                     _uiState.value = _uiState.value.copy(
-                        message = "Applied ${preset.displayName} preset successfully"
+                        message = context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_applied, preset.getDisplayName(context))
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         captivePortalLoading = false,
-                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to apply preset"
+                        captivePortalError = result.exceptionOrNull()?.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_failed_to_apply_preset)
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to apply preset", e)
                 _uiState.value = _uiState.value.copy(
                     captivePortalLoading = false,
-                    captivePortalError = e.message ?: "Unknown error"
+                    captivePortalError = e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown)
                 )
             }
         }
@@ -597,19 +603,19 @@ class SettingsViewModel(
                     // Reload settings to reflect changes
                     loadCaptivePortalSettings()
                     _uiState.value = _uiState.value.copy(
-                        message = "Detection mode set to ${mode.displayName}"
+                        message = context.getString(io.github.dorumrr.de1984.R.string.captive_portal_mode_set, mode.getDisplayName(context))
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         captivePortalLoading = false,
-                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to set detection mode"
+                        captivePortalError = result.exceptionOrNull()?.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_failed_to_set_detection_mode)
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set detection mode", e)
                 _uiState.value = _uiState.value.copy(
                     captivePortalLoading = false,
-                    captivePortalError = e.message ?: "Unknown error"
+                    captivePortalError = e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown)
                 )
             }
         }
@@ -631,19 +637,19 @@ class SettingsViewModel(
                     // Reload settings to reflect changes
                     loadCaptivePortalSettings()
                     _uiState.value = _uiState.value.copy(
-                        message = "Custom URLs applied successfully"
+                        message = context.getString(io.github.dorumrr.de1984.R.string.success_custom_urls_applied)
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         captivePortalLoading = false,
-                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to set custom URLs"
+                        captivePortalError = result.exceptionOrNull()?.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_failed_to_set_custom_urls)
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set custom URLs", e)
                 _uiState.value = _uiState.value.copy(
                     captivePortalLoading = false,
-                    captivePortalError = e.message ?: "Unknown error"
+                    captivePortalError = e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown)
                 )
             }
         }
@@ -665,19 +671,19 @@ class SettingsViewModel(
                     // Reload settings to reflect changes
                     loadCaptivePortalSettings()
                     _uiState.value = _uiState.value.copy(
-                        message = "Original settings restored successfully"
+                        message = context.getString(io.github.dorumrr.de1984.R.string.success_original_settings_restored)
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         captivePortalLoading = false,
-                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to restore original settings"
+                        captivePortalError = result.exceptionOrNull()?.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_failed_to_restore_original_settings)
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to restore original settings", e)
                 _uiState.value = _uiState.value.copy(
                     captivePortalLoading = false,
-                    captivePortalError = e.message ?: "Unknown error"
+                    captivePortalError = e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown)
                 )
             }
         }
@@ -699,19 +705,19 @@ class SettingsViewModel(
                     // Reload settings to reflect changes
                     loadCaptivePortalSettings()
                     _uiState.value = _uiState.value.copy(
-                        message = "Reset to Google defaults successfully"
+                        message = context.getString(io.github.dorumrr.de1984.R.string.success_reset_to_google_defaults)
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         captivePortalLoading = false,
-                        captivePortalError = result.exceptionOrNull()?.message ?: "Failed to reset to Google defaults"
+                        captivePortalError = result.exceptionOrNull()?.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_failed_to_reset_to_google_defaults)
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to reset to Google defaults", e)
                 _uiState.value = _uiState.value.copy(
                     captivePortalLoading = false,
-                    captivePortalError = e.message ?: "Unknown error"
+                    captivePortalError = e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown)
                 )
             }
         }
@@ -755,6 +761,7 @@ data class SettingsUiState(
     val allowCriticalPackageUninstall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL,
     val showFirewallStartPrompt: Boolean = Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT,
     val useDynamicColors: Boolean = Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS,
+    val appLanguage: String = Constants.Settings.DEFAULT_APP_LANGUAGE,
 
     val refreshInterval: Int = 30,
 

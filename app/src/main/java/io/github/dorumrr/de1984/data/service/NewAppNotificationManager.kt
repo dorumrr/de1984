@@ -74,10 +74,10 @@ class NewAppNotificationManager(
             val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification_de1984)
                 .setLargeIcon(de1984Icon?.let { drawable -> drawableToBitmap(drawable) })
-                .setContentTitle("De1984 Firewall detected a new app")
-                .setContentText("$appName was installed. Tap to configure firewall rules.")
+                .setContentTitle(context.getString(R.string.new_app_notification_title))
+                .setContentText(context.getString(R.string.new_app_notification_text, appName))
                 .setStyle(NotificationCompat.BigTextStyle()
-                    .bigText("$appName was installed and has network permissions. Tap to configure firewall rules in the app."))
+                    .bigText(context.getString(R.string.new_app_notification_text, appName)))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .setContentIntent(createOpenFirewallIntent(packageName))
@@ -155,7 +155,7 @@ class NewAppNotificationManager(
 
         return NotificationCompat.Action.Builder(
             R.drawable.ic_signal_cellular_off,
-            "Block Network",
+            context.getString(R.string.new_app_notification_action_block),
             pendingIntent
         ).build()
     }
@@ -176,7 +176,7 @@ class NewAppNotificationManager(
 
         return NotificationCompat.Action.Builder(
             R.drawable.ic_check,
-            "Allow Network",
+            context.getString(R.string.new_app_notification_action_allow),
             pendingIntent
         ).build()
     }

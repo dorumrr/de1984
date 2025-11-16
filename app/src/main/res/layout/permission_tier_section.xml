@@ -104,7 +104,7 @@
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:src="@drawable/ic_notification"
-                    android:contentDescription="Status icon" />
+                    android:contentDescription="@string/cd_status_icon" />
 
                 <TextView
                     android:id="@+id/root_status_title"

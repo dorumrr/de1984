@@ -9,6 +9,9 @@ object Constants {
         const val BOTTOM_NAV_PADDING_BOTTOM = 3
         const val BOTTOM_NAV_TEXT_TRANSLATION_Y = -2
 
+        // Dropdown behavior
+        const val DROPDOWN_DISMISSAL_DELAY_MS = 200L
+
         object Dialogs {
             const val FIREWALL_START_TITLE = "Start De1984 Firewall?"
             const val FIREWALL_START_MESSAGE = "Welcome to De1984! Would you like to start the firewall now to protect your privacy?"
@@ -102,9 +105,16 @@ object Constants {
         const val KEY_ALLOW_CRITICAL_UNINSTALL = "allow_critical_package_uninstall"
         const val KEY_SHOW_FIREWALL_START_PROMPT = "show_firewall_start_prompt"
         const val KEY_USE_DYNAMIC_COLORS = "use_dynamic_colors"
+        const val KEY_APP_LANGUAGE = "app_language"
 
         const val POLICY_BLOCK_ALL = "block_all"
         const val POLICY_ALLOW_ALL = "allow_all"
+
+        const val LANGUAGE_SYSTEM_DEFAULT = "system"
+        const val LANGUAGE_ENGLISH = "en"
+        const val LANGUAGE_ROMANIAN = "ro"
+        const val LANGUAGE_PORTUGUESE = "pt"
+        const val LANGUAGE_CHINESE = "zh"
 
         const val MODE_AUTO = "auto"
         const val MODE_VPN = "vpn"
@@ -118,6 +128,7 @@ object Constants {
         const val DEFAULT_ALLOW_CRITICAL_UNINSTALL = false
         const val DEFAULT_SHOW_FIREWALL_START_PROMPT = true
         const val DEFAULT_USE_DYNAMIC_COLORS = false
+        const val DEFAULT_APP_LANGUAGE = LANGUAGE_SYSTEM_DEFAULT
 
     }
 

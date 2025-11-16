@@ -36,6 +36,9 @@ android {
         versionCode = 20
         versionName = "2.4.1"
 
+        // Specify supported languages (reduces APK size by excluding unused translations)
+        resourceConfigurations += listOf("en", "ro", "pt", "zh")
+
         vectorDrawables {
             useSupportLibrary = true
             generatedDensities?.clear()

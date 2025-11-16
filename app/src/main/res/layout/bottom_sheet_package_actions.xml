@@ -19,7 +19,7 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:src="@drawable/de1984_icon"
-            android:contentDescription="App icon" />
+            android:contentDescription="@string/cd_app_icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -32,7 +32,7 @@
                 android:id="@+id/action_sheet_app_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="App Name"
+                android:text="@string/action_sheet_placeholder_app_name"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary"
@@ -44,7 +44,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="com.example.app"
+                android:text="@string/action_sheet_placeholder_package_name"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:maxLines="1"
@@ -64,7 +64,7 @@
                     android:id="@+id/action_sheet_safety_badge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Essential"
+                    android:text="@string/action_sheet_safety_badge_essential"
                     android:textSize="10sp"
                     android:textStyle="bold"
                     android:paddingStart="8dp"
@@ -80,7 +80,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
-                    android:text="System UI"
+                    android:text="@string/action_sheet_type_badge_system"
                     android:textSize="10sp"
                     android:textStyle="bold"
                     android:paddingStart="8dp"
@@ -103,7 +103,7 @@
             android:src="@drawable/ic_settings"
             android:padding="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Open app settings"
+            android:contentDescription="@string/cd_open_app_settings"
             app:tint="?android:attr/textColorSecondary" />
 
     </LinearLayout>
@@ -153,7 +153,7 @@
             android:layout_height="24dp"
             android:src="@drawable/ic_stop"
             app:tint="?android:attr/textColorPrimary"
-            android:contentDescription="Force stop icon" />
+            android:contentDescription="@string/cd_force_stop_icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -165,7 +165,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Force Stop"
+                android:text="@string/action_sheet_action_force_stop"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary" />
@@ -175,7 +175,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Immediately stop all processes"
+                android:text="@string/action_sheet_action_force_stop_desc"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary" />
 
@@ -208,7 +208,7 @@
             android:layout_height="24dp"
             android:src="@drawable/ic_block"
             app:tint="?android:attr/textColorPrimary"
-            android:contentDescription="Enable/Disable icon" />
+            android:contentDescription="@string/cd_enable_disable_icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -221,7 +221,7 @@
                 android:id="@+id/enable_disable_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Disable"
+                android:text="@string/action_sheet_action_disable"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary" />
@@ -231,7 +231,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Prevent this app from running"
+                android:text="@string/action_sheet_action_disable_desc"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary" />
 
@@ -264,7 +264,7 @@
             android:layout_height="24dp"
             android:src="@drawable/ic_delete"
             app:tint="#D32F2F"
-            android:contentDescription="Uninstall icon" />
+            android:contentDescription="@string/cd_uninstall_icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -277,7 +277,7 @@
                 android:id="@+id/uninstall_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Uninstall"
+                android:text="@string/action_sheet_action_uninstall"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="#D32F2F" />
@@ -287,7 +287,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Remove this app from device"
+                android:text="@string/action_sheet_action_uninstall_desc"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary" />
 
@@ -322,7 +322,7 @@
             android:layout_height="24dp"
             android:src="@drawable/ic_shield"
             app:tint="?android:attr/textColorPrimary"
-            android:contentDescription="Firewall rules icon" />
+            android:contentDescription="@string/cd_firewall_rules_icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -334,7 +334,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Firewall Rules"
+                android:text="@string/action_sheet_action_firewall"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary" />
@@ -343,7 +343,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Control network access"
+                android:text="@string/action_sheet_action_firewall_desc"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary" />
 

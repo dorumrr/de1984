@@ -66,7 +66,7 @@ fun Context.copyToClipboard(text: String, label: String = "De1984") {
     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText(label, text)
     clipboard.setPrimaryClip(clip)
-    Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+    Toast.makeText(this, getString(io.github.dorumrr.de1984.R.string.toast_copied_to_clipboard), Toast.LENGTH_SHORT).show()
 }
 
 /**

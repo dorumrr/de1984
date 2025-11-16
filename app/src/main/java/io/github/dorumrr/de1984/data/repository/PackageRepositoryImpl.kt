@@ -1,6 +1,8 @@
 package io.github.dorumrr.de1984.data.repository
 
+import android.content.Context
 import android.util.Log
+import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.model.toDomain
 import io.github.dorumrr.de1984.domain.model.Package
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 
 class PackageRepositoryImpl(
+    private val context: Context,
     private val packageDataSource: PackageDataSource
 ) : PackageRepository {
     
@@ -54,8 +57,11 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val action = if (enabled) "enable" else "disable"
-                val errorMessage = "Unable to $action package. Shizuku or root access required for package management."
+                val errorMessage = if (enabled) {
+                    context.getString(R.string.error_unable_to_enable_package)
+                } else {
+                    context.getString(R.string.error_unable_to_disable_package)
+                }
                 Result.failure(SecurityException(errorMessage))
             }
         } catch (e: Exception) {
@@ -82,7 +88,7 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val errorMessage = "Unable to uninstall package. Shizuku or root access required for package management."
+                val errorMessage = context.getString(R.string.error_unable_to_uninstall_package)
                 Result.failure(SecurityException(errorMessage))
             }
         } catch (e: Exception) {
@@ -99,7 +105,7 @@ class PackageRepositoryImpl(
                 val result = uninstallPackage(packageName)
                 result.fold(
                     onSuccess = { succeeded.add(packageName) },
-                    onFailure = { error -> failed.add(packageName to (error.message ?: "Unknown error")) }
+                    onFailure = { error -> failed.add(packageName to (error.message ?: context.getString(R.string.error_unknown))) }
                 )
             }
 
@@ -115,7 +121,7 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val errorMessage = "Unable to reinstall package. Shizuku or root access required for package management."
+                val errorMessage = context.getString(R.string.error_unable_to_reinstall_package)
                 Result.failure(SecurityException(errorMessage))
             }
         } catch (e: Exception) {
@@ -132,7 +138,7 @@ class PackageRepositoryImpl(
                 val result = reinstallPackage(packageName)
                 result.fold(
                     onSuccess = { succeeded.add(packageName) },
-                    onFailure = { error -> failed.add(packageName to (error.message ?: "Unknown error")) }
+                    onFailure = { error -> failed.add(packageName to (error.message ?: context.getString(R.string.error_unknown))) }
                 )
             }
 
@@ -148,7 +154,7 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val errorMessage = "Unable to force stop package. Shizuku or root access required for package management."
+                val errorMessage = context.getString(R.string.error_unable_to_force_stop_package)
                 Result.failure(SecurityException(errorMessage))
             }
         } catch (e: Exception) {

@@ -239,18 +239,18 @@ class BackendMonitoringService : Service() {
 
     private suspend fun handleSwitchSuccess(backendType: FirewallBackendType) {
         val toastMessage = when (backendType) {
-            FirewallBackendType.CONNECTIVITY_MANAGER -> 
-                Constants.BackendMonitoring.TOAST_SUCCESS_CONNECTIVITY_MANAGER
-            FirewallBackendType.IPTABLES -> 
-                Constants.BackendMonitoring.TOAST_SUCCESS_IPTABLES
+            FirewallBackendType.CONNECTIVITY_MANAGER ->
+                getString(R.string.backend_toast_success_connectivity_manager)
+            FirewallBackendType.IPTABLES ->
+                getString(R.string.backend_toast_success_iptables)
             else -> "Firewall switched to $backendType"
         }
 
         val notificationText = when (backendType) {
-            FirewallBackendType.CONNECTIVITY_MANAGER -> 
-                Constants.BackendMonitoring.NOTIFICATION_TEXT_SUCCESS_CONNECTIVITY_MANAGER
-            FirewallBackendType.IPTABLES -> 
-                Constants.BackendMonitoring.NOTIFICATION_TEXT_SUCCESS_IPTABLES
+            FirewallBackendType.CONNECTIVITY_MANAGER ->
+                getString(R.string.backend_notification_text_success_connectivity_manager)
+            FirewallBackendType.IPTABLES ->
+                getString(R.string.backend_notification_text_success_iptables)
             else -> "Now using $backendType backend"
         }
 
@@ -271,7 +271,7 @@ class BackendMonitoringService : Service() {
         Log.e(TAG, "Backend switch failed")
 
         // Show toast
-        Toast.makeText(this, Constants.BackendMonitoring.TOAST_FAILED, Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.backend_toast_failed), Toast.LENGTH_SHORT).show()
 
         // Update notification
         showFailureNotification()
@@ -279,16 +279,16 @@ class BackendMonitoringService : Service() {
 
     private fun createWaitingNotification(shizukuStatus: ShizukuStatus): Notification {
         val text = when (shizukuStatus) {
-            ShizukuStatus.INSTALLED_NOT_RUNNING -> 
-                Constants.BackendMonitoring.NOTIFICATION_TEXT_SHIZUKU_NOT_RUNNING
-            ShizukuStatus.RUNNING_NO_PERMISSION -> 
-                Constants.BackendMonitoring.NOTIFICATION_TEXT_SHIZUKU_NO_PERMISSION
-            else -> 
-                Constants.BackendMonitoring.NOTIFICATION_TEXT_SHIZUKU_NOT_RUNNING
+            ShizukuStatus.INSTALLED_NOT_RUNNING ->
+                getString(R.string.backend_notification_text_shizuku_not_running)
+            ShizukuStatus.RUNNING_NO_PERMISSION ->
+                getString(R.string.backend_notification_text_shizuku_no_permission)
+            else ->
+                getString(R.string.backend_notification_text_shizuku_not_running)
         }
 
         return buildNotification(
-            title = Constants.BackendMonitoring.NOTIFICATION_TITLE_WAITING,
+            title = getString(R.string.backend_notification_title_waiting),
             text = text,
             ongoing = false,
             priority = NotificationCompat.PRIORITY_LOW,
@@ -303,8 +303,8 @@ class BackendMonitoringService : Service() {
 
     private fun updateSwitchingNotification() {
         val notification = buildNotification(
-            title = Constants.BackendMonitoring.NOTIFICATION_TITLE_SWITCHING,
-            text = Constants.BackendMonitoring.NOTIFICATION_TEXT_SWITCHING,
+            title = getString(R.string.backend_notification_title_switching),
+            text = getString(R.string.backend_notification_text_switching),
             ongoing = false,
             priority = NotificationCompat.PRIORITY_LOW,
             withRetryAction = false
@@ -314,7 +314,7 @@ class BackendMonitoringService : Service() {
 
     private fun showSuccessNotification(text: String) {
         val notification = buildNotification(
-            title = Constants.BackendMonitoring.NOTIFICATION_TITLE_SUCCESS,
+            title = getString(R.string.backend_notification_title_success),
             text = text,
             ongoing = false,
             priority = NotificationCompat.PRIORITY_DEFAULT,
@@ -326,8 +326,8 @@ class BackendMonitoringService : Service() {
 
     private fun showFailureNotification() {
         val notification = buildNotification(
-            title = Constants.BackendMonitoring.NOTIFICATION_TITLE_FAILED,
-            text = Constants.BackendMonitoring.NOTIFICATION_TEXT_FAILED,
+            title = getString(R.string.backend_notification_title_failed),
+            text = getString(R.string.backend_notification_text_failed),
             ongoing = false,
             priority = NotificationCompat.PRIORITY_DEFAULT,
             withRetryAction = true,
@@ -376,7 +376,7 @@ class BackendMonitoringService : Service() {
 
             builder.addAction(
                 R.drawable.ic_signal_cellular_off,  // Reuse existing icon
-                Constants.BackendMonitoring.ACTION_BUTTON_RETRY,
+                getString(R.string.backend_action_button_retry),
                 retryPendingIntent
             )
         }

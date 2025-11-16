@@ -1,5 +1,7 @@
 package io.github.dorumrr.de1984.domain.model
 
+import android.content.Context
+
 /**
  * Represents the current captive portal configuration on the device.
  */
@@ -31,10 +33,26 @@ data class CaptivePortalSettings(
 /**
  * Captive portal detection mode (API 26+).
  */
-enum class CaptivePortalMode(val value: Int, val displayName: String, val description: String) {
-    FORCED_OFF(-1, "Forced Off", "Captive portal detection is completely disabled"),
-    DISABLED(0, "Disabled", "Captive portal detection is disabled"),
-    ENABLED(1, "Enabled", "Captive portal detection is enabled (default)");
+enum class CaptivePortalMode(val value: Int) {
+    FORCED_OFF(-1),
+    DISABLED(0),
+    ENABLED(1);
+
+    fun getDisplayName(context: Context): String {
+        return when (this) {
+            FORCED_OFF -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_mode_forced_off)
+            DISABLED -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_mode_disabled)
+            ENABLED -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_mode_enabled)
+        }
+    }
+
+    fun getDescription(context: Context): String {
+        return when (this) {
+            FORCED_OFF -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_mode_forced_off_description)
+            DISABLED -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_mode_disabled_description)
+            ENABLED -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_mode_enabled_description)
+        }
+    }
 
     companion object {
         fun fromValue(value: Int): CaptivePortalMode {
@@ -58,45 +76,53 @@ enum class CaptivePortalMode(val value: Int, val displayName: String, val descri
  * Predefined captive portal server presets.
  */
 enum class CaptivePortalPreset(
-    val displayName: String,
     val httpUrl: String,
-    val httpsUrl: String,
-    val description: String
+    val httpsUrl: String
 ) {
     GOOGLE(
-        displayName = "Google (Default)",
         httpUrl = "http://connectivitycheck.gstatic.com/generate_204",
-        httpsUrl = "https://www.google.com/generate_204",
-        description = "Google's default captive portal detection servers"
+        httpsUrl = "https://www.google.com/generate_204"
     ),
     GRAPHENEOS(
-        displayName = "GrapheneOS",
         httpUrl = "http://connectivitycheck.grapheneos.network/generate_204",
-        httpsUrl = "https://connectivitycheck.grapheneos.network/generate_204",
-        description = "Privacy-focused servers from GrapheneOS project"
+        httpsUrl = "https://connectivitycheck.grapheneos.network/generate_204"
     ),
     KUKETZ(
-        displayName = "Kuketz",
         httpUrl = "http://captiveportal.kuketz.de",
-        httpsUrl = "https://captiveportal.kuketz.de",
-        description = "Privacy-focused servers from Mike Kuketz (Germany)"
+        httpsUrl = "https://captiveportal.kuketz.de"
     ),
     CLOUDFLARE(
-        displayName = "Cloudflare",
         httpUrl = "http://cp.cloudflare.com",
-        httpsUrl = "https://cp.cloudflare.com",
-        description = "Cloudflare's captive portal detection servers"
+        httpsUrl = "https://cp.cloudflare.com"
     ),
     CUSTOM(
-        displayName = "Custom URLs",
         httpUrl = "",
-        httpsUrl = "",
-        description = "Use your own custom captive portal URLs"
+        httpsUrl = ""
     );
 
+    fun getDisplayName(context: Context): String {
+        return when (this) {
+            GOOGLE -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_google)
+            GRAPHENEOS -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_grapheneos)
+            KUKETZ -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_kuketz)
+            CLOUDFLARE -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_cloudflare)
+            CUSTOM -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_custom)
+        }
+    }
+
+    fun getDescription(context: Context): String {
+        return when (this) {
+            GOOGLE -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_google_description)
+            GRAPHENEOS -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_grapheneos_description)
+            KUKETZ -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_kuketz_description)
+            CLOUDFLARE -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_cloudflare_description)
+            CUSTOM -> context.getString(io.github.dorumrr.de1984.R.string.captive_portal_preset_custom_description)
+        }
+    }
+
     companion object {
-        fun fromDisplayName(name: String): CaptivePortalPreset {
-            return values().find { it.displayName == name } ?: GOOGLE
+        fun fromDisplayName(context: Context, name: String): CaptivePortalPreset {
+            return values().find { it.getDisplayName(context) == name } ?: GOOGLE
         }
     }
 }

@@ -2,8 +2,10 @@ package io.github.dorumrr.de1984.ui.settings
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context.INPUT_METHOD_SERVICE
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.view.inputmethod.InputMethodManager
 import android.net.Uri
 import android.net.VpnService
 import android.os.Build
@@ -72,7 +74,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     private val permissionViewModel: PermissionSetupViewModel by viewModels {
         val app = requireActivity().application as De1984Application
-        PermissionSetupViewModel.Factory(app.dependencies.permissionManager)
+        PermissionSetupViewModel.Factory(
+            context = requireContext(),
+            permissionManager = app.dependencies.permissionManager
+        )
     }
 
     // Permission launcher for POST_NOTIFICATIONS
@@ -192,6 +197,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // Backend selection dropdown
         setupBackendSelectionDropdown()
 
+        // Language selection dropdown
+        setupLanguageSelectionDropdown()
+
         // Show app icons switch
         binding.showAppIconsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowAppIcons(isChecked)
@@ -288,7 +296,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     private fun updateUI(state: io.github.dorumrr.de1984.presentation.viewmodel.SettingsUiState) {
         // Update app version
-        binding.appVersion.text = "Version ${state.appVersion}"
+        binding.appVersion.text = getString(io.github.dorumrr.de1984.R.string.settings_app_version, state.appVersion)
 
         // Update switches (without triggering listeners)
         binding.firewallPolicySwitch.setOnCheckedChangeListener(null)
@@ -361,12 +369,15 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         setupBackendSelectionDropdown()
         updateBackendStatus()
 
+        // Update language selection dropdown
+        setupLanguageSelectionDropdown()
+
         // Show success message (clear immediately to prevent re-showing on every state update)
         state.message?.let { message ->
             viewModel.clearMessage()
             StandardDialog.showInfo(
                 context = requireContext(),
-                title = "Success",
+                title = getString(R.string.dialog_success),
                 message = message
             )
         }
@@ -383,9 +394,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     private fun updateFirewallPolicyDescription(isBlockAll: Boolean) {
         binding.firewallPolicyDescription.text = if (isBlockAll) {
-            "Block All, Allow Wanted"
+            getString(io.github.dorumrr.de1984.R.string.settings_firewall_policy_description_block_all)
         } else {
-            "Allow All, Block Unwanted"
+            getString(io.github.dorumrr.de1984.R.string.settings_firewall_policy_description_allow_all)
         }
     }
 
@@ -417,8 +428,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 // Show info about why it's not available
                 StandardDialog.showInfo(
                     context = requireContext(),
-                    title = "${selectedBackend.displayName} Not Available",
-                    message = selectedBackend.requirementText ?: "This backend is not available on your device."
+                    title = getString(R.string.backend_not_available_title, selectedBackend.displayName),
+                    message = selectedBackend.requirementText ?: getString(R.string.backend_not_available_message)
                 )
             }
         }
@@ -426,6 +437,71 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // Setup info icon click handler
         binding.backendInfoIcon.setOnClickListener {
             showBackendInfoDialog()
+        }
+    }
+
+    private fun setupLanguageSelectionDropdown() {
+        data class LanguageOption(val code: String, val displayName: String)
+
+        val languages = listOf(
+            LanguageOption(Constants.Settings.LANGUAGE_SYSTEM_DEFAULT, getString(io.github.dorumrr.de1984.R.string.language_system_default)),
+            LanguageOption(Constants.Settings.LANGUAGE_ENGLISH, getString(io.github.dorumrr.de1984.R.string.language_english)),
+            LanguageOption(Constants.Settings.LANGUAGE_ROMANIAN, getString(io.github.dorumrr.de1984.R.string.language_romanian)),
+            LanguageOption(Constants.Settings.LANGUAGE_PORTUGUESE, getString(io.github.dorumrr.de1984.R.string.language_portuguese)),
+            LanguageOption(Constants.Settings.LANGUAGE_CHINESE, getString(io.github.dorumrr.de1984.R.string.language_chinese))
+        )
+
+        val adapter = android.widget.ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            languages.map { it.displayName }
+        )
+
+        binding.languageSelectionDropdown.setAdapter(adapter)
+
+        // Set current selection
+        val currentLanguage = viewModel.uiState.value.appLanguage
+        val currentIndex = languages.indexOfFirst { it.code == currentLanguage }
+        if (currentIndex >= 0) {
+            binding.languageSelectionDropdown.setText(languages[currentIndex].displayName, false)
+        }
+
+        // Handle selection changes
+        // NOTE: Unlike other dropdowns, language selection requires special dismissal handling
+        // because setApplicationLocales() immediately recreates the activity, which can
+        // interrupt the dropdown dismissal animation if not delayed.
+        binding.languageSelectionDropdown.setOnItemClickListener { _, _, position, _ ->
+            val selectedLanguage = languages[position]
+
+            // Save the language preference
+            viewModel.setAppLanguage(selectedLanguage.code)
+
+            // Update the displayed text immediately
+            binding.languageSelectionDropdown.setText(selectedLanguage.displayName, false)
+
+            // Aggressively dismiss the dropdown and clear focus
+            binding.languageSelectionDropdown.dismissDropDown()
+            binding.languageSelectionDropdown.clearFocus()
+
+            // Hide the keyboard if it's showing
+            val imm = requireContext().getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(binding.languageSelectionDropdown.windowToken, 0)
+
+            // Delay the locale change to allow the dropdown to fully dismiss
+            // setApplicationLocales() triggers immediate activity recreation, so we need
+            // to give the UI time to complete the dropdown dismissal animation
+            binding.root.postDelayed({
+                // Apply language change using AndroidX API (this will recreate the activity)
+                val localeList = when (selectedLanguage.code) {
+                    Constants.Settings.LANGUAGE_SYSTEM_DEFAULT -> androidx.core.os.LocaleListCompat.getEmptyLocaleList()
+                    Constants.Settings.LANGUAGE_ENGLISH -> androidx.core.os.LocaleListCompat.forLanguageTags("en")
+                    Constants.Settings.LANGUAGE_ROMANIAN -> androidx.core.os.LocaleListCompat.forLanguageTags("ro")
+                    Constants.Settings.LANGUAGE_PORTUGUESE -> androidx.core.os.LocaleListCompat.forLanguageTags("pt")
+                    Constants.Settings.LANGUAGE_CHINESE -> androidx.core.os.LocaleListCompat.forLanguageTags("zh")
+                    else -> androidx.core.os.LocaleListCompat.getEmptyLocaleList()
+                }
+                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)
+            }, Constants.UI.DROPDOWN_DISMISSAL_DELAY_MS)
         }
     }
 
@@ -444,30 +520,30 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // AUTO is always available
         backends.add(BackendOption(
             mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO,
-            displayName = "AUTO (Recommended)",
-            description = "Automatically select best available backend",
+            displayName = getString(R.string.backend_auto_name),
+            description = getString(R.string.backend_auto_description),
             isAvailable = true
         ))
 
         // VPN is always available
         backends.add(BackendOption(
             mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN,
-            displayName = "VPN",
-            description = "Always use VPN backend",
+            displayName = getString(R.string.backend_vpn_name),
+            description = getString(R.string.backend_vpn_description),
             isAvailable = true
         ))
 
         // ConnectivityManager requires Shizuku + Android 13+
         val connectivityManagerAvailable = hasShizuku && isAndroid13Plus
         val connectivityManagerRequirement = when {
-            !isAndroid13Plus -> "Requires Android 13+"
-            !hasShizuku -> "Requires Shizuku"
+            !isAndroid13Plus -> getString(R.string.backend_requires_android_13)
+            !hasShizuku -> getString(R.string.backend_requires_shizuku)
             else -> null
         }
         backends.add(BackendOption(
             mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.CONNECTIVITY_MANAGER,
-            displayName = "ConnectivityManager",
-            description = "System-level blocking (requires Shizuku + Android 13+)",
+            displayName = getString(R.string.backend_connectivity_manager_name),
+            description = getString(R.string.backend_connectivity_manager_description),
             isAvailable = connectivityManagerAvailable,
             requirementText = connectivityManagerRequirement
         ))
@@ -476,10 +552,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         val iptablesAvailable = hasRoot || hasShizukuRoot
         backends.add(BackendOption(
             mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.IPTABLES,
-            displayName = "iptables",
-            description = "Kernel-level blocking (requires root)",
+            displayName = getString(R.string.backend_iptables_name),
+            description = getString(R.string.backend_iptables_description),
             isAvailable = iptablesAvailable,
-            requirementText = if (!iptablesAvailable) "Requires root or Shizuku in root mode" else null
+            requirementText = if (!iptablesAvailable) getString(R.string.backend_iptables_requirement) else null
         ))
 
         // NetworkPolicyManager requires Shizuku (legacy backend for Android 12 and below)
@@ -487,10 +563,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         val networkPolicyManagerAvailable = hasShizuku
         backends.add(BackendOption(
             mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.NETWORK_POLICY_MANAGER,
-            displayName = "NetworkPolicyManager (Legacy)",
-            description = "For Android 12 and below (use ConnectivityManager on Android 13+)",
+            displayName = getString(R.string.backend_network_policy_manager_name),
+            description = getString(R.string.backend_network_policy_manager_description),
             isAvailable = networkPolicyManagerAvailable,
-            requirementText = if (!networkPolicyManagerAvailable) "Requires Shizuku" else null
+            requirementText = if (!networkPolicyManagerAvailable) getString(R.string.backend_network_policy_manager_requirement) else null
         ))
 
         return backends
@@ -500,57 +576,19 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         val activeBackend = viewModel.activeBackendType.value
 
         val statusText = if (activeBackend != null) {
-            "Active: ${activeBackend.name}"
+            getString(io.github.dorumrr.de1984.R.string.settings_backend_active, activeBackend.name)
         } else {
-            "Firewall not running."
+            getString(io.github.dorumrr.de1984.R.string.settings_backend_not_running)
         }
 
         binding.backendStatusText.text = statusText
     }
 
     private fun showBackendInfoDialog() {
-        val message = """
-            💡 AUTO Mode (Recommended)
-            Automatically selects the best available backend:
-            1. iptables (if root/Shizuku available)
-            2. ConnectivityManager (if Shizuku + Android 13+)
-            3. VPN (fallback)
-
-            De1984 supports four firewall backends:
-
-            🔹 VPN Backend
-            • Always available (no root required)
-            • Uses Android VpnService API
-            • Supports granular control (WiFi/Mobile/Roaming)
-            • Occupies VPN slot (can't use other VPN apps)
-            • User-space packet filtering
-
-            🔹 iptables Backend
-            • Requires root or Shizuku in root mode
-            • Kernel-level blocking (most efficient)
-            • Supports granular control (WiFi/Mobile/Roaming)
-            • Doesn't occupy VPN slot
-            • Works with other VPN apps
-
-            🔹 ConnectivityManager Backend
-            • Requires Shizuku + Android 13+
-            • System-level blocking (blocks all networks reliably)
-            • All-or-nothing blocking only (no granular control)
-            • Doesn't occupy VPN slot
-            • Works with other VPN apps
-
-            🔹 NetworkPolicyManager Backend (Legacy)
-            • Requires Shizuku
-            • For Android 12 and below
-            • May not block WiFi on some devices
-            • Use ConnectivityManager on Android 13+ instead
-            • Doesn't occupy VPN slot
-        """.trimIndent()
-
         StandardDialog.showInfo(
             context = requireContext(),
-            title = "Firewall Backends",
-            message = message
+            title = getString(R.string.dialog_firewall_backends_title),
+            message = getString(R.string.dialog_firewall_backends_message)
         )
     }
 
@@ -619,12 +657,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // Setup Basic Tier
         setupPermissionTier(
             binding.permissionTierBasic,
-            title = "Basic Functionality",
-            description = "View installed packages and basic information",
-            status = if (state.hasBasicPermissions) "Completed" else "Permission Required",
+            title = getString(io.github.dorumrr.de1984.R.string.permission_tier_basic_title),
+            description = getString(io.github.dorumrr.de1984.R.string.permission_tier_basic_desc),
+            status = if (state.hasBasicPermissions) getString(io.github.dorumrr.de1984.R.string.permission_status_completed) else getString(io.github.dorumrr.de1984.R.string.permission_status_required),
             isComplete = state.hasBasicPermissions,
             permissions = state.basicPermissions,
-            setupButtonText = "Grant Permission",
+            setupButtonText = getString(io.github.dorumrr.de1984.R.string.permission_button_grant),
             onSetupClick = if (!state.hasBasicPermissions) {
                 { handleBasicPermissionsRequest() }
             } else null
@@ -633,12 +671,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // Setup Battery Tier
         setupPermissionTier(
             binding.permissionTierBattery,
-            title = "Background Process",
-            description = "Prevents Android from killing the firewall service to save battery. Critical for VPN reliability.",
-            status = if (state.hasBatteryOptimizationExemption) "Completed" else "Permission Required",
+            title = getString(io.github.dorumrr.de1984.R.string.permission_tier_battery_title),
+            description = getString(io.github.dorumrr.de1984.R.string.permission_tier_battery_desc),
+            status = if (state.hasBatteryOptimizationExemption) getString(io.github.dorumrr.de1984.R.string.permission_status_completed) else getString(io.github.dorumrr.de1984.R.string.permission_status_required),
             isComplete = state.hasBatteryOptimizationExemption,
             permissions = state.batteryOptimizationInfo,
-            setupButtonText = "Grant Permission",
+            setupButtonText = getString(io.github.dorumrr.de1984.R.string.permission_button_grant),
             onSetupClick = if (!state.hasBatteryOptimizationExemption) {
                 { handleBatteryOptimizationRequest() }
             } else null
@@ -664,16 +702,16 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         // Determine button text based on what's available
         val buttonText = if (shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION) {
-            "Grant Shizuku Permission"
+            getString(io.github.dorumrr.de1984.R.string.permission_button_grant_shizuku)
         } else {
-            "Grant Privileged Access"
+            getString(io.github.dorumrr.de1984.R.string.permission_button_grant_privileged)
         }
 
         setupPermissionTier(
             binding.permissionTierAdvanced,
-            title = "Advanced Operations",
-            description = "Package management and system-level operations (via Shizuku or root)",
-            status = if (state.hasAdvancedPermissions) "Completed" else "Shizuku or Root Required",
+            title = getString(io.github.dorumrr.de1984.R.string.permission_tier_advanced_title),
+            description = getString(io.github.dorumrr.de1984.R.string.permission_tier_advanced_desc),
+            status = if (state.hasAdvancedPermissions) getString(io.github.dorumrr.de1984.R.string.permission_status_completed) else getString(io.github.dorumrr.de1984.R.string.permission_status_shizuku_or_root_required),
             isComplete = state.hasAdvancedPermissions,
             permissions = state.advancedPermissions,
             setupButtonText = buttonText,
@@ -685,12 +723,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // Setup VPN Tier
         setupPermissionTier(
             binding.permissionTierVpn,
-            title = Constants.VpnFallback.TIER_TITLE,
-            description = Constants.VpnFallback.TIER_DESCRIPTION,
-            status = if (state.hasVpnPermission) Constants.VpnFallback.TIER_STATUS_GRANTED else Constants.VpnFallback.TIER_STATUS_NOT_GRANTED,
+            title = getString(io.github.dorumrr.de1984.R.string.permission_tier_vpn_title),
+            description = getString(io.github.dorumrr.de1984.R.string.permission_tier_vpn_desc),
+            status = if (state.hasVpnPermission) getString(io.github.dorumrr.de1984.R.string.permission_status_completed) else getString(io.github.dorumrr.de1984.R.string.permission_status_required),
             isComplete = state.hasVpnPermission,
             permissions = state.vpnPermissionInfo,
-            setupButtonText = Constants.VpnFallback.TIER_BUTTON_TEXT,
+            setupButtonText = getString(io.github.dorumrr.de1984.R.string.permission_button_grant_vpn),
             onSetupClick = if (!state.hasVpnPermission) {
                 { handleVpnPermissionRequest() }
             } else null
@@ -763,9 +801,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private fun updateRootStatus(rootStatus: RootStatus) {
         val tierBinding = binding.permissionTierAdvanced
 
-        // Get theme-aware icon color (textColorSecondary)
+        // Get theme-aware icon color (textColorPrimary for maximum contrast)
         val typedValue = android.util.TypedValue()
-        requireContext().theme.resolveAttribute(android.R.attr.textColorSecondary, typedValue, true)
+        requireContext().theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
         val iconColor = typedValue.data
 
         // Check if Shizuku is available - if so, prioritize Shizuku over root
@@ -791,10 +829,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     // User already tried and denied - show instructions, hide button
                     tierBinding.rootStatusContainer.visibility = View.VISIBLE
                     tierBinding.rootStatusIcon.setColorFilter(iconColor)
-                    tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_DENIED
-                    tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_DENIED
+                    tierBinding.rootStatusTitle.text = getString(R.string.root_status_denied)
+                    tierBinding.rootStatusDescription.text = getString(R.string.root_desc_denied)
                     tierBinding.rootStatusInstructions.visibility = View.VISIBLE
-                    tierBinding.rootStatusInstructions.text = Constants.RootAccess.GRANT_INSTRUCTIONS_TITLE + "\n" + Constants.RootAccess.GRANT_INSTRUCTIONS_BODY
+                    tierBinding.rootStatusInstructions.text = getString(R.string.root_grant_instructions_title) + "\n" + getString(R.string.root_grant_instructions_body)
                     tierBinding.rootingToolsContainer.visibility = View.GONE
                     tierBinding.setupButtonContainer.visibility = View.GONE
                 } else {
@@ -802,7 +840,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     tierBinding.rootStatusContainer.visibility = View.GONE
                     tierBinding.rootingToolsContainer.visibility = View.GONE
                     tierBinding.setupButtonContainer.visibility = View.VISIBLE
-                    tierBinding.setupButton.text = "Grant Privileged Access"
+                    tierBinding.setupButton.text = getString(io.github.dorumrr.de1984.R.string.permission_button_grant_privileged)
                     tierBinding.setupButton.setOnClickListener {
                         handleRootAccessRequest()
                     }
@@ -817,14 +855,14 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 // Device is not rooted - show message and rooting tools
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusIcon.setColorFilter(iconColor)
-                tierBinding.rootStatusTitle.text = Constants.RootAccess.STATUS_NOT_AVAILABLE
-                tierBinding.rootStatusDescription.text = Constants.RootAccess.DESC_NOT_AVAILABLE
+                tierBinding.rootStatusTitle.text = getString(R.string.root_status_not_available)
+                tierBinding.rootStatusDescription.text = getString(R.string.root_desc_not_available)
                 tierBinding.rootStatusInstructions.visibility = View.GONE
 
                 // Show rooting tools in separate card
                 tierBinding.rootingToolsContainer.visibility = View.VISIBLE
-                tierBinding.rootingToolsTitle.text = Constants.RootAccess.ROOTING_TOOLS_TITLE.replace("<b>", "").replace("</b>", "")
-                tierBinding.rootingToolsBody.text = Constants.RootAccess.ROOTING_TOOLS_BODY
+                tierBinding.rootingToolsTitle.text = getString(R.string.root_rooting_tools_title).replace("<b>", "").replace("</b>", "")
+                tierBinding.rootingToolsBody.text = getString(R.string.root_rooting_tools_body)
 
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
@@ -840,9 +878,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private fun updateShizukuStatus(shizukuStatus: ShizukuStatus) {
         val tierBinding = binding.permissionTierAdvanced
 
-        // Get theme-aware icon color
+        // Get theme-aware icon color (textColorPrimary for maximum contrast)
         val typedValue = android.util.TypedValue()
-        requireContext().theme.resolveAttribute(android.R.attr.textColorSecondary, typedValue, true)
+        requireContext().theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
         val iconColor = typedValue.data
 
         // Only show Shizuku status if root is not available
@@ -863,12 +901,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 // Shizuku is running but permission not granted
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusIcon.setColorFilter(iconColor)
-                tierBinding.rootStatusTitle.text = Constants.ShizukuAccess.STATUS_DENIED
-                tierBinding.rootStatusDescription.text = Constants.ShizukuAccess.DESC_DENIED
+                tierBinding.rootStatusTitle.text = getString(R.string.shizuku_status_denied)
+                tierBinding.rootStatusDescription.text = getString(R.string.shizuku_desc_denied)
                 tierBinding.rootStatusInstructions.visibility = View.GONE
                 tierBinding.rootingToolsContainer.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.VISIBLE
-                tierBinding.setupButton.text = "Grant Shizuku Permission"
+                tierBinding.setupButton.text = getString(io.github.dorumrr.de1984.R.string.permission_button_grant_shizuku)
                 tierBinding.setupButton.setOnClickListener {
                     viewModel.grantShizukuPermission()
                 }
@@ -877,10 +915,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 // Shizuku is installed but not running
                 tierBinding.rootStatusContainer.visibility = View.VISIBLE
                 tierBinding.rootStatusIcon.setColorFilter(iconColor)
-                tierBinding.rootStatusTitle.text = Constants.ShizukuAccess.STATUS_NOT_RUNNING
-                tierBinding.rootStatusDescription.text = Constants.ShizukuAccess.DESC_NOT_RUNNING
-                tierBinding.rootStatusInstructions.visibility = View.VISIBLE
-                tierBinding.rootStatusInstructions.text = "Start Shizuku app to enable package management"
+                tierBinding.rootStatusTitle.text = getString(R.string.shizuku_status_not_running)
+                tierBinding.rootStatusDescription.text = getString(R.string.shizuku_desc_not_running)
+                tierBinding.rootStatusInstructions.visibility = View.GONE
                 tierBinding.rootingToolsContainer.visibility = View.GONE
                 tierBinding.setupButtonContainer.visibility = View.GONE
             }
@@ -969,9 +1006,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             Log.e(TAG, "Failed to request VPN permission", e)
             // Show error to user
             MaterialAlertDialogBuilder(requireContext())
-                .setTitle("VPN Permission Error")
-                .setMessage("Failed to request VPN permission: ${e.message}")
-                .setPositiveButton("OK", null)
+                .setTitle(getString(R.string.dialog_vpn_permission_error_title))
+                .setMessage(getString(R.string.dialog_vpn_permission_error_message, e.message))
+                .setPositiveButton(getString(R.string.dialog_ok), null)
                 .show()
         }
     }
@@ -992,12 +1029,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         viewModel.markRootPermissionRequested()
 
-        var resultMessage = "🔄 Testing privileged access...\n\nPlease grant permission in the popup dialog if prompted."
+        var resultMessage = getString(R.string.dialog_privileged_access_testing)
         val dialog = AlertDialog.Builder(requireContext())
-            .setTitle("Privileged Access")
+            .setTitle(getString(R.string.dialog_privileged_access_title))
             .setMessage(resultMessage)
             .setCancelable(true)
-            .setNegativeButton("Cancel") { d, _ -> d.dismiss() }
+            .setNegativeButton(getString(R.string.dialog_cancel)) { d, _ -> d.dismiss() }
             .create()
         dialog.show()
 
@@ -1026,7 +1063,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     }
                     dialog.setMessage(formattedMessage)
                     dialog.setCancelable(true)
-                    dialog.setButton(AlertDialog.BUTTON_POSITIVE, "OK") { d, _ ->
+                    dialog.setButton(AlertDialog.BUTTON_POSITIVE, getString(R.string.dialog_ok)) { d, _ ->
                         d.dismiss()
                         // Refresh permissions and root status after dismissing
                         permissionViewModel.refreshPermissions()
@@ -1036,11 +1073,11 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.visibility = View.GONE
                 }
             } catch (e: Exception) {
-                resultMessage = "❌ Root test failed.\n\nError: ${e.message}"
+                resultMessage = getString(R.string.dialog_privileged_access_failed, e.message)
                 if (dialog.isShowing) {
                     dialog.setMessage(resultMessage)
                     dialog.setCancelable(true)
-                    dialog.setButton(AlertDialog.BUTTON_POSITIVE, "OK") { d, _ -> d.dismiss() }
+                    dialog.setButton(AlertDialog.BUTTON_POSITIVE, getString(R.string.dialog_ok)) { d, _ -> d.dismiss() }
                     dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.visibility = View.GONE
                 }
             }
@@ -1100,8 +1137,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             try {
                 // Show loading dialog
                 val loadingDialog = MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Loading Backup...")
-                    .setMessage("Please wait...")
+                    .setTitle(getString(R.string.dialog_loading_backup_title))
+                    .setMessage(getString(R.string.dialog_loading_backup_message))
                     .setCancelable(false)
                     .create()
                 loadingDialog.show()
@@ -1117,14 +1154,14 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     onFailure = { error ->
                         StandardDialog.showError(
                             context = requireContext(),
-                            message = "Failed to read backup file: ${error.message}"
+                            message = getString(R.string.dialog_backup_read_error, error.message)
                         )
                     }
                 )
             } catch (e: Exception) {
                 StandardDialog.showError(
                     context = requireContext(),
-                    message = "Failed to load backup: ${e.message}"
+                    message = getString(R.string.dialog_backup_load_error, e.message)
                 )
             }
         }
@@ -1137,28 +1174,22 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
         val backupDate = dateFormat.format(Date(backup.exportDate))
 
-        val message = """
-            📦 Backup Information:
-
-            • Created: $backupDate
-            • App Version: ${backup.appVersion}
-            • Rules Count: ${backup.rulesCount}
-
-            Choose restore mode:
-
-            • Merge: Keep existing rules and add/update from backup
-            • Replace All: Delete all existing rules first (⚠️ destructive)
-        """.trimIndent()
+        val message = getString(
+            R.string.dialog_restore_rules_message,
+            backupDate,
+            backup.appVersion,
+            backup.rulesCount
+        )
 
         StandardDialog.show(
             context = requireContext(),
-            title = "Restore Firewall Rules?",
+            title = getString(R.string.dialog_restore_rules_title),
             message = message,
-            positiveButtonText = "Merge",
+            positiveButtonText = getString(R.string.dialog_restore_rules_merge),
             onPositiveClick = {
                 viewModel.restoreRules(uri, replaceExisting = false)
             },
-            negativeButtonText = "Replace All",
+            negativeButtonText = getString(R.string.dialog_restore_rules_replace),
             onNegativeClick = {
                 showReplaceConfirmation(uri)
             },
@@ -1172,13 +1203,13 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private fun showReplaceConfirmation(uri: Uri) {
         StandardDialog.showConfirmation(
             context = requireContext(),
-            title = "⚠️ Replace All Rules?",
-            message = "This will DELETE all existing firewall rules and replace them with the backup.\n\nThis action cannot be undone.\n\nAre you sure?",
-            confirmButtonText = "Replace All",
+            title = getString(R.string.dialog_replace_all_title),
+            message = getString(R.string.dialog_replace_all_message),
+            confirmButtonText = getString(R.string.dialog_replace_all_confirm),
             onConfirm = {
                 viewModel.restoreRules(uri, replaceExisting = true)
             },
-            cancelButtonText = "Cancel"
+            cancelButtonText = getString(R.string.dialog_cancel)
         )
     }
 
@@ -1235,14 +1266,14 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         Log.d(TAG, "showCriticalUninstallWarning: Displaying warning dialog")
         StandardDialog.showConfirmation(
             context = requireContext(),
-            title = "⚠️ Warning",
-            message = "This allows uninstalling system-critical packages that may brick your device. Only enable if you know what you're doing.\n\nAre you sure you want to enable this?",
-            confirmButtonText = "Enable",
+            title = getString(R.string.dialog_critical_uninstall_title),
+            message = getString(R.string.dialog_critical_uninstall_message),
+            confirmButtonText = getString(R.string.dialog_critical_uninstall_enable),
             onConfirm = {
                 Log.d(TAG, "showCriticalUninstallWarning: User confirmed")
                 onConfirm()
             },
-            cancelButtonText = "Cancel",
+            cancelButtonText = getString(R.string.dialog_cancel),
             onCancel = {
                 Log.d(TAG, "showCriticalUninstallWarning: User cancelled, reverting switch")
                 // Revert switch state
@@ -1264,14 +1295,14 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private fun showRestartDialog() {
         StandardDialog.showConfirmation(
             context = requireContext(),
-            title = "Restart Required",
-            message = "The app needs to restart to apply the new color theme. Restart now?",
-            confirmButtonText = "Restart",
+            title = getString(R.string.dialog_restart_title),
+            message = getString(R.string.dialog_restart_message),
+            confirmButtonText = getString(R.string.dialog_restart_confirm),
             onConfirm = {
                 Log.d(TAG, "showRestartDialog: User confirmed restart")
                 restartApp()
             },
-            cancelButtonText = "Later",
+            cancelButtonText = getString(R.string.dialog_cancel),
             onCancel = {
                 Log.d(TAG, "showRestartDialog: User cancelled restart")
             }
@@ -1306,7 +1337,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         // Setup detection mode dropdown
         val modeDropdown = binding.root.findViewById<AutoCompleteTextView>(R.id.captivePortalModeDropdown)
-        val modeOptions = CaptivePortalMode.values().map { it.displayName }
+        val modeOptions = CaptivePortalMode.values().map { it.getDisplayName(requireContext()) }
         val modeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modeOptions)
         modeDropdown?.setAdapter(modeAdapter)
         modeDropdown?.setOnItemClickListener { _, _, position, _ ->
@@ -1316,7 +1347,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         // Setup server preset dropdown
         val presetDropdown = binding.root.findViewById<AutoCompleteTextView>(R.id.captivePortalPresetDropdown)
-        val presetOptions = CaptivePortalPreset.values().map { it.displayName }
+        val presetOptions = CaptivePortalPreset.values().map { it.getDisplayName(requireContext()) }
         val presetAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, presetOptions)
         presetDropdown?.setAdapter(presetAdapter)
         presetDropdown?.setOnItemClickListener { _, _, position, _ ->
@@ -1361,9 +1392,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.captivePortalRestoreButton)?.setOnClickListener {
             StandardDialog.showConfirmation(
                 context = requireContext(),
-                title = "Restore Original Settings?",
-                message = "This will restore your device's original captive portal settings that were captured when you first opened this feature.",
-                confirmButtonText = "Restore",
+                title = getString(R.string.dialog_captive_portal_restore_title),
+                message = getString(R.string.dialog_captive_portal_restore_message),
+                confirmButtonText = getString(R.string.dialog_captive_portal_restore_confirm),
                 onConfirm = {
                     viewModel.restoreOriginalCaptivePortalSettings()
                 }
@@ -1374,9 +1405,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.captivePortalResetButton)?.setOnClickListener {
             StandardDialog.showConfirmation(
                 context = requireContext(),
-                title = "Reset to Google Defaults?",
-                message = "This will reset captive portal settings to Google's default servers. Your original settings will remain saved and can be restored later.",
-                confirmButtonText = "Reset",
+                title = getString(R.string.dialog_captive_portal_reset_title),
+                message = getString(R.string.dialog_captive_portal_reset_message),
+                confirmButtonText = getString(R.string.dialog_captive_portal_reset_confirm),
                 onConfirm = {
                     viewModel.resetCaptivePortalToGoogleDefaults()
                 }
@@ -1418,14 +1449,14 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         // Update current settings display
         state.captivePortalSettings?.let { settings ->
-            currentMode?.text = "Detection Mode: ${settings.mode.displayName}"
-            currentHttpUrl?.text = "HTTP URL: ${settings.httpUrl ?: "Not set"}"
-            currentHttpsUrl?.text = "HTTPS URL: ${settings.httpsUrl ?: "Not set"}"
-            currentPreset?.text = "Preset: ${settings.getMatchingPreset().displayName}"
+            currentMode?.text = getString(io.github.dorumrr.de1984.R.string.settings_captive_portal_detection_mode, settings.mode.getDisplayName(requireContext()))
+            currentHttpUrl?.text = getString(io.github.dorumrr.de1984.R.string.settings_captive_portal_http_url, settings.httpUrl ?: getString(io.github.dorumrr.de1984.R.string.settings_captive_portal_not_set))
+            currentHttpsUrl?.text = getString(io.github.dorumrr.de1984.R.string.settings_captive_portal_https_url, settings.httpsUrl ?: getString(io.github.dorumrr.de1984.R.string.settings_captive_portal_not_set))
+            currentPreset?.text = getString(io.github.dorumrr.de1984.R.string.settings_captive_portal_preset, settings.getMatchingPreset().getDisplayName(requireContext()))
 
             // Update dropdown selections (without triggering listeners)
-            modeDropdown?.setText(settings.mode.displayName, false)
-            presetDropdown?.setText(settings.getMatchingPreset().displayName, false)
+            modeDropdown?.setText(settings.mode.getDisplayName(requireContext()), false)
+            presetDropdown?.setText(settings.getMatchingPreset().getDisplayName(requireContext()), false)
         }
 
         // Enable/disable controls based on privileges
@@ -1437,7 +1468,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         // Show message if no privileges
         if (!hasPrivileges && state.captivePortalSettings != null) {
-            errorText?.text = "Root or Shizuku access required to modify settings"
+            errorText?.text = getString(R.string.settings_captive_portal_no_privileges)
             errorText?.visibility = View.VISIBLE
         }
     }

@@ -1,0 +1,652 @@
+<resources>
+    <!-- App Identity -->
+    <string name="app_name" translatable="false">De1984</string>
+    <string name="app_tagline">隐私不是默认的。使用 De1984 防火墙和软件包控制夺回隐私。</string>
+
+    <!-- Donate Button -->
+    <string name="donate_button">捐赠</string>
+
+    <!-- Navigation -->
+    <string name="nav_firewall">防火墙</string>
+    <string name="nav_packages">软件包</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_drawer_open">打开导航抽屉</string>
+    <string name="nav_drawer_close">关闭导航抽屉</string>
+
+    <!-- Navigation Labels -->
+    <string name="label_firewall">防火墙</string>
+    <string name="label_packages">软件包</string>
+    <string name="label_settings">设置</string>
+
+    <!-- Toolbar Titles -->
+    <string name="title_firewall">De1984 防火墙</string>
+    <string name="title_packages">De1984 软件包</string>
+    <string name="title_settings">De1984 设置</string>
+
+    <!-- Firewall Toggle Button -->
+    <string name="firewall_button_on">开启</string>
+    <string name="firewall_button_off">关闭</string>
+    <string name="firewall_status_active">活动</string>
+
+    <!-- Firewall States -->
+    <string name="firewall_state_blocked">已阻止</string>
+    <string name="firewall_state_allowed">已允许</string>
+    <string name="firewall_state_internet">互联网</string>
+    <string name="firewall_search_hint">搜索应用…</string>
+
+    <!-- Firewall Dialogs -->
+    <string name="dialog_firewall_start_title">启动 De1984 防火墙？</string>
+    <string name="dialog_firewall_start_message">欢迎使用 De1984！您想现在启动防火墙来保护您的隐私吗？</string>
+    <string name="dialog_firewall_start_confirm">启动防火墙</string>
+    <string name="dialog_firewall_start_skip">稍后</string>
+
+    <string name="dialog_policy_change_title">更改默认策略？</string>
+    <string name="dialog_policy_change_confirm">更改策略</string>
+    <string name="dialog_policy_change_cancel">取消</string>
+
+    <string name="dialog_vpn_warning_title">警告：当前有 VPN 处于活动状态！</string>
+    <string name="dialog_vpn_warning_message">请在防火墙中允许您的 VPN 应用以避免连接问题。</string>
+
+    <string name="firewall_system_package_warning">⚠️ 系统软件包警告</string>
+
+    <!-- Package Management -->
+    <string name="packages_title">软件包管理</string>
+    <string name="packages_search_hint">搜索软件包…</string>
+    <string name="packages_filter_all">全部</string>
+    <string name="packages_filter_system">系统</string>
+    <string name="packages_filter_user">用户</string>
+    <string name="packages_filter_enabled">已启用</string>
+    <string name="packages_filter_disabled">已禁用</string>
+    <string name="packages_filter_threats">威胁</string>
+    <string name="packages_empty_state_no_uninstalled">没有已卸载的系统应用</string>
+
+    <!-- Package Status -->
+    <string name="status_enabled">已启用</string>
+    <string name="status_disabled">已禁用</string>
+    <string name="status_uninstalled">已卸载</string>
+    <string name="status_system">系统</string>
+    <string name="status_user">用户</string>
+    <string name="status_threat">威胁</string>
+
+    <!-- Package Actions -->
+    <string name="action_enable">启用</string>
+    <string name="action_disable">禁用</string>
+    <string name="action_uninstall">卸载</string>
+    <string name="action_reinstall">重新安装</string>
+    <string name="action_force_stop">强制停止</string>
+    <string name="select_package">选择软件包</string>
+    <string name="close_selection">关闭选择模式</string>
+
+    <!-- Package Action Sheet -->
+    <string name="action_sheet_package_name_label">软件包名称</string>
+    <string name="action_sheet_force_stop_desc_running">立即停止所有进程</string>
+    <string name="action_sheet_force_stop_desc_not_running">强制停止（如果正在运行）</string>
+    <string name="action_sheet_disable_desc">阻止此应用运行</string>
+    <string name="action_sheet_enable_desc">允许此应用运行</string>
+    <string name="action_sheet_uninstall_desc">从设备中删除此应用</string>
+    <string name="action_sheet_reinstall_desc">恢复此系统应用</string>
+
+    <!-- Package Action Confirmations -->
+    <string name="dialog_force_stop_title">强制停止 %s？</string>
+    <string name="dialog_force_stop_system_message">⚠️ 这是一个系统软件包。强制停止可能会导致系统不稳定。
+
+您确定要继续吗？</string>
+    <string name="dialog_force_stop_message">这将立即停止 %s 的所有进程。
+
+您确定吗？</string>
+    <string name="dialog_enable_disable_title">%1$s %2$s？</string>
+    <string name="dialog_disable_system_message">⚠️ 这是一个系统软件包。禁用它可能会导致系统不稳定或阻止其他应用正常工作。
+
+您确定要继续吗？</string>
+    <string name="dialog_enable_message">这将允许 %s 正常运行。
+
+您确定吗？</string>
+    <string name="dialog_disable_message">这将阻止 %s 运行。
+
+您确定吗？</string>
+
+    <!-- Permission Names -->
+    <string name="permission_network_state">网络状态</string>
+    <string name="permission_wifi_state">WiFi 状态</string>
+    <string name="permission_notification">通知权限</string>
+    <string name="permission_battery_optimization">电池优化豁免</string>
+    <string name="permission_modify_system_settings">修改系统设置</string>
+    <string name="permission_enable_disable_components">启用/禁用组件</string>
+    <string name="permission_superuser_access">超级用户访问</string>
+    <string name="permission_vpn">VPN 权限</string>
+
+    <!-- Permission Descriptions -->
+    <string name="permission_network_state_desc">监控网络连接（WiFi/移动数据/漫游）</string>
+    <string name="permission_wifi_state_desc">检测 WiFi 网络状态</string>
+    <string name="permission_notification_desc">显示新应用安装的通知</string>
+    <string name="permission_battery_optimization_desc">防止 Android 为节省电量而终止防火墙服务。对 VPN 可靠性至关重要。</string>
+    <string name="permission_modify_system_settings_desc">更改系统级安全设置</string>
+    <string name="permission_enable_disable_components_desc">启用或禁用应用组件</string>
+    <string name="permission_superuser_access_desc">完全系统访问权限用于高级操作</string>
+    <string name="permission_vpn_desc">当特权后端（iptables/ConnectivityManager）失败时允许自动回退到 VPN。确保防火墙保持活动状态。</string>
+
+    <!-- Permission Tier Titles -->
+    <string name="permission_tier_basic_title">基本功能</string>
+    <string name="permission_tier_battery_title">后台进程</string>
+    <string name="permission_tier_advanced_title">高级操作</string>
+    <string name="permission_tier_vpn_title">VPN 回退</string>
+
+    <!-- Permission Tier Descriptions -->
+    <string name="permission_tier_basic_desc">查看已安装的软件包和基本信息</string>
+    <string name="permission_tier_battery_desc">防止 Android 为节省电量而终止防火墙服务。对 VPN 可靠性至关重要。</string>
+    <string name="permission_tier_advanced_desc">软件包管理和系统级操作（通过 Shizuku 或 root）</string>
+    <string name="permission_tier_vpn_desc">当特权后端（iptables/ConnectivityManager）失败时允许自动回退到 VPN。确保防火墙保持活动状态。</string>
+
+    <!-- Permission Tier Status -->
+    <string name="permission_status_completed">已完成</string>
+    <string name="permission_status_required">需要权限</string>
+    <string name="permission_status_shizuku_or_root_required">需要 Shizuku 或 Root</string>
+
+    <!-- Permission Tier Buttons -->
+    <string name="permission_button_grant">授予权限</string>
+    <string name="permission_button_grant_shizuku">授予 Shizuku 权限</string>
+    <string name="permission_button_grant_privileged">授予特权访问</string>
+    <string name="permission_button_grant_vpn">授予 VPN 权限</string>
+
+    <!-- Multi-Select Package Operations -->
+    <string name="multiselect_toast_cannot_select_critical">重要/必需软件包必须单独卸载</string>
+    <string name="multiselect_toast_selection_limit">一次最多可选择 50 个软件包</string>
+    <string name="multiselect_toolbar_title_format">%d selected</string>
+    <string name="multiselect_toolbar_button_uninstall">卸载</string>
+    <string name="multiselect_toolbar_button_reinstall">重新安装</string>
+    <string name="multiselect_toolbar_button_clear">清除</string>
+
+    <string name="multiselect_dialog_title_uninstall">卸载 %d 个选定的应用？</string>
+    <string name="multiselect_dialog_message_cannot_undo">此操作无法撤消。</string>
+    <string name="multiselect_dialog_button_uninstall_all">全部卸载</string>
+    <string name="multiselect_dialog_button_cancel">取消</string>
+
+    <string name="multiselect_dialog_title_results">卸载结果</string>
+    <string name="multiselect_dialog_message_success_format">✓ 成功卸载：%d</string>
+    <string name="multiselect_dialog_message_failed_format">✗ 卸载失败：%d</string>
+    <string name="multiselect_dialog_button_ok">OK</string>
+
+    <string name="multiselect_progress_dialog_title">正在卸载软件包</string>
+    <string name="multiselect_progress_message_format">正在卸载 %1$d / %2$d…</string>
+
+    <string name="multiselect_dialog_title_reinstall_results">重新安装结果</string>
+    <string name="multiselect_dialog_message_reinstall_success_format">✓ 成功重新安装：%d</string>
+    <string name="multiselect_dialog_message_reinstall_failed_format">✗ 重新安装失败：%d</string>
+
+    <string name="multiselect_progress_dialog_title_reinstall">正在重新安装软件包</string>
+    <string name="multiselect_progress_message_format_reinstall">正在重新安装 %1$d / %2$d…</string>
+
+    <string name="multiselect_checkbox_content_description">选择软件包</string>
+
+    <!-- Theme -->
+    <string name="theme_light">浅色主题</string>
+    <string name="theme_dark">深色主题</string>
+    <string name="theme_toggle">切换主题</string>
+
+    <!-- Common -->
+    <string name="search">搜索</string>
+    <string name="filter">筛选</string>
+    <string name="cancel">取消</string>
+    <string name="ok">OK</string>
+    <string name="yes">是</string>
+    <string name="no">否</string>
+    <string name="loading">加载中…</string>
+    <string name="error">错误</string>
+    <string name="retry">重试</string>
+    <string name="success">成功</string>
+    <string name="later">稍后</string>
+    <string name="dismiss">关闭</string>
+    <string name="grant">授予</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_app_icon">应用图标</string>
+    <string name="cd_theme_toggle">主题切换按钮</string>
+    <string name="cd_search_icon">搜索图标</string>
+    <string name="cd_filter_icon">筛选图标</string>
+    <string name="cd_status_indicator">状态指示器</string>
+    <string name="cd_navigation_icon">导航图标</string>
+    <string name="cd_wifi_status">WiFi 状态</string>
+    <string name="cd_wifi_blocked">WiFi 已阻止</string>
+    <string name="cd_mobile_data_status">移动数据状态</string>
+    <string name="cd_mobile_blocked">移动数据已阻止</string>
+    <string name="cd_roaming_status">漫游状态</string>
+    <string name="cd_roaming_blocked">漫游已阻止</string>
+    <string name="cd_shield_icon">盾牌图标</string>
+    <string name="cd_open_app_settings">打开应用设置</string>
+    <string name="cd_package_control_icon">软件包控制图标</string>
+    <string name="cd_status_icon">状态图标</string>
+    <string name="cd_de1984_logo">De1984 标志</string>
+    <string name="cd_force_stop_icon">强制停止图标</string>
+    <string name="cd_enable_disable_icon">启用/禁用图标</string>
+    <string name="cd_uninstall_icon">卸载图标</string>
+    <string name="cd_firewall_rules_icon">防火墙规则图标</string>
+    <string name="cd_settings_icon">设置图标</string>
+    <string name="cd_backend_information">后端信息</string>
+    <string name="cd_captive_portal_icon">强制门户图标</string>
+    <string name="cd_apps_icon">应用图标</string>
+    <string name="cd_permission_status">权限状态</string>
+
+    <!-- Footer / Branding -->
+    <string name="footer_tagline">为更美好的明天而熬夜。\n由 Doru Moraru 创建</string>
+    <string name="footer_author_name" translatable="false">Doru Moraru</string>
+    <string name="footer_author_url" translatable="false">https://github.com/dorumrr/de1984</string>
+
+    <!-- Plurals -->
+    <plurals name="package_count">
+        <item quantity="one">%d 个应用</item>
+        <item quantity="other">%d 个应用</item>
+    </plurals>
+
+    <!-- Root Access -->
+    <string name="root_status_granted">Root 访问：已授予</string>
+    <string name="root_status_denied">Root 访问：已拒绝</string>
+    <string name="root_status_not_available">Root 访问：不可用</string>
+    <string name="root_status_checking">Root 访问：检查中…</string>
+
+    <string name="root_desc_granted">高级操作可用</string>
+    <string name="root_desc_denied">Root 权限被拒绝。请按照以下说明授予访问权限。</string>
+    <string name="root_desc_not_available">您的设备未 Root。高级软件包管理操作需要 Root 访问权限。</string>
+    <string name="root_desc_checking">请稍候…</string>
+
+    <string name="root_grant_instructions_title">授予 Root 访问权限：</string>
+    <string name="root_grant_instructions_body">• 重新安装应用以再次触发权限对话框\n• 或手动将 De1984 添加到您的超级用户应用（Magisk、KernelSU 等）</string>
+
+    <string name="root_rooting_tools_title"><![CDATA[<b>推荐的 Root 工具：</b>]]></string>
+    <string name="root_rooting_tools_body">• Magisk - 最流行且广泛支持的 Root 解决方案。适用于 Android 5.0+ 并支持模块以获得额外功能。\n• KernelSU - 现代基于内核的 Root 管理。提供更好的安全隔离且不修改系统分区。\n• APatch - 采用内核修补方法的新替代方案。适用于具有严格安全策略的设备。</string>
+
+    <string name="root_setup_instructions">要启用软件包禁用/启用功能：\n\n1. 使用您喜欢的方法 Root 您的设备\n2. 在提示时授予 De1984 超级用户访问权限\n3. 重新启动应用以使用高级操作</string>
+
+    <!-- Shizuku Access -->
+    <string name="shizuku_status_granted">Shizuku：已授予</string>
+    <string name="shizuku_status_denied">Shizuku：已拒绝</string>
+    <string name="shizuku_status_not_available">Shizuku：未安装</string>
+    <string name="shizuku_status_not_running">Shizuku：未运行</string>
+    <string name="shizuku_status_checking">Shizuku：检查中…</string>
+
+    <string name="shizuku_desc_granted">通过 Shizuku 可使用高级操作</string>
+    <string name="shizuku_desc_denied">Shizuku 权限被拒绝。点击"授予 Shizuku 权限"重试。</string>
+    <string name="shizuku_desc_not_available">Shizuku 未安装。安装 Shizuku 以在无需 Root 的情况下启用软件包管理。</string>
+    <string name="shizuku_desc_not_running">Shizuku 已安装但未运行。启动 Shizuku 以启用软件包管理。</string>
+    <string name="shizuku_desc_checking">请稍候…</string>
+
+    <string name="shizuku_instructions_not_running">启动 Shizuku 应用以启用软件包管理</string>
+
+    <string name="shizuku_what_is">Shizuku 允许应用使用具有提升权限（ADB 或 Root）的系统 API。对于软件包管理，它是传统 Root 访问的更安全替代方案。</string>
+
+    <!-- Privileged Access Banner -->
+    <string name="banner_no_access_available">没有可用的特权访问。安装 Shizuku 或 Root 您的设备以启用软件包管理。</string>
+    <string name="banner_shizuku_not_running">Shizuku 已安装但未运行。启动 Shizuku 或 Root 您的设备以启用软件包管理。</string>
+    <string name="banner_permission_required">软件包管理需要 Shizuku 或 Root 访问权限</string>
+
+    <string name="banner_button_go_to_settings">前往设置</string>
+    <string name="banner_button_grant">授予</string>
+    <string name="banner_button_dismiss">关闭</string>
+
+    <!-- Backend Monitoring -->
+    <string name="backend_monitoring_channel_name">后端监控</string>
+
+    <string name="backend_notification_title_waiting">De1984 防火墙活动（VPN 模式）</string>
+    <string name="backend_notification_title_switching">De1984 正在切换后端…</string>
+    <string name="backend_notification_title_success">De1984 防火墙后端已切换</string>
+    <string name="backend_notification_title_failed">De1984 防火墙后端切换失败</string>
+
+    <string name="backend_notification_text_shizuku_not_running">等待 Shizuku 启动。点击重试。</string>
+    <string name="backend_notification_text_shizuku_no_permission">等待 Shizuku 权限。点击重试。</string>
+    <string name="backend_notification_text_switching">Shizuku 现已可用。正在切换到首选后端…</string>
+    <string name="backend_notification_text_success_connectivity_manager">De1984 防火墙现在使用 ConnectivityManager 后端</string>
+    <string name="backend_notification_text_success_iptables">De1984 防火墙现在使用 iptables 后端</string>
+    <string name="backend_notification_text_failed">De1984 防火墙切换后端失败。仍在使用 VPN。</string>
+
+    <string name="backend_action_button_retry">重试</string>
+
+    <string name="backend_toast_success_connectivity_manager">De1984 防火墙已切换到 ConnectivityManager</string>
+    <string name="backend_toast_success_iptables">De1984 防火墙已切换到 iptables</string>
+    <string name="backend_toast_failed">De1984 防火墙切换后端失败</string>
+
+    <!-- VPN Fallback -->
+    <string name="vpn_fallback_channel_name">VPN 回退</string>
+
+    <string name="vpn_fallback_notification_title">De1984 防火墙已停止</string>
+    <string name="vpn_fallback_notification_text">特权后端失败。点击启用 VPN 回退并恢复防火墙保护。</string>
+    <string name="vpn_fallback_notification_action_text">启用 VPN 回退</string>
+
+    <string name="vpn_fallback_tier_title">VPN 回退</string>
+    <string name="vpn_fallback_tier_description">当特权后端（iptables/ConnectivityManager）失败时允许自动回退到 VPN。确保防火墙保持活动状态。</string>
+    <string name="vpn_fallback_tier_status_granted">已完成</string>
+    <string name="vpn_fallback_tier_status_not_granted">需要权限</string>
+    <string name="vpn_fallback_tier_button_text">授予 VPN 权限</string>
+
+    <string name="vpn_fallback_permission_name">VPN 权限</string>
+    <string name="vpn_fallback_permission_description">为防火墙回退创建 VPN 连接</string>
+
+    <!-- Language Switcher -->
+    <string name="language_title">应用语言</string>
+    <string name="language_description">选择应用的首选语言</string>
+    <string name="language_system_default">系统默认</string>
+    <string name="language_english">English (英语)</string>
+    <string name="language_romanian">Română (罗马尼亚语)</string>
+    <string name="language_portuguese">Português (葡萄牙语)</string>
+    <string name="language_chinese">中文</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_app_version">版本 %s</string>
+    <string name="settings_app_description">隐私不是默认的。使用 De1984 防火墙和软件包控制夺回隐私。一个真正免费和开源的项目，为隐私而制作 ♥️。如果您觉得有用，请考虑捐赠以支持其开发。</string>
+
+    <string name="settings_options_title">选项</string>
+    <string name="settings_options_description">配置行为和设置</string>
+
+    <string name="settings_firewall_policy_title">防火墙默认阻止所有</string>
+    <string name="settings_firewall_policy_description_block_all">阻止所有，允许需要的</string>
+    <string name="settings_firewall_policy_description_allow_all">允许所有，阻止不需要的</string>
+
+    <string name="settings_backend_title">防火墙后端</string>
+    <string name="settings_backend_description">选择用于阻止应用的后端</string>
+    <string name="settings_backend_current">当前：%s</string>
+    <string name="settings_backend_active">活动：%s</string>
+    <string name="settings_backend_not_running">防火墙未运行。</string>
+    <string name="settings_backend_loading">加载中...</string>
+
+    <!-- Backend Options -->
+    <string name="backend_auto_name">自动（推荐）</string>
+    <string name="backend_auto_description">自动选择最佳可用后端</string>
+    <string name="backend_vpn_name">VPN</string>
+    <string name="backend_vpn_description">始终使用 VPN 后端</string>
+    <string name="backend_connectivity_manager_name">ConnectivityManager</string>
+    <string name="backend_connectivity_manager_description">系统级阻止（需要 Shizuku + Android 13+）</string>
+    <string name="backend_connectivity_manager_requirement">需要 Shizuku + Android 13+</string>
+    <string name="backend_requires_android_13">需要 Android 13+</string>
+    <string name="backend_requires_shizuku">需要 Shizuku</string>
+    <string name="backend_iptables_name">iptables</string>
+    <string name="backend_iptables_description">内核级阻止（需要 Root）</string>
+    <string name="backend_iptables_requirement">需要 Root 或 Root 模式下的 Shizuku</string>
+    <string name="backend_network_policy_manager_name">NetworkPolicyManager（旧版）</string>
+    <string name="backend_network_policy_manager_description">适用于 Android 12 及以下版本（在 Android 13+ 上使用 ConnectivityManager）</string>
+    <string name="backend_network_policy_manager_requirement">需要 Shizuku</string>
+    <string name="backend_not_available_title">%s 不可用</string>
+    <string name="backend_not_available_message">此后端在您的设备上不可用。</string>
+
+    <string name="settings_show_icons_title">显示应用图标</string>
+    <string name="settings_show_icons_description">禁用时可能会加快应用速度</string>
+
+    <string name="settings_new_app_notifications_title">新应用通知</string>
+    <string name="settings_new_app_notifications_description">安装具有网络权限的新应用时显示通知</string>
+
+    <string name="settings_allow_uninstall_critical_title">允许卸载关键软件包</string>
+    <string name="settings_allow_uninstall_critical_description">显示必需和重要软件包的卸载选项</string>
+
+    <string name="settings_show_firewall_prompt_title">显示防火墙启动提示</string>
+    <string name="settings_show_firewall_prompt_description">当应用打开且防火墙未激活时显示启动防火墙的提示</string>
+
+    <string name="settings_dynamic_color_title">使用动态颜色</string>
+    <string name="settings_dynamic_color_description">调整应用颜色以匹配您的设备壁纸（Android 12+）。需要重新启动应用。</string>
+
+    <string name="settings_backup_restore_title">备份和恢复</string>
+    <string name="settings_backup_restore_description">保存和恢复您的防火墙规则</string>
+    <string name="settings_backup_button">备份</string>
+    <string name="settings_restore_button">恢复</string>
+
+    <string name="settings_captive_portal_title">强制门户控制器</string>
+    <string name="settings_captive_portal_description">控制 Android 的强制门户检测系统</string>
+    <string name="settings_captive_portal_current_settings">当前设置</string>
+    <string name="settings_captive_portal_detection_mode">检测模式：%s</string>
+    <string name="settings_captive_portal_http_url">HTTP URL：%s</string>
+    <string name="settings_captive_portal_https_url">HTTPS URL：%s</string>
+    <string name="settings_captive_portal_preset">预设：%s</string>
+    <string name="settings_captive_portal_loading">加载中...</string>
+    <string name="settings_captive_portal_not_set">未设置</string>
+
+    <!-- Captive Portal Mode Options -->
+    <string name="captive_portal_mode_forced_off">强制关闭</string>
+    <string name="captive_portal_mode_forced_off_description">强制门户检测已完全禁用</string>
+    <string name="captive_portal_mode_disabled">已禁用</string>
+    <string name="captive_portal_mode_disabled_description">强制门户检测已禁用</string>
+    <string name="captive_portal_mode_enabled">已启用</string>
+    <string name="captive_portal_mode_enabled_description">强制门户检测已启用（默认）</string>
+
+    <!-- Captive Portal Preset Options -->
+    <string name="captive_portal_preset_google">Google（默认）</string>
+    <string name="captive_portal_preset_google_description">Google 的默认强制门户检测服务器</string>
+    <string name="captive_portal_preset_grapheneos">GrapheneOS</string>
+    <string name="captive_portal_preset_grapheneos_description">来自 GrapheneOS 项目的注重隐私的服务器</string>
+    <string name="captive_portal_preset_kuketz">Kuketz</string>
+    <string name="captive_portal_preset_kuketz_description">来自 Mike Kuketz（德国）的注重隐私的服务器</string>
+    <string name="captive_portal_preset_cloudflare">Cloudflare</string>
+    <string name="captive_portal_preset_cloudflare_description">Cloudflare 的强制门户检测服务器</string>
+    <string name="captive_portal_preset_custom">自定义 URL</string>
+    <string name="captive_portal_preset_custom_description">使用您自己的自定义强制门户 URL</string>
+
+    <!-- Captive Portal Success Messages -->
+    <string name="captive_portal_preset_applied">成功应用 %s 预设</string>
+    <string name="captive_portal_mode_set">检测模式设置为 %s</string>
+    <string name="settings_captive_portal_restore_original">恢复原始设置</string>
+    <string name="settings_captive_portal_reset_google">重置为 Google</string>
+    <string name="settings_captive_portal_no_privileges">修改设置需要 Root 或 Shizuku 访问权限</string>
+
+    <string name="settings_permissions_title">权限</string>
+    <string name="settings_permissions_description">状态和高级配置</string>
+
+    <string name="settings_contribute_title">问题、功能、错误？</string>
+    <string name="settings_contribute_description">参与并帮助改进 De1984</string>
+    <string name="settings_contribute_message">贡献代码、报告错误或建议功能，让这个应用对每个人都更好。</string>
+    <string name="settings_contribute_button">在 GitHub 上贡献</string>
+
+    <!-- Dialog Titles and Messages -->
+    <string name="dialog_success">成功</string>
+    <string name="dialog_firewall_backends_title">防火墙后端</string>
+    <string name="dialog_firewall_backends_message">💡 自动模式（推荐）\n自动选择最佳可用后端：\n1. iptables（如果 Root/Shizuku 可用）\n2. ConnectivityManager（如果 Shizuku + Android 13+）\n3. VPN（后备）\n\nDe1984 支持四种防火墙后端：\n\n🔹 VPN 后端\n• 始终可用（无需 Root）\n• 使用 Android VpnService API\n• 支持精细控制（WiFi/移动数据/漫游）\n• 占用 VPN 插槽（无法使用其他 VPN 应用）\n• 用户空间数据包过滤\n\n🔹 iptables 后端\n• 需要 Root 或 Root 模式下的 Shizuku\n• 内核级阻止（最高效）\n• 支持精细控制（WiFi/移动数据/漫游）\n• 不占用 VPN 插槽\n• 可与其他 VPN 应用配合使用\n\n🔹 ConnectivityManager 后端\n• 需要 Shizuku + Android 13+\n• 系统级阻止（可靠阻止所有网络）\n• 仅全有或全无阻止（无精细控制）\n• 不占用 VPN 插槽\n• 可与其他 VPN 应用配合使用\n\n🔹 NetworkPolicyManager 后端（旧版）\n• 需要 Shizuku\n• 适用于 Android 12 及以下版本\n• 在某些设备上可能无法阻止 WiFi\n• 在 Android 13+ 上请使用 ConnectivityManager\n• 不占用 VPN 插槽</string>
+    <string name="dialog_privileged_access_title">特权访问</string>
+    <string name="dialog_privileged_access_testing">🔄 正在测试特权访问...\n\n如果出现提示，请在弹出对话框中授予权限。</string>
+    <string name="dialog_privileged_access_failed">❌ Root 测试失败。\n\n错误：%s</string>
+    <string name="dialog_restore_rules_title">恢复防火墙规则？</string>
+    <string name="dialog_restore_rules_message">📦 备份信息：\n\n• 创建时间：%1$s\n• 应用版本：%2$s\n• 规则数量：%3$d\n\n选择恢复模式：\n\n• 合并：保留现有规则并从备份中添加/更新\n• 全部替换：首先删除所有现有规则（⚠️ 破坏性）</string>
+    <string name="dialog_restore_rules_merge">合并</string>
+    <string name="dialog_restore_rules_replace">全部替换</string>
+    <string name="dialog_replace_all_title">⚠️ 替换所有规则？</string>
+    <string name="dialog_replace_all_message">这将删除所有现有防火墙规则并用备份替换它们。\n\n此操作无法撤消。\n\n您确定吗？</string>
+    <string name="dialog_replace_all_confirm">全部替换</string>
+    <string name="dialog_critical_uninstall_title">⚠️ 警告</string>
+    <string name="dialog_critical_uninstall_message">这允许卸载可能使您的设备变砖的系统关键软件包。只有在您知道自己在做什么时才启用。\n\n您确定要启用此功能吗？</string>
+    <string name="dialog_critical_uninstall_enable">启用</string>
+    <string name="dialog_restart_title">需要重新启动</string>
+    <string name="dialog_restart_message">应用需要重新启动以应用新的颜色主题。现在重新启动？</string>
+    <string name="dialog_restart_confirm">重新启动</string>
+    <string name="dialog_captive_portal_restore_title">恢复原始设置？</string>
+    <string name="dialog_captive_portal_restore_message">这将恢复您首次打开此功能时捕获的设备原始强制门户设置。</string>
+    <string name="dialog_captive_portal_restore_confirm">恢复</string>
+    <string name="dialog_captive_portal_reset_title">重置为 Google 默认值？</string>
+    <string name="dialog_captive_portal_reset_message">这将重置强制门户设置为 Google 的默认服务器。您的原始设置将保持保存状态，可以稍后恢复。</string>
+    <string name="dialog_captive_portal_reset_confirm">重置</string>
+    <string name="dialog_backup_read_error">读取备份文件失败：%s</string>
+    <string name="dialog_backup_load_error">加载备份失败：%s</string>
+    <string name="dialog_loading_backup_title">加载备份...</string>
+    <string name="dialog_loading_backup_message">请稍候...</string>
+    <string name="dialog_vpn_permission_error_title">VPN 权限错误</string>
+    <string name="dialog_vpn_permission_error_message">请求 VPN 权限失败：%s</string>
+
+    <!-- Licenses (unused but kept for future) -->
+    <string name="licenses_coming_soon">开源许可证屏幕即将推出</string>
+
+    <!-- Packages Screen -->
+    <string name="packages_empty_state_title">未找到软件包</string>
+    <string name="packages_empty_state_subtitle">尝试调整您的筛选器</string>
+    <string name="package_state_enabled">已启用</string>
+    <string name="package_type_user">用户</string>
+
+    <!-- Firewall Screen -->
+    <string name="firewall_empty_state_title">未找到软件包</string>
+    <string name="firewall_empty_state_subtitle">尝试调整您的筛选器</string>
+    <string name="firewall_vpn_info_message">使用基于 VPN 的防火墙，因为您的设备未 Root 或没有 Shizuku。De1984 防火墙活动时，您无法使用其他 VPN 应用。</string>
+    <string name="firewall_network_label_wifi">WiFi</string>
+    <string name="firewall_network_label_mobile">移动数据</string>
+    <string name="firewall_network_label_roaming">漫游</string>
+    <string name="firewall_network_label_block_internet">阻止互联网</string>
+    <string name="firewall_connectivity_manager_info">这会阻止所有网络类型（WiFi、移动数据、漫游）。\n\n您的设备使用不支持按网络阻止的系统级防火墙。要进行精细控制，需要 Root 访问权限。</string>
+    <string name="firewall_block_all_info">这会阻止所有网络类型（WiFi、移动数据、漫游）。</string>
+    <string name="firewall_system_critical_info">⚠️ 系统关键软件包 - 无法修改网络访问以防止系统不稳定。</string>
+    <string name="firewall_vpn_app_info">🔒 VPN 应用 - 始终允许以防止设备锁定/解锁后 VPN 重新连接问题。</string>
+    <string name="firewall_badge_system_critical">系统关键</string>
+    <string name="firewall_badge_vpn_app">VPN 应用</string>
+
+    <!-- Package Categories -->
+    <string name="category_system_core">系统核心</string>
+    <string name="category_system_ui">系统界面</string>
+    <string name="category_google_services">Google 服务</string>
+    <string name="category_connectivity">连接</string>
+    <string name="category_telephony">电话</string>
+    <string name="category_media">媒体</string>
+    <string name="category_social">社交</string>
+    <string name="category_assistant">助手</string>
+    <string name="category_vendor">供应商</string>
+    <string name="category_unknown">未知</string>
+
+    <!-- Package Action Sheet -->
+    <string name="action_sheet_placeholder_app_name">应用名称</string>
+    <string name="action_sheet_placeholder_package_name">com.example.app</string>
+    <string name="action_sheet_safety_badge_essential">必需</string>
+    <string name="action_sheet_safety_badge_important">重要</string>
+    <string name="action_sheet_safety_badge_optional">可选</string>
+    <string name="action_sheet_safety_badge_bloatware">臃肿软件</string>
+    <string name="action_sheet_type_badge_user">用户</string>
+    <string name="action_sheet_type_badge_system">系统 UI</string>
+    <string name="action_sheet_action_force_stop">强制停止</string>
+    <string name="action_sheet_action_force_stop_desc">立即停止所有进程</string>
+    <string name="action_sheet_action_disable">禁用</string>
+    <string name="action_sheet_action_disable_desc">阻止此应用运行</string>
+    <string name="action_sheet_action_uninstall">卸载</string>
+    <string name="action_sheet_action_uninstall_desc">从设备中删除此应用</string>
+    <string name="action_sheet_action_firewall">防火墙规则</string>
+    <string name="action_sheet_action_firewall_desc">控制网络访问</string>
+    <string name="action_sheet_section_network_access">网络访问控制</string>
+    <string name="action_sheet_section_package_control">软件包控制</string>
+    <string name="action_sheet_section_package_control_desc">强制停止、禁用或卸载</string>
+    <string name="action_sheet_status_updating">更新中...</string>
+
+    <!-- Clipboard -->
+    <string name="clipboard_label_package_name">软件包名称</string>
+
+    <!-- Uninstall Dialogs -->
+    <string name="uninstall_dialog_title_critical">🚨  严重警告</string>
+    <string name="uninstall_dialog_message_essential">⚠️ 必要系统软件包 ⚠️\n\n卸载 %1$s 将使您的设备变砖！\n\n此软件包对系统运行至关重要。删除它将使您的设备无法使用，可能需要恢复出厂设置或重新刷机。\n\n%2$s输入"UNINSTALL"以确认此危险操作：</string>
+    <string name="uninstall_dialog_affects_prefix">影响：\n%s\n\n</string>
+    <string name="uninstall_dialog_confirm_word">卸载</string>
+    <string name="uninstall_dialog_button_uninstall">卸载</string>
+
+    <string name="uninstall_dialog_title_important">⚠️ 警告：重要软件包</string>
+    <string name="uninstall_dialog_message_important">卸载 %1$s 将导致主要系统功能停止工作。\n\n%2$s这可能需要恢复出厂设置才能恢复功能。\n\n您确定吗？</string>
+
+    <string name="uninstall_dialog_title_optional">卸载 %s？</string>
+    <string name="uninstall_dialog_message_optional_with_affects">这可能会影响：\n%s\n\n您确定吗？</string>
+    <string name="uninstall_dialog_message_optional">这将从您的设备中删除 %s。\n\n您确定吗？</string>
+
+    <string name="uninstall_dialog_title_bloatware">卸载 %s？</string>
+    <string name="uninstall_dialog_message_bloatware">✓ 可以安全删除\n\n此软件包被视为臃肿软件，可以安全卸载。\n\n您确定吗？</string>
+
+    <string name="uninstall_dialog_title_unknown">卸载 %s？</string>
+    <string name="uninstall_dialog_message_unknown_system">⚠️ 危险：这是一个系统软件包。卸载它可能会使您的设备变砖或导致严重的系统不稳定。\n\n此操作无法轻易撤消。\n\n您绝对确定吗？</string>
+    <string name="uninstall_dialog_message_unknown_user">这将从您的设备中删除 %s。\n\n您确定吗？</string>
+
+    <!-- Reinstall Dialog -->
+    <string name="reinstall_dialog_title">重新安装 %s？</string>
+    <string name="reinstall_dialog_message">这将恢复系统应用到您的设备。\n\n您确定吗？</string>
+    <string name="reinstall_dialog_button_reinstall">重新安装</string>
+
+    <!-- Batch Reinstall Dialog -->
+    <string name="batch_reinstall_dialog_title">重新安装 %d 个选定的应用？</string>
+    <string name="batch_reinstall_dialog_message_prefix">重新安装 %1$d 个选定的系统应用%2$s？\n\n以下应用将被重新安装：\n\n</string>
+    <string name="batch_reinstall_dialog_message_item">• %s\n</string>
+    <string name="batch_reinstall_dialog_message_more">\n…以及其他 %d 个</string>
+    <string name="batch_reinstall_dialog_button_reinstall_all">全部重新安装</string>
+
+    <!-- Batch Uninstall Dialog -->
+    <string name="batch_uninstall_dialog_message_question">您确定要卸载这 %d 个应用吗？</string>
+    <string name="batch_uninstall_dialog_category_user_apps">📱 用户应用（%d）：</string>
+    <string name="batch_uninstall_dialog_category_bloatware">✓ 臃肿软件（%d）：</string>
+    <string name="batch_uninstall_dialog_category_optional">⚠️ 可选系统应用（%d）：</string>
+    <string name="batch_uninstall_dialog_and_more">…以及其他 %d 个</string>
+    <string name="batch_uninstall_results_and_more">…以及其他 %d 个</string>
+    <string name="batch_uninstall_results_error_prefix">  错误：%s</string>
+
+    <!-- Common Dialog Strings -->
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">取消</string>
+    <string name="dialog_error_title">错误</string>
+    <string name="dialog_no_access_message">❌ 无特权访问可用\n\n您的设备似乎未 Root。要启用高级软件包管理功能：\n• 安装并配置 Shizuku（推荐 - 无需 Root）\n• 或使用 Magisk、KernelSU 或 APatch Root 您的设备</string>
+    <string name="dialog_root_denied_message">❌ Root 访问被拒绝\n\n您的设备已 Root，但 De1984 被拒绝超级用户权限。\n\n要授予访问权限：\n• 打开您的超级用户应用（Magisk、KernelSU、APatch 等）并授予 De1984 权限\n• 如果权限提示未出现，请卸载并重新安装应用，然后在首次启动时出现提示时授予权限\n• 或手动将 De1984 添加到您的超级用户应用（Magisk、KernelSU 等）</string>
+    <string name="dialog_type_to_confirm_hint">输入"%s"以确认</string>
+
+    <!-- Toast Messages -->
+    <string name="toast_copied_to_clipboard">已复制到剪贴板</string>
+
+    <!-- VPN Fallback -->
+    <string name="vpn_fallback_failed_title">VPN 回退失败</string>
+    <string name="vpn_fallback_failed_message">启动 VPN 回退失败：%s</string>
+
+    <!-- Privileged Access Banner -->
+    <string name="privileged_access_banner_no_access">没有可用的特权访问。安装 Shizuku 或 Root 您的设备以启用软件包管理。</string>
+    <string name="privileged_access_banner_shizuku_not_running">Shizuku 已安装但未运行。启动 Shizuku 或 Root 您的设备以启用软件包管理。</string>
+    <string name="privileged_access_banner_permission_required">软件包管理需要 Shizuku 或 Root 访问权限</string>
+    <string name="privileged_access_banner_button_settings">前往设置</string>
+    <string name="privileged_access_banner_button_grant">授予</string>
+    <string name="privileged_access_banner_button_dismiss">关闭</string>
+    <string name="privileged_access_dialog_title">特权访问</string>
+    <string name="privileged_access_tier_title">软件包管理</string>
+    <string name="privileged_access_status_setup_required">需要设置</string>
+    <string name="privileged_access_status_permission_required">需要权限</string>
+
+    <!-- Firewall Service Notifications -->
+    <string name="privileged_firewall_notification_title">De1984 防火墙已激活</string>
+    <string name="privileged_firewall_notification_text">使用 %s 后端</string>
+    <string name="privileged_firewall_failure_notification_title">防火墙后端失败</string>
+    <string name="privileged_firewall_failure_notification_text">%s 后端停止工作。点击重新启动。</string>
+    <string name="vpn_firewall_notification_title">De1984 防火墙已激活</string>
+    <string name="vpn_firewall_notification_text">保护您的隐私</string>
+    <string name="vpn_failure_notification_title">防火墙 VPN 失败</string>
+    <string name="vpn_failure_notification_text">VPN 接口失败。正在自动重试...</string>
+    <string name="new_app_notification_title">De1984 防火墙检测到新应用</string>
+    <string name="new_app_notification_text">%s 已安装。点击配置防火墙规则。</string>
+    <string name="new_app_notification_action_block">阻止网络</string>
+    <string name="new_app_notification_action_allow">允许网络</string>
+
+    <!-- Backup/Restore Error Messages -->
+    <string name="error_firewall_restart_failed">使用新后端重新启动防火墙失败：%s</string>
+    <string name="error_no_rules_to_backup">没有防火墙规则可备份</string>
+    <string name="error_backup_failed">备份失败：%s</string>
+    <string name="error_unsupported_backup_version">不支持的备份版本：%d</string>
+    <string name="error_backup_no_rules">备份文件不包含规则</string>
+    <string name="error_invalid_backup_format">无效的备份文件格式</string>
+    <string name="error_restore_failed">恢复失败：%s</string>
+
+    <!-- Package Management Error Messages -->
+    <string name="error_unable_to_enable_package">无法启用软件包。软件包管理需要 Shizuku 或 Root 访问权限。</string>
+    <string name="error_unable_to_disable_package">无法禁用软件包。软件包管理需要 Shizuku 或 Root 访问权限。</string>
+    <string name="error_unable_to_uninstall_package">无法卸载软件包。软件包管理需要 Shizuku 或 Root 访问权限。</string>
+    <string name="error_unable_to_reinstall_package">无法重新安装软件包。软件包管理需要 Shizuku 或 Root 访问权限。</string>
+    <string name="error_unable_to_force_stop_package">无法强制停止软件包。软件包管理需要 Shizuku 或 Root 访问权限。</string>
+    <string name="error_unknown">未知错误</string>
+
+    <!-- Firewall Error Messages -->
+    <string name="error_unable_to_allow_network">无法允许网络访问。防火墙操作需要 Root 访问权限。</string>
+    <string name="error_unable_to_block_network">无法阻止网络访问。防火墙操作需要 Root 访问权限。</string>
+    <string name="error_failed_to_block_mobile">阻止移动数据失败：%s</string>
+    <string name="error_failed_to_unblock_roaming">取消阻止漫游失败：%s</string>
+
+    <!-- Captive Portal Error Messages -->
+    <string name="error_failed_to_load_settings">加载设置失败</string>
+    <string name="error_failed_to_apply_preset">应用预设失败</string>
+    <string name="error_failed_to_set_detection_mode">设置检测模式失败</string>
+    <string name="error_failed_to_set_custom_urls">设置自定义 URL 失败</string>
+    <string name="error_failed_to_restore_original_settings">恢复原始设置失败</string>
+    <string name="error_failed_to_reset_to_google_defaults">重置为 Google 默认值失败</string>
+
+    <!-- Captive Portal Success Messages -->
+    <string name="success_custom_urls_applied">成功应用自定义 URL</string>
+    <string name="success_original_settings_restored">成功恢复原始设置</string>
+    <string name="success_reset_to_google_defaults">成功重置为 Google 默认值</string>
+
+    <!-- Input Hints -->
+    <string name="hint_detection_mode">检测模式</string>
+    <string name="hint_server_preset">服务器预设</string>
+    <string name="hint_custom_http_url">自定义 HTTP URL</string>
+    <string name="hint_custom_https_url">自定义 HTTPS URL</string>
+
+</resources>

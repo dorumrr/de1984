@@ -40,7 +40,7 @@
                         android:layout_width="64dp"
                         android:layout_height="64dp"
                         android:src="@drawable/de1984_icon"
-                        android:contentDescription="De1984 Logo" />
+                        android:contentDescription="@string/cd_de1984_logo" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -52,7 +52,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="De1984"
+                            android:text="@string/app_name"
                             android:textSize="24sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -62,7 +62,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Version 1.0.0"
+                            android:text="@string/settings_app_version"
                             android:textSize="14sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -77,7 +77,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Privacy isn't the default. Take it back with De1984 Firewall and Package Control. A truly free and open-source project made with ♥️ for privacy. Consider donating to support its development if you find it useful."
+                    android:text="@string/settings_app_description"
                     android:textSize="16sp"
                     android:textColor="?android:attr/textColorSecondary" />
 
@@ -110,7 +110,7 @@
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:src="@drawable/ic_settings"
-                        android:contentDescription="Settings icon"
+                        android:contentDescription="@string/cd_settings_icon"
                         app:tint="?android:attr/textColorPrimary" />
 
                     <LinearLayout
@@ -123,7 +123,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Options"
+                            android:text="@string/settings_options_title"
                             android:textSize="20sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -132,7 +132,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Configure behavior and settings"
+                            android:text="@string/settings_options_description"
                             android:textSize="14sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -157,7 +157,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Firewall Blocks All by Default"
+                            android:text="@string/settings_firewall_policy_title"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -167,7 +167,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Block All, Allow Wanted"
+                            android:text="@string/settings_firewall_policy_description_block_all"
                             android:textSize="12sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -201,7 +201,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Firewall Backend"
+                            android:text="@string/settings_backend_title"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -211,7 +211,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:src="@drawable/ic_info"
-                            android:contentDescription="Backend information"
+                            android:contentDescription="@string/cd_backend_information"
                             android:clickable="true"
                             android:focusable="true"
                             android:background="?attr/selectableItemBackgroundBorderless"
@@ -224,7 +224,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Select which backend to use for blocking apps"
+                        android:text="@string/settings_backend_description"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
 
@@ -249,6 +249,10 @@
                             android:layout_width="match_parent"
                             android:layout_height="41dp"
                             android:inputType="none"
+                            android:focusable="false"
+                            android:focusableInTouchMode="false"
+                            android:cursorVisible="false"
+                            android:textIsSelectable="false"
                             android:textSize="14sp"
                             android:paddingStart="16dp"
                             android:paddingEnd="16dp"
@@ -262,51 +266,9 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Current: VPN"
+                        android:text="@string/settings_backend_loading"
                         android:textSize="12sp"
                         android:textColor="?android:attr/textColorSecondary" />
-
-                </LinearLayout>
-
-                <!-- Show App Icons Switch -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Show App Icons"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="?android:attr/textColorPrimary" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="Might speed up the app when disabled"
-                            android:textSize="12sp"
-                            android:textColor="?android:attr/textColorSecondary" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/show_app_icons_switch"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        app:thumbTint="@color/switch_thumb_color"
-                        app:trackTint="@color/switch_track_color" />
 
                 </LinearLayout>
 
@@ -327,7 +289,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="New App Notifications"
+                            android:text="@string/settings_new_app_notifications_title"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -336,7 +298,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Show notifications when new apps with network permissions are installed"
+                            android:text="@string/settings_new_app_notifications_description"
                             android:textSize="12sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -369,7 +331,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Allow Uninstalling Critical Packages"
+                            android:text="@string/settings_allow_uninstall_critical_title"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -378,7 +340,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Show uninstall option for Essential and Important packages"
+                            android:text="@string/settings_allow_uninstall_critical_description"
                             android:textSize="12sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -411,7 +373,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Show Firewall Start Prompt"
+                            android:text="@string/settings_show_firewall_prompt_title"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -420,7 +382,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Show a prompt to start the firewall when the app opens and firewall is inactive"
+                            android:text="@string/settings_show_firewall_prompt_description"
                             android:textSize="12sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -428,6 +390,48 @@
 
                     <com.google.android.material.switchmaterial.SwitchMaterial
                         android:id="@+id/show_firewall_start_prompt_switch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        app:thumbTint="@color/switch_thumb_color"
+                        app:trackTint="@color/switch_track_color" />
+
+                </LinearLayout>
+
+                <!-- Show App Icons Switch -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_show_icons_title"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="?android:attr/textColorPrimary" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/settings_show_icons_description"
+                            android:textSize="12sp"
+                            android:textColor="?android:attr/textColorSecondary" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/show_app_icons_switch"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="16dp"
@@ -453,7 +457,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Use Dynamic Color"
+                            android:text="@string/settings_dynamic_color_title"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -462,7 +466,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Adapt app colors to match your device wallpaper (Android 12+). Requires app restart."
+                            android:text="@string/settings_dynamic_color_description"
                             android:textSize="12sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -475,6 +479,64 @@
                         android:layout_marginStart="16dp"
                         app:thumbTint="@color/switch_thumb_color"
                         app:trackTint="@color/switch_track_color" />
+
+                </LinearLayout>
+
+                <!-- Language Selection -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/language_title"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="?android:attr/textColorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/language_description"
+                        android:textSize="12sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/language_selection_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:boxBackgroundMode="outline"
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusBottomEnd="12dp"
+                        app:hintEnabled="false"
+                        app:expandedHintEnabled="false"
+                        app:hintAnimationEnabled="false"
+                        app:endIconMode="dropdown_menu"
+                        style="@style/Widget.De1984.TextInputLayout.Compact">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/language_selection_dropdown"
+                            android:layout_width="match_parent"
+                            android:layout_height="41dp"
+                            android:inputType="none"
+                            android:focusable="false"
+                            android:focusableInTouchMode="false"
+                            android:cursorVisible="false"
+                            android:textIsSelectable="false"
+                            android:textSize="14sp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="10dp"
+                            android:paddingBottom="10dp" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
 
                 </LinearLayout>
 
@@ -499,7 +561,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Backup &amp; Restore"
+                    android:text="@string/settings_backup_restore_title"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="?android:attr/textColorPrimary"
@@ -508,7 +570,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Save and restore your firewall rules"
+                    android:text="@string/settings_backup_restore_description"
                     android:textSize="14sp"
                     android:textColor="?android:attr/textColorSecondary"
                     android:layout_marginBottom="16dp" />
@@ -524,7 +586,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Backup"
+                        android:text="@string/settings_backup_button"
                         android:textAllCaps="false"
                         style="@style/Widget.De1984.Button"
                         android:layout_marginEnd="8dp" />
@@ -534,7 +596,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Restore"
+                        android:text="@string/settings_restore_button"
                         android:textAllCaps="false"
                         style="@style/Widget.De1984.Button"
                         android:layout_marginStart="8dp" />
@@ -560,29 +622,52 @@
                 android:orientation="vertical"
                 android:padding="20dp">
 
-                <!-- Header -->
-                <TextView
-                    android:layout_width="wrap_content"
+                <!-- Captive Portal Header -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="🌐 Captive Portal Controller"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="?attr/colorOnSurface"
-                    android:layout_marginBottom="4dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Control Android's captive portal detection system"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginBottom="16dp" />
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:src="@drawable/ic_wifi"
+                        android:contentDescription="@string/cd_captive_portal_icon"
+                        app:tint="?android:attr/textColorPrimary" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_captive_portal_title"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="?android:attr/textColorPrimary" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/settings_captive_portal_description"
+                            android:textSize="14sp"
+                            android:textColor="?android:attr/textColorSecondary" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
 
                 <!-- Current Settings Display -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Current Settings"
+                    android:text="@string/settings_captive_portal_current_settings"
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
@@ -592,7 +677,7 @@
                     android:id="@+id/captivePortalCurrentMode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Detection Mode: Loading..."
+                    android:text="@string/settings_captive_portal_loading"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="4dp" />
@@ -601,7 +686,7 @@
                     android:id="@+id/captivePortalCurrentHttpUrl"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="HTTP URL: Loading..."
+                    android:text="@string/settings_captive_portal_loading"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="4dp" />
@@ -610,7 +695,7 @@
                     android:id="@+id/captivePortalCurrentHttpsUrl"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="HTTPS URL: Loading..."
+                    android:text="@string/settings_captive_portal_loading"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="4dp" />
@@ -619,7 +704,7 @@
                     android:id="@+id/captivePortalCurrentPreset"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Preset: Loading..."
+                    android:text="@string/settings_captive_portal_loading"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:layout_marginBottom="16dp" />
@@ -629,7 +714,7 @@
                     android:id="@+id/captivePortalModeLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Detection Mode"
+                    android:hint="@string/hint_detection_mode"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_marginBottom="12dp">
 
@@ -638,6 +723,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="none"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:cursorVisible="false"
+                        android:textIsSelectable="false"
                         android:textSize="14sp" />
 
                 </com.google.android.material.textfield.TextInputLayout>
@@ -647,7 +736,7 @@
                     android:id="@+id/captivePortalPresetLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Server Preset"
+                    android:hint="@string/hint_server_preset"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_marginBottom="12dp">
 
@@ -656,6 +745,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="none"
+                        android:focusable="false"
+                        android:focusableInTouchMode="false"
+                        android:cursorVisible="false"
+                        android:textIsSelectable="false"
                         android:textSize="14sp" />
 
                 </com.google.android.material.textfield.TextInputLayout>
@@ -673,7 +766,7 @@
                         android:id="@+id/captivePortalCustomHttpLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Custom HTTP URL"
+                        android:hint="@string/hint_custom_http_url"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         android:layout_marginBottom="8dp">
 
@@ -690,7 +783,7 @@
                         android:id="@+id/captivePortalCustomHttpsLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Custom HTTPS URL"
+                        android:hint="@string/hint_custom_https_url"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -716,7 +809,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Restore Original"
+                        android:text="@string/settings_captive_portal_restore_original"
                         android:textAllCaps="false"
                         style="@style/Widget.De1984.Button"
                         android:layout_marginEnd="8dp" />
@@ -726,7 +819,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Reset to Google"
+                        android:text="@string/settings_captive_portal_reset_google"
                         android:textAllCaps="false"
                         style="@style/Widget.De1984.Button"
                         android:layout_marginStart="8dp" />
@@ -793,7 +886,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Permissions"
+                            android:text="@string/settings_permissions_title"
                             android:textSize="20sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -802,7 +895,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Status and advanced configuration"
+                            android:text="@string/settings_permissions_description"
                             android:textSize="14sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -908,7 +1001,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Questions, features, bugs?"
+                            android:text="@string/settings_contribute_title"
                             android:textSize="20sp"
                             android:textStyle="bold"
                             android:textColor="?android:attr/textColorPrimary" />
@@ -917,7 +1010,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Get involved and help improve De1984"
+                            android:text="@string/settings_contribute_description"
                             android:textSize="14sp"
                             android:textColor="?android:attr/textColorSecondary" />
 
@@ -928,7 +1021,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Contribute code, report bugs, or suggest features to make this app better for everyone."
+                    android:text="@string/settings_contribute_message"
                     android:textSize="14sp"
                     android:textColor="?android:attr/textColorSecondary"
                     android:layout_marginBottom="16dp" />
@@ -942,7 +1035,7 @@
                         android:id="@+id/contribute_link"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Contribute on GitHub"
+                        android:text="@string/settings_contribute_button"
                         style="@style/Widget.De1984.Button"
                         app:icon="@drawable/ic_info"
                         app:iconGravity="start" />

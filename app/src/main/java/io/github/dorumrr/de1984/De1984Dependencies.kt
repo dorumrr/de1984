@@ -91,11 +91,11 @@ class De1984Dependencies(private val context: Context) {
     }
 
     val packageRepository: PackageRepository by lazy {
-        PackageRepositoryImpl(packageDataSource)
+        PackageRepositoryImpl(context, packageDataSource)
     }
 
     val networkPackageRepository: NetworkPackageRepository by lazy {
-        NetworkPackageRepositoryImpl(packageDataSource)
+        NetworkPackageRepositoryImpl(context, packageDataSource)
     }
 
     // =============================================================================================

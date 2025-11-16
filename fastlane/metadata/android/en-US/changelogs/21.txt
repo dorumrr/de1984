@@ -1,0 +1,2 @@
+• Added translations in English, Portuguese, Romanian, and Chinese
+• Contributions for improving or adding translations are welcome

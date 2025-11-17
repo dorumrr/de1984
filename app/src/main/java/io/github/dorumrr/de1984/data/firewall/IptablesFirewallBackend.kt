@@ -221,7 +221,7 @@ class IptablesFirewallBackend(
                         // Check if ANY rule says to block (most restrictive)
                         val blockDecision = rulesForUid.any { rule ->
                             when {
-                                !screenOn && rule.blockWhenScreenOff -> true
+                                !screenOn && rule.blockWhenBackground -> true
                                 rule.isBlockedOn(networkType) -> true
                                 else -> false
                             }
@@ -257,7 +257,7 @@ class IptablesFirewallBackend(
                         // Has explicit rule - use as-is (absolute blocking state)
                         when {
                             // Screen off blocking takes precedence
-                            !screenOn && rule.blockWhenScreenOff -> true
+                            !screenOn && rule.blockWhenBackground -> true
                             // Network-specific blocking
                             rule.isBlockedOn(networkType) -> true
                             else -> false

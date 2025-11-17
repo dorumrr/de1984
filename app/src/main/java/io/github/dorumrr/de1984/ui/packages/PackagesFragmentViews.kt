@@ -10,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -57,7 +58,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         )
     }
 
-    private val settingsViewModel: SettingsViewModel by viewModels {
+    private val settingsViewModel: SettingsViewModel by activityViewModels {
         val app = requireActivity().application as De1984Application
         SettingsViewModel.Factory(
             requireContext(),

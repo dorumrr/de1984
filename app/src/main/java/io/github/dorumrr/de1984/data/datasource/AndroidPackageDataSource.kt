@@ -24,7 +24,8 @@ private data class BlockingState(
     val isNetworkBlocked: Boolean,
     val wifiBlocked: Boolean,
     val mobileBlocked: Boolean,
-    val roamingBlocked: Boolean
+    val roamingBlocked: Boolean,
+    val backgroundBlocked: Boolean
 )
 
 class AndroidPackageDataSource(
@@ -75,7 +76,8 @@ class AndroidPackageDataSource(
                                 isNetworkBlocked = false,
                                 wifiBlocked = false,
                                 mobileBlocked = false,
-                                roamingBlocked = false
+                                roamingBlocked = false,
+                                backgroundBlocked = false
                             )
                         } else if (isVpnApp) {
                             // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
@@ -84,7 +86,8 @@ class AndroidPackageDataSource(
                                 isNetworkBlocked = false,
                                 wifiBlocked = false,
                                 mobileBlocked = false,
-                                roamingBlocked = false
+                                roamingBlocked = false,
+                                backgroundBlocked = false
                             )
                         } else if (rule != null && rule.enabled) {
                             // Has explicit rule - use it as-is (absolute blocking state)
@@ -92,7 +95,8 @@ class AndroidPackageDataSource(
                                 isNetworkBlocked = rule.wifiBlocked || rule.mobileBlocked,
                                 wifiBlocked = rule.wifiBlocked,
                                 mobileBlocked = rule.mobileBlocked,
-                                roamingBlocked = rule.blockWhenRoaming
+                                roamingBlocked = rule.blockWhenRoaming,
+                                backgroundBlocked = rule.blockWhenBackground
                             )
                         } else {
                             // No explicit rule - use default policy
@@ -100,7 +104,8 @@ class AndroidPackageDataSource(
                                 isNetworkBlocked = isBlockAllDefault,
                                 wifiBlocked = isBlockAllDefault,
                                 mobileBlocked = isBlockAllDefault,
-                                roamingBlocked = isBlockAllDefault
+                                roamingBlocked = isBlockAllDefault,
+                                backgroundBlocked = false  // Conservative: OFF by default
                             )
                         }
 
@@ -125,6 +130,7 @@ class AndroidPackageDataSource(
                             wifiBlocked = blockingState.wifiBlocked,
                             mobileBlocked = blockingState.mobileBlocked,
                             roamingBlocked = blockingState.roamingBlocked,
+                            backgroundBlocked = blockingState.backgroundBlocked,
                             isVpnApp = isVpnApp,
                             criticality = criticality,
                             category = category,
@@ -172,7 +178,8 @@ class AndroidPackageDataSource(
                         isNetworkBlocked = false,
                         wifiBlocked = false,
                         mobileBlocked = false,
-                        roamingBlocked = false
+                        roamingBlocked = false,
+                        backgroundBlocked = false
                     )
                 } else if (isVpnApp) {
                     // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
@@ -181,7 +188,8 @@ class AndroidPackageDataSource(
                         isNetworkBlocked = false,
                         wifiBlocked = false,
                         mobileBlocked = false,
-                        roamingBlocked = false
+                        roamingBlocked = false,
+                        backgroundBlocked = false
                     )
                 } else if (rule != null && rule.enabled) {
                     // Has explicit rule - use it as-is (absolute blocking state)
@@ -189,7 +197,8 @@ class AndroidPackageDataSource(
                         isNetworkBlocked = rule.wifiBlocked || rule.mobileBlocked,
                         wifiBlocked = rule.wifiBlocked,
                         mobileBlocked = rule.mobileBlocked,
-                        roamingBlocked = rule.blockWhenRoaming
+                        roamingBlocked = rule.blockWhenRoaming,
+                        backgroundBlocked = rule.blockWhenBackground
                     )
                 } else {
                     // No explicit rule - use default policy
@@ -197,7 +206,8 @@ class AndroidPackageDataSource(
                         isNetworkBlocked = isBlockAllDefault,
                         wifiBlocked = isBlockAllDefault,
                         mobileBlocked = isBlockAllDefault,
-                        roamingBlocked = isBlockAllDefault
+                        roamingBlocked = isBlockAllDefault,
+                        backgroundBlocked = false  // Conservative: OFF by default
                     )
                 }
 
@@ -222,6 +232,7 @@ class AndroidPackageDataSource(
                     wifiBlocked = blockingState.wifiBlocked,
                     mobileBlocked = blockingState.mobileBlocked,
                     roamingBlocked = blockingState.roamingBlocked,
+                    backgroundBlocked = blockingState.backgroundBlocked,
                     isVpnApp = isVpnApp,
                     criticality = criticality,
                     category = category,
@@ -384,6 +395,7 @@ class AndroidPackageDataSource(
                             wifiBlocked = false,
                             mobileBlocked = false,
                             roamingBlocked = false,
+                            backgroundBlocked = false,
                             isVpnApp = false,
                             criticality = null,
                             category = null,
@@ -819,6 +831,49 @@ class AndroidPackageDataSource(
                         wifiBlocked = isBlockAllDefault, // Inherit default policy for WiFi
                         mobileBlocked = isBlockAllDefault, // Inherit default policy for mobile
                         blockWhenRoaming = blocked,
+                        enabled = true,
+                        isSystemApp = isSystemApp(appInfo),
+                        hasInternetPermission = hasNetworkPermissions(packageName)
+                    )
+                    firewallRepository.insertRule(rule)
+                }
+
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
+    override suspend fun setBackgroundBlocking(packageName: String, blocked: Boolean): Boolean {
+        if (Constants.Firewall.isSystemCritical(packageName)) {
+            return false
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                val existingRule = firewallRepository.getRuleByPackage(packageName).first()
+
+                if (existingRule != null) {
+                    // Use atomic update to prevent race conditions
+                    firewallRepository.updateBackgroundBlocking(packageName, blocked)
+                } else {
+                    // Create new rule with default policy for other network types
+                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                    val defaultPolicy = prefs.getString(
+                        Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
+                        Constants.Settings.DEFAULT_FIREWALL_POLICY
+                    )
+                    val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
+
+                    val rule = FirewallRule(
+                        packageName = packageName,
+                        uid = appInfo.uid,
+                        appName = getAppName(appInfo),
+                        wifiBlocked = isBlockAllDefault,
+                        mobileBlocked = isBlockAllDefault,
+                        blockWhenBackground = blocked,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
                         hasInternetPermission = hasNetworkPermissions(packageName)

@@ -546,7 +546,7 @@ class FirewallVpnService : VpnService() {
                 // Has explicit rule - use same logic as applyFirewallRules() for consistency
                 // When network is NONE (e.g., at boot), block if app has ANY blocking rules
                 when {
-                    !isScreenOn && rule.blockWhenScreenOff -> true
+                    !isScreenOn && rule.blockWhenBackground -> true
                     currentNetworkType == NetworkType.NONE -> rule.wifiBlocked || rule.mobileBlocked
                     else -> rule.isBlockedOn(currentNetworkType)
                 }
@@ -688,7 +688,7 @@ class FirewallVpnService : VpnService() {
                 val shouldBlock = if (rule != null && rule.enabled) {
                     // Has explicit rule - determine blocking based on rule configuration
                     val blocked = when {
-                        !isScreenOn && rule.blockWhenScreenOff -> true
+                        !isScreenOn && rule.blockWhenBackground -> true
                         // For VPN backend: When network is NONE (e.g., at boot), block if app has ANY blocking rules
                         // Otherwise, use network-specific blocking to support WiFi-only or Mobile-only rules
                         currentNetworkType == NetworkType.NONE -> rule.wifiBlocked || rule.mobileBlocked

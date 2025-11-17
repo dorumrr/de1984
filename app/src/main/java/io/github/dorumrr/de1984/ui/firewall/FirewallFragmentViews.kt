@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -61,7 +62,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         )
     }
 
-    private val settingsViewModel: SettingsViewModel by viewModels {
+    private val settingsViewModel: SettingsViewModel by activityViewModels {
         val app = requireActivity().application as De1984Application
         SettingsViewModel.Factory(
             requireContext(),
@@ -78,6 +79,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private var currentTypeFilter: String? = null
     private var currentStateFilter: String? = null
     private var currentPermissionFilter: Boolean = false
+
+    // Track previous policy to detect changes across lifecycle events
+    private var previousObservedPolicy: String? = null
     private var lastSubmittedPackages: List<NetworkPackage> = emptyList()
 
     // Dialog tracking to prevent multiple dialogs from stacking
@@ -139,6 +143,26 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Refresh default policy on start
         // Note: Don't load packages here - let ViewModel's init{} handle first load
         viewModel.refreshDefaultPolicy()
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        Log.d(TAG, "onHiddenChanged: hidden=$hidden")
+
+        if (!hidden) {
+            // Fragment became visible - check if policy changed while we were hidden
+            Log.d(TAG, "onHiddenChanged: Fragment became visible, checking for policy changes")
+            val currentPolicy = settingsViewModel.uiState.value.defaultFirewallPolicy
+            Log.d(TAG, "onHiddenChanged: previousObservedPolicy=$previousObservedPolicy, currentPolicy=$currentPolicy")
+
+            if (previousObservedPolicy != null && previousObservedPolicy != currentPolicy) {
+                Log.d(TAG, "onHiddenChanged: Policy changed while hidden! Refreshing...")
+                previousObservedPolicy = currentPolicy
+                viewModel.refreshDefaultPolicy()
+            } else {
+                Log.d(TAG, "onHiddenChanged: No policy change detected")
+            }
+        }
     }
 
     private fun setupRecyclerView() {
@@ -338,6 +362,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 settingsViewModel.uiState.collect { settingsState ->
+                    Log.d(TAG, "observeSettingsState: settingsState changed - showAppIcons=${settingsState.showAppIcons}, defaultFirewallPolicy=${settingsState.defaultFirewallPolicy}")
+                    Log.d(TAG, "observeSettingsState: previousObservedPolicy=$previousObservedPolicy, newPolicy=${settingsState.defaultFirewallPolicy}")
+
                     // Update adapter when showIcons setting changes
                     adapter = NetworkPackageAdapter(
                         showIcons = settingsState.showAppIcons,
@@ -349,6 +376,19 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
                     // Reset last submitted packages when creating new adapter
                     lastSubmittedPackages = emptyList()
+
+                    // If default policy changed, refresh packages to reflect new blocking states
+                    if (previousObservedPolicy != null && previousObservedPolicy != settingsState.defaultFirewallPolicy) {
+                        Log.d(TAG, "observeSettingsState: Policy changed! Refreshing packages...")
+                        viewModel.refreshDefaultPolicy()
+                    } else if (previousObservedPolicy == null) {
+                        Log.d(TAG, "observeSettingsState: First observation, skipping refresh")
+                    } else {
+                        Log.d(TAG, "observeSettingsState: Policy unchanged, skipping refresh")
+                    }
+
+                    // Update previous policy for next comparison (persists across lifecycle)
+                    previousObservedPolicy = settingsState.defaultFirewallPolicy
 
                     // Trigger updateUI to re-apply filters and submit to new adapter
                     updateUI(viewModel.uiState.value)
@@ -516,12 +556,6 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val dialog = BottomSheetDialog(requireContext())
         currentDialog = dialog
 
-        dialog.setOnDismissListener {
-            if (currentDialog == dialog) {
-                currentDialog = null
-            }
-        }
-
         // Get FirewallManager from application dependencies
         val app = requireActivity().application as De1984Application
         val firewallManager = app.dependencies.firewallManager
@@ -537,6 +571,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private fun showGranularControlSheet(dialog: BottomSheetDialog, pkg: NetworkPackage) {
+        Log.d(TAG, "showGranularControlSheet: ENTRY - pkg=${pkg.packageName}, dialog=$dialog")
         val binding = BottomSheetPackageActionGranularBinding.inflate(layoutInflater)
 
         // Check if device has cellular capability
@@ -584,6 +619,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         // Function to update UI toggles based on current package state
         fun updateTogglesFromPackage(currentPkg: NetworkPackage) {
+            Log.d(TAG, "updateTogglesFromPackage: pkg=${currentPkg.packageName}, wifi=${currentPkg.wifiBlocked}, mobile=${currentPkg.mobileBlocked}, roaming=${currentPkg.roamingBlocked}, background=${currentPkg.backgroundBlocked}, isFullyBlocked=${currentPkg.isFullyBlocked}")
             isUpdatingProgrammatically = true
 
             // Update WiFi toggle
@@ -600,19 +636,43 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 updateSwitchColors(binding.roamingToggle.toggleSwitch, currentPkg.roamingBlocked)
             }
 
+            // Update Background toggle visibility based on current blocking state
+            val shouldShowBackgroundAccess = !currentPkg.isSystemCritical && !currentPkg.isVpnApp && !currentPkg.isFullyBlocked
+            Log.d(TAG, "updateTogglesFromPackage: shouldShowBackgroundAccess=$shouldShowBackgroundAccess (isSystemCritical=${currentPkg.isSystemCritical}, isVpnApp=${currentPkg.isVpnApp}, isFullyBlocked=${currentPkg.isFullyBlocked})")
+
+            binding.foregroundOnlyDivider.visibility = if (shouldShowBackgroundAccess) View.VISIBLE else View.GONE
+            binding.foregroundOnlyToggle.root.visibility = if (shouldShowBackgroundAccess) View.VISIBLE else View.GONE
+
+            // Update Background toggle state if visible
+            if (shouldShowBackgroundAccess) {
+                binding.foregroundOnlyToggle.toggleSwitch.isChecked = !currentPkg.backgroundBlocked
+                updateSwitchColors(binding.foregroundOnlyToggle.toggleSwitch, !currentPkg.backgroundBlocked, invertColors = true)
+                Log.d(TAG, "updateTogglesFromPackage: Background toggle updated - isChecked=${!currentPkg.backgroundBlocked}")
+            }
+
             isUpdatingProgrammatically = false
         }
 
-        // Initial setup of toggles
-        updateTogglesFromPackage(pkg)
-
         // Observe package changes to update UI when ViewModel makes cascading changes
-        viewLifecycleOwner.lifecycleScope.launch {
+        val observerJob = viewLifecycleOwner.lifecycleScope.launch {
             viewModel.uiState.collect { state ->
                 val updatedPkg = state.packages.find { it.packageName == pkg.packageName }
+                Log.d(TAG, "showGranularControlSheet: uiState collected - updatedPkg found=${updatedPkg != null}, isUpdatingProgrammatically=$isUpdatingProgrammatically")
                 if (updatedPkg != null && !isUpdatingProgrammatically) {
+                    Log.d(TAG, "showGranularControlSheet: Calling updateTogglesFromPackage for ${updatedPkg.packageName}")
                     updateTogglesFromPackage(updatedPkg)
+                } else if (updatedPkg != null) {
+                    Log.d(TAG, "showGranularControlSheet: Skipping update (isUpdatingProgrammatically=true)")
                 }
+            }
+        }
+
+        // Cancel observer when dialog is dismissed
+        dialog.setOnDismissListener {
+            Log.d(TAG, "showGranularControlSheet: Dialog dismissed, cancelling observer for ${pkg.packageName}")
+            observerJob.cancel()
+            if (currentDialog == dialog) {
+                currentDialog = null
             }
         }
 
@@ -658,6 +718,30 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             )
         }
 
+        // Setup Background Access toggle (only shown when app is allowed)
+        val shouldShowBackgroundAccess = !pkg.isSystemCritical && !pkg.isVpnApp && !pkg.isFullyBlocked
+        if (shouldShowBackgroundAccess) {
+            binding.foregroundOnlyDivider.visibility = View.VISIBLE
+            binding.foregroundOnlyToggle.root.visibility = View.VISIBLE
+
+            setupNetworkToggle(
+                binding = binding.foregroundOnlyToggle,
+                label = getString(R.string.firewall_network_label_background_access),
+                isBlocked = !pkg.backgroundBlocked, // INVERTED: ON = allowed (not blocked), OFF = blocked
+                enabled = true,
+                invertLabels = true, // Swap labels so right side = Allowed, left side = Blocked
+                onToggle = { isChecked ->
+                    if (isUpdatingProgrammatically) return@setupNetworkToggle
+                    // isChecked=true means switch is ON, which means "allowed" for this toggle
+                    // So we need to set backgroundBlocked to the opposite: !isChecked
+                    viewModel.setBackgroundBlocking(pkg.packageName, !isChecked)
+                }
+            )
+        } else {
+            binding.foregroundOnlyDivider.visibility = View.GONE
+            binding.foregroundOnlyToggle.root.visibility = View.GONE
+        }
+
         // Show info message
         val app = requireActivity().application as De1984Application
         val firewallManager = app.dependencies.firewallManager
@@ -683,6 +767,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
 
         dialog.setContentView(binding.root)
+        Log.d(TAG, "showGranularControlSheet: EXIT - About to show dialog for ${pkg.packageName}")
         dialog.show()
     }
 
@@ -758,13 +843,19 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         updateToggleFromPackage(pkg)
 
         // Observe package changes to update UI when ViewModel makes changes
-        viewLifecycleOwner.lifecycleScope.launch {
+        val observerJob = viewLifecycleOwner.lifecycleScope.launch {
             viewModel.uiState.collect { state ->
                 val updatedPkg = state.packages.find { it.packageName == pkg.packageName }
                 if (updatedPkg != null && !isUpdatingProgrammatically) {
                     updateToggleFromPackage(updatedPkg)
                 }
             }
+        }
+
+        // Cancel observer when dialog is dismissed
+        dialog.setOnDismissListener {
+            Log.d(TAG, "showSimpleControlSheet: Dialog dismissed, cancelling observer for ${pkg.packageName}")
+            observerJob.cancel()
         }
 
         // Setup single "Block Internet" toggle
@@ -796,47 +887,76 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         label: String,
         isBlocked: Boolean,
         enabled: Boolean,
+        invertLabels: Boolean = false,
         onToggle: (Boolean) -> Unit
     ) {
+        Log.d(TAG, "setupNetworkToggle: label=$label, isBlocked=$isBlocked, enabled=$enabled, binding=$binding")
         binding.networkTypeLabel.text = label
+
+        // Optionally use ON/OFF labels for "Allow in Background" toggle
+        if (invertLabels) {
+            // For inverted toggle: use OFF/ON instead of Allowed/Blocked
+            binding.labelLeft.text = getString(R.string.firewall_state_off)
+            binding.labelRight.text = getString(R.string.firewall_state_on)
+        } else {
+            // For normal toggle: left = Allowed, right = Blocked
+            binding.labelLeft.text = getString(R.string.firewall_state_allowed)
+            binding.labelRight.text = getString(R.string.firewall_state_blocked)
+        }
 
         // Set initial state: switch ON = blocked, switch OFF = allowed
         binding.toggleSwitch.isChecked = isBlocked
         binding.toggleSwitch.isEnabled = enabled
 
         // Update colors based on state
-        updateSwitchColors(binding.toggleSwitch, isBlocked)
+        updateSwitchColors(binding.toggleSwitch, isBlocked, invertColors = invertLabels)
 
         // Simple switch listener - only fires on user interaction
         binding.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
-            updateSwitchColors(binding.toggleSwitch, isChecked)
+            updateSwitchColors(binding.toggleSwitch, isChecked, invertColors = invertLabels)
             onToggle(isChecked)
         }
     }
 
-    private fun updateSwitchColors(switch: SwitchMaterial, @Suppress("UNUSED_PARAMETER") isBlocked: Boolean) {
+    private fun updateSwitchColors(
+        switch: SwitchMaterial,
+        @Suppress("UNUSED_PARAMETER") isBlocked: Boolean,
+        invertColors: Boolean = false
+    ) {
         val context = switch.context
 
-        // Create color state lists for checked (blocked/ON) and unchecked (allowed/OFF) states
+        // Determine colors based on whether we're inverting
+        val (checkedColor, uncheckedColor) = if (invertColors) {
+            // For "Allow in Background": ON = TEAL (allowed), OFF = RED (blocked)
+            Pair(
+                ContextCompat.getColor(context, R.color.lineage_teal),
+                ContextCompat.getColor(context, R.color.error_red)
+            )
+        } else {
+            // For normal toggles: ON = RED (blocked), OFF = TEAL (allowed)
+            Pair(
+                ContextCompat.getColor(context, R.color.error_red),
+                ContextCompat.getColor(context, R.color.lineage_teal)
+            )
+        }
+
+        // Create color state lists for checked (ON) and unchecked (OFF) states
         val thumbColorStateList = ColorStateList(
             arrayOf(
-                intArrayOf(android.R.attr.state_checked),  // When switch is ON (blocked)
-                intArrayOf(-android.R.attr.state_checked)  // When switch is OFF (allowed)
+                intArrayOf(android.R.attr.state_checked),  // When switch is ON
+                intArrayOf(-android.R.attr.state_checked)  // When switch is OFF
             ),
-            intArrayOf(
-                ContextCompat.getColor(context, R.color.error_red),      // RED when blocked (ON)
-                ContextCompat.getColor(context, R.color.lineage_teal)   // TEAL when allowed (OFF)
-            )
+            intArrayOf(checkedColor, uncheckedColor)
         )
 
         val trackColorStateList = ColorStateList(
             arrayOf(
-                intArrayOf(android.R.attr.state_checked),  // When switch is ON (blocked)
-                intArrayOf(-android.R.attr.state_checked)  // When switch is OFF (allowed)
+                intArrayOf(android.R.attr.state_checked),  // When switch is ON
+                intArrayOf(-android.R.attr.state_checked)  // When switch is OFF
             ),
             intArrayOf(
-                ContextCompat.getColor(context, R.color.error_red) and 0x80FFFFFF.toInt(),      // RED with 50% opacity when blocked (ON)
-                ContextCompat.getColor(context, R.color.lineage_teal) and 0x80FFFFFF.toInt()   // TEAL with 50% opacity when allowed (OFF)
+                checkedColor and 0x80FFFFFF.toInt(),      // 50% opacity when ON
+                uncheckedColor and 0x80FFFFFF.toInt()     // 50% opacity when OFF
             )
         )
 

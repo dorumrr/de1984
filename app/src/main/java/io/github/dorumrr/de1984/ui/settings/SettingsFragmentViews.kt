@@ -25,6 +25,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -59,7 +60,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         private const val TAG = "SettingsFragment"
     }
 
-    private val viewModel: SettingsViewModel by viewModels {
+    private val viewModel: SettingsViewModel by activityViewModels {
         val app = requireActivity().application as De1984Application
         SettingsViewModel.Factory(
             requireContext(),

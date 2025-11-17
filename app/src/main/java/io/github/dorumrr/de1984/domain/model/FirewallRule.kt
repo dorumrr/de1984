@@ -9,7 +9,7 @@ data class FirewallRule(
     val appName: String,
     val wifiBlocked: Boolean = false,
     val mobileBlocked: Boolean = false,
-    val blockWhenScreenOff: Boolean = false,
+    val blockWhenBackground: Boolean = false,
     val blockWhenRoaming: Boolean = false,
     val enabled: Boolean = true,
     val isSystemApp: Boolean = false,

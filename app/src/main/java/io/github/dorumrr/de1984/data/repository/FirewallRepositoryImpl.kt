@@ -129,6 +129,11 @@ class FirewallRepositoryImpl(
         notifyRulesChanged()
     }
 
+    override suspend fun updateBackgroundBlocking(packageName: String, blocked: Boolean) {
+        firewallRuleDao.updateBackgroundBlocking(packageName, blocked)
+        notifyRulesChanged()
+    }
+
     override suspend fun updateAllNetworkBlocking(packageName: String, blocked: Boolean) {
         firewallRuleDao.updateAllNetworkBlocking(packageName, blocked)
         notifyRulesChanged()

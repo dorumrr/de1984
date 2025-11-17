@@ -225,7 +225,7 @@ class ConnectivityManagerFirewallBackend(
                     // Has explicit rule - use it
                     // Per FIREWALL.md lines 220-230: ConnectivityManager is all-or-nothing
                     when {
-                        !screenOn && rule.blockWhenScreenOff -> true
+                        !screenOn && rule.blockWhenBackground -> true
                         rule.isBlockedOn(networkType) -> true
                         else -> false
                     }

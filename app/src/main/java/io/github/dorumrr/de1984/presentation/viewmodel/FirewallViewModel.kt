@@ -81,7 +81,9 @@ class FirewallViewModel(
             Constants.Settings.DEFAULT_FIREWALL_POLICY
         ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
 
+        Log.d(TAG, "loadDefaultPolicy: Loaded policy from SharedPreferences: $policy")
         _uiState.value = _uiState.value.copy(defaultFirewallPolicy = policy)
+        Log.d(TAG, "loadDefaultPolicy: Updated uiState.defaultFirewallPolicy to: ${_uiState.value.defaultFirewallPolicy}")
     }
 
     private fun loadFirewallState() {
@@ -98,6 +100,7 @@ class FirewallViewModel(
     }
 
     fun refreshDefaultPolicy() {
+        Log.d(TAG, "refreshDefaultPolicy: Called - reloading policy and packages")
         loadDefaultPolicy()
         loadNetworkPackages()
     }
@@ -299,6 +302,29 @@ class FirewallViewModel(
                         _uiState.value = _uiState.value.copy(error = error.message)
                     }
             }
+        }
+    }
+
+    fun setBackgroundBlocking(packageName: String, blocked: Boolean) {
+        viewModelScope.launch {
+            // Optimistically update UI first
+            updatePackageInList(packageName) { pkg ->
+                pkg.copy(backgroundBlocked = blocked)
+            }
+
+            // Then persist to database
+            manageNetworkAccessUseCase.setBackgroundBlocking(packageName, blocked)
+                .onSuccess {
+                    // Success - optimistic update already applied, no need to reload
+                }
+                .onFailure { error ->
+                    // Revert on failure by reloading
+                    loadNetworkPackages()
+                    if (superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
+                    }
+                    _uiState.value = _uiState.value.copy(error = error.message)
+                }
         }
     }
 

@@ -21,6 +21,7 @@ data class PackageEntity(
     val wifiBlocked: Boolean = false,
     val mobileBlocked: Boolean = false,
     val roamingBlocked: Boolean = false,
+    val backgroundBlocked: Boolean = false,
     val isVpnApp: Boolean = false,
     val criticality: PackageCriticality? = null,
     val category: String? = null,

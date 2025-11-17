@@ -249,7 +249,7 @@ class NetworkPolicyManagerFirewallBackend(
                     // For shared UIDs, block if ANY rule says to block (most restrictive)
                     rulesForUid.any { rule ->
                         when {
-                            !screenOn && rule.blockWhenScreenOff -> true
+                            !screenOn && rule.blockWhenBackground -> true
                             rule.isBlockedOn(networkType) -> true
                             else -> false
                         }

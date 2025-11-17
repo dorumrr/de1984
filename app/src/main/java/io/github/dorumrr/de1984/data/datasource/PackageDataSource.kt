@@ -16,6 +16,7 @@ interface PackageDataSource {
     suspend fun setWifiBlocking(packageName: String, blocked: Boolean): Boolean
     suspend fun setMobileBlocking(packageName: String, blocked: Boolean): Boolean
     suspend fun setRoamingBlocking(packageName: String, blocked: Boolean): Boolean
+    suspend fun setBackgroundBlocking(packageName: String, blocked: Boolean): Boolean
     suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Boolean
     suspend fun setMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean): Boolean
 }

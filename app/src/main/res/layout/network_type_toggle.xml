@@ -17,8 +17,9 @@
         android:textSize="16sp"
         android:textColor="?android:attr/textColorPrimary" />
 
-    <!-- Allow Label -->
+    <!-- Allow Label (left side) -->
     <TextView
+        android:id="@+id/label_left"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/firewall_state_allowed"
@@ -33,8 +34,9 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp" />
 
-    <!-- Block Label -->
+    <!-- Block Label (right side) -->
     <TextView
+        android:id="@+id/label_right"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/firewall_state_blocked"

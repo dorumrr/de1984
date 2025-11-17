@@ -131,6 +131,25 @@
             android:layout_height="wrap_content"
             android:visibility="gone" />
 
+        <!-- Divider -->
+        <View
+            android:id="@+id/foreground_only_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <!-- Background Access Toggle (only shown when app is allowed) -->
+        <include
+            android:id="@+id/foreground_only_toggle"
+            layout="@layout/network_type_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
         <!-- Loading Indicator -->
         <LinearLayout
             android:id="@+id/loading_indicator"

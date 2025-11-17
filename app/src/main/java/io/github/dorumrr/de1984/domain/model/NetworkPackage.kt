@@ -10,6 +10,7 @@ data class NetworkPackage(
     val wifiBlocked: Boolean = false,
     val mobileBlocked: Boolean = false,
     val roamingBlocked: Boolean = false,
+    val backgroundBlocked: Boolean = false,
     val networkPermissions: List<String> = emptyList(),
     val versionName: String? = null,
     val versionCode: Long? = null,

@@ -31,6 +31,8 @@
     <!-- Firewall States -->
     <string name="firewall_state_blocked">Blocked</string>
     <string name="firewall_state_allowed">Allowed</string>
+    <string name="firewall_state_on">ON</string>
+    <string name="firewall_state_off">OFF</string>
     <string name="firewall_state_internet">Internet</string>
     <string name="firewall_search_hint">Search apps…</string>
 
@@ -469,7 +471,9 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Mobile Data</string>
     <string name="firewall_network_label_roaming">Roaming</string>
+    <string name="firewall_network_label_background_access">Allow in Background</string>
     <string name="firewall_network_label_block_internet">Block Internet</string>
+    <string name="firewall_background_access_description">Let app access internet when in background</string>
     <string name="firewall_connectivity_manager_info">This blocks all network types (WiFi, Mobile, Roaming).\n\nYour device uses a system-level firewall that doesn\'t support per-network blocking. For granular control, root access is required.</string>
     <string name="firewall_block_all_info">This blocks all network types (WiFi, Mobile, Roaming).</string>
     <string name="firewall_system_critical_info">⚠️ System Critical Package - Network access cannot be modified to prevent system instability.</string>

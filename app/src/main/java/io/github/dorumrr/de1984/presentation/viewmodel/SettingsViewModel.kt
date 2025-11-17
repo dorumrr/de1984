@@ -211,25 +211,33 @@ class SettingsViewModel(
      */
     fun setDefaultFirewallPolicy(newPolicy: String) {
         val oldPolicy = _uiState.value.defaultFirewallPolicy
+        Log.d(TAG, "setDefaultFirewallPolicy: oldPolicy=$oldPolicy, newPolicy=$newPolicy")
 
         // If policy is the same, do nothing
         if (oldPolicy == newPolicy) {
+            Log.d(TAG, "setDefaultFirewallPolicy: Policy unchanged, skipping")
             return
         }
 
         viewModelScope.launch {
             try {
+                Log.d(TAG, "setDefaultFirewallPolicy: Updating uiState and saving to SharedPreferences")
                 _uiState.value = _uiState.value.copy(
                     defaultFirewallPolicy = newPolicy
                 )
                 saveSetting(Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY, newPolicy)
+                Log.d(TAG, "setDefaultFirewallPolicy: uiState updated to: ${_uiState.value.defaultFirewallPolicy}")
 
                 if (firewallManager.isActive()) {
+                    Log.d(TAG, "setDefaultFirewallPolicy: Firewall active, triggering rule reapplication")
                     firewallManager.triggerRuleReapplication()
 
                     val intent = Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED")
                     intent.setPackage(context.packageName)
                     context.sendBroadcast(intent)
+                    Log.d(TAG, "setDefaultFirewallPolicy: Broadcast sent")
+                } else {
+                    Log.d(TAG, "setDefaultFirewallPolicy: Firewall not active, skipping rule reapplication")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to change policy", e)

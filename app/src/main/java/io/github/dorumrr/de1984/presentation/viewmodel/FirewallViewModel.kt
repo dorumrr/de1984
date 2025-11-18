@@ -186,7 +186,10 @@ class FirewallViewModel(
         viewModelScope.launch {
             // Optimistically update UI first
             updatePackageInList(packageName) { pkg ->
-                pkg.copy(wifiBlocked = blocked)
+                Log.d(TAG, "setWifiBlocking: BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
+                val updated = pkg.copy(wifiBlocked = blocked)
+                Log.d(TAG, "setWifiBlocking: AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
+                updated
             }
 
             // Then persist to database
@@ -211,7 +214,10 @@ class FirewallViewModel(
             if (blocked) {
                 // Optimistically update both mobile and roaming
                 updatePackageInList(packageName) { pkg ->
-                    pkg.copy(mobileBlocked = true, roamingBlocked = true)
+                    Log.d(TAG, "setMobileBlocking(blocked=true): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
+                    val updated = pkg.copy(mobileBlocked = true, roamingBlocked = true)
+                    Log.d(TAG, "setMobileBlocking(blocked=true): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
+                    updated
                 }
 
                 // Persist with atomic batch update - only one database transaction, only one notification
@@ -235,7 +241,10 @@ class FirewallViewModel(
             } else {
                 // Mobile is being enabled - only update mobile, leave roaming as is
                 updatePackageInList(packageName) { pkg ->
-                    pkg.copy(mobileBlocked = blocked)
+                    Log.d(TAG, "setMobileBlocking(blocked=false): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
+                    val updated = pkg.copy(mobileBlocked = blocked)
+                    Log.d(TAG, "setMobileBlocking(blocked=false): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
+                    updated
                 }
 
                 // Then persist to database
@@ -261,7 +270,10 @@ class FirewallViewModel(
             if (!blocked) {
                 // Optimistically update both roaming and mobile
                 updatePackageInList(packageName) { pkg ->
-                    pkg.copy(roamingBlocked = false, mobileBlocked = false)
+                    Log.d(TAG, "setRoamingBlocking(blocked=false): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
+                    val updated = pkg.copy(roamingBlocked = false, mobileBlocked = false)
+                    Log.d(TAG, "setRoamingBlocking(blocked=false): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
+                    updated
                 }
 
                 // Persist with atomic batch update - only one database transaction, only one notification
@@ -285,7 +297,10 @@ class FirewallViewModel(
             } else {
                 // Roaming is being disabled - only update roaming, leave mobile as is
                 updatePackageInList(packageName) { pkg ->
-                    pkg.copy(roamingBlocked = blocked)
+                    Log.d(TAG, "setRoamingBlocking(blocked=true): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
+                    val updated = pkg.copy(roamingBlocked = blocked)
+                    Log.d(TAG, "setRoamingBlocking(blocked=true): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
+                    updated
                 }
 
                 // Then persist to database
@@ -307,17 +322,22 @@ class FirewallViewModel(
 
     fun setBackgroundBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
+            Log.d(TAG, "setBackgroundBlocking: packageName=$packageName, blocked=$blocked")
             // Optimistically update UI first
             updatePackageInList(packageName) { pkg ->
-                pkg.copy(backgroundBlocked = blocked)
+                Log.d(TAG, "setBackgroundBlocking: BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
+                val updated = pkg.copy(backgroundBlocked = blocked)
+                Log.d(TAG, "setBackgroundBlocking: AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
+                updated
             }
 
             // Then persist to database
             manageNetworkAccessUseCase.setBackgroundBlocking(packageName, blocked)
                 .onSuccess {
-                    // Success - optimistic update already applied, no need to reload
+                    Log.d(TAG, "setBackgroundBlocking: SUCCESS - persisted to database")
                 }
                 .onFailure { error ->
+                    Log.e(TAG, "setBackgroundBlocking: FAILURE - ${error.message}")
                     // Revert on failure by reloading
                     loadNetworkPackages()
                     if (superuserBannerState.shouldShowBannerForError(error)) {

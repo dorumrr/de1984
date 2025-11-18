@@ -638,15 +638,34 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
             // Update Background toggle visibility based on current blocking state
             val shouldShowBackgroundAccess = !currentPkg.isSystemCritical && !currentPkg.isVpnApp && !currentPkg.isFullyBlocked
-            Log.d(TAG, "updateTogglesFromPackage: shouldShowBackgroundAccess=$shouldShowBackgroundAccess (isSystemCritical=${currentPkg.isSystemCritical}, isVpnApp=${currentPkg.isVpnApp}, isFullyBlocked=${currentPkg.isFullyBlocked})")
+            val wasBackgroundToggleVisible = binding.foregroundOnlyToggle.root.visibility == View.VISIBLE
+            Log.d(TAG, "updateTogglesFromPackage: shouldShowBackgroundAccess=$shouldShowBackgroundAccess, wasVisible=$wasBackgroundToggleVisible (isSystemCritical=${currentPkg.isSystemCritical}, isVpnApp=${currentPkg.isVpnApp}, isFullyBlocked=${currentPkg.isFullyBlocked})")
 
             binding.foregroundOnlyDivider.visibility = if (shouldShowBackgroundAccess) View.VISIBLE else View.GONE
             binding.foregroundOnlyToggle.root.visibility = if (shouldShowBackgroundAccess) View.VISIBLE else View.GONE
 
             // Update Background toggle state if visible
             if (shouldShowBackgroundAccess) {
-                binding.foregroundOnlyToggle.toggleSwitch.isChecked = !currentPkg.backgroundBlocked
-                updateSwitchColors(binding.foregroundOnlyToggle.toggleSwitch, !currentPkg.backgroundBlocked, invertColors = true)
+                // If toggle just became visible, we need to set up the listener
+                if (!wasBackgroundToggleVisible) {
+                    Log.d(TAG, "updateTogglesFromPackage: Background toggle just became visible - setting up listener")
+                    setupNetworkToggle(
+                        binding = binding.foregroundOnlyToggle,
+                        label = getString(R.string.firewall_network_label_background_access),
+                        isBlocked = !currentPkg.backgroundBlocked,
+                        enabled = true,
+                        invertLabels = true,
+                        onToggle = { isChecked ->
+                            if (isUpdatingProgrammatically) return@setupNetworkToggle
+                            Log.d(TAG, "updateTogglesFromPackage: Background toggle clicked - isChecked=$isChecked, setting backgroundBlocked=${!isChecked}")
+                            viewModel.setBackgroundBlocking(currentPkg.packageName, !isChecked)
+                        }
+                    )
+                } else {
+                    // Toggle was already visible, just update the state
+                    binding.foregroundOnlyToggle.toggleSwitch.isChecked = !currentPkg.backgroundBlocked
+                    updateSwitchColors(binding.foregroundOnlyToggle.toggleSwitch, !currentPkg.backgroundBlocked, invertColors = true)
+                }
                 Log.d(TAG, "updateTogglesFromPackage: Background toggle updated - isChecked=${!currentPkg.backgroundBlocked}")
             }
 
@@ -719,7 +738,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
 
         // Setup Background Access toggle (only shown when app is allowed)
+        val defaultPolicy = viewModel.uiState.value.defaultFirewallPolicy
+        val isBlockAllMode = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
         val shouldShowBackgroundAccess = !pkg.isSystemCritical && !pkg.isVpnApp && !pkg.isFullyBlocked
+
+        Log.d(TAG, "showGranularControlSheet: defaultPolicy=$defaultPolicy, isBlockAllMode=$isBlockAllMode, isFullyBlocked=${pkg.isFullyBlocked}, shouldShowBackgroundAccess=$shouldShowBackgroundAccess")
+
         if (shouldShowBackgroundAccess) {
             binding.foregroundOnlyDivider.visibility = View.VISIBLE
             binding.foregroundOnlyToggle.root.visibility = View.VISIBLE

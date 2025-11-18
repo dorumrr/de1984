@@ -319,6 +319,7 @@
     <string name="language_romanian">Română (Romanian)</string>
     <string name="language_portuguese">Português (Portuguese)</string>
     <string name="language_chinese">中文 (Chinese)</string>
+    <string name="language_italian">Italiano (Italian)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Version %s</string>

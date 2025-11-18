@@ -32,6 +32,8 @@
     <!-- Firewall States -->
     <string name="firewall_state_blocked">Blocat</string>
     <string name="firewall_state_allowed">Permis</string>
+    <string name="firewall_state_on">ON</string>
+    <string name="firewall_state_off">OFF</string>
     <string name="firewall_state_internet">Internet</string>
     <string name="firewall_search_hint">Caută aplicații...</string>
 
@@ -319,6 +321,7 @@
     <string name="language_romanian">Română</string>
     <string name="language_portuguese">Português (Portugheză)</string>
     <string name="language_chinese">中文 (Chineză)</string>
+    <string name="language_italian">Italiano (Italiană)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Versiunea %s</string>
@@ -471,7 +474,9 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Date mobile</string>
     <string name="firewall_network_label_roaming">Roaming</string>
+    <string name="firewall_network_label_background_access">Permite în fundal</string>
     <string name="firewall_network_label_block_internet">Blochează Internet</string>
+    <string name="firewall_background_access_description">Permite aplicației să acceseze internetul când este în fundal</string>
     <string name="firewall_connectivity_manager_info">Aceasta blochează toate tipurile de rețea (WiFi, Date mobile, Roaming).\n\nDispozitivul tău folosește un Firewall la nivel de sistem care nu suportă blocare per rețea. Pentru control granular, este necesar acces root.</string>
     <string name="firewall_block_all_info">Aceasta blochează toate tipurile de rețea (WiFi, Date mobile, Roaming).</string>
     <string name="firewall_system_critical_info">⚠️ Pachet critic de sistem - Accesul la rețea nu poate fi modificat pentru a preveni instabilitatea sistemului.</string>

@@ -31,6 +31,8 @@
     <!-- Firewall States -->
     <string name="firewall_state_blocked">Bloqueado</string>
     <string name="firewall_state_allowed">Permitido</string>
+    <string name="firewall_state_on">ON</string>
+    <string name="firewall_state_off">OFF</string>
     <string name="firewall_state_internet">Internet</string>
     <string name="firewall_search_hint">Pesquisar apps…</string>
 
@@ -317,6 +319,7 @@
     <string name="language_romanian">Română (Romeno)</string>
     <string name="language_portuguese">Português</string>
     <string name="language_chinese">中文 (Chinês)</string>
+    <string name="language_italian">Italiano (Italiano)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Versão %s</string>
@@ -469,7 +472,9 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Dados Móveis</string>
     <string name="firewall_network_label_roaming">Roaming</string>
+    <string name="firewall_network_label_background_access">Permitir em Segundo Plano</string>
     <string name="firewall_network_label_block_internet">Bloquear Internet</string>
+    <string name="firewall_background_access_description">Permitir que o app acesse a internet quando em segundo plano</string>
     <string name="firewall_connectivity_manager_info">Isto bloqueia todos os tipos de rede (WiFi, Móvel, Roaming).\n\nSeu dispositivo usa um firewall a nível de sistema que não suporta bloqueio por rede. Para controle granular, acesso root é necessário.</string>
     <string name="firewall_block_all_info">Isto bloqueia todos os tipos de rede (WiFi, Móvel, Roaming).</string>
     <string name="firewall_system_critical_info">⚠️ Pacote Crítico do Sistema - Acesso à rede não pode ser modificado para prevenir instabilidade do sistema.</string>

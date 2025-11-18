@@ -31,6 +31,8 @@
     <!-- Firewall States -->
     <string name="firewall_state_blocked">已阻止</string>
     <string name="firewall_state_allowed">已允许</string>
+    <string name="firewall_state_on">开启</string>
+    <string name="firewall_state_off">关闭</string>
     <string name="firewall_state_internet">互联网</string>
     <string name="firewall_search_hint">搜索应用…</string>
 
@@ -327,6 +329,7 @@
     <string name="language_romanian">Română (罗马尼亚语)</string>
     <string name="language_portuguese">Português (葡萄牙语)</string>
     <string name="language_chinese">中文</string>
+    <string name="language_italian">Italiano (意大利语)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">版本 %s</string>
@@ -479,7 +482,9 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">移动数据</string>
     <string name="firewall_network_label_roaming">漫游</string>
+    <string name="firewall_network_label_background_access">允许后台运行</string>
     <string name="firewall_network_label_block_internet">阻止互联网</string>
+    <string name="firewall_background_access_description">允许应用在后台访问互联网</string>
     <string name="firewall_connectivity_manager_info">这会阻止所有网络类型（WiFi、移动数据、漫游）。\n\n您的设备使用不支持按网络阻止的系统级防火墙。要进行精细控制，需要 Root 访问权限。</string>
     <string name="firewall_block_all_info">这会阻止所有网络类型（WiFi、移动数据、漫游）。</string>
     <string name="firewall_system_critical_info">⚠️ 系统关键软件包 - 无法修改网络访问以防止系统不稳定。</string>

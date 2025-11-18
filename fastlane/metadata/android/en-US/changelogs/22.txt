@@ -1,0 +1,3 @@
+• Added background network control
+• Added Italian translation
+• Other fixes and performance improvements

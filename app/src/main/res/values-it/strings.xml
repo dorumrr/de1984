@@ -315,10 +315,10 @@
     <string name="language_title">Lingua dell’App</string>
     <string name="language_description">Scegli la lingua preferita</string>
     <string name="language_system_default">Predefinita del Sistema</string>
-    <string name="language_english">English</string>
-    <string name="language_romanian">Română</string>
-    <string name="language_portuguese">Português</string>
-    <string name="language_chinese">中文</string>
+    <string name="language_english">English (Inglese)</string>
+    <string name="language_romanian">Română (Rumeno)</string>
+    <string name="language_portuguese">Português (Portoghese)</string>
+    <string name="language_chinese">中文 (Cinese)</string>
     <string name="language_italian">Italiano</string>
 
     <!-- Settings Screen -->

@@ -451,7 +451,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             LanguageOption(Constants.Settings.LANGUAGE_PORTUGUESE, getString(io.github.dorumrr.de1984.R.string.language_portuguese)),
             LanguageOption(Constants.Settings.LANGUAGE_CHINESE, getString(io.github.dorumrr.de1984.R.string.language_chinese)),
             LanguageOption(Constants.Settings.LANGUAGE_ITALIAN, getString(io.github.dorumrr.de1984.R.string.language_italian))
-        )
+        ).let { list ->
+            // Keep "System Default" first, sort the rest alphabetically by display name
+            listOf(list.first()) + list.drop(1).sortedBy { it.displayName }
+        }
 
         val adapter = android.widget.ArrayAdapter(
             requireContext(),

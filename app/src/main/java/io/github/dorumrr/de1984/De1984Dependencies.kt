@@ -2,6 +2,8 @@ package io.github.dorumrr.de1984
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import io.github.dorumrr.de1984.data.common.CaptivePortalManager
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.PermissionManager
@@ -34,13 +36,20 @@ class De1984Dependencies(private val context: Context) {
     // Database
     // =============================================================================================
 
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Add lanBlocked column with default value false (0)
+            database.execSQL("ALTER TABLE firewall_rules ADD COLUMN lanBlocked INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     val database: De1984Database by lazy {
         Room.databaseBuilder(
             context.applicationContext,
             De1984Database::class.java,
             "de1984_database"
         )
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_4_5)
             .build()
     }
 

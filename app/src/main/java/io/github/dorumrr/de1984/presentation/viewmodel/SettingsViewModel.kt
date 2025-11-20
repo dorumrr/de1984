@@ -124,6 +124,7 @@ class SettingsViewModel(
                 appLanguage = prefs.getString(Constants.Settings.KEY_APP_LANGUAGE, Constants.Settings.DEFAULT_APP_LANGUAGE) ?: Constants.Settings.DEFAULT_APP_LANGUAGE,
                 firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO,
                 allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
+                allowCriticalPackageFirewall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL),
                 showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT),
                 useDynamicColors = prefs.getBoolean(Constants.Settings.KEY_USE_DYNAMIC_COLORS, Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS)
             )
@@ -253,6 +254,11 @@ class SettingsViewModel(
     fun setAllowCriticalPackageUninstall(allow: Boolean) {
         _uiState.value = _uiState.value.copy(allowCriticalPackageUninstall = allow)
         saveSetting(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, allow)
+    }
+
+    fun setAllowCriticalPackageFirewall(allow: Boolean) {
+        _uiState.value = _uiState.value.copy(allowCriticalPackageFirewall = allow)
+        saveSetting(Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL, allow)
     }
 
     fun setShowFirewallStartPrompt(show: Boolean) {
@@ -767,6 +773,7 @@ data class SettingsUiState(
     val newAppNotifications: Boolean = Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS,
     val firewallMode: FirewallMode = FirewallMode.AUTO,
     val allowCriticalPackageUninstall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL,
+    val allowCriticalPackageFirewall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL,
     val showFirewallStartPrompt: Boolean = Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT,
     val useDynamicColors: Boolean = Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS,
     val appLanguage: String = Constants.Settings.DEFAULT_APP_LANGUAGE,

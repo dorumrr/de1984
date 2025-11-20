@@ -66,6 +66,9 @@ interface FirewallRuleDao {
     @Query("UPDATE firewall_rules SET blockWhenBackground = :blocked, updatedAt = :timestamp WHERE packageName = :packageName")
     suspend fun updateBackgroundBlocking(packageName: String, blocked: Boolean, timestamp: Long = System.currentTimeMillis())
 
+    @Query("UPDATE firewall_rules SET lanBlocked = :blocked, updatedAt = :timestamp WHERE packageName = :packageName")
+    suspend fun updateLanBlocking(packageName: String, blocked: Boolean, timestamp: Long = System.currentTimeMillis())
+
     // Atomic batch update for all network types - prevents race conditions when toggling all networks at once
     @Query("UPDATE firewall_rules SET wifiBlocked = :blocked, mobileBlocked = :blocked, blockWhenRoaming = :blocked, updatedAt = :timestamp WHERE packageName = :packageName")
     suspend fun updateAllNetworkBlocking(packageName: String, blocked: Boolean, timestamp: Long = System.currentTimeMillis())

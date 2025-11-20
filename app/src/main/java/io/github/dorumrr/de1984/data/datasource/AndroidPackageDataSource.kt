@@ -25,7 +25,8 @@ private data class BlockingState(
     val wifiBlocked: Boolean,
     val mobileBlocked: Boolean,
     val roamingBlocked: Boolean,
-    val backgroundBlocked: Boolean
+    val backgroundBlocked: Boolean,
+    val lanBlocked: Boolean
 )
 
 class AndroidPackageDataSource(
@@ -48,12 +49,16 @@ class AndroidPackageDataSource(
                 val firewallRules = firewallRepository.getAllRules().first()
                 val rulesByPackage = firewallRules.associateBy { it.packageName }
 
-                val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
+                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                 val defaultPolicy = prefs.getString(
                     Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                     Constants.Settings.DEFAULT_FIREWALL_POLICY
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
                 val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
+                val allowCritical = prefs.getBoolean(
+                    Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                    Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+                )
 
                 installedPackages
                     .filter { !Constants.App.isOwnApp(it.packageName) }
@@ -67,8 +72,8 @@ class AndroidPackageDataSource(
                             Log.d(TAG, "🔍 VPN APP DETECTED: ${appInfo.packageName}, hasRule=${rule != null}, isSystemCritical=${Constants.Firewall.isSystemCritical(appInfo.packageName)}")
                         }
 
-                        val blockingState = if (Constants.Firewall.isSystemCritical(appInfo.packageName)) {
-                            // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
+                        val blockingState = if (Constants.Firewall.isSystemCritical(appInfo.packageName) && !allowCritical) {
+                            // System-critical packages MUST ALWAYS be allowed (unless setting is enabled)
                             if (isVpnApp) {
                                 Log.d(TAG, "✅ ${appInfo.packageName}: System-critical VPN app → ALLOW ALL")
                             }
@@ -77,17 +82,19 @@ class AndroidPackageDataSource(
                                 wifiBlocked = false,
                                 mobileBlocked = false,
                                 roamingBlocked = false,
-                                backgroundBlocked = false
+                                backgroundBlocked = false,
+                                lanBlocked = false
                             )
-                        } else if (isVpnApp) {
-                            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
+                        } else if (isVpnApp && !allowCritical) {
+                            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues (unless setting is enabled)
                             Log.d(TAG, "✅ ${appInfo.packageName}: VPN app → ALLOW ALL (wifi=false, mobile=false, roaming=false)")
                             BlockingState(
                                 isNetworkBlocked = false,
                                 wifiBlocked = false,
                                 mobileBlocked = false,
                                 roamingBlocked = false,
-                                backgroundBlocked = false
+                                backgroundBlocked = false,
+                                lanBlocked = false
                             )
                         } else if (rule != null && rule.enabled) {
                             // Has explicit rule - use it as-is (absolute blocking state)
@@ -96,7 +103,8 @@ class AndroidPackageDataSource(
                                 wifiBlocked = rule.wifiBlocked,
                                 mobileBlocked = rule.mobileBlocked,
                                 roamingBlocked = rule.blockWhenRoaming,
-                                backgroundBlocked = rule.blockWhenBackground
+                                backgroundBlocked = rule.blockWhenBackground,
+                                lanBlocked = rule.lanBlocked
                             )
                         } else {
                             // No explicit rule - use default policy
@@ -105,7 +113,8 @@ class AndroidPackageDataSource(
                                 wifiBlocked = isBlockAllDefault,
                                 mobileBlocked = isBlockAllDefault,
                                 roamingBlocked = isBlockAllDefault,
-                                backgroundBlocked = false  // Conservative: OFF by default
+                                backgroundBlocked = false,  // Conservative: OFF by default
+                                lanBlocked = isBlockAllDefault  // LAN blocking follows default policy
                             )
                         }
 
@@ -131,6 +140,7 @@ class AndroidPackageDataSource(
                             mobileBlocked = blockingState.mobileBlocked,
                             roamingBlocked = blockingState.roamingBlocked,
                             backgroundBlocked = blockingState.backgroundBlocked,
+                            lanBlocked = blockingState.lanBlocked,
                             isVpnApp = isVpnApp,
                             criticality = criticality,
                             category = category,
@@ -157,20 +167,24 @@ class AndroidPackageDataSource(
                 val permissions = getAppPermissions(packageName)
                 val isVpnApp = hasVpnService(packageName)
 
-                val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
+                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                 val defaultPolicy = prefs.getString(
                     Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                     Constants.Settings.DEFAULT_FIREWALL_POLICY
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
                 val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
+                val allowCritical = prefs.getBoolean(
+                    Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                    Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+                )
 
                 // Debug logging for VPN apps
                 if (isVpnApp) {
                     Log.d(TAG, "🔍 VPN APP DETECTED (getPackage): $packageName, hasRule=${rule != null}, isSystemCritical=${Constants.Firewall.isSystemCritical(packageName)}")
                 }
 
-                val blockingState = if (Constants.Firewall.isSystemCritical(packageName)) {
-                    // System-critical packages MUST ALWAYS be allowed, regardless of rules or default policy
+                val blockingState = if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+                    // System-critical packages MUST ALWAYS be allowed (unless setting is enabled)
                     if (isVpnApp) {
                         Log.d(TAG, "✅ $packageName: System-critical VPN app → ALLOW ALL")
                     }
@@ -179,17 +193,19 @@ class AndroidPackageDataSource(
                         wifiBlocked = false,
                         mobileBlocked = false,
                         roamingBlocked = false,
-                        backgroundBlocked = false
+                        backgroundBlocked = false,
+                        lanBlocked = false
                     )
-                } else if (isVpnApp) {
-                    // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
+                } else if (isVpnApp && !allowCritical) {
+                    // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues (unless setting is enabled)
                     Log.d(TAG, "✅ $packageName: VPN app → ALLOW ALL (wifi=false, mobile=false, roaming=false)")
                     BlockingState(
                         isNetworkBlocked = false,
                         wifiBlocked = false,
                         mobileBlocked = false,
                         roamingBlocked = false,
-                        backgroundBlocked = false
+                        backgroundBlocked = false,
+                        lanBlocked = false
                     )
                 } else if (rule != null && rule.enabled) {
                     // Has explicit rule - use it as-is (absolute blocking state)
@@ -198,7 +214,8 @@ class AndroidPackageDataSource(
                         wifiBlocked = rule.wifiBlocked,
                         mobileBlocked = rule.mobileBlocked,
                         roamingBlocked = rule.blockWhenRoaming,
-                        backgroundBlocked = rule.blockWhenBackground
+                        backgroundBlocked = rule.blockWhenBackground,
+                        lanBlocked = rule.lanBlocked
                     )
                 } else {
                     // No explicit rule - use default policy
@@ -207,7 +224,8 @@ class AndroidPackageDataSource(
                         wifiBlocked = isBlockAllDefault,
                         mobileBlocked = isBlockAllDefault,
                         roamingBlocked = isBlockAllDefault,
-                        backgroundBlocked = false  // Conservative: OFF by default
+                        backgroundBlocked = false,  // Conservative: OFF by default
+                        lanBlocked = isBlockAllDefault  // LAN blocking follows default policy
                     )
                 }
 
@@ -680,7 +698,17 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setNetworkAccess(packageName: String, allowed: Boolean): Boolean {
-        if (Constants.Firewall.isSystemCritical(packageName)) {
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+            return false
+        }
+
+        if (hasVpnService(packageName) && !allowCritical) {
             return false
         }
 
@@ -719,7 +747,17 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setWifiBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.Firewall.isSystemCritical(packageName)) {
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+            return false
+        }
+
+        if (hasVpnService(packageName) && !allowCritical) {
             return false
         }
 
@@ -761,7 +799,17 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setMobileBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.Firewall.isSystemCritical(packageName)) {
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+            return false
+        }
+
+        if (hasVpnService(packageName) && !allowCritical) {
             return false
         }
 
@@ -803,7 +851,17 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setRoamingBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.Firewall.isSystemCritical(packageName)) {
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+            return false
+        }
+
+        if (hasVpnService(packageName) && !allowCritical) {
             return false
         }
 
@@ -846,7 +904,17 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setBackgroundBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.Firewall.isSystemCritical(packageName)) {
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+            return false
+        }
+
+        if (hasVpnService(packageName) && !allowCritical) {
             return false
         }
 
@@ -888,8 +956,72 @@ class AndroidPackageDataSource(
         }
     }
 
+    override suspend fun setLanBlocking(packageName: String, blocked: Boolean): Boolean {
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+            return false
+        }
+
+        if (hasVpnService(packageName) && !allowCritical) {
+            return false
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+                val existingRule = firewallRepository.getRuleByPackage(packageName).first()
+
+                if (existingRule != null) {
+                    // Use atomic update to prevent race conditions
+                    firewallRepository.updateLanBlocking(packageName, blocked)
+                } else {
+                    // Create new rule with default policy for other network types
+                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                    val defaultPolicy = prefs.getString(
+                        Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
+                        Constants.Settings.DEFAULT_FIREWALL_POLICY
+                    ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
+                    val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
+
+                    val rule = FirewallRule(
+                        packageName = packageName,
+                        uid = appInfo.uid,
+                        appName = getAppName(appInfo),
+                        wifiBlocked = isBlockAllDefault,
+                        mobileBlocked = isBlockAllDefault,
+                        blockWhenRoaming = isBlockAllDefault,
+                        lanBlocked = blocked,
+                        enabled = true,
+                        isSystemApp = isSystemApp(appInfo),
+                        hasInternetPermission = hasNetworkPermissions(packageName)
+                    )
+                    firewallRepository.insertRule(rule)
+                }
+
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
     override suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Boolean {
-        if (Constants.Firewall.isSystemCritical(packageName)) {
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+            return false
+        }
+
+        if (hasVpnService(packageName) && !allowCritical) {
             return false
         }
 
@@ -925,7 +1057,17 @@ class AndroidPackageDataSource(
     }
 
     override suspend fun setMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean): Boolean {
-        if (Constants.Firewall.isSystemCritical(packageName)) {
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
+            return false
+        }
+
+        if (hasVpnService(packageName) && !allowCritical) {
             return false
         }
 

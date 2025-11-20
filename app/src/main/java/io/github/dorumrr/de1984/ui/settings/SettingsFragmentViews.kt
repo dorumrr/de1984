@@ -354,6 +354,22 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             }
         }
 
+        binding.allowCriticalFirewallSwitch.setOnCheckedChangeListener(null)
+        Log.d(TAG, "updateUI: Setting allowCriticalFirewallSwitch.isChecked = ${state.allowCriticalPackageFirewall}")
+        binding.allowCriticalFirewallSwitch.isChecked = state.allowCriticalPackageFirewall
+        binding.allowCriticalFirewallSwitch.setOnCheckedChangeListener { _, isChecked ->
+            Log.d(TAG, "allowCriticalFirewallSwitch listener (from updateUI) triggered: isChecked=$isChecked")
+            if (isChecked) {
+                Log.d(TAG, "Showing critical firewall warning dialog (from updateUI)")
+                showCriticalFirewallWarning {
+                    viewModel.setAllowCriticalPackageFirewall(true)
+                }
+            } else {
+                Log.d(TAG, "Disabling critical package firewall (from updateUI)")
+                viewModel.setAllowCriticalPackageFirewall(false)
+            }
+        }
+
         binding.showFirewallStartPromptSwitch.setOnCheckedChangeListener(null)
         binding.showFirewallStartPromptSwitch.isChecked = state.showFirewallStartPrompt
         binding.showFirewallStartPromptSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -1292,6 +1308,36 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                         }
                     } else {
                         viewModel.setAllowCriticalPackageUninstall(false)
+                    }
+                }
+            }
+        )
+    }
+
+    private fun showCriticalFirewallWarning(onConfirm: () -> Unit) {
+        Log.d(TAG, "showCriticalFirewallWarning: Displaying warning dialog")
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = getString(R.string.dialog_critical_firewall_title),
+            message = getString(R.string.dialog_critical_firewall_message),
+            confirmButtonText = getString(R.string.dialog_critical_firewall_enable),
+            onConfirm = {
+                Log.d(TAG, "showCriticalFirewallWarning: User confirmed")
+                onConfirm()
+            },
+            cancelButtonText = getString(R.string.dialog_cancel),
+            onCancel = {
+                Log.d(TAG, "showCriticalFirewallWarning: User cancelled, reverting switch")
+                // Revert switch state
+                binding.allowCriticalFirewallSwitch.setOnCheckedChangeListener(null)
+                binding.allowCriticalFirewallSwitch.isChecked = false
+                binding.allowCriticalFirewallSwitch.setOnCheckedChangeListener { _, isChecked ->
+                    if (isChecked) {
+                        showCriticalFirewallWarning {
+                            viewModel.setAllowCriticalPackageFirewall(true)
+                        }
+                    } else {
+                        viewModel.setAllowCriticalPackageFirewall(false)
                     }
                 }
             }

@@ -73,8 +73,17 @@ class NetworkPackageAdapter(
             // Show/hide VPN app badge
             vpnAppBadge.visibility = if (pkg.isVpnApp) View.VISIBLE else View.GONE
 
-            // Dim the entire item if system critical or VPN app
-            itemView.alpha = if (pkg.isSystemCritical || pkg.isVpnApp) 0.6f else 1.0f
+            // Dim the entire item if system critical or VPN app (unless setting is enabled)
+            val prefs = itemView.context.getSharedPreferences(
+                io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
+                android.content.Context.MODE_PRIVATE
+            )
+            val allowCritical = prefs.getBoolean(
+                io.github.dorumrr.de1984.utils.Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+            )
+            val shouldDim = !allowCritical && (pkg.isSystemCritical || pkg.isVpnApp)
+            itemView.alpha = if (shouldDim) 0.6f else 1.0f
 
             // Set app icon
             if (showIcons) {

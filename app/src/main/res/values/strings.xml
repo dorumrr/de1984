@@ -367,6 +367,9 @@
     <string name="settings_allow_uninstall_critical_title">Allow Uninstalling Critical Packages</string>
     <string name="settings_allow_uninstall_critical_description">Show uninstall option for Essential and Important packages</string>
 
+    <string name="settings_allow_firewall_critical_title">Allow Firewall Critical Packages</string>
+    <string name="settings_allow_firewall_critical_description">Allow blocking network access for system-critical and VPN packages</string>
+
     <string name="settings_show_firewall_prompt_title">Show Firewall Start Prompt</string>
     <string name="settings_show_firewall_prompt_description">Show a prompt to start the firewall when the app opens and firewall is inactive</string>
 
@@ -440,6 +443,9 @@
     <string name="dialog_critical_uninstall_title">⚠️ Warning</string>
     <string name="dialog_critical_uninstall_message">This allows uninstalling system-critical packages that may brick your device. Only enable if you know what you\'re doing.\n\nAre you sure you want to enable this?</string>
     <string name="dialog_critical_uninstall_enable">Enable</string>
+    <string name="dialog_critical_firewall_title">⚠️ Warning</string>
+    <string name="dialog_critical_firewall_message">This allows blocking network access for system-critical packages (WiFi, Bluetooth, Download Manager, etc.) and VPN apps.\n\nBlocking these packages may:\n• Break network connectivity\n• Prevent WiFi/Bluetooth from working\n• Cause VPN reconnection issues\n• Require factory reset or ADB to fix\n\nOnly enable if you know what you\'re doing.\n\nAre you sure you want to enable this?</string>
+    <string name="dialog_critical_firewall_enable">Enable</string>
     <string name="dialog_restart_title">Restart Required</string>
     <string name="dialog_restart_message">The app needs to restart to apply the new color theme. Restart now?</string>
     <string name="dialog_restart_confirm">Restart</string>
@@ -472,6 +478,7 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Mobile Data</string>
     <string name="firewall_network_label_roaming">Roaming</string>
+    <string name="firewall_network_label_lan">Block LAN Access</string>
     <string name="firewall_network_label_background_access">Allow in Background</string>
     <string name="firewall_network_label_block_internet">Block Internet</string>
     <string name="firewall_background_access_description">Let app access internet when in background</string>
@@ -479,6 +486,7 @@
     <string name="firewall_block_all_info">This blocks all network types (WiFi, Mobile, Roaming).</string>
     <string name="firewall_system_critical_info">⚠️ System Critical Package - Network access cannot be modified to prevent system instability.</string>
     <string name="firewall_vpn_app_info">🔒 VPN App - Always allowed to prevent VPN reconnection issues after device lock/unlock.</string>
+    <string name="firewall_critical_allowed_info">⚠️ Critical package protection is disabled in Settings. Blocking network access may cause system instability or VPN issues.</string>
     <string name="firewall_badge_system_critical">System Critical</string>
     <string name="firewall_badge_vpn_app">VPN App</string>
 

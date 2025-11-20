@@ -348,6 +348,34 @@ class FirewallViewModel(
         }
     }
 
+    fun setLanBlocking(packageName: String, blocked: Boolean) {
+        viewModelScope.launch {
+            Log.d(TAG, "setLanBlocking: packageName=$packageName, blocked=$blocked")
+            // Optimistically update UI first
+            updatePackageInList(packageName) { pkg ->
+                Log.d(TAG, "setLanBlocking: BEFORE copy - pkg.lanBlocked=${pkg.lanBlocked}")
+                val updated = pkg.copy(lanBlocked = blocked)
+                Log.d(TAG, "setLanBlocking: AFTER copy - updated.lanBlocked=${updated.lanBlocked}")
+                updated
+            }
+
+            // Then persist to database
+            manageNetworkAccessUseCase.setLanBlocking(packageName, blocked)
+                .onSuccess {
+                    Log.d(TAG, "setLanBlocking: SUCCESS - persisted to database")
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "setLanBlocking: FAILURE - ${error.message}")
+                    // Revert on failure by reloading
+                    loadNetworkPackages()
+                    if (superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
+                    }
+                    _uiState.value = _uiState.value.copy(error = error.message)
+                }
+        }
+    }
+
     fun setAllNetworkBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
             // Optimistically update all network types at once

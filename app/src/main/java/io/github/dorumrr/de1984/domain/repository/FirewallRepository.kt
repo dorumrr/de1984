@@ -42,6 +42,8 @@ interface FirewallRepository {
 
     suspend fun updateBackgroundBlocking(packageName: String, blocked: Boolean)
 
+    suspend fun updateLanBlocking(packageName: String, blocked: Boolean)
+
     // Atomic batch update for all network types - prevents race conditions when toggling all networks at once
     suspend fun updateAllNetworkBlocking(packageName: String, blocked: Boolean)
 

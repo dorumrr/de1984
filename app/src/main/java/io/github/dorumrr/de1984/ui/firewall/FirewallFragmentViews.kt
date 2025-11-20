@@ -25,6 +25,7 @@ import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionGranularBind
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionSimpleBinding
 import io.github.dorumrr.de1984.databinding.FragmentFirewallBinding
 import io.github.dorumrr.de1984.databinding.NetworkTypeToggleBinding
+import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
@@ -636,8 +637,17 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 updateSwitchColors(binding.roamingToggle.toggleSwitch, currentPkg.roamingBlocked)
             }
 
+            // Update LAN toggle (if using iptables backend)
+            val app = requireActivity().application as De1984Application
+            val backendType = app.dependencies.firewallManager.activeBackendType.value
+            if (backendType == FirewallBackendType.IPTABLES) {
+                binding.lanToggle.toggleSwitch.isChecked = currentPkg.lanBlocked
+                updateSwitchColors(binding.lanToggle.toggleSwitch, currentPkg.lanBlocked)
+            }
+
             // Update Background toggle visibility based on current blocking state
-            val shouldShowBackgroundAccess = !currentPkg.isSystemCritical && !currentPkg.isVpnApp && !currentPkg.isFullyBlocked
+            val allowCriticalForUpdate = settingsViewModel.uiState.value.allowCriticalPackageFirewall
+            val shouldShowBackgroundAccess = (!currentPkg.isSystemCritical || allowCriticalForUpdate) && (!currentPkg.isVpnApp || allowCriticalForUpdate) && !currentPkg.isFullyBlocked
             val wasBackgroundToggleVisible = binding.foregroundOnlyToggle.root.visibility == View.VISIBLE
             Log.d(TAG, "updateTogglesFromPackage: shouldShowBackgroundAccess=$shouldShowBackgroundAccess, wasVisible=$wasBackgroundToggleVisible (isSystemCritical=${currentPkg.isSystemCritical}, isVpnApp=${currentPkg.isVpnApp}, isFullyBlocked=${currentPkg.isFullyBlocked})")
 
@@ -696,11 +706,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
 
         // Setup WiFi toggle
+        val allowCritical = settingsViewModel.uiState.value.allowCriticalPackageFirewall
         setupNetworkToggle(
             binding = binding.wifiToggle,
             label = getString(R.string.firewall_network_label_wifi),
             isBlocked = pkg.wifiBlocked,
-            enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
+            enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
                 viewModel.setWifiBlocking(pkg.packageName, blocked)
@@ -712,7 +723,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.mobileToggle,
             label = getString(R.string.firewall_network_label_mobile),
             isBlocked = pkg.mobileBlocked,
-            enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
+            enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 
@@ -727,7 +738,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 binding = binding.roamingToggle,
                 label = getString(R.string.firewall_network_label_roaming),
                 isBlocked = pkg.roamingBlocked,
-                enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
+                enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
                 onToggle = { blocked ->
                     if (isUpdatingProgrammatically) return@setupNetworkToggle
 
@@ -737,10 +748,29 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             )
         }
 
+        // Setup LAN toggle (only if using iptables backend)
+        val appForLan = requireActivity().application as De1984Application
+        val backendTypeForLan = appForLan.dependencies.firewallManager.activeBackendType.value
+        if (backendTypeForLan == FirewallBackendType.IPTABLES) {
+            binding.lanDivider.visibility = View.VISIBLE
+            binding.lanToggle.root.visibility = View.VISIBLE
+
+            setupNetworkToggle(
+                binding = binding.lanToggle,
+                label = getString(R.string.firewall_network_label_lan),
+                isBlocked = pkg.lanBlocked,
+                enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
+                onToggle = { blocked ->
+                    if (isUpdatingProgrammatically) return@setupNetworkToggle
+                    viewModel.setLanBlocking(pkg.packageName, blocked)
+                }
+            )
+        }
+
         // Setup Background Access toggle (only shown when app is allowed)
         val defaultPolicy = viewModel.uiState.value.defaultFirewallPolicy
         val isBlockAllMode = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
-        val shouldShowBackgroundAccess = !pkg.isSystemCritical && !pkg.isVpnApp && !pkg.isFullyBlocked
+        val shouldShowBackgroundAccess = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical) && !pkg.isFullyBlocked
 
         Log.d(TAG, "showGranularControlSheet: defaultPolicy=$defaultPolicy, isBlockAllMode=$isBlockAllMode, isFullyBlocked=${pkg.isFullyBlocked}, shouldShowBackgroundAccess=$shouldShowBackgroundAccess")
 
@@ -771,7 +801,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val firewallManager = app.dependencies.firewallManager
         val backendType = firewallManager.getActiveBackendType()
 
-        if (pkg.isSystemCritical) {
+        if ((pkg.isSystemCritical || pkg.isVpnApp) && allowCritical) {
+            // Show warning that critical protection is disabled
+            binding.infoMessage.visibility = View.VISIBLE
+            binding.infoMessage.text = getString(R.string.firewall_critical_allowed_info)
+        } else if (pkg.isSystemCritical) {
             binding.infoMessage.visibility = View.VISIBLE
             binding.infoMessage.text = getString(R.string.firewall_system_critical_info)
         } else if (pkg.isVpnApp) {
@@ -831,8 +865,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val app = requireActivity().application as De1984Application
         val firewallManager = app.dependencies.firewallManager
         val backendType = firewallManager.getActiveBackendType()
+        val allowCriticalSimple = settingsViewModel.uiState.value.allowCriticalPackageFirewall
 
-        val infoMessage = if (pkg.isSystemCritical) {
+        val infoMessage = if ((pkg.isSystemCritical || pkg.isVpnApp) && allowCriticalSimple) {
+            getString(R.string.firewall_critical_allowed_info)
+        } else if (pkg.isSystemCritical) {
             getString(R.string.firewall_system_critical_info)
         } else if (pkg.isVpnApp) {
             getString(R.string.firewall_vpn_app_info)
@@ -887,7 +924,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.internetToggle,
             label = getString(R.string.firewall_network_label_block_internet),
             isBlocked = pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked,
-            enabled = !pkg.isSystemCritical && !pkg.isVpnApp,
+            enabled = (!pkg.isSystemCritical || allowCriticalSimple) && (!pkg.isVpnApp || allowCriticalSimple),
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 

@@ -30,6 +30,10 @@ class ManageNetworkAccessUseCase constructor(
         return networkPackageRepository.setBackgroundBlocking(packageName, blocked)
     }
 
+    suspend fun setLanBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+        return networkPackageRepository.setLanBlocking(packageName, blocked)
+    }
+
     suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Result<Unit> {
         return networkPackageRepository.setAllNetworkBlocking(packageName, blocked)
     }

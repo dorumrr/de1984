@@ -2,7 +2,7 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Checked (ON) state - Theme-based track color (outline) -->
     <item android:color="?attr/colorOutline" android:state_checked="true"/>
-    <!-- Unchecked (OFF) state - Theme-based track color (outline) -->
-    <item android:color="?attr/colorOutline"/>
+    <!-- Unchecked (OFF) state - Subtle red tint to match red thumb -->
+    <item android:color="#40EF5350"/>
 </selector>
 

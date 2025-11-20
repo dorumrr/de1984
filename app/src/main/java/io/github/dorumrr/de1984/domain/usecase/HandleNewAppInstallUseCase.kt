@@ -103,19 +103,53 @@ class HandleNewAppInstallUseCase constructor(
         val isRecommendedAllow = Constants.Firewall.isSystemRecommendedAllow(packageName)
 
         return when {
-            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues
+            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues (unless setting is enabled)
             isVpnApp -> {
-                Log.d(TAG, "Creating 'allow all' rule for VPN app: $packageName")
-                FirewallRule(
-                    packageName = packageName,
-                    uid = uid,
-                    appName = appName,
-                    wifiBlocked = false,
-                    mobileBlocked = false,
-                    blockWhenRoaming = false,
-                    enabled = true,
-                    isSystemApp = isSystemApp
+                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                val allowCritical = prefs.getBoolean(
+                    Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                    Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
                 )
+
+                if (!allowCritical) {
+                    Log.d(TAG, "Creating 'allow all' rule for VPN app: $packageName")
+                    FirewallRule(
+                        packageName = packageName,
+                        uid = uid,
+                        appName = appName,
+                        wifiBlocked = false,
+                        mobileBlocked = false,
+                        blockWhenRoaming = false,
+                        enabled = true,
+                        isSystemApp = isSystemApp
+                    )
+                } else {
+                    // Setting is enabled - treat VPN app according to default policy
+                    Log.d(TAG, "Creating default policy rule for VPN app (critical protection disabled): $packageName")
+                    if (defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL) {
+                        FirewallRule(
+                            packageName = packageName,
+                            uid = uid,
+                            appName = appName,
+                            wifiBlocked = true,
+                            mobileBlocked = true,
+                            blockWhenRoaming = true,
+                            enabled = true,
+                            isSystemApp = isSystemApp
+                        )
+                    } else {
+                        FirewallRule(
+                            packageName = packageName,
+                            uid = uid,
+                            appName = appName,
+                            wifiBlocked = false,
+                            mobileBlocked = false,
+                            blockWhenRoaming = false,
+                            enabled = true,
+                            isSystemApp = isSystemApp
+                        )
+                    }
+                }
             }
             // System-recommended apps always get "allow all" rules
             isRecommendedAllow -> {

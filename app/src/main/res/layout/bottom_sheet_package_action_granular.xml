@@ -131,6 +131,25 @@
             android:layout_height="wrap_content"
             android:visibility="gone" />
 
+        <!-- LAN Divider -->
+        <View
+            android:id="@+id/lan_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <!-- LAN Toggle (only shown if using iptables backend) -->
+        <include
+            android:id="@+id/lan_toggle"
+            layout="@layout/network_type_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
         <!-- Divider -->
         <View
             android:id="@+id/foreground_only_divider"

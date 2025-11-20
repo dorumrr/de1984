@@ -588,13 +588,20 @@ class NetworkPolicyManagerFirewallBackend(
      * @return true if the UID should be exempted from blocking
      */
     private fun isUidExempted(uid: Int, allPackages: List<android.content.pm.ApplicationInfo>): Boolean {
+        // Check if critical package protection is disabled
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
         // Get all packages with this UID
         val packagesWithUid = allPackages.filter { it.uid == uid }
 
-        // Check if ANY package with this UID is system-critical or a VPN app
+        // Check if ANY package with this UID is system-critical or a VPN app (unless setting is enabled)
         return packagesWithUid.any { appInfo ->
-            Constants.Firewall.isSystemCritical(appInfo.packageName) ||
-            hasVpnService(appInfo.packageName)
+            (!allowCritical && Constants.Firewall.isSystemCritical(appInfo.packageName)) ||
+            (!allowCritical && hasVpnService(appInfo.packageName))
         }
     }
 }

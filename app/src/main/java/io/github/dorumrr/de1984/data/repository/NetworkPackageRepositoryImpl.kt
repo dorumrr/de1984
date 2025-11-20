@@ -157,6 +157,19 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
+    override suspend fun setLanBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+        return try {
+            val success = packageDataSource.setLanBlocking(packageName, blocked)
+            if (success) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to set LAN blocking for $packageName"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Result<Unit> {
         return try {
             val success = packageDataSource.setAllNetworkBlocking(packageName, blocked)
@@ -200,6 +213,7 @@ private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain():
         mobileBlocked = mobileBlocked,
         roamingBlocked = roamingBlocked,
         backgroundBlocked = backgroundBlocked,
+        lanBlocked = lanBlocked,
         networkPermissions = permissions,
         versionName = versionName,
         versionCode = versionCode,

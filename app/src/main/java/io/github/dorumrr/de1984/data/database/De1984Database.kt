@@ -11,7 +11,7 @@ import io.github.dorumrr.de1984.data.database.entity.FirewallRuleEntity
     entities = [
         FirewallRuleEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class De1984Database : RoomDatabase() {

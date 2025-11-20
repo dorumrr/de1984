@@ -531,12 +531,19 @@ class FirewallVpnService : VpnService() {
             }
 
             // Never block system-critical packages
-            if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName)) {
+            // Check if critical package protection is disabled
+            val prefs = getSharedPreferences(io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val allowCritical = prefs.getBoolean(
+                io.github.dorumrr.de1984.utils.Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+            )
+
+            if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
                 continue
             }
 
-            // Never block VPN apps to prevent VPN reconnection issues
-            if (hasVpnService(packageName)) {
+            // Never block VPN apps to prevent VPN reconnection issues (unless setting is enabled)
+            if (hasVpnService(packageName) && !allowCritical) {
                 continue
             }
 
@@ -671,14 +678,21 @@ class FirewallVpnService : VpnService() {
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
 
-                // Never block system-critical packages
-                if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName)) {
+                // Check if critical package protection is disabled
+                val prefs = getSharedPreferences(io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                val allowCritical = prefs.getBoolean(
+                    io.github.dorumrr.de1984.utils.Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                    io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+                )
+
+                // Never block system-critical packages (unless setting is enabled)
+                if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
                     allowedCount++
                     return@forEach
                 }
 
-                // Never block VPN apps to prevent VPN reconnection issues
-                if (hasVpnService(packageName)) {
+                // Never block VPN apps to prevent VPN reconnection issues (unless setting is enabled)
+                if (hasVpnService(packageName) && !allowCritical) {
                     allowedCount++
                     return@forEach
                 }

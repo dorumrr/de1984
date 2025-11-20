@@ -16,6 +16,7 @@ data class FirewallRuleEntity(
 
     val blockWhenBackground: Boolean = false,
     val blockWhenRoaming: Boolean = false,
+    val lanBlocked: Boolean = false,
 
     val enabled: Boolean = true,
     val isSystemApp: Boolean = false,

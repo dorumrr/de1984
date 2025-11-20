@@ -55,6 +55,9 @@ class IptablesFirewallBackend(
     // Track currently blocked UIDs to avoid redundant operations
     private val blockedUids = mutableSetOf<Int>()
 
+    // Track currently LAN-blocked UIDs to avoid redundant operations
+    private val blockedLanUids = mutableSetOf<Int>()
+
     /**
      * Start the firewall by starting the PrivilegedFirewallService.
      * The service will call startInternal() to actually create iptables chains.
@@ -148,6 +151,7 @@ class IptablesFirewallBackend(
             }
 
             blockedUids.clear()
+            blockedLanUids.clear()
             Log.d(TAG, "iptables chains deleted")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -290,7 +294,50 @@ class IptablesFirewallBackend(
                 }
             }
 
-            Log.d(TAG, "Rules applied: ${blockedUids.size} apps blocked")
+            // =============================================================================================
+            // LAN Blocking Logic
+            // =============================================================================================
+
+            // Get all installed packages (needed to check for shared UIDs with system-critical/VPN apps)
+            val packageManager = context.packageManager
+            val allPackagesForLan = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+
+            // Calculate LAN blocking diff
+            val uidsToBlockLan = mutableSetOf<Int>()
+
+            // Determine which apps should have LAN blocked
+            for ((uid, rulesForUid) in rulesByUid) {
+                // Never block UIDs that contain system-critical packages or VPN apps
+                if (isUidExempted(uid, allPackagesForLan)) {
+                    continue
+                }
+
+                val shouldBlockLan = rulesForUid.any { rule -> rule.lanBlocked }
+                if (shouldBlockLan) {
+                    uidsToBlockLan.add(uid)
+                }
+            }
+
+            val uidsToAddLan = uidsToBlockLan - blockedLanUids
+            val uidsToRemoveLan = blockedLanUids - uidsToBlockLan
+
+            Log.d(TAG, "LAN blocking diff: add=${uidsToAddLan.size}, remove=${uidsToRemoveLan.size}, keep=${blockedLanUids.intersect(uidsToBlockLan).size}")
+
+            // Remove LAN rules that are no longer needed
+            for (uid in uidsToRemoveLan) {
+                unblockAppLan(uid).getOrElse { error ->
+                    Log.w(TAG, "Failed to unblock LAN for UID $uid: ${error.message}")
+                }
+            }
+
+            // Add new LAN rules
+            for (uid in uidsToAddLan) {
+                blockAppLan(uid).getOrElse { error ->
+                    Log.w(TAG, "Failed to block LAN for UID $uid: ${error.message}")
+                }
+            }
+
+            Log.d(TAG, "Rules applied: ${blockedUids.size} apps blocked (Internet), ${blockedLanUids.size} apps blocked (LAN)")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply rules", e)
@@ -477,6 +524,50 @@ class IptablesFirewallBackend(
     }
     
     /**
+     * Block LAN access for an app by UID.
+     * Uses destination IP filtering to block private IP ranges.
+     */
+    private suspend fun blockAppLan(uid: Int): Result<Unit> {
+        return try {
+            Log.d(TAG, "=== Blocking LAN for UID $uid ===")
+
+            // IPv4: Block private IP ranges
+            val ipv4Ranges = listOf("192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12")
+            for (range in ipv4Ranges) {
+                val command = "$IPTABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -d $range -j DROP"
+                Log.d(TAG, "Executing IPv4 LAN command: $command")
+                val (exitCode, output) = executeCommand(command)
+                Log.d(TAG, "IPv4 LAN result: exitCode=$exitCode, output='$output'")
+                if (exitCode != 0) {
+                    Log.e(TAG, "❌ Failed to block LAN IPv4 range $range for UID $uid")
+                    return Result.failure(Exception("Failed to block LAN IPv4 for UID $uid"))
+                }
+            }
+
+            // IPv6: Block private IP ranges
+            val ipv6Ranges = listOf("fc00::/7", "fe80::/10")
+            for (range in ipv6Ranges) {
+                val command = "$IP6TABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -d $range -j DROP"
+                Log.d(TAG, "Executing IPv6 LAN command: $command")
+                val (exitCode, output) = executeCommand(command)
+                Log.d(TAG, "IPv6 LAN result: exitCode=$exitCode, output='$output'")
+                if (exitCode != 0) {
+                    Log.e(TAG, "❌ Failed to block LAN IPv6 range $range for UID $uid")
+                    return Result.failure(Exception("Failed to block LAN IPv6 for UID $uid"))
+                }
+            }
+
+            blockedLanUids.add(uid)
+            Log.d(TAG, "✅ Successfully blocked LAN for UID $uid (IPv4 and IPv6)")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to block LAN for UID $uid", e)
+            val error = errorHandler.handleError(e, "block LAN for app UID $uid")
+            Result.failure(error)
+        }
+    }
+
+    /**
      * Unblock an app by UID.
      */
     private suspend fun unblockApp(uid: Int): Result<Unit> {
@@ -496,7 +587,34 @@ class IptablesFirewallBackend(
             Result.failure(error)
         }
     }
-    
+
+    /**
+     * Unblock LAN access for an app by UID.
+     */
+    private suspend fun unblockAppLan(uid: Int): Result<Unit> {
+        return try {
+            // IPv4: Remove DROP rules for private IP ranges
+            val ipv4Ranges = listOf("192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12")
+            for (range in ipv4Ranges) {
+                executeCommand("$IPTABLES -D $CHAIN_OUTPUT -m owner --uid-owner $uid -d $range -j DROP 2>/dev/null || true")
+            }
+
+            // IPv6: Remove DROP rules for private IP ranges
+            val ipv6Ranges = listOf("fc00::/7", "fe80::/10")
+            for (range in ipv6Ranges) {
+                executeCommand("$IP6TABLES -D $CHAIN_OUTPUT -m owner --uid-owner $uid -d $range -j DROP 2>/dev/null || true")
+            }
+
+            blockedLanUids.remove(uid)
+            Log.d(TAG, "Unblocked LAN for UID $uid")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to unblock LAN for UID $uid", e)
+            val error = errorHandler.handleError(e, "unblock LAN for app UID $uid")
+            Result.failure(error)
+        }
+    }
+
     /**
      * Clear all firewall rules.
      */
@@ -507,6 +625,7 @@ class IptablesFirewallBackend(
             executeCommand("$IP6TABLES -F $CHAIN_OUTPUT 2>/dev/null || true")
 
             blockedUids.clear()
+            blockedLanUids.clear()
             Log.d(TAG, "All rules cleared")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -567,13 +686,20 @@ class IptablesFirewallBackend(
      * @return true if the UID should be exempted from blocking
      */
     private fun isUidExempted(uid: Int, allPackages: List<android.content.pm.ApplicationInfo>): Boolean {
+        // Check if critical package protection is disabled
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
         // Get all packages with this UID
         val packagesWithUid = allPackages.filter { it.uid == uid }
 
-        // Check if ANY package with this UID is system-critical or a VPN app
+        // Check if ANY package with this UID is system-critical or a VPN app (unless setting is enabled)
         return packagesWithUid.any { appInfo ->
-            Constants.Firewall.isSystemCritical(appInfo.packageName) ||
-            hasVpnService(appInfo.packageName)
+            (!allowCritical && Constants.Firewall.isSystemCritical(appInfo.packageName)) ||
+            (!allowCritical && hasVpnService(appInfo.packageName))
         }
     }
 }

@@ -11,6 +11,7 @@ data class FirewallRule(
     val mobileBlocked: Boolean = false,
     val blockWhenBackground: Boolean = false,
     val blockWhenRoaming: Boolean = false,
+    val lanBlocked: Boolean = false,
     val enabled: Boolean = true,
     val isSystemApp: Boolean = false,
     val hasInternetPermission: Boolean = false,

@@ -207,14 +207,21 @@ class ConnectivityManagerFirewallBackend(
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
 
-                // Never block system-critical packages - always allow
-                if (Constants.Firewall.isSystemCritical(packageName)) {
+                // Check if critical package protection is disabled
+                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                val allowCritical = prefs.getBoolean(
+                    Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                    Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+                )
+
+                // Never block system-critical packages - always allow (unless setting is enabled)
+                if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
                     desiredPolicies[packageName] = false  // false = allow
                     return@forEach
                 }
 
-                // Never block VPN apps to prevent VPN reconnection issues
-                if (hasVpnService(packageName)) {
+                // Never block VPN apps to prevent VPN reconnection issues (unless setting is enabled)
+                if (hasVpnService(packageName) && !allowCritical) {
                     desiredPolicies[packageName] = false  // false = allow
                     return@forEach
                 }

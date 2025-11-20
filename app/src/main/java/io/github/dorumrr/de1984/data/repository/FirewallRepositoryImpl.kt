@@ -134,6 +134,11 @@ class FirewallRepositoryImpl(
         notifyRulesChanged()
     }
 
+    override suspend fun updateLanBlocking(packageName: String, blocked: Boolean) {
+        firewallRuleDao.updateLanBlocking(packageName, blocked)
+        notifyRulesChanged()
+    }
+
     override suspend fun updateAllNetworkBlocking(packageName: String, blocked: Boolean) {
         firewallRuleDao.updateAllNetworkBlocking(packageName, blocked)
         notifyRulesChanged()

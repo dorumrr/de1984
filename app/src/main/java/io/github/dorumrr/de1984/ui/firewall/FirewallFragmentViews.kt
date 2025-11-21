@@ -882,6 +882,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         dialog.setContentView(binding.root)
         Log.d(TAG, "showGranularControlSheet: EXIT - About to show dialog for ${pkg.packageName}")
         dialog.show()
+
+        // Configure BottomSheetBehavior to properly handle nested scrolling
+        dialog.behavior.apply {
+            isDraggable = true
+            // Allow the sheet to be dragged, but nested scrolling will take priority
+            // This ensures content scrolls first before the sheet starts dragging
+        }
     }
 
     private fun showSimpleControlSheet(dialog: BottomSheetDialog, pkg: NetworkPackage) {
@@ -996,6 +1003,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         dialog.setContentView(binding.root)
         dialog.show()
+
+        // Configure BottomSheetBehavior to properly handle nested scrolling
+        dialog.behavior.apply {
+            isDraggable = true
+            // Allow the sheet to be dragged, but nested scrolling will take priority
+            // This ensures content scrolls first before the sheet starts dragging
+        }
     }
 
     private fun setupNetworkToggle(

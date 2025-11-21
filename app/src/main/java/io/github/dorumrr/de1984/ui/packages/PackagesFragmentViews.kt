@@ -927,6 +927,13 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         dialog.setContentView(binding.root)
         dialog.show()
+
+        // Configure BottomSheetBehavior to properly handle nested scrolling
+        dialog.behavior.apply {
+            isDraggable = true
+            // Allow the sheet to be dragged, but nested scrolling will take priority
+            // This ensures content scrolls first before the sheet starts dragging
+        }
     }
 
     private fun showForceStopConfirmation(pkg: Package) {

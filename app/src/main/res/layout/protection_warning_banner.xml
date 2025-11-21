@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/warning_banner_background"
+    android:padding="12dp"
+    android:layout_marginTop="0dp"
+    android:layout_marginBottom="4dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/banner_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/protection_banner_title"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="@color/warning_orange" />
+
+    <!-- Message -->
+    <TextView
+        android:id="@+id/banner_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/protection_banner_message_firewall"
+        android:textSize="12sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:lineSpacingMultiplier="1.2" />
+
+    <!-- Settings Button (Below Text) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/banner_settings_button"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/protection_banner_button"
+        android:textSize="12sp"
+        android:minHeight="36dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        app:icon="@drawable/ic_settings"
+        app:iconSize="16dp"
+        android:layout_gravity="end" />
+
+</LinearLayout>
+

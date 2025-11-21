@@ -18,6 +18,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
+import com.google.android.material.snackbar.Snackbar
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionsBinding
@@ -851,20 +852,55 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                                 pkg.criticality == PackageCriticality.IMPORTANT
         val isUninstalled = pkg.versionName == null && !pkg.isEnabled && pkg.type == PackageType.SYSTEM
 
+        // Show protection warning banner if package is critical and protection is enabled
         if (isCriticalPackage && !allowCriticalUninstall && !isUninstalled) {
-            // Hide uninstall button for critical packages when setting is OFF
-            binding.uninstallAction.visibility = View.GONE
-        } else {
+            binding.protectionWarningBanner.root.visibility = View.VISIBLE
+
+            // Set banner message
+            binding.protectionWarningBanner.bannerMessage.text = getString(R.string.protection_banner_message_uninstall)
+
+            // Setup Settings button click listener
+            binding.protectionWarningBanner.bannerSettingsButton.setOnClickListener {
+                dialog.dismiss()
+                (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToSettings()
+            }
+
+            // Show uninstall button but make it disabled
             binding.uninstallAction.visibility = View.VISIBLE
+            binding.uninstallAction.isEnabled = false
+            binding.uninstallAction.alpha = 0.5f
+
+            binding.uninstallIcon.setImageResource(R.drawable.ic_delete)
+            val redColor = ContextCompat.getColor(requireContext(), R.color.error_red)
+            binding.uninstallIcon.setColorFilter(redColor)
+            binding.uninstallIcon.alpha = 0.5f
+            binding.uninstallTitle.text = getString(R.string.action_uninstall)
+            binding.uninstallTitle.setTextColor(redColor)
+            binding.uninstallTitle.alpha = 0.5f
+            binding.uninstallDescription.text = getString(R.string.action_sheet_uninstall_desc)
+            binding.uninstallDescription.alpha = 0.5f
+
+            // Add click listener to show snackbar
+            binding.uninstallAction.setOnClickListener {
+                showUninstallProtectionSnackbar(dialog)
+            }
+        } else {
+            binding.protectionWarningBanner.root.visibility = View.GONE
+            binding.uninstallAction.visibility = View.VISIBLE
+            binding.uninstallAction.isEnabled = true
+            binding.uninstallAction.alpha = 1.0f
 
             if (isUninstalled) {
                 // Show Reinstall action for uninstalled packages
                 binding.uninstallIcon.setImageResource(R.drawable.ic_check_circle)
                 val tealColor = ContextCompat.getColor(requireContext(), R.color.lineage_teal)
                 binding.uninstallIcon.setColorFilter(tealColor)
+                binding.uninstallIcon.alpha = 1.0f
                 binding.uninstallTitle.text = getString(R.string.action_reinstall)
                 binding.uninstallTitle.setTextColor(tealColor)
-                binding.uninstallDescription.text = getString(io.github.dorumrr.de1984.R.string.action_sheet_reinstall_desc)
+                binding.uninstallTitle.alpha = 1.0f
+                binding.uninstallDescription.text = getString(R.string.action_sheet_reinstall_desc)
+                binding.uninstallDescription.alpha = 1.0f
 
                 binding.uninstallAction.setOnClickListener {
                     dialog.dismiss()
@@ -875,9 +911,12 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
                 binding.uninstallIcon.setImageResource(R.drawable.ic_delete)
                 val redColor = ContextCompat.getColor(requireContext(), R.color.error_red)
                 binding.uninstallIcon.setColorFilter(redColor)
+                binding.uninstallIcon.alpha = 1.0f
                 binding.uninstallTitle.text = getString(R.string.action_uninstall)
                 binding.uninstallTitle.setTextColor(redColor)
-                binding.uninstallDescription.text = getString(io.github.dorumrr.de1984.R.string.action_sheet_uninstall_desc)
+                binding.uninstallTitle.alpha = 1.0f
+                binding.uninstallDescription.text = getString(R.string.action_sheet_uninstall_desc)
+                binding.uninstallDescription.alpha = 1.0f
 
                 binding.uninstallAction.setOnClickListener {
                     dialog.dismiss()
@@ -1390,6 +1429,22 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             }
         }
         return getString(stringResId)
+    }
+
+    /**
+     * Show snackbar informing user that package is protected from uninstall.
+     * Provides action button to navigate to Settings.
+     */
+    private fun showUninstallProtectionSnackbar(dialog: BottomSheetDialog) {
+        val parentView = dialog.window?.decorView ?: requireView()
+        Snackbar.make(
+            parentView,
+            getString(R.string.snackbar_uninstall_protected),
+            Snackbar.LENGTH_LONG
+        ).setAction(getString(R.string.snackbar_action_settings)) {
+            dialog.dismiss()
+            (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToSettings()
+        }.show()
     }
 }
 

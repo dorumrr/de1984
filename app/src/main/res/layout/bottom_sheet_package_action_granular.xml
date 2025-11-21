@@ -71,12 +71,21 @@
 
         </LinearLayout>
 
+        <!-- Protection Warning Banner -->
+        <include
+            android:id="@+id/protection_warning_banner"
+            layout="@layout/protection_warning_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
         <!-- Divider -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="?android:attr/listDivider"
             android:alpha="0.3"
+            android:layout_marginTop="0dp"
             android:layout_marginBottom="16dp" />
 
         <!-- Title -->
@@ -87,7 +96,16 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="?android:attr/textColorPrimary"
-            android:paddingBottom="16dp" />
+            android:layout_marginTop="4dp"
+            android:paddingBottom="12dp" />
+
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginBottom="12dp" />
 
         <!-- WiFi Toggle -->
         <include

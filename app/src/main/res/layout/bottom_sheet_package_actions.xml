@@ -243,8 +243,18 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginVertical="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="4dp"
         android:background="?android:attr/listDivider" />
+
+    <!-- Protection Warning Banner -->
+    <include
+        android:id="@+id/protection_warning_banner"
+        layout="@layout/protection_warning_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:visibility="gone" />
 
     <!-- Uninstall Action -->
     <LinearLayout

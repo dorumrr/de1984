@@ -18,7 +18,9 @@ import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.switchmaterial.SwitchMaterial
+import android.widget.TextView
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionGranularBinding
@@ -705,8 +707,32 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
         }
 
-        // Setup WiFi toggle
+        // Setup protection warning banner
         val allowCritical = settingsViewModel.uiState.value.allowCriticalPackageFirewall
+        val isProtected = (pkg.isSystemCritical || pkg.isVpnApp) && !allowCritical
+        if (isProtected) {
+            binding.protectionWarningBanner.root.visibility = View.VISIBLE
+
+            // Set banner message based on package type
+            val bannerMessage = when {
+                pkg.isSystemCritical -> getString(R.string.protection_banner_message_firewall_system)
+                pkg.isVpnApp -> getString(R.string.protection_banner_message_firewall_vpn)
+                else -> getString(R.string.protection_banner_message_firewall)
+            }
+
+            // Set the message text
+            binding.protectionWarningBanner.bannerMessage.text = bannerMessage
+
+            // Setup Settings button click listener
+            binding.protectionWarningBanner.bannerSettingsButton.setOnClickListener {
+                dialog.dismiss()
+                (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToSettings()
+            }
+        } else {
+            binding.protectionWarningBanner.root.visibility = View.GONE
+        }
+
+        // Setup WiFi toggle
         setupNetworkToggle(
             binding = binding.wifiToggle,
             label = getString(R.string.firewall_network_label_wifi),
@@ -767,6 +793,41 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             )
         }
 
+        // Add click listeners to toggle containers for protected packages
+        if (isProtected) {
+            // WiFi toggle - click on entire row to show snackbar
+            binding.wifiToggle.root.setOnClickListener {
+                if (!binding.wifiToggle.toggleSwitch.isEnabled) {
+                    showProtectionSnackbar(dialog)
+                }
+            }
+
+            // Mobile toggle - click on entire row to show snackbar
+            binding.mobileToggle.root.setOnClickListener {
+                if (!binding.mobileToggle.toggleSwitch.isEnabled) {
+                    showProtectionSnackbar(dialog)
+                }
+            }
+
+            // Roaming toggle - click on entire row to show snackbar (if visible)
+            if (hasCellular) {
+                binding.roamingToggle.root.setOnClickListener {
+                    if (!binding.roamingToggle.toggleSwitch.isEnabled) {
+                        showProtectionSnackbar(dialog)
+                    }
+                }
+            }
+
+            // LAN toggle - click on entire row to show snackbar (if visible)
+            if (backendTypeForLan == FirewallBackendType.IPTABLES) {
+                binding.lanToggle.root.setOnClickListener {
+                    if (!binding.lanToggle.toggleSwitch.isEnabled) {
+                        showProtectionSnackbar(dialog)
+                    }
+                }
+            }
+        }
+
         // Setup Background Access toggle (only shown when app is allowed)
         val defaultPolicy = viewModel.uiState.value.defaultFirewallPolicy
         val isBlockAllMode = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
@@ -796,19 +857,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding.foregroundOnlyToggle.root.visibility = View.GONE
         }
 
-        // Show info message
+        // Show info message (only for VPN-related info, not for system-critical packages)
+        // System-critical packages now show the protection banner at the top instead
         val app = requireActivity().application as De1984Application
         val firewallManager = app.dependencies.firewallManager
         val backendType = firewallManager.getActiveBackendType()
 
-        if ((pkg.isSystemCritical || pkg.isVpnApp) && allowCritical) {
-            // Show warning that critical protection is disabled
-            binding.infoMessage.visibility = View.VISIBLE
-            binding.infoMessage.text = getString(R.string.firewall_critical_allowed_info)
-        } else if (pkg.isSystemCritical) {
-            binding.infoMessage.visibility = View.VISIBLE
-            binding.infoMessage.text = getString(R.string.firewall_system_critical_info)
-        } else if (pkg.isVpnApp) {
+        if (pkg.isVpnApp) {
             binding.infoMessage.visibility = View.VISIBLE
             binding.infoMessage.text = getString(R.string.firewall_vpn_app_info)
         } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
@@ -1070,6 +1125,22 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             Constants.Firewall.STATE_BLOCKED -> getString(io.github.dorumrr.de1984.R.string.firewall_state_blocked)
             else -> internalFilter // Fallback to original
         }
+    }
+
+    /**
+     * Show snackbar informing user that package is protected.
+     * Provides action button to navigate to Settings.
+     */
+    private fun showProtectionSnackbar(dialog: BottomSheetDialog) {
+        val parentView = dialog.window?.decorView ?: requireView()
+        Snackbar.make(
+            parentView,
+            getString(R.string.snackbar_firewall_protected),
+            Snackbar.LENGTH_LONG
+        ).setAction(getString(R.string.snackbar_action_settings)) {
+            dialog.dismiss()
+            (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToSettings()
+        }.show()
     }
 
     companion object {

@@ -636,6 +636,14 @@ class MainActivity : AppCompatActivity() {
         }, 100)
     }
 
+    /**
+     * Navigate to Settings screen.
+     * Used for navigation from protection warning banners.
+     */
+    fun navigateToSettings() {
+        loadFragment(Tab.SETTINGS)
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         // Save current tab so it can be restored after configuration changes

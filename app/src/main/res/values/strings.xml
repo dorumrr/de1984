@@ -490,6 +490,22 @@
     <string name="firewall_badge_system_critical">System Critical</string>
     <string name="firewall_badge_vpn_app">VPN App</string>
 
+    <!-- Protection Warning Banner -->
+    <string name="protection_banner_title">🛡️ Protected Package</string>
+    <string name="protection_banner_message_firewall_system">This system-critical package is protected by default to prevent system instability. Enable \'Allow Firewall Critical Packages\' in Settings to modify network access.</string>
+    <string name="protection_banner_message_firewall_vpn">This VPN app is protected by default to prevent VPN reconnection issues. Enable \'Allow Firewall Critical Packages\' in Settings to modify network access.</string>
+    <string name="protection_banner_message_firewall">This package is protected by default. Enable \'Allow Firewall Critical Packages\' in Settings to modify network access.</string>
+    <string name="protection_banner_message_uninstall">This critical package is protected by default to prevent system instability. Enable \'Allow Uninstalling Critical Packages\' in Settings to uninstall it.</string>
+    <string name="protection_banner_button">Settings</string>
+
+    <!-- Snackbar Messages -->
+    <string name="snackbar_firewall_protected">This package is protected. Enable the setting in Settings to modify network access.</string>
+    <string name="snackbar_uninstall_protected">This package is protected. Enable the setting in Settings to uninstall.</string>
+    <string name="snackbar_action_settings">SETTINGS</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_protection_icon">Protection icon</string>
+
     <!-- Package Categories -->
     <string name="category_system_core">System Core</string>
     <string name="category_system_ui">System UI</string>

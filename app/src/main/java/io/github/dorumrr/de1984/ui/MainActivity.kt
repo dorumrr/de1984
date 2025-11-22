@@ -239,9 +239,14 @@ class MainActivity : AppCompatActivity() {
             Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT
         )
 
+        // Check if firewall is running by checking SharedPreferences directly
+        // Don't rely on ViewModel state which might not be initialized yet
+        val isFirewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
+
+        Log.d(TAG, "onPermissionsComplete: shouldShowPrompt=$shouldShowPrompt, isFirewallEnabled=$isFirewallEnabled")
+
         // Only show firewall start dialog if setting is enabled and firewall is not running
-        val isFirewallRunning = firewallViewModel.uiState.value.isFirewallEnabled
-        shouldShowFirewallStartDialog = shouldShowPrompt && !isFirewallRunning
+        shouldShowFirewallStartDialog = shouldShowPrompt && !isFirewallEnabled
 
         // UI is already setup in onCreate, just show dialog if needed
         if (shouldShowFirewallStartDialog) {

@@ -1,0 +1,9 @@
+• Added LAN blocking feature and critical package firewall settings
+• Refactored root and firewall management for improved state handling and performance
+• Enhanced firewall behavior with VPN fallback strategy and state machine implementation
+• Added protection warning banners for critical packages with option to enable capability
+• Fixed bottom dialog scroll
+• Enhanced VPN fallback strategy and state machine implementation
+• Implemented WorkManager for restoration on boot (Android 12+ compatibility)
+• Implemented boot failure recovery notification and handling
+• Other optimisations and performance improvements

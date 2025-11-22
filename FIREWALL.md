@@ -96,6 +96,80 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
 - If backend becomes unavailable, immediately trigger fallback to VPN
 - Never leave a gap where firewall is down if possible
 
+### VPN Fallback Without Permission
+
+When a privileged backend fails and VPN permission is not granted:
+
+1. **Immediate Actions**:
+   - Show high-priority notification requesting VPN permission
+   - Set firewall state to `Error` with clear warning message
+   - Update UI to show "Firewall not running" with error indicator
+   - Mark firewall as DOWN (`isFirewallDown = true`)
+
+2. **Background Monitoring**:
+   - Continue monitoring for privileged backend availability (root/Shizuku may return)
+   - Listen for VPN permission grant (user taps notification)
+   - Do NOT attempt to start VPN without permission - it will fail silently
+
+3. **Security Warning**:
+   - Firewall is DOWN - all apps are UNBLOCKED
+   - User MUST be warned prominently in UI and notification
+   - Notification should be persistent until resolved
+
+4. **Recovery Paths**:
+   - **Path A**: User grants VPN permission via notification → Automatically start VPN backend
+   - **Path B**: Privileged backend becomes available again → Automatically switch to privileged backend
+   - **Path C**: User opens app and manually starts firewall → Request VPN permission via system dialog
+
+**Critical Rule**: Never silently fail. If firewall cannot be started, user must be explicitly warned that protection is OFF.
+
+### Privilege Monitoring Strategy
+
+**Adaptive Monitoring Intervals**:
+
+The app uses adaptive health check intervals to balance responsiveness and battery efficiency:
+
+- **Initial interval**: 1 second (fast detection of privilege changes)
+- **After 10 consecutive successful checks**: Increase to 5 seconds
+- **After 20 consecutive successful checks**: Increase to 10 seconds
+- **After 30 consecutive successful checks**: Increase to 30 seconds (stable state)
+- **On any failure**: Reset to 1 second immediately (fast recovery)
+
+**What to Monitor**:
+
+1. **Root Status** (for iptables backend):
+   - Execute `su -c id` command
+   - Check for `uid=0` in output
+   - Timeout after 3 seconds
+   - Cache result to avoid hammering Magisk/SuperSU
+
+2. **Shizuku Status** (for ConnectivityManager/iptables backends):
+   - Check if Shizuku binder is available
+   - Verify permission is granted
+   - Listen to Shizuku lifecycle callbacks (binder received/dead)
+   - Check Shizuku UID to determine root mode (UID 0) vs ADB mode (UID 2000)
+
+3. **Backend Health**:
+   - Verify backend can still execute commands
+   - For iptables: Test `iptables -L` command
+   - For ConnectivityManager: Test Shizuku shell command execution
+   - For VPN: Check if VPN interface is active
+
+**When to Trigger Fallback**:
+
+- Immediately on **first** health check failure
+- Do NOT wait for multiple failures (security-critical)
+- Atomic switch to prevent security gap
+- If manual mode backend fails, normalize to AUTO mode first
+
+**Monitoring Lifecycle**:
+
+- Start monitoring when firewall starts
+- Stop monitoring when firewall stops
+- Continue monitoring during backend switches
+- Privileged backends: Monitor in PrivilegedFirewallService (foreground service)
+- VPN backend: Monitor internally in FirewallVpnService
+
 ---
 
 ## 1. VPN Backend
@@ -239,4 +313,301 @@ Network changes have no effect on blocking decisions since all apps are either b
 - Telegram (has "block" rule) → Blocked everywhere (WiFi, Mobile, Roaming)
 
 Switching between WiFi and Mobile has no effect - the blocking state remains the same.
+
+---
+
+## Firewall State Machine
+
+The firewall operates as a state machine with well-defined states and transitions. This ensures consistent behavior and proper UI synchronization.
+
+### States
+
+1. **`Stopped`**: No backend running, firewall is OFF
+   - User has disabled firewall
+   - No backend service is active
+   - No firewall rules are applied
+   - All apps have unrestricted network access
+
+2. **`Starting(backend)`**: Backend service launched, waiting for active confirmation
+   - Backend service has been started (Intent sent)
+   - Waiting for backend to report active via `isActive()`
+   - UI should show loading indicator
+   - This is a transient state (should resolve within 1-2 seconds)
+
+3. **`Running(backend)`**: Backend active and confirmed working
+   - Backend service is running and `isActive()` returns true
+   - Firewall rules are applied and enforced
+   - Health monitoring is active
+   - UI toggle should be ON
+
+4. **`Switching(from, to)`**: Transitioning between backends (atomic)
+   - New backend is starting while old backend is still active
+   - Ensures no security gap during transition
+   - Old backend stops only after new backend is confirmed active
+   - UI should show loading indicator with backend change message
+
+5. **`Error(message, lastBackend)`**: Backend failed, firewall is DOWN
+   - Backend failed to start or crashed
+   - No firewall rules are active
+   - All apps are UNBLOCKED (security risk!)
+   - UI must show prominent error warning
+   - User must be notified
+
+### State Transitions
+
+```
+Stopped → Starting: User enables firewall
+Starting → Running: Backend confirms active (isActive() returns true)
+Starting → Error: Backend fails to start (timeout, permission denied, crash)
+
+Running → Switching: Privilege change detected OR backend failure detected
+Running → Stopped: User disables firewall
+Running → Error: Backend crashes unexpectedly
+
+Switching → Running: New backend active, old backend stopped successfully
+Switching → Error: New backend fails to start (keep old backend if still active)
+
+Error → Starting: Recovery attempt (privilege restored, VPN permission granted, user retry)
+Error → Stopped: User explicitly stops firewall
+```
+
+### UI Synchronization Rules
+
+**Toggle State**:
+- ON: Only when state is `Running`
+- OFF: When state is `Stopped` or `Error`
+- Disabled: When state is `Starting` or `Switching` (show loading)
+
+**Status Display**:
+- `Stopped`: "Firewall OFF" badge
+- `Starting`: "Starting..." with loading indicator
+- `Running`: "Firewall Active" badge + backend type
+- `Switching`: "Switching backend..." with loading indicator
+- `Error`: "Firewall not running" with error icon + error message
+
+**User Actions**:
+- User can always toggle OFF (stop firewall)
+- User can toggle ON only from `Stopped` or `Error` states
+- User cannot interact during `Starting` or `Switching` (prevent race conditions)
+
+### State Persistence
+
+**SharedPreferences Keys**:
+- `KEY_FIREWALL_ENABLED`: User intent (should firewall be running?)
+- `KEY_VPN_SERVICE_RUNNING`: Is VPN service active?
+- `KEY_PRIVILEGED_SERVICE_RUNNING`: Is privileged service active?
+- `KEY_PRIVILEGED_BACKEND_TYPE`: Which privileged backend is active?
+
+**State Recovery on App Restart**:
+1. Read `KEY_FIREWALL_ENABLED` to determine user intent
+2. Check if any backend service is actually running (`isActive()`)
+3. Synchronize state:
+   - If should be running but not active → Restart firewall
+   - If should be stopped but active → Stop backend
+   - If backend type mismatch → Restart with correct backend
+4. Emit correct `firewallState` to UI
+
+---
+
+## App Initialization and State Recovery
+
+When the app starts (or returns from background), it must recover the correct firewall state.
+
+### Initialization Sequence
+
+1. **Check User Intent**:
+   - Read `KEY_FIREWALL_ENABLED` from SharedPreferences
+   - This tells us if user wants firewall running
+
+2. **Detect Running Backends**:
+   - Check VPN backend: `VpnFirewallBackend.isActive()`
+   - Check iptables backend: `IptablesFirewallBackend.isActive()`
+   - Check ConnectivityManager backend: `ConnectivityManagerFirewallBackend.isActive()`
+   - Check NetworkPolicyManager backend: `NetworkPolicyManagerFirewallBackend.isActive()`
+
+3. **Synchronize State**:
+   - **Case A**: Firewall should be running AND backend is active
+     - Set `currentBackend` to detected backend
+     - Set `_activeBackendType` to detected backend type
+     - Set `_firewallState` to `Running(backendType)`
+     - Start health monitoring
+
+   - **Case B**: Firewall should be running BUT no backend is active
+     - Backend crashed or was killed
+     - Attempt to restart firewall with best available backend
+     - Set `_firewallState` to `Starting(backendType)`
+
+   - **Case C**: Firewall should be stopped BUT backend is active
+     - Orphaned backend service (shouldn't happen)
+     - Stop the backend service
+     - Set `_firewallState` to `Stopped`
+
+   - **Case D**: Firewall should be stopped AND no backend is active
+     - Normal stopped state
+     - Set `_firewallState` to `Stopped`
+
+4. **Start Monitoring**:
+   - Start privilege monitoring (root + Shizuku status)
+   - Start backend health monitoring (if firewall running)
+   - Start network/screen state monitoring (if needed by backend)
+
+5. **Update UI**:
+   - Emit current `firewallState` to UI
+   - UI observes StateFlow and updates toggle/badges accordingly
+
+### Edge Cases
+
+**App killed while firewall running**:
+- VPN service survives (foreground service)
+- Privileged service survives (foreground service)
+- On app restart: Detect running service and reconnect (Case A)
+
+**Device rebooted**:
+- All services are killed
+- BootReceiver starts firewall if `KEY_FIREWALL_ENABLED` is true
+- App initializes later and detects running service (Case A)
+
+**Backend crashed**:
+- Health monitoring detects failure
+- Triggers automatic fallback to VPN
+- State transitions: `Running` → `Switching` → `Running(VPN)` or `Error`
+
+**Backend type mismatch**:
+- SharedPreferences says iptables, but VPN is running
+- This can happen if backend failed and fell back to VPN
+- Accept the running backend, update SharedPreferences
+- Continue monitoring for privilege restoration
+
+**Firewall down but user intent preserved**:
+- `KEY_FIREWALL_ENABLED` is true but `_firewallState` is `Error`
+- `_isFirewallDown` flag is true
+- When privileges are restored, automatically attempt recovery
+- This allows seamless recovery without user intervention
+
+---
+
+## Backend Health Check Behavior
+
+Health checks ensure the firewall backend remains functional and triggers fallback when needed.
+
+### Health Check Execution
+
+**For Privileged Backends** (iptables, ConnectivityManager, NetworkPolicyManager):
+- Executed in PrivilegedFirewallService (foreground service)
+- Runs on adaptive interval (1s → 30s based on stability)
+- Checks backend availability via `checkAvailability()` method
+
+**For VPN Backend**:
+- Monitored internally in FirewallVpnService
+- Checks VPN interface status
+- Monitors network state changes
+- No external health checks needed
+
+### Health Check Logic
+
+1. **Execute Check**:
+   - For iptables: Force re-check root status, then test `iptables -L`
+   - For ConnectivityManager: Test Shizuku shell command execution
+   - For NetworkPolicyManager: Test Shizuku shell command execution
+
+2. **On Success**:
+   - Increment consecutive success counter
+   - Increase check interval if threshold reached (adaptive)
+   - Continue monitoring
+
+3. **On Failure**:
+   - Log failure with details
+   - Reset consecutive success counter to 0
+   - Reset check interval to 1 second (fast recovery)
+   - Trigger `handleBackendFailure()`
+   - Stop health monitoring (new backend will start its own)
+
+### Failure Handling
+
+When health check fails:
+
+1. **Determine Current Mode**:
+   - If manual mode: Normalize to AUTO mode
+   - If AUTO mode: Keep AUTO mode
+
+2. **Compute Fallback Plan**:
+   - Use `computeStartPlan()` to determine best available backend
+   - Planner considers all available backends and permissions
+
+3. **Execute Fallback**:
+   - **If planner selects non-VPN backend**: Call `startFirewall()` directly
+   - **If planner selects VPN backend**:
+     - Check VPN permission
+     - If granted: Start VPN automatically
+     - If not granted: Show notification, set state to `Error`, mark firewall as DOWN
+
+4. **Update State**:
+   - On success: `_firewallState` = `Running(newBackend)`
+   - On failure: `_firewallState` = `Error`, `_isFirewallDown` = true
+
+### Retry Strategy
+
+**No automatic retries on health check failure**:
+- Health checks already run frequently (1-30 seconds)
+- Immediate fallback is more secure than retrying failed backend
+- User can manually retry from error state
+
+**Automatic recovery when privileges return**:
+- Privilege monitoring detects when root/Shizuku becomes available
+- Automatically attempts to switch back to better backend
+- This provides seamless recovery without user intervention
+
+---
+
+## Notification Strategy
+
+Notifications inform users about firewall state changes and issues.
+
+### Notification Types
+
+1. **Foreground Service Notifications** (persistent):
+   - VPN backend: "De1984 Firewall Active (VPN)"
+   - iptables backend: "De1984 Firewall Active (iptables)"
+   - ConnectivityManager backend: "De1984 Firewall Active (ConnectivityManager)"
+   - These are required by Android for foreground services
+   - Cannot be dismissed while service is running
+
+2. **VPN Fallback Notification** (high priority):
+   - Shown when privileged backend fails and VPN permission not granted
+   - Title: "Firewall Protection Lost"
+   - Message: "Root/Shizuku access lost. Grant VPN permission to restore protection."
+   - Action: "Enable VPN" (opens app and requests permission)
+   - Auto-cancel: Yes (dismissed when user taps)
+
+3. **Backend Monitoring Notification** (low priority):
+   - Shown when firewall falls back to VPN at boot (Shizuku not ready)
+   - Title: "Waiting for Shizuku"
+   - Message: "Firewall using VPN. Will switch to iptables when Shizuku is ready."
+   - Action: "Retry Now" (attempts backend switch)
+   - Dismissible: Yes
+   - Auto-stops after 5 minutes or when Shizuku becomes available
+
+4. **Silent Notifications** (no sound/vibration):
+   - Backend switch success: "Firewall switched to [backend]"
+   - Only shown if user has notifications enabled
+   - Low priority, auto-dismiss after 5 seconds
+
+### Notification Rules
+
+**When to show notifications**:
+- ✅ Backend failure with VPN permission needed (high priority)
+- ✅ Firewall falls back to VPN at boot (low priority, dismissible)
+- ✅ Foreground service running (required by Android)
+- ❌ Automatic backend switch success (silent, no notification)
+- ❌ Health check failures (logged only, no notification spam)
+
+**Notification channels**:
+- `firewall_service`: Foreground service notifications (importance: LOW)
+- `vpn_fallback`: VPN permission requests (importance: HIGH)
+- `backend_monitoring`: Backend monitoring status (importance: LOW)
+
+**User control**:
+- Users can disable notification channels in Android settings
+- Foreground service notifications cannot be fully disabled (Android requirement)
+- App continues to work even if notifications are disabled
 

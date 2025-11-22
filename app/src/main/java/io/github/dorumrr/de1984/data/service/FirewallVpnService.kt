@@ -642,6 +642,12 @@ class FirewallVpnService : VpnService() {
             val isBlockAllDefault = defaultPolicy == io.github.dorumrr.de1984.utils.Constants.Settings.POLICY_BLOCK_ALL
             Log.d(TAG, "applyFirewallRules: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
 
+            // Check if critical package protection is disabled (read once, not in loop)
+            val allowCritical = prefs.getBoolean(
+                io.github.dorumrr.de1984.utils.Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+            )
+
             val rulesList = firewallRepository.getAllRules().first()
             Log.d(TAG, "applyFirewallRules: loaded ${rulesList.size} rules from database")
 
@@ -678,13 +684,6 @@ class FirewallVpnService : VpnService() {
 
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
-
-                // Check if critical package protection is disabled
-                val prefs = getSharedPreferences(io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                val allowCritical = prefs.getBoolean(
-                    io.github.dorumrr.de1984.utils.Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
-                    io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
-                )
 
                 // Never block system-critical packages (unless setting is enabled)
                 if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {

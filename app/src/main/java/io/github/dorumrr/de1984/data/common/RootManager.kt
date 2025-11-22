@@ -47,15 +47,36 @@ class RootManager(private val context: Context) {
         prefs.edit().putBoolean(KEY_ROOT_PERMISSION_REQUESTED, true).apply()
     }
 
+    /**
+     * Public root status check used by UI and privilege banners.
+     *
+     * Optimized to avoid hammering Magisk/Shizuku once we have a stable
+     * ROOTED_WITH_PERMISSION state. Other states are re-checked so the app
+     * can recover when a user later grants permission.
+     */
     suspend fun checkRootStatus() {
+        checkRootStatusInternalWithCaching(forceRecheck = false)
+    }
+
+    /**
+     * Internal helper that allows callers (like backend health monitoring)
+     * to force a re-check even if we previously had ROOTED_WITH_PERMISSION.
+     */
+    suspend fun forceRecheckRootStatus() {
+        checkRootStatusInternalWithCaching(forceRecheck = true)
+    }
+
+    private suspend fun checkRootStatusInternalWithCaching(forceRecheck: Boolean) {
         val currentStatus = _rootStatus.value
 
-        Log.d(TAG, "=== checkRootStatus() called ===")
-        Log.d(TAG, "Current status: $currentStatus, hasCheckedOnce: $hasCheckedOnce")
+        Log.d(TAG, "=== checkRootStatusInternalWithCaching() called ===")
+        Log.d(TAG, "Current status: $currentStatus, hasCheckedOnce: $hasCheckedOnce, forceRecheck: $forceRecheck")
 
-        // Only skip check if we have definitive permission
-        if (hasCheckedOnce && currentStatus == RootStatus.ROOTED_WITH_PERMISSION) {
-            Log.d(TAG, "Skipping check - already have permission")
+        // Only skip check if we have definitive permission AND caller did not
+        // explicitly request a re-check (e.g., health monitoring after root
+        // revocation from Magisk).
+        if (!forceRecheck && hasCheckedOnce && currentStatus == RootStatus.ROOTED_WITH_PERMISSION) {
+            Log.d(TAG, "Skipping check - already have permission and no forceRecheck")
             return
         }
 
@@ -72,32 +93,10 @@ class RootManager(private val context: Context) {
 
     private suspend fun checkRootStatusInternal(): RootStatus = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Checking for su binary...")
-            // First, check if 'su' binary exists without executing it
-            val suPaths = arrayOf(
-                "/system/bin/su",
-                "/system/xbin/su",
-                "/sbin/su",
-                "/su/bin/su",
-                "/magisk/.core/bin/su"
-            )
+            Log.d(TAG, "Testing root access via 'su -c id'...")
 
-            val suExists = suPaths.any { path ->
-                try {
-                    java.io.File(path).exists()
-                } catch (e: Exception) {
-                    false
-                }
-            }
-
-            if (!suExists) {
-                Log.d(TAG, "No su binary found - device is NOT_ROOTED")
-                return@withContext RootStatus.NOT_ROOTED
-            }
-
-            Log.d(TAG, "su binary found - testing root access...")
-            // Now try to execute 'su' to check if we have permission
-            // This will trigger permission dialog if not granted yet
+            // Directly try to execute 'su' to check if we have permission.
+            // This will trigger the root manager (Magisk, etc.) if available.
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
 
             val completed = kotlinx.coroutines.withTimeoutOrNull(3000) {
@@ -140,11 +139,11 @@ class RootManager(private val context: Context) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception during root check: ${e.message}", e)
-            // Exception during check - assume no permission
-            return@withContext RootStatus.ROOTED_NO_PERMISSION
+            // If su is not available at all, treat as NOT_ROOTED
+            return@withContext RootStatus.NOT_ROOTED
         }
     }
-    
+
     suspend fun executeRootCommand(command: String): Pair<Int, String> = withContext(Dispatchers.IO) {
         if (!hasRootPermission) {
             return@withContext Pair(-1, "No root permission")

@@ -425,6 +425,19 @@ class PrivilegedFirewallService : Service() {
                     Log.d(TAG, "=== SERVICE HEALTH CHECK: $backendType ===")
                     Log.d(TAG, "Checking if backend still has required permissions... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
 
+                    // For root-based backends (iptables) explicitly re-check root status so
+                    // we can detect Magisk revocation while the app is in background.
+                    if (backendType == FirewallBackendType.IPTABLES) {
+                        try {
+                            val app = application as De1984Application
+                            val deps = app.dependencies
+                            Log.d(TAG, "Health check: forcing root status re-check for iptables backend")
+                            deps.rootManager.forceRecheckRootStatus()
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Health check: failed to force root status re-check: ${e.message}")
+                        }
+                    }
+
                     // Check if backend is still available (root/Shizuku access, iptables binary, etc.)
                     val availabilityResult = backend.checkAvailability()
 
@@ -519,10 +532,25 @@ class PrivilegedFirewallService : Service() {
             else -> "Unknown"
         }
 
+        // Open the main UI when the user taps the notification so they can see
+        // the current firewall state and manually restart if needed.
+        // We intentionally do NOT try to start any backend directly from here;
+        // FirewallManager's planner remains the single source of truth.
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.privileged_firewall_failure_notification_title))
             .setContentText(getString(R.string.privileged_firewall_failure_notification_text, backendName))
             .setSmallIcon(R.drawable.ic_notification_de1984)
+            .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()

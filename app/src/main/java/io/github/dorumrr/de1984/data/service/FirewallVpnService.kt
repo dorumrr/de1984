@@ -596,13 +596,14 @@ class FirewallVpnService : VpnService() {
                 // VPN permission not granted - stop the service and update firewall state
                 Log.e(TAG, "VPN permission not granted - cannot establish VPN interface")
 
-                // Update SharedPreferences to indicate firewall is disabled
+                // Update SharedPreferences to indicate VPN service is not running
+                // IMPORTANT: Do NOT clear KEY_FIREWALL_ENABLED here!
+                // We want to preserve user intent so handlePrivilegeChange() can attempt recovery.
                 val prefs = getSharedPreferences(
                     io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
                     Context.MODE_PRIVATE
                 )
                 prefs.edit()
-                    .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_FIREWALL_ENABLED, false)
                     .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING, false)
                     .apply()
 

@@ -19,6 +19,8 @@ import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.FirewallFilterState
 import io.github.dorumrr.de1984.domain.usecase.GetNetworkPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManageNetworkAccessUseCase
+import io.github.dorumrr.de1984.data.firewall.FirewallManager.FirewallState
+
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Job
@@ -67,8 +69,9 @@ class FirewallViewModel(
 
     init {
         loadNetworkPackages()
+        observeFirewallState()
+
         loadDefaultPolicy()
-        loadFirewallState()
         // NOTE: Privilege monitoring for automatic backend switching is now handled
         // at the application level in FirewallManager, not in the ViewModel.
         // This ensures automatic switching works even when the app is not open.
@@ -86,17 +89,19 @@ class FirewallViewModel(
         Log.d(TAG, "loadDefaultPolicy: Updated uiState.defaultFirewallPolicy to: ${_uiState.value.defaultFirewallPolicy}")
     }
 
-    private fun loadFirewallState() {
-        val prefs = getApplication<Application>().getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-        val isEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, Constants.Settings.DEFAULT_FIREWALL_ENABLED)
-
-        _uiState.value = _uiState.value.copy(isFirewallEnabled = isEnabled)
-    }
 
     private fun saveFirewallState(enabled: Boolean) {
         val prefs = getApplication<Application>().getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, enabled).apply()
+    }
 
+    private fun observeFirewallState() {
+        firewallManager.firewallState
+            .onEach { state ->
+                val enabled = state is FirewallState.Running
+                _uiState.value = _uiState.value.copy(isFirewallEnabled = enabled)
+            }
+            .launchIn(viewModelScope)
     }
 
     fun refreshDefaultPolicy() {
@@ -104,7 +109,7 @@ class FirewallViewModel(
         loadDefaultPolicy()
         loadNetworkPackages()
     }
-    
+
     fun loadNetworkPackages() {
         // Cancel any previous loading operation
         loadJob?.cancel()
@@ -142,7 +147,7 @@ class FirewallViewModel(
             }
             .launchIn(viewModelScope)
     }
-    
+
     fun setPackageTypeFilter(packageType: String) {
         val currentFilterState = _uiState.value.filterState
         val newFilterState = currentFilterState.copy(
@@ -181,7 +186,7 @@ class FirewallViewModel(
         // Load packages will emit the state with correct data
         loadNetworkPackages()
     }
-    
+
     fun setWifiBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
             // Optimistically update UI first
@@ -414,7 +419,7 @@ class FirewallViewModel(
         }
         _uiState.value = _uiState.value.copy(packages = updatedPackages)
     }
-    
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
@@ -432,53 +437,59 @@ class FirewallViewModel(
     }
 
     fun startFirewall(): Intent? {
-        // Check if VPN permission is needed BEFORE starting firewall
+        // Compute minimal start plan (backend type + VPN permission requirement)
+        // instead of duplicating backend selection logic here.
         val mode = firewallManager.getCurrentMode()
-        val hasRoot = rootManager.hasRootPermission
-        val hasShizuku = shizukuManager.hasShizukuPermission
 
-        // Determine if VPN backend will be used
-        val needsVpnPermission = when (mode) {
-            io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN -> {
-                // Explicit VPN mode
-                true
+        // Synchronously compute the start plan so we can reliably decide
+        // whether VPN permission is required before returning.
+        val planResult = runCatching {
+            // This is a quick, non-blocking call in practice (availability
+            // checks are light), and we rely on the underlying dispatcher
+            // configuration to keep things responsive.
+            kotlinx.coroutines.runBlocking {
+                firewallManager.computeStartPlan(mode)
             }
-            io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO -> {
-                // AUTO mode: check if iptables or ConnectivityManager will be available
-                val canUseIptables = hasRoot || (hasShizuku && shizukuManager.isShizukuRootMode())
-                val canUseConnectivityManager = hasShizuku && android.os.Build.VERSION.SDK_INT >= 33
-                !canUseIptables && !canUseConnectivityManager
+        }.fold(
+            onSuccess = { result ->
+                result.getOrElse { error ->
+                    Log.e(TAG, "startFirewall: Failed to compute start plan", error)
+                    null
+                }
+            },
+            onFailure = { throwable ->
+                Log.e(TAG, "startFirewall: Failed to compute start plan", throwable)
+                null
             }
-            else -> {
-                // IPTABLES, CONNECTIVITY_MANAGER, or other explicit modes don't need VPN
-                false
-            }
-        }
+        )
+
+        val needsVpnPermission = planResult?.let { plan ->
+            plan.selectedBackendType == FirewallBackendType.VPN && plan.requiresVpnPermission
+        } ?: false
 
         if (needsVpnPermission) {
-            // VPN mode - check permission first
             val prepareIntent = VpnService.prepare(getApplication())
             if (prepareIntent != null) {
-                // Permission not granted yet - return intent to request it
+                // Permission dialog must be shown by the Activity. We do NOT
+                // start the firewall here; onVpnPermissionGranted() will be
+                // called after the user responds.
                 return prepareIntent
             }
-            // Permission already granted - continue to start firewall
         }
 
-        // Start firewall (either iptables mode or VPN with permission already granted)
+        // Either VPN permission is already granted, or a privileged backend
+        // will be used. Start the firewall asynchronously.
         viewModelScope.launch {
-            val result = firewallManager.startFirewall()
+            val result = firewallManager.startFirewall(mode)
 
             result.onSuccess { _ ->
-                _uiState.value = _uiState.value.copy(isFirewallEnabled = true)
                 saveFirewallState(true)
 
                 // Request battery optimization exemption after firewall starts successfully
-                // This is important for both VPN and iptables modes to prevent service from being killed
+                // This is important for both VPN and privileged backends to prevent services from being killed
                 requestBatteryOptimizationIfNeeded()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
-                    isFirewallEnabled = false,
                     error = error.message
                 )
                 saveFirewallState(false)
@@ -510,7 +521,6 @@ class FirewallViewModel(
     fun stopFirewall() {
         viewModelScope.launch {
             firewallManager.stopFirewall()
-            _uiState.value = _uiState.value.copy(isFirewallEnabled = false)
             saveFirewallState(false)
         }
     }
@@ -522,7 +532,6 @@ class FirewallViewModel(
     }
 
     fun onVpnPermissionDenied() {
-        _uiState.value = _uiState.value.copy(isFirewallEnabled = false)
         saveFirewallState(false)
     }
 

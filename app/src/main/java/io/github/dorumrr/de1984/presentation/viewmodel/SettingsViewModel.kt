@@ -314,8 +314,9 @@ class SettingsViewModel(
             val result = firewallManager.startFirewall(newMode)
 
             result.onFailure { error ->
-                // Update SharedPreferences to reflect firewall is stopped
-                prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
+                // IMPORTANT: Do NOT clear KEY_FIREWALL_ENABLED here!
+                // We want to preserve user intent so handlePrivilegeChange() can attempt recovery.
+                // FirewallManager will set isFirewallDown=true to track the error state.
 
                 // Show error to user
                 _uiState.value = _uiState.value.copy(

@@ -225,6 +225,13 @@ class MainActivity : AppCompatActivity() {
     private fun onPermissionsComplete() {
         permissionsCompleted = true
 
+        // Check if we're handling a VPN fallback request - if so, don't show the dialog
+        val isVpnFallbackRequest = intent?.action == Constants.Notifications.ACTION_ENABLE_VPN_FALLBACK
+        if (isVpnFallbackRequest) {
+            Log.d(TAG, "onPermissionsComplete: Skipping firewall start dialog - handling VPN fallback request")
+            return
+        }
+
         // Check if we should show the firewall start prompt
         val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val shouldShowPrompt = prefs.getBoolean(

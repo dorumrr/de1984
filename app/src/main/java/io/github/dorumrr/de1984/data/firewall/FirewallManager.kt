@@ -1089,8 +1089,14 @@ class FirewallManager(
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
             prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
 
+            // Clear firewall down flag - firewall is now running
+            _isFirewallDown.value = false
+
             // Dismiss notification if it was shown
             dismissVpnFallbackNotification()
+
+            // Apply firewall rules to the VPN backend
+            applyRules()
 
             // Show warning to user
             val warningMessage = if (wasManualSelection) {

@@ -217,6 +217,7 @@
     <string name="cd_captive_portal_icon">Ícone de Portal Cativo</string>
     <string name="cd_apps_icon">Ícone de apps</string>
     <string name="cd_permission_status">Estado da permissão</string>
+    <string name="cd_protection_icon">Ícone de proteção</string>
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">Noites tardias para dias mais brilhantes.\nCriado por Doru Moraru</string>
@@ -367,6 +368,9 @@
     <string name="settings_allow_uninstall_critical_title">Permitir Desinstalar Pacotes Críticos</string>
     <string name="settings_allow_uninstall_critical_description">Mostrar opção de desinstalar para pacotes Essenciais e Importantes</string>
 
+    <string name="settings_allow_firewall_critical_title">Permitir Firewall de Pacotes Críticos</string>
+    <string name="settings_allow_firewall_critical_description">Permitir bloqueio de acesso à rede para pacotes críticos do sistema e VPN</string>
+
     <string name="settings_show_firewall_prompt_title">Mostrar Prompt de Iniciar Firewall</string>
     <string name="settings_show_firewall_prompt_description">Mostrar um prompt para iniciar o firewall quando o app abre e o firewall está inativo</string>
 
@@ -440,6 +444,9 @@
     <string name="dialog_critical_uninstall_title">⚠️ Aviso</string>
     <string name="dialog_critical_uninstall_message">Isto permite desinstalar pacotes críticos do sistema que podem danificar seu dispositivo. Ative apenas se souber o que está fazendo.\n\nTem certeza que deseja ativar isto?</string>
     <string name="dialog_critical_uninstall_enable">Ativar</string>
+    <string name="dialog_critical_firewall_title">⚠️ Aviso</string>
+    <string name="dialog_critical_firewall_message">Isto permite bloquear o acesso à rede para pacotes críticos do sistema (WiFi, Bluetooth, Gerenciador de Downloads, etc.) e apps VPN.\n\nBloquear estes pacotes pode:\n• Quebrar a conectividade de rede\n• Impedir o funcionamento de WiFi/Bluetooth\n• Causar problemas de reconexão VPN\n• Exigir reset de fábrica ou ADB para corrigir\n\nAtive apenas se souber o que está fazendo.\n\nTem certeza de que deseja ativar isto?</string>
+    <string name="dialog_critical_firewall_enable">Ativar</string>
     <string name="dialog_restart_title">Reinicialização Necessária</string>
     <string name="dialog_restart_message">O app precisa reiniciar para aplicar o novo tema de cor. Reiniciar agora?</string>
     <string name="dialog_restart_confirm">Reiniciar</string>
@@ -472,6 +479,7 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Dados Móveis</string>
     <string name="firewall_network_label_roaming">Roaming</string>
+    <string name="firewall_network_label_lan">Bloquear Acesso LAN</string>
     <string name="firewall_network_label_background_access">Permitir em Segundo Plano</string>
     <string name="firewall_network_label_block_internet">Bloquear Internet</string>
     <string name="firewall_background_access_description">Permitir que o app acesse a internet quando em segundo plano</string>
@@ -479,8 +487,22 @@
     <string name="firewall_block_all_info">Isto bloqueia todos os tipos de rede (WiFi, Móvel, Roaming).</string>
     <string name="firewall_system_critical_info">⚠️ Pacote Crítico do Sistema - Acesso à rede não pode ser modificado para prevenir instabilidade do sistema.</string>
     <string name="firewall_vpn_app_info">🔒 App VPN - Sempre permitido para prevenir problemas de reconexão VPN após bloqueio/desbloqueio do dispositivo.</string>
+    <string name="firewall_critical_allowed_info">⚠️ A proteção de pacotes críticos está desativada nas Configurações. Bloquear o acesso à rede pode causar instabilidade do sistema ou problemas de VPN.</string>
     <string name="firewall_badge_system_critical">Crítico do Sistema</string>
     <string name="firewall_badge_vpn_app">App VPN</string>
+
+    <!-- Protection Warning Banner -->
+    <string name="protection_banner_title">🛡️ Pacote Protegido</string>
+    <string name="protection_banner_message_firewall_system">Este pacote crítico do sistema está protegido por padrão para prevenir instabilidade do sistema. Ative \'Permitir Firewall de Pacotes Críticos\' nas Configurações para modificar o acesso à rede.</string>
+    <string name="protection_banner_message_firewall_vpn">Este app VPN está protegido por padrão para prevenir problemas de reconexão VPN. Ative \'Permitir Firewall de Pacotes Críticos\' nas Configurações para modificar o acesso à rede.</string>
+    <string name="protection_banner_message_firewall">Este pacote está protegido por padrão. Ative \'Permitir Firewall de Pacotes Críticos\' nas Configurações para modificar o acesso à rede.</string>
+    <string name="protection_banner_message_uninstall">Este pacote crítico está protegido por padrão para prevenir instabilidade do sistema. Ative \'Permitir Desinstalação de Pacotes Críticos\' nas Configurações para desinstalá-lo.</string>
+    <string name="protection_banner_button">Configurações</string>
+
+    <!-- Snackbar Messages -->
+    <string name="snackbar_firewall_protected">Este pacote está protegido. Ative a configuração nas Configurações para modificar o acesso à rede.</string>
+    <string name="snackbar_uninstall_protected">Este pacote está protegido. Ative a configuração nas Configurações para desinstalar.</string>
+    <string name="snackbar_action_settings">CONFIGURAÇÕES</string>
 
     <!-- Package Categories -->
     <string name="category_system_core">Núcleo do Sistema</string>

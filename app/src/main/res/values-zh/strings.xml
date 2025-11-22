@@ -227,6 +227,7 @@
     <string name="cd_captive_portal_icon">强制门户图标</string>
     <string name="cd_apps_icon">应用图标</string>
     <string name="cd_permission_status">权限状态</string>
+    <string name="cd_protection_icon">保护图标</string>
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">为更美好的明天而熬夜。\n由 Doru Moraru 创建</string>
@@ -377,6 +378,9 @@
     <string name="settings_allow_uninstall_critical_title">允许卸载关键软件包</string>
     <string name="settings_allow_uninstall_critical_description">显示必需和重要软件包的卸载选项</string>
 
+    <string name="settings_allow_firewall_critical_title">允许防火墙关键软件包</string>
+    <string name="settings_allow_firewall_critical_description">允许阻止系统关键软件包和 VPN 的网络访问</string>
+
     <string name="settings_show_firewall_prompt_title">显示防火墙启动提示</string>
     <string name="settings_show_firewall_prompt_description">当应用打开且防火墙未激活时显示启动防火墙的提示</string>
 
@@ -450,6 +454,9 @@
     <string name="dialog_critical_uninstall_title">⚠️ 警告</string>
     <string name="dialog_critical_uninstall_message">这允许卸载可能使您的设备变砖的系统关键软件包。只有在您知道自己在做什么时才启用。\n\n您确定要启用此功能吗？</string>
     <string name="dialog_critical_uninstall_enable">启用</string>
+    <string name="dialog_critical_firewall_title">⚠️ 警告</string>
+    <string name="dialog_critical_firewall_message">这允许阻止系统关键软件包（WiFi、蓝牙、下载管理器等）和 VPN 应用的网络访问。\n\n阻止这些软件包可能会：\n• 破坏网络连接\n• 导致 WiFi/蓝牙无法工作\n• 引起 VPN 重新连接问题\n• 需要恢复出厂设置或 ADB 来修复\n\n仅在您知道自己在做什么时才启用。\n\n您确定要启用此功能吗？</string>
+    <string name="dialog_critical_firewall_enable">启用</string>
     <string name="dialog_restart_title">需要重新启动</string>
     <string name="dialog_restart_message">应用需要重新启动以应用新的颜色主题。现在重新启动？</string>
     <string name="dialog_restart_confirm">重新启动</string>
@@ -482,6 +489,7 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">移动数据</string>
     <string name="firewall_network_label_roaming">漫游</string>
+    <string name="firewall_network_label_lan">阻止局域网访问</string>
     <string name="firewall_network_label_background_access">允许后台运行</string>
     <string name="firewall_network_label_block_internet">阻止互联网</string>
     <string name="firewall_background_access_description">允许应用在后台访问互联网</string>
@@ -489,8 +497,22 @@
     <string name="firewall_block_all_info">这会阻止所有网络类型（WiFi、移动数据、漫游）。</string>
     <string name="firewall_system_critical_info">⚠️ 系统关键软件包 - 无法修改网络访问以防止系统不稳定。</string>
     <string name="firewall_vpn_app_info">🔒 VPN 应用 - 始终允许以防止设备锁定/解锁后 VPN 重新连接问题。</string>
+    <string name="firewall_critical_allowed_info">⚠️ 关键软件包保护已在设置中禁用。阻止网络访问可能导致系统不稳定或 VPN 问题。</string>
     <string name="firewall_badge_system_critical">系统关键</string>
     <string name="firewall_badge_vpn_app">VPN 应用</string>
+
+    <!-- Protection Warning Banner -->
+    <string name="protection_banner_title">🛡️ 受保护的软件包</string>
+    <string name="protection_banner_message_firewall_system">此系统关键软件包默认受保护以防止系统不稳定。在设置中启用"允许防火墙关键软件包"以修改网络访问。</string>
+    <string name="protection_banner_message_firewall_vpn">此 VPN 应用默认受保护以防止 VPN 重新连接问题。在设置中启用"允许防火墙关键软件包"以修改网络访问。</string>
+    <string name="protection_banner_message_firewall">此软件包默认受保护。在设置中启用"允许防火墙关键软件包"以修改网络访问。</string>
+    <string name="protection_banner_message_uninstall">此关键软件包默认受保护以防止系统不稳定。在设置中启用"允许卸载关键软件包"以卸载它。</string>
+    <string name="protection_banner_button">设置</string>
+
+    <!-- Snackbar Messages -->
+    <string name="snackbar_firewall_protected">此软件包受保护。在设置中启用该设置以修改网络访问。</string>
+    <string name="snackbar_uninstall_protected">此软件包受保护。在设置中启用该设置以卸载。</string>
+    <string name="snackbar_action_settings">设置</string>
 
     <!-- Package Categories -->
     <string name="category_system_core">系统核心</string>

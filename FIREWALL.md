@@ -6,7 +6,7 @@ This document defines how each firewall backend works in De1984.
 
 ## Backend Selection Logic
 
-The app can operate in different modes: **AUTO** (automatic selection) or **MANUAL** (force specific backend).
+The app can operate in different modes: **AUTO** (automatic selection) or **MANUAL** (force specific backend) unless it crashes or something goes wrong, then the app returns to AUTO.
 
 ### AUTO Mode (Default)
 
@@ -14,7 +14,7 @@ When in AUTO mode, the app selects the best available backend using this priorit
 
 1. **iptables** (highest priority)
    - **Requires**: Root access OR Shizuku in root mode
-   - **Check**: Try to execute `iptables -L` command
+   - **Check**: Try to execute `iptables -L` command (is this the best way to check in order to be compatible with most android versions and devices?)
    - **If available**: Use iptables backend ✅
    - **If not available**: Try next backend ⬇️
 
@@ -31,7 +31,8 @@ When in AUTO mode, the app selects the best available backend using this priorit
 
 ### Manual Mode
 
-User can force a specific backend from Settings (this is missing currently!). **Important**: The dropdown should only show backends that are currently available on the device.
+User can force a specific backend from Settings.
+**Important**: The dropdown should only show backends that are currently available on the device.
 
 **Available backends check**:
 - **VPN**: Always available (always shown in dropdown)
@@ -53,9 +54,9 @@ If a previously selected backend becomes unavailable (e.g., Shizuku stops, user 
 
 ### Backend Switching
 
-When backend availability changes (e.g., user grants Shizuku, device gets rooted, Shizuku crashes), the app must switch backends seamlessly without creating security breaches.
+When backend availability changes (e.g., user grants Shizuku, device gets rooted, Shizuku crashes, SuperUser permission is revoked, etc), the app must switch backends seamlessly without creating security breaches.
 
-**Critical Security Rule**: When switching backends, there must be NO gap where apps are unblocked. The transition must be atomic and fail-safe.
+**Critical Security Rule**: When switching backends, there must be NO gap where apps are unblocked. The transition must be atomic and as fail-safe as possible.
 
 **Switching scenarios**:
 
@@ -81,7 +82,7 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
    - **Scenario**: iptables or ConnectivityManager backend fails (Shizuku crashes, root lost, etc.)
    - **Security risk**: If we just stop the old backend, ALL apps become unblocked until VPN starts
    - **Safe transition**:
-     1. Detect backend failure immediately (monitor Shizuku state, test iptables commands)
+     1. Detect backend failure immediately (monitor Shizuku state, test iptables commands -  make sure here we have the most compatible check method for most android versions and privilege tools)
      2. Start VPN backend FIRST, establish VPN tunnel with all blocked apps
      3. Wait for VPN to be fully established (VPN icon appears, interface is up)
      4. Only then clean up old backend (remove iptables rules, stop ConnectivityManager)
@@ -93,7 +94,7 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
 - Continuously monitor Shizuku state (if using ConnectivityManager or iptables with Shizuku)
 - Continuously monitor root availability (if using iptables with root)
 - If backend becomes unavailable, immediately trigger fallback to VPN
-- Never leave a gap where firewall is down
+- Never leave a gap where firewall is down if possible
 
 ---
 
@@ -105,7 +106,6 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
 - Shows VPN icon in status bar
 - Occupies VPN slot (cannot use another VPN simultaneously)
 - Supports granular per-network rules (WiFi/Mobile/Roaming)
-- Supports screen-off blocking
 - Survives reboot (service restarts automatically)
 
 **How it works:**
@@ -122,13 +122,11 @@ Apps that should be blocked are added to the VPN tunnel. Their traffic goes thro
 - Apps without rules: Blocked (added to VPN, traffic dropped)
 - Apps with explicit "allow" rule for current network: Allowed (bypass VPN)
 - Apps with explicit "block" rule for current network: Blocked (added to VPN)
-- Screen-off rule: If enabled and screen is off, app is blocked regardless of network rule
 
 **Allow All mode:**
 - Apps without rules: Allowed (bypass VPN)
 - Apps with explicit "allow" rule for current network: Allowed (bypass VPN)
 - Apps with explicit "block" rule for current network: Blocked (added to VPN)
-- Screen-off rule: If enabled and screen is off, app is blocked regardless of network rule
 
 **Network changes:**
 
@@ -151,27 +149,26 @@ When switching to Mobile data, Firefox becomes blocked and Telegram becomes allo
 - No VPN icon
 - Does not occupy VPN slot (can use real VPN)
 - Supports granular per-network rules (WiFi/Mobile/Roaming)
-- Supports screen-off blocking
 - Rules lost on reboot (must be reapplied on boot)
+- App must be active even after a restart to ensure Firewall is protecting (if it was enabled)
 
 **How it works:**
 
-Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app UID. Creates firewall rules that drop all IPv4 and IPv6 packets for blocked app UIDs. Multiple apps can share the same UID - if any app with that UID should be blocked, the entire UID gets blocked.
+Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app UID. Creates firewall rules that drop all IPv4 and IPv6 packets for blocked app UIDs. Multiple apps can share the same UID - if any app with that UID should be blocked, the entire UID gets blocked. (explained again later in this document)
 
 **Switch dependencies:**
 - **Roaming requires Mobile**: Same as VPN backend. If user enables Roaming block while Mobile is allowed, Mobile must also be blocked. If user disables Mobile block while Roaming is blocked, Roaming must also be allowed.
 
+**MODES: CRITICAL TO ALWAYS TAKE INTO CONSIDERATION** 
 **Block All mode:**
 - Apps without rules: Blocked (firewall rules added for their UID)
 - Apps with explicit "allow" rule for current network: Allowed (no firewall rules)
 - Apps with explicit "block" rule for current network: Blocked (firewall rules added)
-- Screen-off rule: If enabled and screen is off, app is blocked regardless of network rule
 
 **Allow All mode:**
 - Apps without rules: Allowed (no firewall rules)
 - Apps with explicit "allow" rule for current network: Allowed (no firewall rules)
 - Apps with explicit "block" rule for current network: Blocked (firewall rules added)
-- Screen-off rule: If enabled and screen is off, app is blocked regardless of network rule
 
 **Network changes:**
 
@@ -204,7 +201,6 @@ When switching to Mobile, Firefox becomes blocked and Telegram becomes allowed. 
 - No VPN icon
 - Does not occupy VPN slot (can use real VPN)
 - Does NOT support granular rules (all-or-nothing blocking only)
-- Supports screen-off blocking
 - Rules lost on reboot (must be reapplied on boot)
 
 **How it works:**
@@ -227,13 +223,11 @@ The ConnectivityManager firewall chain API operates at the app level, not the ne
 - Apps without rules: Blocked on all networks
 - Apps with explicit "allow" rule: Allowed on all networks
 - Apps with explicit "block" rule: Blocked on all networks
-- Screen-off rule: If enabled and screen is off, app is blocked on all networks
 
 **Allow All mode:**
 - Apps without rules: Allowed on all networks
 - Apps with explicit "allow" rule: Allowed on all networks
 - Apps with explicit "block" rule: Blocked on all networks
-- Screen-off rule: If enabled and screen is off, app is blocked on all networks
 
 **Network changes:**
 

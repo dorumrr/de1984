@@ -149,6 +149,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Log.d(TAG, "")
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  📱 MAINACTIVITY CREATED                                     ║")
+        Log.d(TAG, "║  savedInstanceState: ${if (savedInstanceState == null) "null (first launch)" else "present (restored)"}  ║")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+
         // Enable edge-to-edge display
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -156,23 +162,35 @@ class MainActivity : AppCompatActivity() {
         setupMainUI(savedInstanceState)
 
         // Start package monitoring service
+        Log.d(TAG, "🔄 Starting PackageMonitoringService")
         PackageMonitoringService.startMonitoring(this)
 
         // Check if we need to request permissions (after UI is loaded)
         if (!permissionManager.hasNotificationPermission()) {
+            Log.d(TAG, "⚠️  Notification permission not granted, requesting...")
             requestNotificationPermission()
         } else {
+            Log.d(TAG, "✅ Notification permission already granted")
             onPermissionsComplete()
         }
 
         // Handle intent (e.g., from notification)
         handleIntent(intent)
+
+        Log.d(TAG, "✅ MainActivity onCreate complete")
+        Log.d(TAG, "")
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        Log.d(TAG, "")
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  📱 MAINACTIVITY NEW INTENT                                  ║")
+        Log.d(TAG, "║  Action: ${intent.action ?: "null"}                         ║")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
         setIntent(intent)
         handleIntent(intent)
+        Log.d(TAG, "")
     }
 
     private fun handleIntent(intent: Intent?) {
@@ -188,6 +206,10 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  📱 MAINACTIVITY RESUMED - CHECKING PRIVILEGES               ║")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+
         // Re-check privileges when app comes to foreground
         // This ensures we detect newly available Shizuku/root and request permissions
         // Force re-check even if previously had permission to detect privilege restoration
@@ -196,20 +218,29 @@ class MainActivity : AppCompatActivity() {
             val deps = (application as De1984Application).dependencies
 
             // Check Shizuku first (preferred method)
+            Log.d(TAG, "Checking Shizuku status...")
             deps.shizukuManager.checkShizukuStatus()
 
             // If Shizuku is available but permission not granted, request it
             if (deps.shizukuManager.isShizukuAvailable() && !deps.shizukuManager.hasShizukuPermission) {
+                Log.d(TAG, "Shizuku available but permission not granted - requesting permission")
                 deps.shizukuManager.requestShizukuPermission()
             }
 
             // Force re-check root status to detect privilege restoration
             // This is critical for detecting when root is re-enabled after being revoked
             // The regular checkRootStatus() caches ROOTED_WITH_PERMISSION, so we need force re-check
+            Log.d(TAG, "Force rechecking root status...")
             deps.rootManager.forceRecheckRootStatus()
 
-            // The StateFlow updates from these checks will trigger handlePrivilegeChange()
-            // in FirewallManager, which will automatically switch backends if needed
+            // IMPORTANT: Force FirewallManager to check if backend should change
+            // This is necessary because StateFlow deduplicates - if root status was already
+            // ROOTED_WITH_PERMISSION, the StateFlow won't emit again, and handlePrivilegeChange()
+            // won't be triggered. We need to explicitly tell FirewallManager to check.
+            Log.d(TAG, "Checking if backend should switch...")
+            deps.firewallManager.checkBackendShouldSwitch()
+
+            Log.d(TAG, "MainActivity.onResume() privilege checks complete")
         }
     }
 
@@ -312,20 +343,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar() {
+        Log.d(TAG, "📋 setupToolbar: Initializing toolbar")
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
         // No back button or home button needed for bottom navigation
 
         // Setup firewall toggle (Material Switch)
         binding.firewallToggle.setOnCheckedChangeListener { _, isChecked ->
+            Log.d(TAG, "🔘 USER ACTION: Firewall toggle changed to: $isChecked")
             onFirewallToggleChanged(isChecked)
         }
 
         updateToolbar()
+        Log.d(TAG, "✅ setupToolbar: Toolbar initialized")
     }
 
     private fun setupBottomNavigation() {
+        Log.d(TAG, "📋 setupBottomNavigation: Initializing bottom navigation")
         binding.bottomNavigation.setOnItemSelectedListener { item ->
+            val tabName = when (item.itemId) {
+                R.id.firewallFragment -> "FIREWALL"
+                R.id.packagesFragment -> "PACKAGES"
+                R.id.settingsFragment -> "SETTINGS"
+                else -> "UNKNOWN"
+            }
+            Log.d(TAG, "🔘 USER ACTION: Bottom navigation item selected: $tabName")
+
             when (item.itemId) {
                 R.id.firewallFragment -> {
                     loadFragment(Tab.FIREWALL)
@@ -350,6 +393,7 @@ class MainActivity : AppCompatActivity() {
 
         // Set icon colors based on dynamic colors setting
         applyBottomNavigationColors()
+        Log.d(TAG, "✅ setupBottomNavigation: Bottom navigation initialized")
     }
 
     private fun applyBottomNavigationColors() {
@@ -635,6 +679,7 @@ class MainActivity : AppCompatActivity() {
      * Used for cross-navigation from notifications and other screens.
      */
     fun navigateToFirewallWithApp(packageName: String) {
+        Log.d(TAG, "🔘 USER ACTION: Navigate to Firewall with app: $packageName")
         loadFragment(Tab.FIREWALL)
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
@@ -647,6 +692,7 @@ class MainActivity : AppCompatActivity() {
      * Used for cross-navigation from Firewall screen.
      */
     fun navigateToPackagesWithApp(packageName: String) {
+        Log.d(TAG, "🔘 USER ACTION: Navigate to Packages with app: $packageName")
         loadFragment(Tab.APPS)
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
@@ -670,6 +716,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(TAG, "")
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  📱 MAINACTIVITY DESTROYED                                   ║")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        Log.d(TAG, "")
         // NOTE: We do NOT unregister Shizuku listeners here because they need to survive
         // for the entire application process lifetime to enable automatic backend switching
         // even when the app is not open. The listeners are registered in De1984Application.onCreate()

@@ -174,9 +174,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         adapter = PackageAdapter(
             showIcons = true, // Will be updated from settings
             onPackageClick = { pkg ->
+                Log.d(TAG, "🔘 USER ACTION: Package clicked: ${pkg.packageName}")
                 showPackageActionSheet(pkg)
             },
             onPackageLongClick = { pkg ->
+                Log.d(TAG, "🔘 USER ACTION: Package long-clicked (entering selection mode): ${pkg.packageName}")
                 enterSelectionMode(pkg)
                 true
             }
@@ -270,6 +272,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         // Text change listener for real-time search
         binding.searchInput.addTextChangedListener { text ->
             val query = text?.toString() ?: ""
+            if (query.isNotEmpty()) {
+                Log.d(TAG, "🔍 USER ACTION: Search query changed: '$query'")
+            }
             viewModel.setSearchQuery(query)
 
             // Show/hide clear icon based on text length
@@ -278,6 +283,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         // Clear icon click listener
         binding.searchLayout.setEndIconOnClickListener {
+            Log.d(TAG, "🔘 USER ACTION: Search cleared")
             binding.searchInput.text?.clear()
             binding.searchLayout.isEndIconVisible = false
         }

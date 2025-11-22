@@ -629,23 +629,35 @@ class FirewallManager(
 
             val backend = when (mode) {
                 FirewallMode.AUTO -> {
+                    Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+                    Log.d(TAG, "║  🎯 AUTO MODE: SELECTING BEST BACKEND                       ║")
+                    Log.d(TAG, "║  Priority: iptables > ConnectivityManager > VPN              ║")
+                    Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+
                     // Priority: iptables > ConnectivityManager > VPN
                     val iptablesBackend = IptablesFirewallBackend(
                         context, rootManager, shizukuManager, errorHandler
                     )
+                    Log.d(TAG, "Checking iptables availability...")
                     val iptablesAvailable = iptablesBackend.checkAvailability()
 
                     if (iptablesAvailable.isSuccess) {
+                        Log.d(TAG, "✅ iptables is AVAILABLE - selecting iptables backend")
                         iptablesBackend
                     } else {
+                        Log.d(TAG, "❌ iptables NOT available: ${iptablesAvailable.exceptionOrNull()?.message}")
+                        Log.d(TAG, "Checking ConnectivityManager availability...")
                         val cmBackend = ConnectivityManagerFirewallBackend(
                             context, shizukuManager, errorHandler
                         )
                         val cmAvailable = cmBackend.checkAvailability()
 
                         if (cmAvailable.isSuccess) {
+                            Log.d(TAG, "✅ ConnectivityManager is AVAILABLE - selecting ConnectivityManager backend")
                             cmBackend
                         } else {
+                            Log.d(TAG, "❌ ConnectivityManager NOT available: ${cmAvailable.exceptionOrNull()?.message}")
+                            Log.d(TAG, "✅ Falling back to VPN backend (always available)")
                             VpnFirewallBackend(context)
                         }
                     }
@@ -810,27 +822,28 @@ class FirewallManager(
     /**
      * Start continuous backend health monitoring with adaptive interval.
      * Starts with fast checks (30s) for first 5 minutes, then increases to 5 minutes for battery savings.
-     * Periodically checks if the current backend is still available and active.
-     * If backend fails, automatically fallback to VPN.
+     * For privileged backends (iptables, ConnectivityManager): checks if backend still has permissions (privilege loss detection).
+     * For VPN backend: checks if better backends become available (privilege gain detection).
      * Per FIREWALL.md lines 92-96.
      */
     private fun startBackendHealthMonitoring() {
         val backend = currentBackend ?: return
         val backendType = backend.getType()
 
-        // VPN backend doesn't need health monitoring - it has built-in failure detection via onRevoke()
-        if (backendType == FirewallBackendType.VPN) {
-            Log.d(TAG, "Skipping health monitoring for VPN backend (has built-in onRevoke() callback)")
-            return
-        }
-
         // Reset adaptive tracking when starting new monitoring
         consecutiveSuccessfulHealthChecks = 0
         currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
 
+        val monitoringType = if (backendType == FirewallBackendType.VPN) {
+            "PRIVILEGE GAIN (checking if better backends available)"
+        } else {
+            "PRIVILEGE LOSS (checking if backend still has permissions)"
+        }
+
         Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
         Log.d(TAG, "║  🔍 STARTING ADAPTIVE HEALTH MONITORING                      ║")
         Log.d(TAG, "║  Backend: $backendType")
+        Log.d(TAG, "║  Type: $monitoringType")
         Log.d(TAG, "║  Initial interval: ${currentHealthCheckInterval}ms (30 seconds)")
         Log.d(TAG, "║  Stable interval: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_STABLE_MS}ms (5 minutes)")
         Log.d(TAG, "║  Threshold: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD} successful checks")
@@ -842,43 +855,87 @@ class FirewallManager(
                 delay(currentHealthCheckInterval)
 
                 try {
-                    Log.d(TAG, "Health check: Testing $backendType backend availability... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
+                    // VPN backend: Check if better backends become available (privilege gain detection)
+                    if (backendType == FirewallBackendType.VPN) {
+                        Log.d(TAG, "Health check: Checking if better backends available (VPN privilege gain detection)... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
 
-                    // Check if backend is still available
-                    val availabilityResult = backend.checkAvailability()
+                        // Force re-check root and Shizuku status to detect privilege gain
+                        rootManager.forceRecheckRootStatus()
+                        shizukuManager.checkShizukuStatus()
 
-                    if (availabilityResult.isFailure) {
-                        Log.e(TAG, "❌ Health check FAILED: $backendType backend is no longer available!")
-                        Log.e(TAG, "Error: ${availabilityResult.exceptionOrNull()?.message}")
-                        Log.e(TAG, "Resetting health check interval to initial value (${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS}ms)")
+                        // Compute what backend we SHOULD be using now
+                        val planResult = computeStartPlan(FirewallMode.AUTO)
 
-                        // Reset adaptive tracking on failure
-                        consecutiveSuccessfulHealthChecks = 0
-                        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+                        if (planResult.isSuccess) {
+                            val plan = planResult.getOrThrow()
 
-                        // Backend failed - trigger automatic fallback to VPN
-                        handleBackendFailure(backendType)
-                        break // Stop monitoring - new backend will start its own monitoring
+                            // If planner suggests a better backend than VPN, switch to it
+                            if (plan.selectedBackendType != FirewallBackendType.VPN) {
+                                Log.d(TAG, "")
+                                Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+                                Log.d(TAG, "║  ⚡ PRIVILEGE GAIN DETECTED - BETTER BACKEND AVAILABLE      ║")
+                                Log.d(TAG, "║  Current: VPN")
+                                Log.d(TAG, "║  Better: ${plan.selectedBackendType}")
+                                Log.d(TAG, "║  Action: Switching to better backend automatically          ║")
+                                Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+                                Log.d(TAG, "")
+
+                                // Stop current backend and switch to better one
+                                stopMonitoring()
+                                currentBackend?.stop()
+                                currentBackend = null
+
+                                // Start with the better backend
+                                startFirewall(FirewallMode.AUTO)
+                                break // Stop monitoring - new backend will start its own monitoring
+                            }
+                        }
+
+                        // No better backend available - VPN is still the best option
+                        consecutiveSuccessfulHealthChecks++
+                        Log.d(TAG, "✅ Health check passed: VPN is still the best available backend (consecutive successes: $consecutiveSuccessfulHealthChecks)")
+                        _backendHealthWarning.value = null
+
+                    } else {
+                        // Privileged backend: Check if backend still has permissions (privilege loss detection)
+                        Log.d(TAG, "Health check: Testing $backendType backend availability... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
+
+                        // Check if backend is still available
+                        val availabilityResult = backend.checkAvailability()
+
+                        if (availabilityResult.isFailure) {
+                            Log.e(TAG, "❌ Health check FAILED: $backendType backend is no longer available!")
+                            Log.e(TAG, "Error: ${availabilityResult.exceptionOrNull()?.message}")
+                            Log.e(TAG, "Resetting health check interval to initial value (${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS}ms)")
+
+                            // Reset adaptive tracking on failure
+                            consecutiveSuccessfulHealthChecks = 0
+                            currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+
+                            // Backend failed - trigger automatic fallback to VPN
+                            handleBackendFailure(backendType)
+                            break // Stop monitoring - new backend will start its own monitoring
+                        }
+
+                        // Check if backend is still active
+                        if (!backend.isActive()) {
+                            Log.e(TAG, "❌ Health check FAILED: $backendType backend is not active!")
+                            Log.e(TAG, "Resetting health check interval to initial value (${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS}ms)")
+
+                            // Reset adaptive tracking on failure
+                            consecutiveSuccessfulHealthChecks = 0
+                            currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+
+                            // Backend became inactive - trigger automatic fallback
+                            handleBackendFailure(backendType)
+                            break
+                        }
+
+                        // Health check passed - increment success counter
+                        consecutiveSuccessfulHealthChecks++
+                        Log.d(TAG, "✅ Health check passed: $backendType backend is healthy (consecutive successes: $consecutiveSuccessfulHealthChecks)")
+                        _backendHealthWarning.value = null // Clear any previous warnings
                     }
-
-                    // Check if backend is still active
-                    if (!backend.isActive()) {
-                        Log.e(TAG, "❌ Health check FAILED: $backendType backend is not active!")
-                        Log.e(TAG, "Resetting health check interval to initial value (${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS}ms)")
-
-                        // Reset adaptive tracking on failure
-                        consecutiveSuccessfulHealthChecks = 0
-                        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
-
-                        // Backend became inactive - trigger automatic fallback
-                        handleBackendFailure(backendType)
-                        break
-                    }
-
-                    // Health check passed - increment success counter
-                    consecutiveSuccessfulHealthChecks++
-                    Log.d(TAG, "✅ Health check passed: $backendType backend is healthy (consecutive successes: $consecutiveSuccessfulHealthChecks)")
-                    _backendHealthWarning.value = null // Clear any previous warnings
 
                     // Check if we should increase interval (backend is stable)
                     if (consecutiveSuccessfulHealthChecks >= Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD &&
@@ -901,6 +958,16 @@ class FirewallManager(
                 }
             }
         }
+    }
+
+    /**
+     * Handle backend failure notification from PrivilegedFirewallService.
+     * This is called when the service detects a failure and stops itself.
+     * We handle it immediately instead of waiting for the health check to detect it.
+     */
+    suspend fun handleBackendFailureFromService(failedBackendType: FirewallBackendType) {
+        Log.e(TAG, "Received backend failure notification from service: $failedBackendType")
+        handleBackendFailure(failedBackendType)
     }
 
     /**
@@ -1432,14 +1499,19 @@ class FirewallManager(
      * - If mode is AUTO, recompute plan and restart only if backend type would change.
      * - If mode is MANUAL and selected backend is no longer viable, normalize to AUTO,
      *   recompute plan, and restart.
+     *
+     * @param forceCheck If true, bypass the duplicate check and always process
      */
     private suspend fun handlePrivilegeChange(
         rootStatus: RootStatus,
-        shizukuStatus: ShizukuStatus
+        shizukuStatus: ShizukuStatus,
+        forceCheck: Boolean = false
     ) {
-        // Skip if we've already processed this exact status combination
-        if (rootStatus == lastProcessedRootStatus &&
+        // Skip if we've already processed this exact status combination (unless forced)
+        if (!forceCheck &&
+            rootStatus == lastProcessedRootStatus &&
             shizukuStatus == lastProcessedShizukuStatus) {
+            Log.d(TAG, "handlePrivilegeChange: Skipping - already processed this status combination")
             return
         }
 
@@ -1479,6 +1551,9 @@ class FirewallManager(
 
         if (currentMode == FirewallMode.AUTO) {
             // In AUTO mode we let the planner decide whether backend type should change
+            Log.d(TAG, "AUTO mode: Computing plan to check if backend should switch...")
+            Log.d(TAG, "Current backend: $currentBackendType, Root: $rootStatus, Shizuku: $shizukuStatus")
+
             val planResult = computeStartPlan(FirewallMode.AUTO)
             if (planResult.isFailure) {
                 Log.e(TAG, "handlePrivilegeChange: Failed to compute plan in AUTO mode", planResult.exceptionOrNull())
@@ -1487,6 +1562,8 @@ class FirewallManager(
 
             val plan = planResult.getOrThrow()
             val plannedBackendType = plan.selectedBackendType
+
+            Log.d(TAG, "Planner result: current=$currentBackendType, planned=$plannedBackendType")
 
             if (plannedBackendType == currentBackendType) {
                 Log.d(TAG, "Privilege change does not require backend switch in AUTO mode (current=$currentBackendType, planned=$plannedBackendType)")
@@ -1497,6 +1574,20 @@ class FirewallManager(
                 Log.d(TAG, "Privilege gain: planner suggests backend change $currentBackendType → $plannedBackendType, restarting firewall...")
             } else {
                 Log.d(TAG, "Privilege loss: planner suggests backend change $currentBackendType → $plannedBackendType, restarting firewall with fallback backend...")
+            }
+
+            // CRITICAL: Stop current backend FIRST to avoid mutex deadlock
+            // If we don't stop the old backend first, startFirewall() will hang waiting for the mutex
+            // because the old backend's service might be holding it (health check, rule application, etc.)
+            if (currentBackend != null) {
+                Log.d(TAG, "Stopping current backend ($currentBackendType) before switching to $plannedBackendType...")
+                stopMonitoring() // Stop health monitoring
+                currentBackend?.stop()?.onFailure { error ->
+                    Log.w(TAG, "Failed to stop old backend ($currentBackendType): ${error.message}")
+                    // Continue anyway - we need to switch backends
+                }
+                currentBackend = null
+                _activeBackendType.value = null
             }
 
             val result = startFirewall(FirewallMode.AUTO)
@@ -1559,6 +1650,34 @@ class FirewallManager(
 
         val newBackend = selectBackend(currentMode).getOrNull()?.getType()
         return newBackend != null && newBackend != currentBackend
+    }
+
+    /**
+     * Check if backend should switch based on current privileges.
+     * This is called from MainActivity.onResume() to force a backend switch check
+     * even if StateFlow doesn't emit (e.g., root status was already ROOTED_WITH_PERMISSION).
+     *
+     * This solves the issue where user re-enables root in Magisk, opens the app,
+     * but the app stays on VPN because StateFlow deduplicates and doesn't emit.
+     */
+    suspend fun checkBackendShouldSwitch() {
+        Log.d(TAG, "checkBackendShouldSwitch: Explicitly checking if backend should switch")
+
+        // Reset health check interval to fast mode (15s) to quickly detect any issues
+        // This is important when user opens the app after changing privileges
+        if (currentHealthCheckInterval != Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS) {
+            Log.d(TAG, "Resetting health check interval to fast mode (15s) for quick privilege change detection")
+            consecutiveSuccessfulHealthChecks = 0
+            currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+        }
+
+        // Get current privilege status
+        val rootStatus = rootManager.rootStatus.value
+        val shizukuStatus = shizukuManager.shizukuStatus.value
+
+        // Call handlePrivilegeChange with forceCheck=true to bypass duplicate check
+        // This ensures we always check if backend should switch when user opens the app
+        handlePrivilegeChange(rootStatus, shizukuStatus, forceCheck = true)
     }
 }
 

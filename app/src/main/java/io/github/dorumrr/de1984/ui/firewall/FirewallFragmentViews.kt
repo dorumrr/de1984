@@ -217,6 +217,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             selectedPermissionFilter = currentPermissionFilter,
             onTypeFilterSelected = { filter ->
                 if (filter != currentTypeFilter) {
+                    Log.d(TAG, "🔘 USER ACTION: Package type filter changed: $filter")
                     currentTypeFilter = filter
                     // Map translated string to internal constant
                     val internalFilter = mapTypeFilterToInternal(filter)
@@ -225,6 +226,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             },
             onStateFilterSelected = { filter ->
                 if (filter != currentStateFilter) {
+                    Log.d(TAG, "🔘 USER ACTION: Network state filter changed: ${filter ?: "none"}")
                     currentStateFilter = filter
                     // Map translated string to internal constant
                     val internalFilter = filter?.let { mapStateFilterToInternal(it) }
@@ -233,6 +235,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             },
             onPermissionFilterSelected = { enabled ->
                 if (enabled != currentPermissionFilter) {
+                    Log.d(TAG, "🔘 USER ACTION: Internet-only filter changed: $enabled")
                     currentPermissionFilter = enabled
                     viewModel.setInternetOnlyFilter(enabled)
                 }
@@ -247,6 +250,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Text change listener for real-time search
         binding.searchInput.addTextChangedListener { text ->
             val query = text?.toString() ?: ""
+            if (query.isNotEmpty()) {
+                Log.d(TAG, "🔍 USER ACTION: Search query changed: '$query'")
+            }
             viewModel.setSearchQuery(query)
 
             // Show/hide clear icon based on text length
@@ -255,6 +261,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         // Clear icon click listener
         binding.searchLayout.setEndIconOnClickListener {
+            Log.d(TAG, "🔘 USER ACTION: Search cleared")
             binding.searchInput.text?.clear()
             binding.searchLayout.isEndIconVisible = false
         }
@@ -740,6 +747,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
+                Log.d(TAG, "🔘 USER ACTION: WiFi toggle changed for ${pkg.packageName} - blocked: $blocked")
                 viewModel.setWifiBlocking(pkg.packageName, blocked)
             }
         )
@@ -752,6 +760,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
+                Log.d(TAG, "🔘 USER ACTION: Mobile toggle changed for ${pkg.packageName} - blocked: $blocked")
 
                 // ViewModel handles mobile+roaming dependency atomically
                 viewModel.setMobileBlocking(pkg.packageName, blocked)
@@ -767,6 +776,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
                 onToggle = { blocked ->
                     if (isUpdatingProgrammatically) return@setupNetworkToggle
+                    Log.d(TAG, "🔘 USER ACTION: Roaming toggle changed for ${pkg.packageName} - blocked: $blocked")
 
                     // ViewModel handles mobile+roaming dependency atomically
                     viewModel.setRoamingBlocking(pkg.packageName, blocked)

@@ -58,8 +58,11 @@ class ShizukuManager(private val context: Context) {
 
     // Permission result listener - handles permission changes
     private val permissionResultListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
-        Log.d(TAG, "=== Shizuku permission result received ===")
-        Log.d(TAG, "requestCode: $requestCode, grantResult: $grantResult")
+        Log.d(TAG, "")
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  🔧 SYSTEM EVENT: Shizuku permission result received         ║")
+        Log.d(TAG, "║  requestCode: $requestCode, grantResult: $grantResult        ║")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
         if (requestCode == REQUEST_CODE_PERMISSION) {
             if (grantResult == PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "✅ Shizuku permission GRANTED - updating status to RUNNING_WITH_PERMISSION")
@@ -71,16 +74,27 @@ class ShizukuManager(private val context: Context) {
                 _shizukuStatus.value = ShizukuStatus.RUNNING_NO_PERMISSION
             }
         }
+        Log.d(TAG, "")
     }
 
     // Binder received/dead listeners - monitor Shizuku service lifecycle
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         // Shizuku binder received, check status
+        Log.d(TAG, "")
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  🔧 SYSTEM EVENT: Shizuku binder received (Shizuku started)  ║")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        Log.d(TAG, "")
         checkShizukuStatusSync()
     }
 
     private val binderDeadListener = Shizuku.OnBinderDeadListener {
         // Shizuku binder died
+        Log.d(TAG, "")
+        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+        Log.d(TAG, "║  🔧 SYSTEM EVENT: Shizuku binder died (Shizuku stopped)      ║")
+        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        Log.d(TAG, "")
         _shizukuStatus.value = ShizukuStatus.INSTALLED_NOT_RUNNING
     }
 
@@ -318,16 +332,19 @@ class ShizukuManager(private val context: Context) {
      */
     fun registerListeners() {
         if (listenersRegistered) {
+            Log.d(TAG, "Shizuku listeners already registered, skipping")
             return
         }
 
         try {
+            Log.d(TAG, "🔧 Registering Shizuku listeners")
             Shizuku.addRequestPermissionResultListener(permissionResultListener)
             Shizuku.addBinderReceivedListener(binderReceivedListener)
             Shizuku.addBinderDeadListener(binderDeadListener)
             listenersRegistered = true
+            Log.d(TAG, "✅ Shizuku listeners registered successfully")
         } catch (e: Exception) {
-            // Failed to register listeners
+            Log.e(TAG, "❌ Failed to register Shizuku listeners: ${e.message}", e)
         }
     }
 

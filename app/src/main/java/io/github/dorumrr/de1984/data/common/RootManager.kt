@@ -3,6 +3,7 @@ package io.github.dorumrr.de1984.data.common
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -93,53 +94,26 @@ class RootManager(private val context: Context) {
 
     private suspend fun checkRootStatusInternal(): RootStatus = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Testing root access via 'su -c id'...")
+            Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+            Log.d(TAG, "║  🔍 CHECKING ROOT STATUS (using libsu)                       ║")
+            Log.d(TAG, "║  Creating NEW root shell to request permission...           ║")
+            Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
-            // Directly try to execute 'su' to check if we have permission.
-            // This will trigger the root manager (Magisk, etc.) if available.
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
+            // Use libsu to check root status
+            // CRITICAL: We must use Shell.Builder.build() to create a NEW shell instance
+            // Shell.getShell() returns a cached shell, which won't detect permission changes
+            // This ensures we always get fresh root status from Magisk
+            val shell = Shell.Builder.create().build()
 
-            val completed = kotlinx.coroutines.withTimeoutOrNull(3000) {
-                process.waitFor()
-            }
-
-            if (completed == null) {
-                Log.d(TAG, "Root check timed out - ROOTED_NO_PERMISSION")
-                // Drain streams before destroying (best practice)
-                try {
-                    process.inputStream.bufferedReader().use { it.readText() }
-                    process.errorStream.bufferedReader().use { it.readText() }
-                } catch (e: Exception) {
-                    // Ignore stream read errors on timeout
-                }
-                process.destroy()
-                return@withContext RootStatus.ROOTED_NO_PERMISSION
-            }
-
-            if (completed == 0) {
-                // Read both streams to prevent blocking
-                val output = process.inputStream.bufferedReader().use { it.readText().trim() }
-                process.errorStream.bufferedReader().use { it.readText() } // Drain error stream
-                process.destroy()
-
-                val hasPermission = output.contains("uid=0")
-                Log.d(TAG, "Root check exit code 0, output: $output, hasPermission: $hasPermission")
-                return@withContext if (hasPermission) {
-                    RootStatus.ROOTED_WITH_PERMISSION
-                } else {
-                    RootStatus.ROOTED_NO_PERMISSION
-                }
+            return@withContext if (shell.isRoot) {
+                Log.d(TAG, "✅ Root access GRANTED - ROOTED_WITH_PERMISSION")
+                RootStatus.ROOTED_WITH_PERMISSION
             } else {
-                Log.d(TAG, "Root check failed with exit code: $completed - ROOTED_NO_PERMISSION")
-                // Drain streams before destroying
-                process.inputStream.bufferedReader().use { it.readText() }
-                process.errorStream.bufferedReader().use { it.readText() }
-                process.destroy()
-                return@withContext RootStatus.ROOTED_NO_PERMISSION
+                Log.e(TAG, "❌ Root access DENIED or not available - NOT_ROOTED")
+                RootStatus.NOT_ROOTED
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Exception during root check: ${e.message}", e)
-            // If su is not available at all, treat as NOT_ROOTED
+            Log.e(TAG, "❌ Exception during root check: ${e.message}", e)
             return@withContext RootStatus.NOT_ROOTED
         }
     }
@@ -150,21 +124,14 @@ class RootManager(private val context: Context) {
         }
 
         try {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            // Use libsu to execute root commands
+            val result = Shell.cmd(command).exec()
 
-            // Read both output and error streams to prevent blocking
-            // If error stream is not read, the process can block when stderr buffer fills up
-            val output = process.inputStream.bufferedReader().use { it.readText().trim() }
-            val error = process.errorStream.bufferedReader().use { it.readText().trim() }
+            // Get the output (stdout + stderr combined)
+            val output = result.out.joinToString("\n")
 
-            val exitCode = process.waitFor()
-
-            // Explicitly destroy process to ensure cleanup
-            process.destroy()
-
-            // Return stdout if available, otherwise stderr
-            val result = if (output.isNotEmpty()) output else error
-            Pair(exitCode, result)
+            // Return exit code and output
+            Pair(result.code, output)
         } catch (e: Exception) {
             Pair(-1, e.message ?: "Unknown error")
         }

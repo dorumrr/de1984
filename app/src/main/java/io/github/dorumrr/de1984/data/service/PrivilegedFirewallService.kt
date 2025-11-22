@@ -432,7 +432,9 @@ class PrivilegedFirewallService : Service() {
                             val app = application as De1984Application
                             val deps = app.dependencies
                             Log.d(TAG, "Health check: forcing root status re-check for iptables backend")
+                            // CRITICAL: Must await the result so the StateFlow is updated before checkAvailability()
                             deps.rootManager.forceRecheckRootStatus()
+                            Log.d(TAG, "Health check: root status re-check complete, new status: ${deps.rootManager.rootStatus.value}")
                         } catch (e: Exception) {
                             Log.w(TAG, "Health check: failed to force root status re-check: ${e.message}")
                         }
@@ -507,21 +509,35 @@ class PrivilegedFirewallService : Service() {
         Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
         Log.e(TAG, "║  ⚠️  BACKEND FAILURE DETECTED IN SERVICE                     ║")
         Log.e(TAG, "║  Backend: $backendType")
-        Log.e(TAG, "║  Action: Stopping service to trigger FirewallManager fallback ║")
+        Log.e(TAG, "║  Action: Notifying FirewallManager and stopping service       ║")
         Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
         // Show notification to user
         showFailureNotification(backendType)
 
-        // Stop the service - FirewallManager watchdog will detect this and handle fallback to VPN
+        // Notify FirewallManager immediately instead of waiting for health check
+        // This makes VPN fallback instant instead of waiting up to 15 seconds
+        try {
+            val app = application as De1984Application
+            val deps = app.dependencies
+            Log.e(TAG, "Notifying FirewallManager of backend failure...")
+            serviceScope.launch {
+                deps.firewallManager.handleBackendFailureFromService(backendType)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to notify FirewallManager of backend failure: ${e.message}")
+            // Continue with service stop - health check will detect it eventually
+        }
+
+        // Stop the service
         // IMPORTANT: Set wasExplicitlyStopped = true to prevent service from restarting
         // The FirewallManager will start VPN backend instead
         wasExplicitlyStopped = true
 
-        Log.e(TAG, "Stopping service now - FirewallManager should detect within 30 seconds and fallback to VPN")
+        Log.e(TAG, "Stopping service now...")
         stopFirewall()
 
-        Log.e(TAG, "Service stopped. Waiting for FirewallManager watchdog to detect and trigger VPN fallback...")
+        Log.e(TAG, "Service stopped. FirewallManager should handle VPN fallback immediately.")
     }
 
     private fun showFailureNotification(backendType: FirewallBackendType) {

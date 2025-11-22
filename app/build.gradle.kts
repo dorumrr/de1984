@@ -174,6 +174,9 @@ dependencies {
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
 
+    // libsu for proper root access
+    implementation("com.github.topjohnwu.libsu:core:6.0.0")
+
     // JSON serialization for backup/restore
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }

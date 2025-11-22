@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import com.google.android.material.color.DynamicColors
+import com.topjohnwu.superuser.Shell
 import io.github.dorumrr.de1984.data.firewall.ConnectivityManagerFirewallBackend
 import io.github.dorumrr.de1984.data.firewall.IptablesFirewallBackend
 import io.github.dorumrr.de1984.utils.Constants
@@ -17,6 +18,16 @@ class De1984Application : Application() {
 
     companion object {
         private const val TAG = "De1984Application"
+
+        init {
+            // Initialize libsu before any shell operations
+            // This must be done in a static block before the Application is created
+            Shell.enableVerboseLogging = BuildConfig.DEBUG
+            Shell.setDefaultBuilder(
+                Shell.Builder.create()
+                    .setTimeout(10) // 10 second timeout for root operations
+            )
+        }
     }
 
     lateinit var dependencies: De1984Dependencies

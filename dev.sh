@@ -850,6 +850,34 @@ build_and_sign_release() {
     echo ""
 }
 
+# Start comprehensive logging
+start_comprehensive_logging() {
+    log_header "Starting Comprehensive Logging"
+    log_info "This will track ALL user actions and system events"
+    log_info "Press Ctrl+C to stop logging"
+    echo ""
+
+    # Clear logcat first
+    adb logcat -c
+
+    log_success "📡 Comprehensive logging started!"
+    echo ""
+    echo -e "${YELLOW}Legend:${NC}"
+    echo -e "  🔘 = User actions (taps, toggles, navigation)"
+    echo -e "  📡 = System events (network, screen)"
+    echo -e "  📱 = MainActivity lifecycle"
+    echo -e "  🔧 = Root/Shizuku events"
+    echo -e "  🔍 = Status checks"
+    echo -e "  ✅ = Success"
+    echo -e "  ❌ = Error"
+    echo ""
+    echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+
+    # Start comprehensive logging with all filters
+    adb logcat | grep -E "(USER ACTION|SYSTEM EVENT|MAINACTIVITY|FirewallManager|PrivilegedFirewallService|RootManager|ShizukuManager|NetworkStateMonitor|ScreenStateMonitor|FirewallFragment|PackagesFragment|SettingsFragment)" --line-buffered
+}
+
 # Show welcome screen with command explanations
 show_welcome() {
     clear
@@ -905,11 +933,15 @@ show_help() {
     echo "  populate-keystore-properties - Create keystore.properties"
     echo "  validate-keystore-properties - Validate keystore.properties"
     echo ""
+    echo "Debugging:"
+    echo "  logs                         - Start comprehensive logging (tracks all user actions)"
+    echo ""
     echo "Examples:"
     echo "  ./dev.sh install             - Build and install on device/emulator"
     echo "  ./dev.sh update              - Build and update (keeps data)"
     echo "  ./dev.sh release             - Build production APK"
     echo "  ./dev.sh emulator            - Start Pixel 9a emulator"
+    echo "  ./dev.sh logs                - Watch comprehensive logs"
     echo ""
 }
 
@@ -984,6 +1016,10 @@ main() {
         "emulator")
             check_adb
             start_emulator "$target"
+            ;;
+        "logs")
+            check_adb
+            start_comprehensive_logging
             ;;
         "help"|"-h"|"--help")
             show_help

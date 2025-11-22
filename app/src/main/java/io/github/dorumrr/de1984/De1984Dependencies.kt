@@ -37,9 +37,9 @@ class De1984Dependencies(private val context: Context) {
     // =============================================================================================
 
     private val MIGRATION_4_5 = object : Migration(4, 5) {
-        override fun migrate(database: SupportSQLiteDatabase) {
+        override fun migrate(db: SupportSQLiteDatabase) {
             // Add lanBlocked column with default value false (0)
-            database.execSQL("ALTER TABLE firewall_rules ADD COLUMN lanBlocked INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE firewall_rules ADD COLUMN lanBlocked INTEGER NOT NULL DEFAULT 0")
         }
     }
 

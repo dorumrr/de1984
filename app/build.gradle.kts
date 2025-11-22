@@ -170,6 +170,9 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
+    // WorkManager for boot persistence (Android 12+ compatibility)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     // Shizuku
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")

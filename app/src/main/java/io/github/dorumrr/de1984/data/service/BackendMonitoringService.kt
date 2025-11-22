@@ -164,11 +164,16 @@ class BackendMonitoringService : Service() {
         backendMonitoringJob = serviceScope.launch {
             firewallManager.activeBackendType.collect { backendType ->
                 Log.d(TAG, "Active backend changed: $backendType")
-                
-                // Check if we should continue monitoring
-                if (!shouldContinueMonitoring()) {
-                    Log.d(TAG, "Monitoring no longer needed. Stopping service.")
-                    stopSelf()
+
+                // Don't stop during backend switch attempt - let attemptBackendSwitch() handle it
+                if (!isAttemptingSwitch) {
+                    // Check if we should continue monitoring
+                    if (!shouldContinueMonitoring()) {
+                        Log.d(TAG, "Monitoring no longer needed. Stopping service.")
+                        stopSelf()
+                    }
+                } else {
+                    Log.d(TAG, "Backend switch in progress, not stopping service yet")
                 }
             }
         }
@@ -183,10 +188,12 @@ class BackendMonitoringService : Service() {
         val currentMode = firewallManager.getCurrentMode()
         val activeBackend = firewallManager.activeBackendType.value
 
-        // Continue monitoring only if:
+        // Continue monitoring if:
         // 1. Mode is AUTO (not manually selected VPN)
-        // 2. Backend is VPN (waiting for better backend)
-        val shouldContinue = currentMode == FirewallMode.AUTO && activeBackend == FirewallBackendType.VPN
+        // 2. Backend is VPN (waiting for better backend) OR null (switching backends)
+        // Note: null backend means atomic switch in progress - don't stop during switch!
+        val shouldContinue = currentMode == FirewallMode.AUTO &&
+            (activeBackend == FirewallBackendType.VPN || activeBackend == null)
 
         Log.d(TAG, "shouldContinueMonitoring: mode=$currentMode, backend=$activeBackend, result=$shouldContinue")
         return shouldContinue

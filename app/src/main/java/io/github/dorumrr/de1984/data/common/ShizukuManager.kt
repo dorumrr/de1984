@@ -85,7 +85,18 @@ class ShizukuManager(private val context: Context) {
         Log.d(TAG, "║  🔧 SYSTEM EVENT: Shizuku binder received (Shizuku started)  ║")
         Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
         Log.d(TAG, "")
+
+        // Update Shizuku status
         checkShizukuStatusSync()
+
+        // IMPORTANT: The status update above will trigger FirewallManager's privilege monitoring
+        // via the combine() flow in startPrivilegeMonitoring(). This will automatically:
+        // 1. Detect that Shizuku is now available
+        // 2. Check if firewall should switch backends (VPN → ConnectivityManager)
+        // 3. Start firewall if it was down waiting for privileges
+        //
+        // No additional action needed here - the reactive flow handles everything!
+        Log.d(TAG, "Shizuku status updated - FirewallManager will handle any needed backend switch")
     }
 
     private val binderDeadListener = Shizuku.OnBinderDeadListener {

@@ -359,6 +359,7 @@ object Constants {
         const val ACTION_OPEN_FIREWALL = "io.github.dorumrr.de1984.OPEN_FIREWALL"
         const val ACTION_TOGGLE_NETWORK_ACCESS = "io.github.dorumrr.de1984.TOGGLE_NETWORK_ACCESS"
         const val ACTION_ENABLE_VPN_FALLBACK = "io.github.dorumrr.de1984.ENABLE_VPN_FALLBACK"
+        const val ACTION_BOOT_FAILURE_RECOVERY = "io.github.dorumrr.de1984.BOOT_FAILURE_RECOVERY"
 
         // Intent extras
         const val EXTRA_PACKAGE_NAME = "package_name"
@@ -456,6 +457,13 @@ object Constants {
         // Permission Info
         const val PERMISSION_NAME = "VPN Permission"
         const val PERMISSION_DESCRIPTION = "Create VPN connection for firewall fallback"
+    }
+
+    object BootFailure {
+        // Notification Channel
+        const val CHANNEL_ID = "boot_failure_channel"
+        const val CHANNEL_NAME = "Boot Failure"
+        const val NOTIFICATION_ID = 1005
     }
 
 }

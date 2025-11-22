@@ -1,10 +1,15 @@
 package io.github.dorumrr.de1984.data.worker
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.data.common.ShizukuStatus
+import io.github.dorumrr.de1984.data.service.BackendMonitoringService
+import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.FirewallMode
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.delay
 
@@ -91,7 +96,7 @@ class BootWorker(
 
             Log.d(TAG, "🚀 Starting firewall after boot...")
             val result = firewallManager.startFirewall()
-            
+
             result.onSuccess { backendType ->
                 Log.d(TAG, "")
                 Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
@@ -100,6 +105,45 @@ class BootWorker(
                 Log.d(TAG, "║  Backend: $backendType")
                 Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
                 Log.d(TAG, "")
+
+                // Check if we fell back to VPN and should start monitoring service
+                if (backendType == FirewallBackendType.VPN) {
+                    val currentMode = firewallManager.getCurrentMode()
+                    val shizukuStatus = shizukuManager.shizukuStatus.value
+
+                    // Only start monitoring if:
+                    // 1. Mode is AUTO (not manually selected VPN)
+                    // 2. Shizuku is installed but not running or no permission
+                    val shouldMonitor = currentMode == FirewallMode.AUTO &&
+                        (shizukuStatus == ShizukuStatus.INSTALLED_NOT_RUNNING ||
+                         shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION)
+
+                    if (shouldMonitor) {
+                        Log.d(TAG, "")
+                        Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+                        Log.d(TAG, "║  🔍 STARTING BACKEND MONITORING SERVICE                      ║")
+                        Log.d(TAG, "║  Reason: Firewall fell back to VPN (Shizuku not ready)      ║")
+                        Log.d(TAG, "║  Shizuku status: $shizukuStatus")
+                        Log.d(TAG, "║  This service will automatically switch to ConnectivityManager")
+                        Log.d(TAG, "║  when Shizuku becomes available                              ║")
+                        Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+                        Log.d(TAG, "")
+
+                        val monitorIntent = Intent(applicationContext, BackendMonitoringService::class.java).apply {
+                            action = Constants.BackendMonitoring.ACTION_START
+                            putExtra(Constants.BackendMonitoring.EXTRA_SHIZUKU_STATUS, shizukuStatus.name)
+                        }
+
+                        try {
+                            applicationContext.startForegroundService(monitorIntent)
+                            Log.d(TAG, "✅ Backend monitoring service started successfully")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "❌ Failed to start backend monitoring service: ${e.message}", e)
+                        }
+                    } else {
+                        Log.d(TAG, "Backend monitoring not needed. Mode: $currentMode, Shizuku: $shizukuStatus")
+                    }
+                }
             }.onFailure { error ->
                 Log.e(TAG, "")
                 Log.e(TAG, "╔════════════════════════════════════════════════════════════════╗")

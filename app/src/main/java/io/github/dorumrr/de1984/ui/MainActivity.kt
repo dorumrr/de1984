@@ -1,6 +1,7 @@
 package io.github.dorumrr.de1984.ui
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -8,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -47,7 +49,8 @@ class MainActivity : AppCompatActivity() {
 
     private enum class VpnPermissionContext {
         FIREWALL_START,
-        VPN_FALLBACK
+        VPN_FALLBACK,
+        BOOT_FAILURE_RECOVERY
     }
 
     private lateinit var binding: ActivityMainViewsBinding
@@ -114,6 +117,10 @@ class MainActivity : AppCompatActivity() {
                     // Start VPN fallback after permission granted
                     startVpnFallbackAfterPermission()
                 }
+                VpnPermissionContext.BOOT_FAILURE_RECOVERY -> {
+                    // Start firewall after boot failure recovery
+                    startFirewallAfterBootFailure()
+                }
             }
         } else {
             // Handle based on context
@@ -124,6 +131,11 @@ class MainActivity : AppCompatActivity() {
                 VpnPermissionContext.VPN_FALLBACK -> {
                     // User denied VPN permission for fallback - nothing to do
                     Log.w(TAG, "User denied VPN permission for fallback")
+                }
+                VpnPermissionContext.BOOT_FAILURE_RECOVERY -> {
+                    // User denied VPN permission for boot recovery
+                    Log.w(TAG, "User denied VPN permission for boot failure recovery")
+                    Toast.makeText(this, "VPN permission required to start firewall", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -198,6 +210,9 @@ class MainActivity : AppCompatActivity() {
             when (action) {
                 Constants.Notifications.ACTION_ENABLE_VPN_FALLBACK -> {
                     handleVpnFallbackRequest()
+                }
+                Constants.Notifications.ACTION_BOOT_FAILURE_RECOVERY -> {
+                    handleBootFailureRecovery()
                 }
             }
         }
@@ -745,6 +760,76 @@ class MainActivity : AppCompatActivity() {
         } else {
             // VPN permission already granted - start fallback immediately
             startVpnFallbackAfterPermission()
+        }
+    }
+
+    private fun handleBootFailureRecovery() {
+        Log.d(TAG, "Handling boot failure recovery from notification")
+
+        // Dismiss the boot failure notification
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(Constants.BootFailure.NOTIFICATION_ID)
+
+        // Check if firewall is already running
+        val firewallManager = (application as De1984Application).dependencies.firewallManager
+        if (firewallManager.activeBackendType.value != null) {
+            Log.d(TAG, "Firewall already running, no recovery needed")
+            Toast.makeText(this, "Firewall is already running", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Check if VPN permission is needed and request it if necessary
+        val prepareIntent = try {
+            android.net.VpnService.prepare(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check VPN permission", e)
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Failed to check VPN permission")
+                .setMessage("Could not check VPN permission: ${e.message}")
+                .setPositiveButton(getString(R.string.dialog_ok), null)
+                .show()
+            return
+        }
+
+        if (prepareIntent != null) {
+            // VPN permission not granted - request it
+            Log.d(TAG, "VPN permission not granted, requesting...")
+            vpnPermissionContext = VpnPermissionContext.BOOT_FAILURE_RECOVERY
+            vpnPermissionLauncher.launch(prepareIntent)
+        } else {
+            // VPN permission already granted - start firewall immediately
+            Log.d(TAG, "VPN permission already granted, starting firewall...")
+            startFirewallAfterBootFailure()
+        }
+    }
+
+    private fun startFirewallAfterBootFailure() {
+        Log.d(TAG, "Starting firewall after boot failure recovery")
+
+        val firewallManager = (application as De1984Application).dependencies.firewallManager
+
+        lifecycleScope.launch {
+            try {
+                val result = firewallManager.startFirewall()
+
+                result.onSuccess { backendType ->
+                    Log.d(TAG, "✅ Firewall started successfully with backend: $backendType")
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Firewall started successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }.onFailure { error ->
+                    Log.e(TAG, "❌ Failed to start firewall: ${error.message}")
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Failed to start firewall")
+                        .setMessage("Could not start the firewall: ${error.message}")
+                        .setPositiveButton(getString(R.string.dialog_ok), null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception while starting firewall", e)
+            }
         }
     }
 

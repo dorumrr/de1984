@@ -1,20 +1,26 @@
 package io.github.dorumrr.de1984.data.receiver
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.service.BackendMonitoringService
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.data.worker.BootWorker
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
+import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -84,6 +90,7 @@ class BootReceiver : BroadcastReceiver() {
     /**
      * Schedule a WorkManager job to restore firewall state.
      * This is the Android 12+ compatible way to handle boot persistence.
+     * Falls back to direct restoration if WorkManager is not initialized.
      */
     private fun scheduleBootWorker(context: Context) {
         try {
@@ -100,6 +107,12 @@ class BootReceiver : BroadcastReceiver() {
 
             Log.d(TAG, "✅ BootWorker scheduled successfully")
 
+        } catch (e: IllegalStateException) {
+            // WorkManager not initialized yet (can happen at boot time)
+            // Fall back to direct restoration
+            Log.e(TAG, "❌ Failed to schedule BootWorker: WorkManager not initialized", e)
+            Log.d(TAG, "⚠️ Falling back to direct firewall restoration")
+            restoreFirewallState(context, "BOOT_COMPLETED (WorkManager fallback)")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to schedule BootWorker", e)
         }
@@ -187,6 +200,10 @@ class BootReceiver : BroadcastReceiver() {
                                 Log.e(TAG, "║  Error: ${error.message}")
                                 Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
                                 Log.e(TAG, "")
+
+                                // Show notification asking user to open app
+                                // (VPN permission likely needs to be re-granted)
+                                showBootFailureNotification(context)
                             }
                         } finally {
                             // Signal that async work is complete
@@ -231,6 +248,59 @@ class BootReceiver : BroadcastReceiver() {
             Log.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
             Log.e(TAG, "")
             Log.e(TAG, "Stack trace:", e)
+        }
+    }
+
+    /**
+     * Show notification asking user to open the app when firewall fails to start at boot.
+     * This typically happens when VPN permission needs to be re-granted.
+     */
+    private fun showBootFailureNotification(context: Context) {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // Create notification channel (required for Android 8.0+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    Constants.BootFailure.CHANNEL_ID,
+                    Constants.BootFailure.CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notifications when firewall fails to start at boot"
+                    setShowBadge(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            // Create intent to open the app and trigger firewall recovery
+            val openAppIntent = Intent(context, MainActivity::class.java).apply {
+                action = Constants.Notifications.ACTION_BOOT_FAILURE_RECOVERY
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Build notification
+            val notification = NotificationCompat.Builder(context, Constants.BootFailure.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Firewall failed to start")
+                .setContentText("Tap to open De1984 and grant VPN permission")
+                .setStyle(NotificationCompat.BigTextStyle()
+                    .bigText("The firewall could not start after boot. This usually happens when VPN permission needs to be re-granted. Tap to open De1984 and enable the firewall."))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+            notificationManager.notify(Constants.BootFailure.NOTIFICATION_ID, notification)
+            Log.d(TAG, "Boot failure notification shown")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to show boot failure notification", e)
         }
     }
 }

@@ -98,7 +98,9 @@ class FirewallViewModel(
     private fun observeFirewallState() {
         firewallManager.firewallState
             .onEach { state ->
-                val enabled = state is FirewallState.Running
+                // Show toggle as ON when firewall is Running OR Starting
+                // This provides immediate visual feedback when user starts the firewall
+                val enabled = state is FirewallState.Running || state is FirewallState.Starting
                 _uiState.value = _uiState.value.copy(isFirewallEnabled = enabled)
             }
             .launchIn(viewModelScope)

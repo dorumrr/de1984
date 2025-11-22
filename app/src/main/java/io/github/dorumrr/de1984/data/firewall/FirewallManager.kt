@@ -24,6 +24,7 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
+import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -69,6 +70,7 @@ class FirewallManager(
     private var ruleApplicationJob: Job? = null
     private var healthMonitoringJob: Job? = null
     private var privilegeMonitoringJob: Job? = null
+    private var vpnPermissionMonitoringJob: Job? = null
 
     // Adaptive health check tracking
     private var consecutiveSuccessfulHealthChecks = 0
@@ -150,56 +152,94 @@ class FirewallManager(
     private fun initializeBackendState() {
         scope.launch {
             try {
-                // Check if VPN service is running
-                val vpnBackend = VpnFirewallBackend(context)
-                if (vpnBackend.isActive()) {
-                    Log.d(TAG, "Detected VPN backend running on startup")
-                    currentBackend = vpnBackend
-                    _activeBackendType.value = FirewallBackendType.VPN
-                    _firewallState.value = FirewallState.Running(FirewallBackendType.VPN)
-                    // VPN monitors internally, no need to start monitoring
-                    startBackendHealthMonitoring()
-                    return@launch
+                // Add initial delay to let services update SharedPreferences
+                // This prevents race condition where we check before service has started
+                delay(200)
+
+                // Try multiple times with exponential backoff to detect running backend
+                // This handles cases where service is starting but not yet fully active
+                var attempts = 0
+                val maxAttempts = 5
+
+                while (attempts < maxAttempts) {
+                    Log.d(TAG, "initializeBackendState: Attempt ${attempts + 1}/$maxAttempts")
+
+                    // Check if VPN service is running
+                    val vpnBackend = VpnFirewallBackend(context)
+                    if (vpnBackend.isActive()) {
+                        Log.d(TAG, "Detected VPN backend running on startup (attempt ${attempts + 1})")
+                        currentBackend = vpnBackend
+                        _activeBackendType.value = FirewallBackendType.VPN
+                        _firewallState.value = FirewallState.Running(FirewallBackendType.VPN)
+                        // VPN monitors internally, no need to start monitoring
+                        startBackendHealthMonitoring()
+                        return@launch
+                    }
+
+                    // Check if iptables backend is running
+                    val iptablesBackend = IptablesFirewallBackend(context, rootManager, shizukuManager, errorHandler)
+                    if (iptablesBackend.isActive()) {
+                        Log.d(TAG, "Detected iptables backend running on startup (attempt ${attempts + 1})")
+                        currentBackend = iptablesBackend
+                        _activeBackendType.value = FirewallBackendType.IPTABLES
+                        _firewallState.value = FirewallState.Running(FirewallBackendType.IPTABLES)
+                        startMonitoring()
+                        startBackendHealthMonitoring()
+                        return@launch
+                    }
+
+                    // Check if ConnectivityManager backend is running
+                    val cmBackend = ConnectivityManagerFirewallBackend(context, shizukuManager, errorHandler)
+                    if (cmBackend.isActive()) {
+                        Log.d(TAG, "Detected ConnectivityManager backend running on startup (attempt ${attempts + 1})")
+                        currentBackend = cmBackend
+                        _activeBackendType.value = FirewallBackendType.CONNECTIVITY_MANAGER
+                        _firewallState.value = FirewallState.Running(FirewallBackendType.CONNECTIVITY_MANAGER)
+                        startMonitoring()
+                        startBackendHealthMonitoring()
+                        return@launch
+                    }
+
+                    // Check if NetworkPolicyManager backend is running
+                    val npmBackend = NetworkPolicyManagerFirewallBackend(context, shizukuManager, errorHandler)
+                    if (npmBackend.isActive()) {
+                        Log.d(TAG, "Detected NetworkPolicyManager backend running on startup (attempt ${attempts + 1})")
+                        currentBackend = npmBackend
+                        _activeBackendType.value = FirewallBackendType.NETWORK_POLICY_MANAGER
+                        _firewallState.value = FirewallState.Running(FirewallBackendType.NETWORK_POLICY_MANAGER)
+                        startMonitoring()
+                        startBackendHealthMonitoring()
+                        return@launch
+                    }
+
+                    attempts++
+                    if (attempts < maxAttempts) {
+                        // Exponential backoff: 100ms, 200ms, 300ms, 400ms
+                        val delayMs = 100L * attempts
+                        Log.d(TAG, "No backend detected, retrying in ${delayMs}ms...")
+                        delay(delayMs)
+                    }
                 }
 
-                // Check if iptables backend is running
-                val iptablesBackend = IptablesFirewallBackend(context, rootManager, shizukuManager, errorHandler)
-                if (iptablesBackend.isActive()) {
-                    Log.d(TAG, "Detected iptables backend running on startup")
-                    currentBackend = iptablesBackend
-                    _activeBackendType.value = FirewallBackendType.IPTABLES
-                    _firewallState.value = FirewallState.Running(FirewallBackendType.IPTABLES)
-                    startMonitoring()
-                    startBackendHealthMonitoring()
-                    return@launch
-                }
+                // After all attempts, check if firewall should be running
+                Log.d(TAG, "No backend detected running on startup after $maxAttempts attempts")
+                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                val shouldBeRunning = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
 
-                // Check if ConnectivityManager backend is running
-                val cmBackend = ConnectivityManagerFirewallBackend(context, shizukuManager, errorHandler)
-                if (cmBackend.isActive()) {
-                    Log.d(TAG, "Detected ConnectivityManager backend running on startup")
-                    currentBackend = cmBackend
-                    _activeBackendType.value = FirewallBackendType.CONNECTIVITY_MANAGER
-                    _firewallState.value = FirewallState.Running(FirewallBackendType.CONNECTIVITY_MANAGER)
-                    startMonitoring()
-                    startBackendHealthMonitoring()
-                    return@launch
+                if (shouldBeRunning) {
+                    Log.w(TAG, "Firewall should be running but no backend detected - attempting restart")
+                    // Attempt to restart firewall
+                    val mode = getCurrentMode()
+                    startFirewall(mode).onFailure { error ->
+                        Log.e(TAG, "Failed to restart firewall on initialization: ${error.message}")
+                        _firewallState.value = FirewallState.Error(
+                            "Firewall should be running but failed to restart: ${error.message}",
+                            null
+                        )
+                    }
+                } else {
+                    _firewallState.value = FirewallState.Stopped
                 }
-
-                // Check if NetworkPolicyManager backend is running
-                val npmBackend = NetworkPolicyManagerFirewallBackend(context, shizukuManager, errorHandler)
-                if (npmBackend.isActive()) {
-                    Log.d(TAG, "Detected NetworkPolicyManager backend running on startup")
-                    currentBackend = npmBackend
-                    _activeBackendType.value = FirewallBackendType.NETWORK_POLICY_MANAGER
-                    _firewallState.value = FirewallState.Running(FirewallBackendType.NETWORK_POLICY_MANAGER)
-                    startMonitoring()
-                    startBackendHealthMonitoring()
-                    return@launch
-                }
-
-                Log.d(TAG, "No backend detected running on startup")
-                _firewallState.value = FirewallState.Stopped
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing backend state", e)
                 _firewallState.value = FirewallState.Error("Error initializing backend state: ${e.message}", _activeBackendType.value)
@@ -759,6 +799,8 @@ class FirewallManager(
         ruleApplicationJob = null
         healthMonitoringJob?.cancel()
         healthMonitoringJob = null
+        vpnPermissionMonitoringJob?.cancel()
+        vpnPermissionMonitoringJob = null
 
         // Reset adaptive health check tracking
         consecutiveSuccessfulHealthChecks = 0
@@ -975,6 +1017,10 @@ class FirewallManager(
             // When user grants VPN permission or when handlePrivilegeChange() runs,
             // it will check isFirewallDown and attempt recovery.
             _isFirewallDown.value = true
+
+            // Start monitoring for VPN permission grant
+            // This will automatically start VPN fallback when user grants permission
+            startVpnPermissionMonitoring()
         }
     }
 
@@ -1091,8 +1137,9 @@ class FirewallManager(
         }
 
         // Create intent to open MainActivity and request VPN permission
-        val intent = Intent(Constants.Notifications.ACTION_ENABLE_VPN_FALLBACK).apply {
-            setPackage(context.packageName)
+        // Must explicitly set component (MainActivity) for PendingIntent to work
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Constants.Notifications.ACTION_ENABLE_VPN_FALLBACK
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
@@ -1156,6 +1203,77 @@ class FirewallManager(
 
         // Start VPN fallback (wasManualSelection = false since this is a fallback scenario)
         startVpnFallback(wasManualSelection = false, failedBackendType = FirewallBackendType.VPN)
+    }
+
+    /**
+     * Start monitoring for VPN permission grant.
+     *
+     * This function continuously checks if VPN permission has been granted and automatically
+     * starts VPN fallback when permission becomes available.
+     *
+     * Includes safeguards:
+     * - Max 30 retry attempts (1 minute total)
+     * - Exponential backoff (2s → 16s)
+     * - Cancels existing monitoring to prevent duplicates
+     * - Stops when firewall is no longer down
+     * - Exception handling for VpnService.prepare()
+     */
+    private fun startVpnPermissionMonitoring() {
+        // Cancel existing monitoring to prevent duplicates
+        vpnPermissionMonitoringJob?.cancel()
+
+        Log.d(TAG, "Starting VPN permission monitoring")
+
+        vpnPermissionMonitoringJob = scope.launch {
+            var retryCount = 0
+            val maxRetries = 30  // 30 attempts = ~1 minute total with exponential backoff
+            var delayMs = 2000L  // Start with 2 seconds
+
+            while (_isFirewallDown.value && retryCount < maxRetries) {
+                delay(delayMs)
+                retryCount++
+
+                Log.d(TAG, "VPN permission monitoring: attempt $retryCount/$maxRetries")
+
+                // Check if VPN permission is granted
+                val prepareIntent = try {
+                    VpnService.prepare(context)
+                } catch (e: Exception) {
+                    Log.w(TAG, "VPN permission check failed: ${e.message}")
+                    continue
+                }
+
+                if (prepareIntent == null) {
+                    // Permission granted! Attempt automatic recovery
+                    Log.d(TAG, "✅ VPN permission granted - attempting automatic recovery")
+
+                    // Dismiss the notification since permission is now granted
+                    dismissVpnFallbackNotification()
+
+                    // Attempt to start firewall (will use VPN backend)
+                    val mode = getCurrentMode()
+                    val result = startFirewall(mode)
+
+                    if (result.isSuccess) {
+                        Log.d(TAG, "✅ Automatic VPN fallback successful")
+                        break
+                    } else {
+                        Log.w(TAG, "⚠️ VPN fallback start failed: ${result.exceptionOrNull()?.message}")
+                        // Increase delay and retry
+                        delayMs = (delayMs * 1.5).toLong().coerceAtMost(16000L)
+                    }
+                } else {
+                    // Permission not yet granted, continue monitoring
+                    Log.d(TAG, "VPN permission not yet granted, will retry in ${delayMs}ms")
+                }
+            }
+
+            if (retryCount >= maxRetries) {
+                Log.w(TAG, "VPN permission monitoring stopped after $maxRetries attempts")
+            } else if (!_isFirewallDown.value) {
+                Log.d(TAG, "VPN permission monitoring stopped - firewall is now running")
+            }
+        }
     }
 
     /**

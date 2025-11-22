@@ -190,7 +190,8 @@ class MainActivity : AppCompatActivity() {
 
         // Re-check privileges when app comes to foreground
         // This ensures we detect newly available Shizuku/root and request permissions
-        // The managers' hasCheckedOnce optimization prevents redundant checks when we already have permission
+        // Force re-check even if previously had permission to detect privilege restoration
+        // (e.g., root re-enabled in Magisk, Shizuku restarted)
         lifecycleScope.launch {
             val deps = (application as De1984Application).dependencies
 
@@ -202,8 +203,13 @@ class MainActivity : AppCompatActivity() {
                 deps.shizukuManager.requestShizukuPermission()
             }
 
-            // Also check root as fallback
-            deps.rootManager.checkRootStatus()
+            // Force re-check root status to detect privilege restoration
+            // This is critical for detecting when root is re-enabled after being revoked
+            // The regular checkRootStatus() caches ROOTED_WITH_PERMISSION, so we need force re-check
+            deps.rootManager.forceRecheckRootStatus()
+
+            // The StateFlow updates from these checks will trigger handlePrivilegeChange()
+            // in FirewallManager, which will automatically switch backends if needed
         }
     }
 

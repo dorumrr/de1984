@@ -227,7 +227,6 @@
     <string name="cd_captive_portal_icon">强制门户图标</string>
     <string name="cd_apps_icon">应用图标</string>
     <string name="cd_permission_status">权限状态</string>
-    <string name="cd_protection_icon">保护图标</string>
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">为更美好的明天而熬夜。\n由 Doru Moraru 创建</string>

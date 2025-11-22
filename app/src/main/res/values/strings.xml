@@ -504,7 +504,6 @@
     <string name="snackbar_action_settings">SETTINGS</string>
 
     <!-- Content Descriptions -->
-    <string name="cd_protection_icon">Protection icon</string>
 
     <!-- Package Categories -->
     <string name="category_system_core">System Core</string>

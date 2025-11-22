@@ -218,7 +218,6 @@
     <string name="cd_captive_portal_icon">Pictogramă portal captiv</string>
     <string name="cd_apps_icon">Pictogramă aplicații</string>
     <string name="cd_permission_status">Stare permisiune</string>
-    <string name="cd_protection_icon">Pictogramă de protecție</string>
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">Nopți târzii pentru zile mai luminoase.\nCreat de Doru Moraru</string>

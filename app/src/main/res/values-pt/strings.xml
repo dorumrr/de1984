@@ -217,7 +217,6 @@
     <string name="cd_captive_portal_icon">Ícone de Portal Cativo</string>
     <string name="cd_apps_icon">Ícone de apps</string>
     <string name="cd_permission_status">Estado da permissão</string>
-    <string name="cd_protection_icon">Ícone de proteção</string>
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">Noites tardias para dias mais brilhantes.\nCriado por Doru Moraru</string>

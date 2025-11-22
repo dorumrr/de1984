@@ -217,7 +217,6 @@
     <string name="cd_captive_portal_icon">Icona Captive Portal</string>
     <string name="cd_apps_icon">Icona app</string>
     <string name="cd_permission_status">Stato permesso</string>
-    <string name="cd_protection_icon">Icona di protezione</string>
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">Notti lunghe per giorni migliori.\nCreato da Doru Moraru</string>

@@ -470,6 +470,23 @@ class FirewallViewModel(
         } ?: false
 
         if (needsVpnPermission) {
+            // Check if another VPN is active before calling VpnService.prepare()
+            // This prevents killing user's third-party VPN (like Proton VPN) when:
+            // 1. App is updated and restarted
+            // 2. User manually starts firewall while another VPN is connected
+            // 3. Any other scenario where startFirewall() is called with another VPN active
+            if (firewallManager.isAnotherVpnActive()) {
+                Log.w(TAG, "startFirewall: Another VPN is active - cannot use VPN backend")
+                Log.w(TAG, "startFirewall: User needs to disconnect their VPN or De1984 needs privileged access (root/Shizuku)")
+
+                // Don't call VpnService.prepare() - it would kill the other VPN
+                // Return null to indicate we can't start (no permission dialog needed)
+                // The firewall will remain stopped until:
+                // - User disconnects their VPN, OR
+                // - User grants root/Shizuku access (then iptables/CM backend can be used)
+                return null
+            }
+
             val prepareIntent = VpnService.prepare(getApplication())
             if (prepareIntent != null) {
                 // Permission dialog must be shown by the Activity. We do NOT

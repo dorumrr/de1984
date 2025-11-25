@@ -135,6 +135,7 @@ class BootReceiver : BroadcastReceiver() {
                 if (app != null) {
                     val firewallManager = app.dependencies.firewallManager
                     val shizukuManager = app.dependencies.shizukuManager
+                    val rootManager = app.dependencies.rootManager
 
                     // Use goAsync() to keep receiver alive while coroutine runs
                     val pendingResult = goAsync()
@@ -143,6 +144,16 @@ class BootReceiver : BroadcastReceiver() {
                     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
                     scope.launch {
                         try {
+                            // CRITICAL: Request root permission FIRST to wake up Magisk
+                            // Magisk doesn't grant root permission until the app requests it after boot/update
+                            // Without this, FirewallManager.selectBackend() will think root is not available
+                            // and fall back to VPN backend, which kills user's third-party VPN (like Proton VPN)
+                            Log.d(TAG, "Requesting root permission to wake up Magisk...")
+                            rootManager.forceRecheckRootStatus()
+
+                            // Small delay to allow Magisk to process the permission request
+                            kotlinx.coroutines.delay(500)
+
                             // Wait for Shizuku to be initialized before starting firewall
                             // This is important for ACTION_MY_PACKAGE_REPLACED (app update)
                             // where Shizuku may not be fully initialized yet

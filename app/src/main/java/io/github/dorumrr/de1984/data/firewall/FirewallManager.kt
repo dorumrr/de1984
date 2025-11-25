@@ -335,6 +335,36 @@ class FirewallManager(
         return try {
             Log.d(TAG, "Starting firewall with mode: $mode")
 
+            // CRITICAL: Check if another VPN is active AND we don't have privileged access
+            // This prevents killing user's third-party VPN (like Proton VPN) during:
+            // 1. App updates (ACTION_MY_PACKAGE_REPLACED)
+            // 2. Device boot (ACTION_BOOT_COMPLETED)
+            // 3. Any other scenario where startFirewall() is called before root status is checked
+            //
+            // If another VPN is active but we have root/Shizuku, we can still use iptables/CM backend.
+            // Only fail if another VPN is active AND we don't have privileged access (would need VPN backend).
+            if (isAnotherVpnActive()) {
+                // Check if we have privileged access (root or Shizuku)
+                val hasRoot = rootManager.hasRootPermission
+                val hasShizuku = shizukuManager.hasShizukuPermission
+                val hasPrivilegedAccess = hasRoot || hasShizuku
+
+                if (!hasPrivilegedAccess) {
+                    Log.w(TAG, "startFirewall: Another VPN is active and no privileged access - cannot start firewall")
+                    Log.w(TAG, "startFirewall: User needs to disconnect their VPN or grant root/Shizuku access")
+
+                    // Don't start the firewall - we would need VPN backend but another VPN is active
+                    val error = Exception("Another VPN is active and no privileged access")
+                    _firewallState.value = FirewallState.Error(
+                        message = "Another VPN is active",
+                        lastBackend = activeBackendType.value
+                    )
+                    return Result.failure(error)
+                } else {
+                    Log.d(TAG, "startFirewall: Another VPN is active but we have privileged access - will use iptables/CM backend")
+                }
+            }
+
             // Compute start plan first so planner is single source of truth
             val planResult = computeStartPlan(mode)
             if (planResult.isFailure) {
@@ -1039,6 +1069,34 @@ class FirewallManager(
         // Planner chose VPN and it requires permission – preserve existing UX around permission checks.
         Log.e(TAG, "Planner selected VPN fallback, checking VPN permission...")
 
+        // Check if another VPN is active before calling VpnService.prepare()
+        // This prevents killing user's third-party VPN (like Proton VPN)
+        val isAnotherVpnActive = isAnotherVpnActive()
+
+        if (isAnotherVpnActive) {
+            // Another VPN is active - don't call VpnService.prepare() yet
+            Log.e(TAG, "Another VPN is active - showing VPN conflict notification")
+            showVpnConflictNotification()
+
+            // Update state to reflect firewall is down
+            currentBackend = null
+            _activeBackendType.value = null
+            _backendHealthWarning.value = "FIREWALL DOWN: Another VPN active. Tap notification to replace VPN and enable firewall."
+            _firewallState.value = FirewallState.Error(
+                message = "VPN conflict - another VPN is active",
+                lastBackend = failedBackendType
+            )
+
+            // Mark firewall as down (preserve user intent for recovery)
+            _isFirewallDown.value = true
+
+            // Start monitoring for VPN permission grant
+            // This will automatically start VPN fallback when user grants permission
+            startVpnPermissionMonitoring()
+            return@withLock
+        }
+
+        // No other VPN active - safe to check VPN permission
         val prepareIntent = try {
             VpnService.prepare(context)
         } catch (e: Exception) {
@@ -1255,6 +1313,77 @@ class FirewallManager(
     }
 
     /**
+     * Show notification when another VPN is active and blocking De1984 from using VPN fallback.
+     *
+     * This notification informs the user that:
+     * 1. Another VPN (like Proton VPN) is currently active
+     * 2. De1984 needs VPN permission to restore firewall protection
+     * 3. Granting permission will replace their current VPN connection
+     *
+     * Uses the same notification ID as VPN fallback notification since they're mutually exclusive.
+     */
+    private fun showVpnConflictNotification() {
+        Log.d(TAG, "Showing VPN conflict notification")
+
+        // Create notification channel (Android O+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                Constants.VpnFallback.CHANNEL_ID,
+                Constants.VpnFallback.CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for VPN fallback when privileged backends fail"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Create intent to open MainActivity and request VPN permission
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Constants.Notifications.ACTION_ENABLE_VPN_FALLBACK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Build notification with VPN conflict messaging
+        val notificationTitle = context.getString(R.string.vpn_conflict_notification_title)
+        val notificationText = context.getString(R.string.vpn_conflict_notification_text)
+        val notificationAction = context.getString(R.string.vpn_conflict_notification_action_text)
+
+        val notification = NotificationCompat.Builder(context, Constants.VpnFallback.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_shield)
+            .setContentTitle(notificationTitle)
+            .setContentText(notificationText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .addAction(
+                R.drawable.ic_shield,
+                notificationAction,
+                pendingIntent
+            )
+            .build()
+
+        notificationManager.notify(Constants.VpnFallback.NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Dismiss VPN conflict notification.
+     *
+     * This is an alias for dismissVpnFallbackNotification() since both notifications
+     * use the same notification ID (they're mutually exclusive scenarios).
+     */
+    private fun dismissVpnConflictNotification() {
+        dismissVpnFallbackNotification()
+    }
+
+    /**
      * Start VPN fallback manually after user grants permission via notification.
      * This is called from MainActivity when user taps the notification and grants permission.
      */
@@ -1308,7 +1437,18 @@ class FirewallManager(
 
                 Log.d(TAG, "VPN permission monitoring: attempt $retryCount/$maxRetries")
 
-                // Check if VPN permission is granted
+                // Check if another VPN is active before calling VpnService.prepare()
+                // This prevents killing user's third-party VPN (like Proton VPN) repeatedly
+                val isAnotherVpnActive = isAnotherVpnActive()
+
+                if (isAnotherVpnActive) {
+                    // Another VPN is still active - don't check permission yet
+                    Log.d(TAG, "Another VPN still active - skipping permission check")
+                    showVpnConflictNotification()
+                    continue
+                }
+
+                // No other VPN active - safe to check VPN permission
                 val prepareIntent = try {
                     VpnService.prepare(context)
                 } catch (e: Exception) {
@@ -1463,6 +1603,36 @@ class FirewallManager(
             Log.e(TAG, "Failed to check VPN status", e)
             false
         }
+    }
+
+    /**
+     * Check if ANOTHER VPN (not De1984's) is currently active on the device.
+     *
+     * This is used to avoid calling VpnService.prepare() when a third-party VPN
+     * (like Proton VPN) is active, which would revoke their VPN connection.
+     *
+     * @return true if another VPN app is active, false if no VPN or only De1984's VPN is active
+     */
+    fun isAnotherVpnActive(): Boolean {
+        // First check if ANY VPN is active
+        val isAnyVpnActive = isVpnActive()
+
+        if (!isAnyVpnActive) {
+            // No VPN active at all
+            return false
+        }
+
+        // A VPN is active - check if it's De1984's own VPN
+        val currentBackendType = getActiveBackendType()
+        if (currentBackendType == FirewallBackendType.VPN) {
+            // De1984's VPN is active - not "another" VPN
+            Log.d(TAG, "isAnotherVpnActive: De1984's VPN is active, not another VPN")
+            return false
+        }
+
+        // A VPN is active and it's NOT De1984's - must be another app's VPN
+        Log.d(TAG, "isAnotherVpnActive: Another VPN app is active (currentBackend=$currentBackendType)")
+        return true
     }
 
     /**

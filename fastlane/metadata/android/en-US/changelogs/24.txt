@@ -1,0 +1,5 @@
+- Added database migration safety net to prevent data corruption
+- Fixed app crash on startup for users upgrading from older versions (Bugs #50 and #44)
+- Added persistent notificaton when VPN backend needs to be restored but the slot is already occupied by another VPN app.
+- Improved database initialization logging for debugging
+- Users upgrading directly from v2.4.2 to this version will need to reconfigure their firewall rules. This is a one-time known issue required to fix the underlying database migration problem

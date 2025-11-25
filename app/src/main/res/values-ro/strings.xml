@@ -304,6 +304,11 @@
     <string name="vpn_fallback_notification_text">Backend-ul privilegiat a eșuat. Apasă pentru a activa conectarea prin VPN și a restabili protecția firewall.</string>
     <string name="vpn_fallback_notification_action_text">Activează conectarea prin VPN</string>
 
+    <!-- VPN Conflict Notification -->
+    <string name="vpn_conflict_notification_title">De1984 Firewall Oprit - Conflict VPN</string>
+    <string name="vpn_conflict_notification_text">Un alt VPN este activ. De1984 necesită permisiunea VPN pentru a restabili protecția firewall-ului. Aceasta va înlocui conexiunea VPN curentă. Apasă pentru a acorda permisiunea.</string>
+    <string name="vpn_conflict_notification_action_text">Înlocuiește VPN &amp; Activează Firewall</string>
+
     <string name="vpn_fallback_tier_title">Fallback VPN</string>
     <string name="vpn_fallback_tier_description">Permite conectare automată la VPN când backend-urile privilegiate (iptables/ConnectivityManager) eșuează. Asigură că firewall-ul rămâne activ.</string>
     <string name="vpn_fallback_tier_status_granted">Completat</string>
@@ -480,7 +485,7 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Date mobile</string>
     <string name="firewall_network_label_roaming">Roaming</string>
-    <string name="firewall_network_label_lan">Blochează Acces LAN</string>
+    <string name="firewall_network_label_lan">Acces LAN</string>
     <string name="firewall_network_label_background_access">Permite în fundal</string>
     <string name="firewall_network_label_block_internet">Blochează Internet</string>
     <string name="firewall_background_access_description">Permite aplicației să acceseze internetul când este în fundal</string>

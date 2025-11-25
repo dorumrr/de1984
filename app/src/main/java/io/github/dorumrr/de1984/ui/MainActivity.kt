@@ -89,7 +89,8 @@ class MainActivity : AppCompatActivity() {
         val deps = (application as De1984Application).dependencies
         PermissionSetupViewModel.Factory(
             context = applicationContext,
-            permissionManager = deps.permissionManager
+            permissionManager = deps.permissionManager,
+            firewallManager = deps.firewallManager
         )
     }
 

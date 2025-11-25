@@ -147,7 +147,41 @@ class PermissionManager(
         }
     }
 
-    fun hasVpnPermission(): Boolean {
+    /**
+     * Check if VPN permission is granted.
+     *
+     * IMPORTANT: This method calls VpnService.prepare() which can revoke active VPN connections
+     * from other apps (like Proton VPN). Only call this when:
+     * 1. User is explicitly granting VPN permission (user-initiated action)
+     * 2. Firewall is using VPN backend (not privileged backends)
+     * 3. No other VPN app is currently active
+     *
+     * @param currentBackendType The currently active backend type, or null if no backend is active.
+     *                           If a privileged backend (IPTABLES, CONNECTIVITY_MANAGER) is active,
+     *                           this method will skip the VPN permission check and return false.
+     * @param firewallManager Optional FirewallManager instance to check if another VPN is active.
+     *                        If provided and another VPN is detected, skips the permission check.
+     * @return true if VPN permission is granted, false otherwise
+     */
+    fun hasVpnPermission(
+        currentBackendType: io.github.dorumrr.de1984.domain.firewall.FirewallBackendType? = null,
+        firewallManager: io.github.dorumrr.de1984.data.firewall.FirewallManager? = null
+    ): Boolean {
+        // Skip VPN permission check if a privileged backend is active
+        // This prevents killing user's third-party VPN (like Proton VPN) when they're using iptables/CM backend
+        if (currentBackendType != null &&
+            currentBackendType != io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
+            return false
+        }
+
+        // Skip VPN permission check if another VPN app is active
+        // This prevents killing user's third-party VPN (like Proton VPN) during app initialization
+        // or when checking permissions in the Settings screen
+        if (firewallManager?.isAnotherVpnActive() == true) {
+            android.util.Log.d("PermissionManager", "hasVpnPermission: Another VPN is active - skipping permission check")
+            return false
+        }
+
         return try {
             VpnService.prepare(context) == null
         } catch (e: Exception) {

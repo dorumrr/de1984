@@ -203,16 +203,15 @@ class ConnectivityManagerFirewallBackend(
             // Calculate desired policies for all packages
             val desiredPolicies = mutableMapOf<String, Boolean>()  // packageName -> shouldBlock
 
+            // Get critical package protection setting once (outside the loop)
+            val allowCritical = prefs.getBoolean(
+                Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+            )
+
             // First pass: Calculate what the policy should be for each package
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
-
-                // Check if critical package protection is disabled
-                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                val allowCritical = prefs.getBoolean(
-                    Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
-                    Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
-                )
 
                 // Never block system-critical packages - always allow (unless setting is enabled)
                 if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {

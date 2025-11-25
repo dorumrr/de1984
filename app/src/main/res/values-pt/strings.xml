@@ -302,6 +302,11 @@
     <string name="vpn_fallback_notification_text">Backend privilegiado falhou. Toque para ativar fallback VPN e restaurar proteção do firewall.</string>
     <string name="vpn_fallback_notification_action_text">Ativar Fallback VPN</string>
 
+    <!-- VPN Conflict Notification -->
+    <string name="vpn_conflict_notification_title">De1984 Firewall Inativo - Conflito VPN</string>
+    <string name="vpn_conflict_notification_text">Outra VPN está ativa. De1984 precisa de permissão VPN para restaurar a proteção do firewall. Isso substituirá sua conexão VPN atual. Toque para conceder permissão.</string>
+    <string name="vpn_conflict_notification_action_text">Substituir VPN &amp; Ativar Firewall</string>
+
     <string name="vpn_fallback_tier_title">Fallback VPN</string>
     <string name="vpn_fallback_tier_description">Permite fallback automático para VPN quando backends privilegiados (iptables/ConnectivityManager) falham. Garante que o firewall permaneça ativo.</string>
     <string name="vpn_fallback_tier_status_granted">Concluído</string>
@@ -478,7 +483,7 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Dados Móveis</string>
     <string name="firewall_network_label_roaming">Roaming</string>
-    <string name="firewall_network_label_lan">Bloquear Acesso LAN</string>
+    <string name="firewall_network_label_lan">Acesso LAN</string>
     <string name="firewall_network_label_background_access">Permitir em Segundo Plano</string>
     <string name="firewall_network_label_block_internet">Bloquear Internet</string>
     <string name="firewall_background_access_description">Permitir que o app acesse a internet quando em segundo plano</string>

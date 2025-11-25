@@ -86,6 +86,10 @@ class HandleNewAppInstallUseCase constructor(
             Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
             Constants.Settings.DEFAULT_FIREWALL_POLICY
         )
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
 
         val appInfo = packageInfo.applicationInfo ?: return null
         val appName = try {
@@ -105,11 +109,6 @@ class HandleNewAppInstallUseCase constructor(
         return when {
             // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues (unless setting is enabled)
             isVpnApp -> {
-                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                val allowCritical = prefs.getBoolean(
-                    Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
-                    Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
-                )
 
                 if (!allowCritical) {
                     Log.d(TAG, "Creating 'allow all' rule for VPN app: $packageName")

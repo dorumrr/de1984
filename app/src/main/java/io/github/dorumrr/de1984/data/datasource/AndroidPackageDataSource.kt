@@ -771,7 +771,6 @@ class AndroidPackageDataSource(
                     firewallRepository.updateWifiBlocking(packageName, blocked)
                 } else {
                     // Create new rule with default policy for other network types
-                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                         Constants.Settings.DEFAULT_FIREWALL_POLICY
@@ -823,7 +822,6 @@ class AndroidPackageDataSource(
                     firewallRepository.updateMobileBlocking(packageName, blocked)
                 } else {
                     // Create new rule with default policy for other network types
-                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                         Constants.Settings.DEFAULT_FIREWALL_POLICY
@@ -875,7 +873,6 @@ class AndroidPackageDataSource(
                     firewallRepository.updateRoamingBlocking(packageName, blocked)
                 } else {
                     // Create new rule with default policy for other network types
-                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                         Constants.Settings.DEFAULT_FIREWALL_POLICY
@@ -928,7 +925,6 @@ class AndroidPackageDataSource(
                     firewallRepository.updateBackgroundBlocking(packageName, blocked)
                 } else {
                     // Create new rule with default policy for other network types
-                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                         Constants.Settings.DEFAULT_FIREWALL_POLICY
@@ -981,7 +977,6 @@ class AndroidPackageDataSource(
                     firewallRepository.updateLanBlocking(packageName, blocked)
                 } else {
                     // Create new rule with default policy for other network types
-                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                         Constants.Settings.DEFAULT_FIREWALL_POLICY
@@ -1081,7 +1076,6 @@ class AndroidPackageDataSource(
                     firewallRepository.updateMobileAndRoaming(packageName, mobileBlocked, roamingBlocked)
                 } else {
                     // Create new rule - inherit default policy for WiFi
-                    val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
                     val defaultPolicy = prefs.getString(
                         Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
                         Constants.Settings.DEFAULT_FIREWALL_POLICY

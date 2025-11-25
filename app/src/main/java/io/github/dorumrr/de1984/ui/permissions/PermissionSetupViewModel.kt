@@ -16,7 +16,8 @@ import kotlinx.coroutines.launch
 
 class PermissionSetupViewModel constructor(
     private val context: Context,
-    private val permissionManager: PermissionManager
+    private val permissionManager: PermissionManager,
+    private val firewallManager: io.github.dorumrr.de1984.data.firewall.FirewallManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PermissionSetupUiState())
@@ -33,12 +34,15 @@ class PermissionSetupViewModel constructor(
             val batteryOptimizationInfo = getBatteryOptimizationInfo()
             val vpnPermissionInfo = getVpnPermissionInfo()
 
+            // Get current backend type to avoid killing user's VPN when using privileged backends
+            val currentBackendType = firewallManager?.getActiveBackendType()
+
             _uiState.value = _uiState.value.copy(
                 hasBasicPermissions = permissionManager.hasBasicPermissions(),
                 hasEnhancedPermissions = true,
                 hasAdvancedPermissions = permissionManager.hasRootAccess() || permissionManager.hasShizukuAccess() || permissionManager.hasSystemPermissions(),
                 hasBatteryOptimizationExemption = permissionManager.isBatteryOptimizationDisabled(),
-                hasVpnPermission = permissionManager.hasVpnPermission(),
+                hasVpnPermission = permissionManager.hasVpnPermission(currentBackendType, firewallManager),
                 basicPermissions = basicPermissions,
                 enhancedPermissions = emptyList(),
                 advancedPermissions = advancedPermissions,
@@ -124,7 +128,9 @@ class PermissionSetupViewModel constructor(
     }
 
     private fun getVpnPermissionInfo(): List<PermissionInfo> {
-        val hasVpn = permissionManager.hasVpnPermission()
+        // Get current backend type to avoid killing user's VPN when using privileged backends
+        val currentBackendType = firewallManager?.getActiveBackendType()
+        val hasVpn = permissionManager.hasVpnPermission(currentBackendType, firewallManager)
         return listOf(
             PermissionInfo(
                 permission = "android.permission.BIND_VPN_SERVICE",
@@ -137,12 +143,13 @@ class PermissionSetupViewModel constructor(
 
     class Factory(
         private val context: Context,
-        private val permissionManager: PermissionManager
+        private val permissionManager: PermissionManager,
+        private val firewallManager: io.github.dorumrr.de1984.data.firewall.FirewallManager? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(PermissionSetupViewModel::class.java)) {
-                return PermissionSetupViewModel(context, permissionManager) as T
+                return PermissionSetupViewModel(context, permissionManager, firewallManager) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

@@ -312,6 +312,11 @@
     <string name="vpn_fallback_notification_text">特权后端失败。点击启用 VPN 回退并恢复防火墙保护。</string>
     <string name="vpn_fallback_notification_action_text">启用 VPN 回退</string>
 
+    <!-- VPN Conflict Notification -->
+    <string name="vpn_conflict_notification_title">De1984 防火墙已停止 - VPN 冲突</string>
+    <string name="vpn_conflict_notification_text">另一个 VPN 处于活动状态。De1984 需要 VPN 权限来恢复防火墙保护。这将替换您当前的 VPN 连接。点击授予权限。</string>
+    <string name="vpn_conflict_notification_action_text">替换 VPN 并启用防火墙</string>
+
     <string name="vpn_fallback_tier_title">VPN 回退</string>
     <string name="vpn_fallback_tier_description">当特权后端（iptables/ConnectivityManager）失败时允许自动回退到 VPN。确保防火墙保持活动状态。</string>
     <string name="vpn_fallback_tier_status_granted">已完成</string>
@@ -488,7 +493,7 @@
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">移动数据</string>
     <string name="firewall_network_label_roaming">漫游</string>
-    <string name="firewall_network_label_lan">阻止局域网访问</string>
+    <string name="firewall_network_label_lan">局域网访问</string>
     <string name="firewall_network_label_background_access">允许后台运行</string>
     <string name="firewall_network_label_block_internet">阻止互联网</string>
     <string name="firewall_background_access_description">允许应用在后台访问互联网</string>

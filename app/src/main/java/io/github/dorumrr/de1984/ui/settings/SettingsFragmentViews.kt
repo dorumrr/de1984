@@ -77,7 +77,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         val app = requireActivity().application as De1984Application
         PermissionSetupViewModel.Factory(
             context = requireContext(),
-            permissionManager = app.dependencies.permissionManager
+            permissionManager = app.dependencies.permissionManager,
+            firewallManager = app.dependencies.firewallManager
         )
     }
 

@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
 import rikka.shizuku.SystemServiceHelper
+import rikka.sui.Sui
 
 /**
  * Manages Shizuku integration for elevated privileges without root
@@ -348,6 +349,19 @@ class ShizukuManager(private val context: Context) {
         }
 
         try {
+            // Initialize Sui if available (required for SUI support)
+            // This must be called before any Shizuku API usage when SUI is installed
+            // Returns true if SUI is available, false otherwise (no exception thrown)
+            try {
+                if (Sui.init(context.packageName)) {
+                    Log.d(TAG, "✅ Sui initialized successfully - SUI is available")
+                } else {
+                    Log.d(TAG, "ℹ️ Sui not available - will use Shizuku or root")
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "ℹ️ Sui initialization failed (expected if SUI not installed): ${e.message}")
+            }
+
             Log.d(TAG, "🔧 Registering Shizuku listeners")
             Shizuku.addRequestPermissionResultListener(permissionResultListener)
             Shizuku.addBinderReceivedListener(binderReceivedListener)

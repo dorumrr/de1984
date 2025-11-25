@@ -366,6 +366,10 @@
     <string name="settings_show_icons_title">Show App Icons</string>
     <string name="settings_show_icons_description">Might speed up the app when disabled</string>
 
+    <string name="settings_boot_protection_title">Boot Protection</string>
+    <string name="settings_boot_protection_description">Block all network traffic during device startup until firewall activates (requires root)</string>
+    <string name="settings_boot_protection_unavailable">Requires root access</string>
+
     <string name="settings_new_app_notifications_title">New App Notifications</string>
     <string name="settings_new_app_notifications_description">Show notifications when new apps with network permissions are installed</string>
 
@@ -592,6 +596,7 @@
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_continue">Continue</string>
     <string name="dialog_error_title">Error</string>
     <string name="dialog_no_access_message">❌ No Privileged Access Available\n\nYour device does not appear to be rooted. To enable advanced package management features:\n• Install and configure Shizuku (recommended - no root required)\n• Or root your device using Magisk, KernelSU, or APatch</string>
     <string name="dialog_root_denied_message">❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission.\n\nTo grant access:\n• Open your superuser app (Magisk, KernelSU, APatch, etc.) and grant permission to De1984\n• If the permission prompt doesn\'t appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)</string>
@@ -665,6 +670,16 @@
     <string name="success_custom_urls_applied">Custom URLs applied successfully</string>
     <string name="success_original_settings_restored">Original settings restored successfully</string>
     <string name="success_reset_to_google_defaults">Reset to Google defaults successfully</string>
+
+    <!-- Boot Protection Dialogs -->
+    <string name="boot_protection_enable_warning_title">Enable Boot Protection?</string>
+    <string name="boot_protection_enable_warning_message">This will block ALL network traffic during device boot until De1984 starts.\n\n⚠️ If De1984 fails to start, your device will have no network.\n\nRecovery Options:\n1. Open De1984 → Settings → Disable Boot Protection → Reboot\n2. If that doesn\'t work, use ADB:\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_disable_warning_title">Disable Boot Protection?</string>
+    <string name="boot_protection_disable_warning_message">Network traffic will no longer be blocked during boot. Apps may leak data before firewall starts.\n\nNote: This change will take effect on your next reboot.</string>
+    <string name="boot_protection_enabled_success">Boot protection enabled successfully</string>
+    <string name="boot_protection_disabled_success">Boot protection disabled successfully</string>
+    <string name="boot_protection_enable_failed">Failed to enable boot protection: %s</string>
+    <string name="boot_protection_disable_failed">Failed to disable boot protection: %s</string>
 
     <!-- Input Hints -->
     <string name="hint_detection_mode">Detection Mode</string>

@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.dorumrr.de1984.BuildConfig
+import io.github.dorumrr.de1984.data.common.BootProtectionManager
 import io.github.dorumrr.de1984.data.common.CaptivePortalManager
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.common.RootManager
@@ -24,6 +25,7 @@ import io.github.dorumrr.de1984.domain.model.CaptivePortalPreset
 import io.github.dorumrr.de1984.domain.model.CaptivePortalSettings
 import io.github.dorumrr.de1984.domain.model.FirewallRulesBackup
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
+import io.github.dorumrr.de1984.domain.usecase.SmartPolicySwitchUseCase
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -47,7 +49,9 @@ class SettingsViewModel(
     private val shizukuManager: ShizukuManager,
     private val firewallManager: FirewallManager,
     private val firewallRepository: FirewallRepository,
-    private val captivePortalManager: CaptivePortalManager
+    private val captivePortalManager: CaptivePortalManager,
+    private val bootProtectionManager: BootProtectionManager,
+    private val smartPolicySwitchUseCase: SmartPolicySwitchUseCase
 ) : ViewModel() {
 
     companion object {
@@ -69,6 +73,21 @@ class SettingsViewModel(
         cleanupOrphanedPreferences()
         requestRootPermission()
         requestShizukuPermission()
+
+        // Observe root/Shizuku status changes and re-check boot protection availability
+        viewModelScope.launch {
+            rootStatus.collect {
+                Log.d(TAG, "Root status changed: $it, re-checking boot protection availability")
+                checkBootProtectionAvailability()
+            }
+        }
+
+        viewModelScope.launch {
+            shizukuStatus.collect {
+                Log.d(TAG, "Shizuku status changed: $it, re-checking boot protection availability")
+                checkBootProtectionAvailability()
+            }
+        }
     }
 
 
@@ -121,6 +140,7 @@ class SettingsViewModel(
                     Constants.Settings.DEFAULT_FIREWALL_POLICY
                 ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY,
                 newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS),
+                bootProtection = prefs.getBoolean(Constants.Settings.KEY_BOOT_PROTECTION, Constants.Settings.DEFAULT_BOOT_PROTECTION),
                 appLanguage = prefs.getString(Constants.Settings.KEY_APP_LANGUAGE, Constants.Settings.DEFAULT_APP_LANGUAGE) ?: Constants.Settings.DEFAULT_APP_LANGUAGE,
                 firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO,
                 allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
@@ -207,8 +227,15 @@ class SettingsViewModel(
     }
 
     /**
-     * Change the default firewall policy.
-     * Rules are preserved and interpreted based on the new policy.
+     * Change the default firewall policy with smart handling of system-critical packages.
+     *
+     * When allowCriticalPackageFirewall is ON:
+     * - Preserves existing user preferences for critical packages
+     * - Defaults critical packages to ALLOW (if no user preference exists) to ensure system stability
+     * - Applies normal policy to non-critical packages
+     *
+     * When allowCriticalPackageFirewall is OFF:
+     * - Uses standard policy switching (critical packages are protected by backend logic anyway)
      */
     fun setDefaultFirewallPolicy(newPolicy: String) {
         val oldPolicy = _uiState.value.defaultFirewallPolicy
@@ -228,6 +255,17 @@ class SettingsViewModel(
                 )
                 saveSetting(Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY, newPolicy)
                 Log.d(TAG, "setDefaultFirewallPolicy: uiState updated to: ${_uiState.value.defaultFirewallPolicy}")
+
+                // Apply smart policy switching to reset rules with critical package handling
+                Log.d(TAG, "setDefaultFirewallPolicy: Applying smart policy switch")
+                when (newPolicy) {
+                    Constants.Settings.POLICY_BLOCK_ALL -> {
+                        smartPolicySwitchUseCase.switchToBlockAll()
+                    }
+                    Constants.Settings.POLICY_ALLOW_ALL -> {
+                        smartPolicySwitchUseCase.switchToAllowAll()
+                    }
+                }
 
                 if (firewallManager.isActive()) {
                     Log.d(TAG, "setDefaultFirewallPolicy: Firewall active, triggering rule reapplication")
@@ -249,6 +287,74 @@ class SettingsViewModel(
     fun setNewAppNotifications(enabled: Boolean) {
         _uiState.value = _uiState.value.copy(newAppNotifications = enabled)
         saveSetting(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, enabled)
+    }
+
+    fun setBootProtection(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "setBootProtection: enabled=$enabled")
+
+                val result = bootProtectionManager.setBootProtection(enabled)
+
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(bootProtection = enabled)
+                    saveSetting(Constants.Settings.KEY_BOOT_PROTECTION, enabled)
+
+                    val successMessage = if (enabled) {
+                        context.getString(io.github.dorumrr.de1984.R.string.boot_protection_enabled_success)
+                    } else {
+                        context.getString(io.github.dorumrr.de1984.R.string.boot_protection_disabled_success)
+                    }
+                    _uiState.value = _uiState.value.copy(message = successMessage)
+
+                    Log.d(TAG, "✅ Boot protection ${if (enabled) "enabled" else "disabled"} successfully")
+                } else {
+                    val errorMessage = if (enabled) {
+                        context.getString(io.github.dorumrr.de1984.R.string.boot_protection_enable_failed, result.exceptionOrNull()?.message ?: "Unknown error")
+                    } else {
+                        context.getString(io.github.dorumrr.de1984.R.string.boot_protection_disable_failed, result.exceptionOrNull()?.message ?: "Unknown error")
+                    }
+                    _uiState.value = _uiState.value.copy(error = errorMessage)
+
+                    Log.e(TAG, "❌ Failed to ${if (enabled) "enable" else "disable"} boot protection", result.exceptionOrNull())
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception in setBootProtection", e)
+                _uiState.value = _uiState.value.copy(error = e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun checkBootProtectionAvailability() {
+        Log.d(TAG, "checkBootProtectionAvailability() called")
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Checking boot protection availability...")
+
+                // Check if root/Shizuku is available
+                val hasPrivileges = rootManager.hasRootPermission || shizukuManager.hasShizukuPermission
+                Log.d(TAG, "hasPrivileges: $hasPrivileges (root=${rootManager.hasRootPermission}, shizuku=${shizukuManager.hasShizukuPermission})")
+
+                // Check if boot script support is available (Magisk/KernelSU/APatch)
+                val hasBootScriptSupport = if (hasPrivileges) {
+                    Log.d(TAG, "Checking boot script support availability...")
+                    bootProtectionManager.isBootScriptSupportAvailable()
+                } else {
+                    Log.d(TAG, "No privileges, skipping boot script support check")
+                    false
+                }
+
+                val available = hasPrivileges && hasBootScriptSupport
+
+                Log.d(TAG, "Boot protection availability: hasPrivileges=$hasPrivileges, hasBootScriptSupport=$hasBootScriptSupport, available=$available")
+
+                _uiState.value = _uiState.value.copy(bootProtectionAvailable = available)
+                Log.d(TAG, "Updated UI state with bootProtectionAvailable=$available")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to check boot protection availability", e)
+                _uiState.value = _uiState.value.copy(bootProtectionAvailable = false)
+            }
+        }
     }
 
     fun setAllowCriticalPackageUninstall(allow: Boolean) {
@@ -745,7 +851,9 @@ class SettingsViewModel(
         private val shizukuManager: ShizukuManager,
         private val firewallManager: FirewallManager,
         private val firewallRepository: FirewallRepository,
-        private val captivePortalManager: CaptivePortalManager
+        private val captivePortalManager: CaptivePortalManager,
+        private val bootProtectionManager: BootProtectionManager,
+        private val smartPolicySwitchUseCase: SmartPolicySwitchUseCase
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -757,7 +865,9 @@ class SettingsViewModel(
                     shizukuManager,
                     firewallManager,
                     firewallRepository,
-                    captivePortalManager
+                    captivePortalManager,
+                    bootProtectionManager,
+                    smartPolicySwitchUseCase
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
@@ -772,6 +882,8 @@ data class SettingsUiState(
     val showAppIcons: Boolean = true,
     val defaultFirewallPolicy: String = Constants.Settings.DEFAULT_FIREWALL_POLICY,
     val newAppNotifications: Boolean = Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS,
+    val bootProtection: Boolean = Constants.Settings.DEFAULT_BOOT_PROTECTION,
+    val bootProtectionAvailable: Boolean = false,
     val firewallMode: FirewallMode = FirewallMode.AUTO,
     val allowCriticalPackageUninstall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL,
     val allowCriticalPackageFirewall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL,

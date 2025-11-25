@@ -30,11 +30,19 @@ class FirewallRepositoryImpl(
             entities.toDomain()
         }
     }
-    
+
+    override suspend fun getAllRulesSync(): List<FirewallRule> {
+        return firewallRuleDao.getAllRulesSync().toDomain()
+    }
+
     override fun getRuleByPackage(packageName: String): Flow<FirewallRule?> {
         return firewallRuleDao.getRuleByPackage(packageName).map { entity ->
             entity?.toDomain()
         }
+    }
+
+    override suspend fun getRuleByPackageSync(packageName: String): FirewallRule? {
+        return firewallRuleDao.getRuleByPackageSync(packageName)?.toDomain()
     }
     
     override fun getBlockedRules(): Flow<List<FirewallRule>> {

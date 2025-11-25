@@ -13,9 +13,15 @@ interface FirewallRuleDao {
     
     @Query("SELECT * FROM firewall_rules ORDER BY appName ASC")
     fun getAllRules(): Flow<List<FirewallRuleEntity>>
-    
+
+    @Query("SELECT * FROM firewall_rules ORDER BY appName ASC")
+    suspend fun getAllRulesSync(): List<FirewallRuleEntity>
+
     @Query("SELECT * FROM firewall_rules WHERE packageName = :packageName")
     fun getRuleByPackage(packageName: String): Flow<FirewallRuleEntity?>
+
+    @Query("SELECT * FROM firewall_rules WHERE packageName = :packageName")
+    suspend fun getRuleByPackageSync(packageName: String): FirewallRuleEntity?
     
     @Query("SELECT * FROM firewall_rules WHERE (wifiBlocked = 1 OR mobileBlocked = 1) AND enabled = 1 ORDER BY appName ASC")
     fun getBlockedRules(): Flow<List<FirewallRuleEntity>>

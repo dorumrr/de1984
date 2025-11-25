@@ -174,6 +174,28 @@ class BootReceiver : BroadcastReceiver() {
                                 Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
                                 Log.d(TAG, "")
 
+                                // Reset iptables policies if boot protection was enabled
+                                val bootProtectionEnabled = prefs.getBoolean(
+                                    Constants.Settings.KEY_BOOT_PROTECTION,
+                                    Constants.Settings.DEFAULT_BOOT_PROTECTION
+                                )
+                                if (bootProtectionEnabled) {
+                                    Log.d(TAG, "Boot protection was enabled - resetting iptables policies to ACCEPT")
+                                    try {
+                                        val bootProtectionManager = app.dependencies.bootProtectionManager
+                                        val resetResult = bootProtectionManager.resetIptablesPolicies()
+                                        if (resetResult.isSuccess) {
+                                            Log.d(TAG, "✅ iptables policies reset successfully")
+                                        } else {
+                                            Log.e(TAG, "❌ Failed to reset iptables policies: ${resetResult.exceptionOrNull()?.message}")
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "❌ Exception while resetting iptables policies", e)
+                                    }
+                                } else {
+                                    Log.d(TAG, "Boot protection not enabled - skipping iptables policy reset")
+                                }
+
                                 // Check if we fell back to VPN and should start monitoring service
                                 if (backendType == FirewallBackendType.VPN) {
                                     val currentMode = firewallManager.getCurrentMode()

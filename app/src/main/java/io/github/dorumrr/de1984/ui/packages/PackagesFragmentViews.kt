@@ -68,7 +68,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             app.dependencies.shizukuManager,
             app.dependencies.firewallManager,
             app.dependencies.firewallRepository,
-            app.dependencies.captivePortalManager
+            app.dependencies.captivePortalManager,
+            app.dependencies.bootProtectionManager,
+            app.dependencies.provideSmartPolicySwitchUseCase()
         )
     }
 

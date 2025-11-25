@@ -6,9 +6,13 @@ import kotlinx.coroutines.flow.Flow
 interface FirewallRepository {
     
     fun getAllRules(): Flow<List<FirewallRule>>
-    
+
+    suspend fun getAllRulesSync(): List<FirewallRule>
+
     fun getRuleByPackage(packageName: String): Flow<FirewallRule?>
-    
+
+    suspend fun getRuleByPackageSync(packageName: String): FirewallRule?
+
     fun getBlockedRules(): Flow<List<FirewallRule>>
     
     fun getAllowedRules(): Flow<List<FirewallRule>>

@@ -69,7 +69,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             app.dependencies.shizukuManager,
             app.dependencies.firewallManager,
             app.dependencies.firewallRepository,
-            app.dependencies.captivePortalManager
+            app.dependencies.captivePortalManager,
+            app.dependencies.bootProtectionManager,
+            app.dependencies.provideSmartPolicySwitchUseCase()
         )
     }
 
@@ -222,6 +224,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setNewAppNotifications(isChecked)
         }
+
+        // Boot protection switch - listener is set in updateUI() to handle confirmation dialog
+        // (We need to show a warning dialog before enabling/disabling)
 
         // Backup rules button
         binding.backupRulesButton.setOnClickListener {
@@ -381,6 +386,35 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.newAppNotificationsSwitch.isChecked = state.newAppNotifications
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setNewAppNotifications(isChecked)
+        }
+
+        // Boot protection switch
+        binding.bootProtectionSwitch.setOnCheckedChangeListener(null)
+
+        // If boot protection is unavailable, force switch to OFF and disable it
+        if (!state.bootProtectionAvailable) {
+            binding.bootProtectionSwitch.isChecked = false
+            binding.bootProtectionSwitch.isEnabled = false
+            binding.bootProtectionDescription.text = getString(io.github.dorumrr.de1984.R.string.settings_boot_protection_unavailable)
+        } else {
+            binding.bootProtectionSwitch.isChecked = state.bootProtection
+            binding.bootProtectionSwitch.isEnabled = true
+            binding.bootProtectionDescription.text = getString(io.github.dorumrr.de1984.R.string.settings_boot_protection_description)
+        }
+
+        binding.bootProtectionSwitch.setOnCheckedChangeListener { _, isChecked ->
+            Log.d(TAG, "bootProtectionSwitch listener triggered: isChecked=$isChecked")
+            if (isChecked) {
+                Log.d(TAG, "Showing boot protection enable warning dialog")
+                showBootProtectionWarning(true) {
+                    viewModel.setBootProtection(true)
+                }
+            } else {
+                Log.d(TAG, "Showing boot protection disable warning dialog")
+                showBootProtectionWarning(false) {
+                    viewModel.setBootProtection(false)
+                }
+            }
         }
 
         // Update backend selection dropdown
@@ -1339,6 +1373,51 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                         }
                     } else {
                         viewModel.setAllowCriticalPackageFirewall(false)
+                    }
+                }
+            }
+        )
+    }
+
+    private fun showBootProtectionWarning(enable: Boolean, onConfirm: () -> Unit) {
+        Log.d(TAG, "showBootProtectionWarning: enable=$enable, displaying warning dialog")
+
+        val title = if (enable) {
+            getString(R.string.boot_protection_enable_warning_title)
+        } else {
+            getString(R.string.boot_protection_disable_warning_title)
+        }
+
+        val message = if (enable) {
+            getString(R.string.boot_protection_enable_warning_message)
+        } else {
+            getString(R.string.boot_protection_disable_warning_message)
+        }
+
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = title,
+            message = message,
+            confirmButtonText = getString(R.string.dialog_continue),
+            onConfirm = {
+                Log.d(TAG, "showBootProtectionWarning: User confirmed")
+                onConfirm()
+            },
+            cancelButtonText = getString(R.string.dialog_cancel),
+            onCancel = {
+                Log.d(TAG, "showBootProtectionWarning: User cancelled, reverting switch")
+                // Revert switch state
+                binding.bootProtectionSwitch.setOnCheckedChangeListener(null)
+                binding.bootProtectionSwitch.isChecked = !enable
+                binding.bootProtectionSwitch.setOnCheckedChangeListener { _, isChecked ->
+                    if (isChecked) {
+                        showBootProtectionWarning(true) {
+                            viewModel.setBootProtection(true)
+                        }
+                    } else {
+                        showBootProtectionWarning(false) {
+                            viewModel.setBootProtection(false)
+                        }
                     }
                 }
             }

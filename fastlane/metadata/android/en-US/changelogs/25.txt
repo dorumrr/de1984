@@ -1,0 +1,2 @@
+- Added boot protection option under Settings for rooted devices
+- Added Shizuku to white list to avoid issues with Wireless ADB mode

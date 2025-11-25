@@ -101,6 +101,7 @@ object Constants {
         const val KEY_PRIVILEGED_SERVICE_RUNNING = "privileged_service_running"  // Tracks if privileged firewall service is running
         const val KEY_PRIVILEGED_BACKEND_TYPE = "privileged_backend_type"  // Stores which privileged backend is active (iptables/connectivity_manager/network_policy_manager)
         const val KEY_NEW_APP_NOTIFICATIONS = "new_app_notifications"
+        const val KEY_BOOT_PROTECTION = "boot_protection"
         const val KEY_FIREWALL_MODE = "firewall_mode"
         const val KEY_ALLOW_CRITICAL_UNINSTALL = "allow_critical_package_uninstall"
         const val KEY_ALLOW_CRITICAL_FIREWALL = "allow_critical_package_firewall"
@@ -126,6 +127,7 @@ object Constants {
         const val DEFAULT_FIREWALL_POLICY = POLICY_ALLOW_ALL
         const val DEFAULT_FIREWALL_ENABLED = false
         const val DEFAULT_NEW_APP_NOTIFICATIONS = true
+        const val DEFAULT_BOOT_PROTECTION = false
         const val DEFAULT_FIREWALL_MODE = MODE_AUTO
         const val DEFAULT_ALLOW_CRITICAL_UNINSTALL = false
         const val DEFAULT_ALLOW_CRITICAL_FIREWALL = false
@@ -133,6 +135,12 @@ object Constants {
         const val DEFAULT_USE_DYNAMIC_COLORS = false
         const val DEFAULT_APP_LANGUAGE = LANGUAGE_SYSTEM_DEFAULT
 
+    }
+
+    object BootProtection {
+        const val BOOT_SCRIPT_PATH = "/data/adb/post-fs-data.d/de1984_boot_protection.sh"
+        const val MAGISK_POST_FS_DIR = "/data/adb/post-fs-data.d"
+        const val BOOT_SCRIPT_PERMISSIONS = "755"
     }
 
     object CaptivePortal {
@@ -298,6 +306,9 @@ object Constants {
 
             // Captive portal detection (optional but recommended)
             "com.android.captiveportallogin",     // Captive portal login (hotel/airport WiFi)
+
+            // Shizuku (required for wireless ADB mode - blocking it breaks the service)
+            "moe.shizuku.privileged.api",         // Shizuku app (provides ADB/root-level access to other apps)
         )
 
         /**

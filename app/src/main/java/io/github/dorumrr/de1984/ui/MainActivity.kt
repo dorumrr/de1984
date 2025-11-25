@@ -81,7 +81,9 @@ class MainActivity : AppCompatActivity() {
             shizukuManager = deps.shizukuManager,
             firewallManager = deps.firewallManager,
             firewallRepository = deps.firewallRepository,
-            captivePortalManager = deps.captivePortalManager
+            captivePortalManager = deps.captivePortalManager,
+            bootProtectionManager = deps.bootProtectionManager,
+            smartPolicySwitchUseCase = deps.provideSmartPolicySwitchUseCase()
         )
     }
 

@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import io.github.dorumrr.de1984.data.common.BootProtectionManager
 import io.github.dorumrr.de1984.data.common.CaptivePortalManager
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.PermissionManager
@@ -114,6 +115,10 @@ class De1984Dependencies(private val context: Context) {
         CaptivePortalManager(context, rootManager, shizukuManager)
     }
 
+    val bootProtectionManager: BootProtectionManager by lazy {
+        BootProtectionManager(context, rootManager, shizukuManager)
+    }
+
     // =============================================================================================
     // Repositories (Singletons)
     // =============================================================================================
@@ -190,6 +195,10 @@ class De1984Dependencies(private val context: Context) {
 
     fun provideBlockAllAppsUseCase(): BlockAllAppsUseCase {
         return BlockAllAppsUseCase(firewallRepository)
+    }
+
+    fun provideSmartPolicySwitchUseCase(): SmartPolicySwitchUseCase {
+        return SmartPolicySwitchUseCase(firewallRepository, context)
     }
 
     fun provideGetBlockedCountUseCase(): GetBlockedCountUseCase {

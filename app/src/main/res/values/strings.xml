@@ -147,6 +147,8 @@
     <!-- Multi-Select Package Operations -->
     <string name="multiselect_toast_cannot_select_critical">Important/Essential packages must be uninstalled individually</string>
     <string name="multiselect_toast_selection_limit">Maximum 50 packages can be selected at once</string>
+    <string name="multiselect_toast_not_available_disabled">Multi-select not available for disabled packages</string>
+    <string name="multiselect_toast_not_available_uninstalled">Multi-select not available for uninstalled packages</string>
     <string name="multiselect_toolbar_title_format">%d selected</string>
     <string name="multiselect_toolbar_button_uninstall">Uninstall</string>
     <string name="multiselect_toolbar_button_reinstall">Reinstall</string>

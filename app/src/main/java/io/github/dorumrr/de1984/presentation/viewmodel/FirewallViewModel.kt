@@ -384,6 +384,9 @@ class FirewallViewModel(
     }
 
     fun setAllNetworkBlocking(packageName: String, blocked: Boolean) {
+        val startTime = System.currentTimeMillis()
+        Log.d(TAG, "🔥 [TIMING] setAllNetworkBlocking START: pkg=$packageName, blocked=$blocked, timestamp=$startTime")
+
         viewModelScope.launch {
             // Optimistically update all network types at once
             updatePackageInList(packageName) { pkg ->
@@ -393,10 +396,12 @@ class FirewallViewModel(
                     roamingBlocked = blocked
                 )
             }
+            Log.d(TAG, "🔥 [TIMING] UI optimistic update done: +${System.currentTimeMillis() - startTime}ms")
 
             // Persist with atomic batch update - only one database transaction, only one notification
             manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, blocked)
                 .onSuccess {
+                    Log.d(TAG, "🔥 [TIMING] UseCase SUCCESS: +${System.currentTimeMillis() - startTime}ms - DB update complete")
                     // Success - optimistic update already applied, no need to reload
                 }
                 .onFailure { error ->

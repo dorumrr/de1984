@@ -23,12 +23,14 @@ import io.github.dorumrr.de1984.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 class FirewallVpnService : VpnService() {
@@ -321,72 +323,77 @@ class FirewallVpnService : VpnService() {
 
             packetForwardingJob?.cancel()
 
+            // CRITICAL: Use NonCancellable to prevent VPN interface operations from being
+            // interrupted mid-execution when the parent coroutine is cancelled (e.g., by debouncing).
+            // Interrupted operations could leave the VPN in an inconsistent state.
             vpnSetupJob = serviceScope.launch setup@{
-                try {
-                    if (!isServiceActive) {
-                        Log.w(TAG, "restartVpn: service not active, aborting")
-                        return@setup
-                    }
-
-                    Log.d(TAG, "restartVpn: calling buildVpnInterface()...")
-                    val oldVpnInterface = vpnInterface
-                    val newVpnInterface = buildVpnInterface()
-
-                    if (!isServiceActive) {
-                        Log.w(TAG, "restartVpn: service became inactive during build, aborting")
-                        newVpnInterface?.close()
-                        return@setup
-                    }
-
-                    if (newVpnInterface == null) {
-                        // Close old interface to prevent resource leak
-                        oldVpnInterface?.close()
-                        vpnInterface = null
-
-                        // Distinguish between zero-app optimization and failure
-                        if (lastBlockedCount > 0) {
-                            // This is a FAILURE - we expected VPN but establish() returned null
-                            Log.e(TAG, "restartVpn: VPN interface FAILED (blockedCount=$lastBlockedCount)")
-                            handleVpnInterfaceFailure()
-                        } else {
-                            // This is zero-app optimization - expected behavior
-                            Log.d(TAG, "restartVpn: No apps to block (zero-app optimization)")
-                            consecutiveFailures = 0
-                            retryAttempt = 0
-
-                            // IMPORTANT: Set KEY_VPN_INTERFACE_ACTIVE = true even for zero-app optimization
-                            val prefs = getSharedPreferences(
-                                io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
-                                Context.MODE_PRIVATE
-                            )
-                            prefs.edit().putBoolean(
-                                io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
-                                true
-                            ).commit()
-                            Log.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
+                withContext(NonCancellable) {
+                    try {
+                        if (!isServiceActive) {
+                            Log.w(TAG, "restartVpn: service not active, aborting")
+                            return@withContext
                         }
 
-                        lastAppliedBlockedApps = emptySet()
-                    } else {
-                        // Close old VPN AFTER new one is established
-                        oldVpnInterface?.close()
-                        vpnInterface = newVpnInterface
+                        Log.d(TAG, "restartVpn: calling buildVpnInterface()...")
+                        val oldVpnInterface = vpnInterface
+                        val newVpnInterface = buildVpnInterface()
 
-                        // Track successful VPN establishment
-                        onVpnInterfaceSuccess()
+                        if (!isServiceActive) {
+                            Log.w(TAG, "restartVpn: service became inactive during build, aborting")
+                            newVpnInterface?.close()
+                            return@withContext
+                        }
 
-                        Log.d(TAG, "restartVpn: VPN interface established, starting packet dropping")
-                        startPacketDropping()
+                        if (newVpnInterface == null) {
+                            // Close old interface to prevent resource leak
+                            oldVpnInterface?.close()
+                            vpnInterface = null
 
-                        lastAppliedBlockedApps = getBlockedAppsForCurrentState()
-                    }
+                            // Distinguish between zero-app optimization and failure
+                            if (lastBlockedCount > 0) {
+                                // This is a FAILURE - we expected VPN but establish() returned null
+                                Log.e(TAG, "restartVpn: VPN interface FAILED (blockedCount=$lastBlockedCount)")
+                                handleVpnInterfaceFailure()
+                            } else {
+                                // This is zero-app optimization - expected behavior
+                                Log.d(TAG, "restartVpn: No apps to block (zero-app optimization)")
+                                consecutiveFailures = 0
+                                retryAttempt = 0
 
-                    lastAppliedNetworkType = currentNetworkType
-                    lastAppliedScreenState = isScreenOn
-                } catch (e: Exception) {
-                    Log.e(TAG, "restartVpn: Exception during restart", e)
-                    if (isServiceActive) {
-                        stopSelf()
+                                // IMPORTANT: Set KEY_VPN_INTERFACE_ACTIVE = true even for zero-app optimization
+                                val prefs = getSharedPreferences(
+                                    io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
+                                    Context.MODE_PRIVATE
+                                )
+                                prefs.edit().putBoolean(
+                                    io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
+                                    true
+                                ).commit()
+                                Log.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
+                            }
+
+                            lastAppliedBlockedApps = emptySet()
+                        } else {
+                            // Close old VPN AFTER new one is established
+                            oldVpnInterface?.close()
+                            vpnInterface = newVpnInterface
+
+                            // Track successful VPN establishment
+                            onVpnInterfaceSuccess()
+
+                            Log.d(TAG, "restartVpn: VPN interface established, starting packet dropping")
+                            startPacketDropping()
+
+                            lastAppliedBlockedApps = getBlockedAppsForCurrentState()
+                        }
+
+                        lastAppliedNetworkType = currentNetworkType
+                        lastAppliedScreenState = isScreenOn
+                    } catch (e: Exception) {
+                        Log.e(TAG, "restartVpn: Exception during restart", e)
+                        if (isServiceActive) {
+                            stopSelf()
+                        }
                     }
                 }
             }

@@ -71,8 +71,9 @@ class PrivilegedFirewallService : Service() {
     private val rulesChangedReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
             if (intent?.action == "io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED") {
+                Log.d(TAG, "🔥 [TIMING] Broadcast RECEIVED: timestamp=${System.currentTimeMillis()}")
                 if (isServiceActive) {
-                    scheduleRuleApplication()
+                    scheduleRuleApplication("broadcast")
                 }
             }
         }
@@ -286,7 +287,7 @@ class PrivilegedFirewallService : Service() {
                 startForeground(NOTIFICATION_ID, createNotification())
 
                 // Apply initial rules
-                scheduleRuleApplication()
+                scheduleRuleApplication("initial")
 
                 // Start monitoring
                 startMonitoring()
@@ -379,7 +380,7 @@ class PrivilegedFirewallService : Service() {
 
                 if (isServiceActive) {
                     Log.d(TAG, "State changed: network=$networkType, screen=$screenOn - scheduling rule application")
-                    scheduleRuleApplication()
+                    scheduleRuleApplication("state-change")
                 }
             }
         }
@@ -388,8 +389,8 @@ class PrivilegedFirewallService : Service() {
         serviceScope.launch {
             firewallRepository.getAllRules().collect { _ ->
                 if (isServiceActive) {
-                    Log.d(TAG, "Rules changed - scheduling rule application")
-                    scheduleRuleApplication()
+                    Log.d(TAG, "🔥 [TIMING] Flow EMITTED: timestamp=${System.currentTimeMillis()}")
+                    scheduleRuleApplication("flow")
                 }
             }
         }
@@ -575,11 +576,19 @@ class PrivilegedFirewallService : Service() {
         notificationManager.notify(NOTIFICATION_ID + 1, notification)
     }
 
-    private fun scheduleRuleApplication() {
+    private var ruleApplicationStartTime: Long = 0L
+
+    private fun scheduleRuleApplication(source: String) {
+        val previousJob = ruleApplicationJob
         ruleApplicationJob?.cancel()
+        ruleApplicationStartTime = System.currentTimeMillis()
+
+        Log.d(TAG, "🔥 [TIMING] scheduleRuleApplication($source): previousJobActive=${previousJob?.isActive}, timestamp=$ruleApplicationStartTime")
 
         ruleApplicationJob = serviceScope.launch {
+            Log.d(TAG, "🔥 [TIMING] Debounce START (300ms): source=$source")
             delay(300)  // Debounce
+            Log.d(TAG, "🔥 [TIMING] Debounce END: +${System.currentTimeMillis() - ruleApplicationStartTime}ms")
 
             if (!isServiceActive) {
                 Log.d(TAG, "Service not active, skipping rule application")
@@ -593,17 +602,20 @@ class PrivilegedFirewallService : Service() {
             }
 
             try {
-                Log.d(TAG, "Applying rules: network=$currentNetworkType, screen=$isScreenOn")
+                Log.d(TAG, "🔥 [TIMING] Fetching rules from DB: +${System.currentTimeMillis() - ruleApplicationStartTime}ms")
                 val rules = firewallRepository.getAllRules().first()
+                Log.d(TAG, "🔥 [TIMING] Rules fetched (${rules.size} rules): +${System.currentTimeMillis() - ruleApplicationStartTime}ms")
 
+                Log.d(TAG, "🔥 [TIMING] Applying rules to backend: network=$currentNetworkType, screen=$isScreenOn")
+                val applyStartTime = System.currentTimeMillis()
                 backend.applyRules(rules, currentNetworkType, isScreenOn).getOrElse { error ->
-                    Log.e(TAG, "Failed to apply rules: ${error.message}")
+                    Log.e(TAG, "🔥 [TIMING] Backend applyRules FAILED: +${System.currentTimeMillis() - ruleApplicationStartTime}ms, error=${error.message}")
                     return@launch
                 }
 
-                Log.d(TAG, "Rules applied successfully")
+                Log.d(TAG, "🔥 [TIMING] Backend applyRules SUCCESS: backend took ${System.currentTimeMillis() - applyStartTime}ms, total +${System.currentTimeMillis() - ruleApplicationStartTime}ms")
             } catch (e: Exception) {
-                Log.e(TAG, "Exception while applying rules", e)
+                Log.e(TAG, "🔥 [TIMING] Exception while applying rules: +${System.currentTimeMillis() - ruleApplicationStartTime}ms", e)
             }
         }
     }

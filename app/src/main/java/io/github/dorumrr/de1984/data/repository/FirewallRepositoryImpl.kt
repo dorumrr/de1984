@@ -148,8 +148,12 @@ class FirewallRepositoryImpl(
     }
 
     override suspend fun updateAllNetworkBlocking(packageName: String, blocked: Boolean) {
+        val startTime = System.currentTimeMillis()
+        Log.d(TAG, "🔥 [TIMING] updateAllNetworkBlocking START: pkg=$packageName, blocked=$blocked")
         firewallRuleDao.updateAllNetworkBlocking(packageName, blocked)
+        Log.d(TAG, "🔥 [TIMING] DAO update done: +${System.currentTimeMillis() - startTime}ms")
         notifyRulesChanged()
+        Log.d(TAG, "🔥 [TIMING] Broadcast sent: +${System.currentTimeMillis() - startTime}ms")
     }
 
     override suspend fun updateMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean) {

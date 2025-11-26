@@ -13,8 +13,10 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.utils.Constants
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * Firewall backend using Android's ConnectivityManager firewall chain API.
@@ -155,13 +157,22 @@ class ConnectivityManagerFirewallBackend(
         }
     }
 
+    /**
+     * Apply firewall rules using ConnectivityManager shell commands.
+     *
+     * CRITICAL: This runs in NonCancellable context to prevent shell commands from being
+     * interrupted mid-execution when the parent coroutine is cancelled (e.g., by debouncing).
+     * Interrupted commands could leave the firewall in an inconsistent state where some
+     * apps are blocked and others aren't.
+     */
     override suspend fun applyRules(
         rules: List<FirewallRule>,
         networkType: NetworkType,
         screenOn: Boolean
-    ): Result<Unit> = mutex.withLock {
-        return try {
-            Log.d(TAG, "=== ConnectivityManagerFirewallBackend.applyRules() ===")
+    ): Result<Unit> = withContext(NonCancellable) {
+        mutex.withLock {
+            return@withContext try {
+                Log.d(TAG, "=== ConnectivityManagerFirewallBackend.applyRules() ===")
             Log.d(TAG, "Rules count: ${rules.size}, networkType: $networkType, screenOn: $screenOn")
 
             // Get default policy from SharedPreferences
@@ -281,11 +292,12 @@ class ConnectivityManagerFirewallBackend(
                 }
             }
 
-            Log.d(TAG, "✅ Applied $appliedCount policies, skipped $skippedCount unchanged, $errorCount errors")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to apply rules", e)
-            Result.failure(errorHandler.handleError(e, "apply connectivity manager rules"))
+                Log.d(TAG, "✅ Applied $appliedCount policies, skipped $skippedCount unchanged, $errorCount errors")
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to apply rules", e)
+                Result.failure(errorHandler.handleError(e, "apply connectivity manager rules"))
+            }
         }
     }
 

@@ -13,8 +13,10 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.utils.Constants
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * iptables-based firewall backend.
@@ -166,8 +168,9 @@ class IptablesFirewallBackend(
         networkType: NetworkType,
         screenOn: Boolean
     ): Result<Unit> = mutex.withLock {
+        val startTime = System.currentTimeMillis()
         return try {
-            Log.d(TAG, "Applying rules: ${rules.size} total, network=$networkType, screenOn=$screenOn")
+            Log.d(TAG, "🔥 [TIMING] IptablesBackend.applyRules START: ${rules.size} rules, network=$networkType, screenOn=$screenOn")
 
             // Note: No need to check isActive() here - service will only call this when active
 
@@ -278,20 +281,36 @@ class IptablesFirewallBackend(
             val uidsToAdd = uidsToBlock - blockedUids
             val uidsToRemove = blockedUids - uidsToBlock
 
-            Log.d(TAG, "Rule diff: add=${uidsToAdd.size}, remove=${uidsToRemove.size}, keep=${blockedUids.intersect(uidsToBlock).size}")
+            Log.d(TAG, "🔥 [TIMING] Rule diff calculated: +${System.currentTimeMillis() - startTime}ms")
+            Log.d(TAG, "🔥 [TIMING] Rule diff: add=${uidsToAdd.size} UIDs, remove=${uidsToRemove.size} UIDs, keep=${blockedUids.intersect(uidsToBlock).size} UIDs")
+
+            if (uidsToAdd.isNotEmpty()) {
+                Log.d(TAG, "🔥 [TIMING] UIDs to ADD (block): $uidsToAdd")
+            }
+            if (uidsToRemove.isNotEmpty()) {
+                Log.d(TAG, "🔥 [TIMING] UIDs to REMOVE (unblock): $uidsToRemove")
+            }
 
             // Remove rules that are no longer needed
+            val unblockStartTime = System.currentTimeMillis()
             for (uid in uidsToRemove) {
                 unblockApp(uid).getOrElse { error ->
                     Log.w(TAG, "Failed to unblock UID $uid: ${error.message}")
                 }
             }
+            if (uidsToRemove.isNotEmpty()) {
+                Log.d(TAG, "🔥 [TIMING] Unblock ${uidsToRemove.size} UIDs took ${System.currentTimeMillis() - unblockStartTime}ms")
+            }
 
             // Add new rules
+            val blockStartTime = System.currentTimeMillis()
             for (uid in uidsToAdd) {
                 blockApp(uid).getOrElse { error ->
                     Log.w(TAG, "Failed to block UID $uid: ${error.message}")
                 }
+            }
+            if (uidsToAdd.isNotEmpty()) {
+                Log.d(TAG, "🔥 [TIMING] Block ${uidsToAdd.size} UIDs took ${System.currentTimeMillis() - blockStartTime}ms")
             }
 
             // =============================================================================================
@@ -337,7 +356,8 @@ class IptablesFirewallBackend(
                 }
             }
 
-            Log.d(TAG, "Rules applied: ${blockedUids.size} apps blocked (Internet), ${blockedLanUids.size} apps blocked (LAN)")
+            Log.d(TAG, "🔥 [TIMING] IptablesBackend.applyRules COMPLETE: total=${System.currentTimeMillis() - startTime}ms")
+            Log.d(TAG, "🔥 [TIMING] Final state: ${blockedUids.size} apps blocked (Internet), ${blockedLanUids.size} apps blocked (LAN)")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply rules", e)
@@ -491,9 +511,13 @@ class IptablesFirewallBackend(
     /**
      * Block an app by UID.
      * Only blocks OUTPUT since owner module only works for locally generated packets.
+     *
+     * CRITICAL: This runs in NonCancellable context to prevent iptables commands from being
+     * interrupted mid-execution when the parent coroutine is cancelled (e.g., by debouncing).
+     * An interrupted iptables command could leave the firewall in an inconsistent state.
      */
-    private suspend fun blockApp(uid: Int): Result<Unit> {
-        return try {
+    private suspend fun blockApp(uid: Int): Result<Unit> = withContext(NonCancellable) {
+        return@withContext try {
             Log.d(TAG, "=== Blocking UID $uid ===")
 
             // IPv4: Block OUTPUT for this UID
@@ -513,7 +537,7 @@ class IptablesFirewallBackend(
                 Log.d(TAG, "✅ Successfully blocked UID $uid (IPv4 and IPv6)")
             } else {
                 Log.e(TAG, "❌ Failed to block UID $uid - IPv4 exitCode=$ipv4ExitCode, IPv6 exitCode=$ipv6ExitCode")
-                return Result.failure(Exception("Failed to block UID $uid"))
+                return@withContext Result.failure(Exception("Failed to block UID $uid"))
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -526,9 +550,11 @@ class IptablesFirewallBackend(
     /**
      * Block LAN access for an app by UID.
      * Uses destination IP filtering to block private IP ranges.
+     *
+     * CRITICAL: Runs in NonCancellable context to prevent interruption.
      */
-    private suspend fun blockAppLan(uid: Int): Result<Unit> {
-        return try {
+    private suspend fun blockAppLan(uid: Int): Result<Unit> = withContext(NonCancellable) {
+        return@withContext try {
             Log.d(TAG, "=== Blocking LAN for UID $uid ===")
 
             // IPv4: Block private IP ranges
@@ -540,7 +566,7 @@ class IptablesFirewallBackend(
                 Log.d(TAG, "IPv4 LAN result: exitCode=$exitCode, output='$output'")
                 if (exitCode != 0) {
                     Log.e(TAG, "❌ Failed to block LAN IPv4 range $range for UID $uid")
-                    return Result.failure(Exception("Failed to block LAN IPv4 for UID $uid"))
+                    return@withContext Result.failure(Exception("Failed to block LAN IPv4 for UID $uid"))
                 }
             }
 
@@ -553,7 +579,7 @@ class IptablesFirewallBackend(
                 Log.d(TAG, "IPv6 LAN result: exitCode=$exitCode, output='$output'")
                 if (exitCode != 0) {
                     Log.e(TAG, "❌ Failed to block LAN IPv6 range $range for UID $uid")
-                    return Result.failure(Exception("Failed to block LAN IPv6 for UID $uid"))
+                    return@withContext Result.failure(Exception("Failed to block LAN IPv6 for UID $uid"))
                 }
             }
 
@@ -569,9 +595,11 @@ class IptablesFirewallBackend(
 
     /**
      * Unblock an app by UID.
+     *
+     * CRITICAL: Runs in NonCancellable context to prevent interruption.
      */
-    private suspend fun unblockApp(uid: Int): Result<Unit> {
-        return try {
+    private suspend fun unblockApp(uid: Int): Result<Unit> = withContext(NonCancellable) {
+        return@withContext try {
             // IPv4: Remove DROP rule for this UID
             executeCommand("$IPTABLES -D $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null || true")
 
@@ -590,9 +618,11 @@ class IptablesFirewallBackend(
 
     /**
      * Unblock LAN access for an app by UID.
+     *
+     * CRITICAL: Runs in NonCancellable context to prevent interruption.
      */
-    private suspend fun unblockAppLan(uid: Int): Result<Unit> {
-        return try {
+    private suspend fun unblockAppLan(uid: Int): Result<Unit> = withContext(NonCancellable) {
+        return@withContext try {
             // IPv4: Remove DROP rules for private IP ranges
             val ipv4Ranges = listOf("192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12")
             for (range in ipv4Ranges) {
@@ -617,9 +647,11 @@ class IptablesFirewallBackend(
 
     /**
      * Clear all firewall rules.
+     *
+     * CRITICAL: Runs in NonCancellable context to prevent interruption.
      */
-    private suspend fun clearAllRules(): Result<Unit> {
-        return try {
+    private suspend fun clearAllRules(): Result<Unit> = withContext(NonCancellable) {
+        return@withContext try {
             // Flush custom chains (removes all rules)
             executeCommand("$IPTABLES -F $CHAIN_OUTPUT 2>/dev/null || true")
             executeCommand("$IP6TABLES -F $CHAIN_OUTPUT 2>/dev/null || true")

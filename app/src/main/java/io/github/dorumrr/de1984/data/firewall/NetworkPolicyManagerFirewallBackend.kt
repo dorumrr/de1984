@@ -14,6 +14,7 @@ import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -168,31 +169,40 @@ class NetworkPolicyManagerFirewallBackend(
         }
     }
 
+    /**
+     * Apply firewall rules using NetworkPolicyManager reflection.
+     *
+     * CRITICAL: This runs in NonCancellable context to prevent reflection calls from being
+     * interrupted mid-execution when the parent coroutine is cancelled (e.g., by debouncing).
+     * Interrupted operations could leave the firewall in an inconsistent state where some
+     * apps are blocked and others aren't.
+     */
     override suspend fun applyRules(
         rules: List<FirewallRule>,
         networkType: NetworkType,
         screenOn: Boolean
-    ): Result<Unit> = mutex.withLock {
-        return try {
-            Log.d(TAG, "=== NetworkPolicyManagerFirewallBackend.applyRules() ===")
+    ): Result<Unit> = withContext(NonCancellable) {
+        mutex.withLock {
+            return@withContext try {
+                Log.d(TAG, "=== NetworkPolicyManagerFirewallBackend.applyRules() ===")
             Log.d(TAG, "Rules count: ${rules.size}, networkType: $networkType, screenOn: $screenOn")
 
             // Note: No need to check isActive() here - service will only call this when active
 
-            // Get NetworkPolicyManager instance
-            val networkPolicyManager = getNetworkPolicyManager()
-            if (networkPolicyManager == null) {
-                val error = errorHandler.handleError(
-                    Exception("Failed to get NetworkPolicyManager instance"),
-                    "apply network policies"
-                )
-                return Result.failure(error)
-            }
+                // Get NetworkPolicyManager instance
+                val networkPolicyManager = getNetworkPolicyManager()
+                if (networkPolicyManager == null) {
+                    val error = errorHandler.handleError(
+                        Exception("Failed to get NetworkPolicyManager instance"),
+                        "apply network policies"
+                    )
+                    return@withContext Result.failure(error)
+                }
 
-            // Test which policy works on first run
-            if (!policyTested) {
-                testPolicySupport(networkPolicyManager)
-            }
+                // Test which policy works on first run
+                if (!policyTested) {
+                    testPolicySupport(networkPolicyManager)
+                }
 
             // Get default policy from SharedPreferences
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -310,11 +320,12 @@ class NetworkPolicyManagerFirewallBackend(
                 }
             }
 
-            Log.d(TAG, "✅ Applied $appliedCount policies, skipped $skippedCount unchanged, $errorCount errors")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to apply rules", e)
-            Result.failure(errorHandler.handleError(e, "apply network policies"))
+                Log.d(TAG, "✅ Applied $appliedCount policies, skipped $skippedCount unchanged, $errorCount errors")
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to apply rules", e)
+                Result.failure(errorHandler.handleError(e, "apply network policies"))
+            }
         }
     }
 

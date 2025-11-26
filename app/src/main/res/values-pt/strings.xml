@@ -394,6 +394,31 @@
     <string name="settings_backup_button">Backup</string>
     <string name="settings_restore_button">Restaurar</string>
 
+    <!-- Export/Import Uninstalled Apps -->
+    <string name="settings_uninstalled_apps_title">Apps desinstalados</string>
+    <string name="settings_uninstalled_apps_description">Exportar e importar a lista de pacotes do sistema desinstalados</string>
+    <string name="button_export_uninstalled_apps">Exportar</string>
+    <string name="button_import_uninstalled_apps">Importar</string>
+
+    <!-- Export Messages -->
+    <string name="success_export_uninstalled">✅ Exportação bem-sucedida: %d pacotes</string>
+    <string name="error_export_requires_privileges">❌ Root ou Shizuku necessário para exportar apps desinstalados</string>
+    <string name="error_export_no_uninstalled_apps">Nenhum pacote do sistema desinstalado encontrado</string>
+    <string name="error_export_failed">Exportação falhou: %s</string>
+
+    <!-- Import Messages -->
+    <string name="dialog_import_preview_title">Importar &amp; desinstalar apps</string>
+    <string name="dialog_import_preview_message">Encontrados %1$d pacotes para desinstalar:\n\n%2$s\n\n⚠️ Isso desinstalará todos os apps listados.</string>
+    <string name="dialog_import_warning_title">Alguns pacotes não encontrados</string>
+    <string name="dialog_import_warning_message">%1$d de %2$d pacotes encontrados.\n\nEncontrados:\n%3$s\n\nNão encontrados:\n%4$s\n\nContinuar com os pacotes encontrados?</string>
+    <string name="dialog_import_failed_title">Importação falhou</string>
+    <string name="dialog_import_all_not_found">❌ Nenhum dos %d pacotes no arquivo está atualmente instalado</string>
+    <string name="dialog_import_empty_file">❌ O arquivo está vazio ou não contém nomes de pacotes válidos</string>
+    <string name="dialog_import_confirm">Desinstalar tudo</string>
+    <string name="error_import_requires_privileges">❌ Root ou Shizuku necessário para desinstalar apps</string>
+    <string name="error_import_file_read_failed">Falha ao ler arquivo: %s</string>
+    <string name="error_import_failed">Importação falhou: %s</string>
+
     <string name="settings_captive_portal_title">Controlador de Portal Cativo</string>
     <string name="settings_captive_portal_description">Controlar sistema de detecção de portal cativo do Android</string>
     <string name="settings_captive_portal_current_settings">Configurações Atuais</string>
@@ -596,6 +621,11 @@
     <string name="batch_uninstall_dialog_and_more">... e mais %d</string>
     <string name="batch_uninstall_results_and_more">... e mais %d</string>
     <string name="batch_uninstall_results_error_prefix">  Erro: %s</string>
+    <string name="batch_uninstall_progress_title">Desinstalando apps</string>
+    <string name="batch_uninstall_progress_message">Desinstalando %1$d de %2$d apps…</string>
+    <string name="batch_uninstall_results_title">Resultados da desinstalação</string>
+    <string name="batch_uninstall_results_success">✅ Desinstalados com sucesso %d apps:</string>
+    <string name="batch_uninstall_results_failed">❌ Falha ao desinstalar %d apps:</string>
 
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>

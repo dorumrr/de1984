@@ -394,6 +394,31 @@
     <string name="settings_backup_button">Backup</string>
     <string name="settings_restore_button">Ripristina</string>
 
+    <!-- Export/Import Uninstalled Apps -->
+    <string name="settings_uninstalled_apps_title">App disinstallate</string>
+    <string name="settings_uninstalled_apps_description">Esporta e importa l\'elenco dei pacchetti di sistema disinstallati</string>
+    <string name="button_export_uninstalled_apps">Esporta</string>
+    <string name="button_import_uninstalled_apps">Importa</string>
+
+    <!-- Export Messages -->
+    <string name="success_export_uninstalled">✅ Esportazione riuscita: %d pacchetti</string>
+    <string name="error_export_requires_privileges">❌ Root o Shizuku richiesto per esportare app disinstallate</string>
+    <string name="error_export_no_uninstalled_apps">Nessun pacchetto di sistema disinstallato trovato</string>
+    <string name="error_export_failed">Esportazione fallita: %s</string>
+
+    <!-- Import Messages -->
+    <string name="dialog_import_preview_title">Importa &amp; disinstalla app</string>
+    <string name="dialog_import_preview_message">Trovati %1$d pacchetti da disinstallare:\n\n%2$s\n\n⚠️ Questo disinstallerà tutte le app elencate.</string>
+    <string name="dialog_import_warning_title">Alcuni pacchetti non trovati</string>
+    <string name="dialog_import_warning_message">%1$d di %2$d pacchetti trovati.\n\nTrovati:\n%3$s\n\nNon trovati:\n%4$s\n\nContinuare con i pacchetti trovati?</string>
+    <string name="dialog_import_failed_title">Importazione fallita</string>
+    <string name="dialog_import_all_not_found">❌ Nessuno dei %d pacchetti nel file è attualmente installato</string>
+    <string name="dialog_import_empty_file">❌ Il file è vuoto o non contiene nomi di pacchetti validi</string>
+    <string name="dialog_import_confirm">Disinstalla tutto</string>
+    <string name="error_import_requires_privileges">❌ Root o Shizuku richiesto per disinstallare app</string>
+    <string name="error_import_file_read_failed">Lettura file fallita: %s</string>
+    <string name="error_import_failed">Importazione fallita: %s</string>
+
     <string name="settings_captive_portal_title">Controllo Captive Portal</string>
     <string name="settings_captive_portal_description">Gestisci il sistema di rilevamento Captive Portal</string>
     <string name="settings_captive_portal_current_settings">Impostazioni Attuali</string>
@@ -596,6 +621,11 @@
     <string name="batch_uninstall_dialog_and_more">… e altre %d</string>
     <string name="batch_uninstall_results_and_more">… e altre %d</string>
     <string name="batch_uninstall_results_error_prefix">  Errore: %s</string>
+    <string name="batch_uninstall_progress_title">Disinstallazione app</string>
+    <string name="batch_uninstall_progress_message">Disinstallazione di %1$d su %2$d app…</string>
+    <string name="batch_uninstall_results_title">Risultati disinstallazione</string>
+    <string name="batch_uninstall_results_success">✅ Disinstallate con successo %d app:</string>
+    <string name="batch_uninstall_results_failed">❌ Impossibile disinstallare %d app:</string>
 
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>

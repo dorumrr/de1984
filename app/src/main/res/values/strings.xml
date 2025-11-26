@@ -394,6 +394,31 @@
     <string name="settings_backup_button">Backup</string>
     <string name="settings_restore_button">Restore</string>
 
+    <!-- Export/Import Uninstalled Apps -->
+    <string name="settings_uninstalled_apps_title">Uninstalled Apps</string>
+    <string name="settings_uninstalled_apps_description">Export and import the list of uninstalled system packages</string>
+    <string name="button_export_uninstalled_apps">Export</string>
+    <string name="button_import_uninstalled_apps">Import</string>
+
+    <!-- Export Messages -->
+    <string name="success_export_uninstalled">✅ Export successful: %d packages</string>
+    <string name="error_export_requires_privileges">❌ Root or Shizuku required to export uninstalled apps</string>
+    <string name="error_export_no_uninstalled_apps">No uninstalled system packages found</string>
+    <string name="error_export_failed">Export failed: %s</string>
+
+    <!-- Import Messages -->
+    <string name="dialog_import_preview_title">Import &amp; Uninstall Apps</string>
+    <string name="dialog_import_preview_message">Found %1$d packages to uninstall:\n\n%2$s\n\n⚠️ This will uninstall all listed apps.</string>
+    <string name="dialog_import_warning_title">Some Packages Not Found</string>
+    <string name="dialog_import_warning_message">%1$d of %2$d packages found.\n\nFound:\n%3$s\n\nNot found:\n%4$s\n\nContinue with found packages?</string>
+    <string name="dialog_import_failed_title">Import Failed</string>
+    <string name="dialog_import_all_not_found">❌ None of the %d packages in the file are currently installed</string>
+    <string name="dialog_import_empty_file">❌ The file is empty or contains no valid package names</string>
+    <string name="dialog_import_confirm">Uninstall All</string>
+    <string name="error_import_requires_privileges">❌ Root or Shizuku required to uninstall apps</string>
+    <string name="error_import_file_read_failed">Failed to read file: %s</string>
+    <string name="error_import_failed">Import failed: %s</string>
+
     <string name="settings_captive_portal_title">Captive Portal Controller</string>
     <string name="settings_captive_portal_description">Control Captive Portal detection system</string>
     <string name="settings_captive_portal_current_settings">Current Settings</string>
@@ -598,6 +623,11 @@
     <string name="batch_uninstall_dialog_and_more">... and %d more</string>
     <string name="batch_uninstall_results_and_more">... and %d more</string>
     <string name="batch_uninstall_results_error_prefix">  Error: %s</string>
+    <string name="batch_uninstall_progress_title">Uninstalling Apps</string>
+    <string name="batch_uninstall_progress_message">Uninstalling %1$d of %2$d apps…</string>
+    <string name="batch_uninstall_results_title">Uninstall Results</string>
+    <string name="batch_uninstall_results_success">✅ Successfully uninstalled %d apps:</string>
+    <string name="batch_uninstall_results_failed">❌ Failed to uninstall %d apps:</string>
 
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>

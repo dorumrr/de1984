@@ -396,6 +396,31 @@
     <string name="settings_backup_button">Backup</string>
     <string name="settings_restore_button">Restaurare</string>
 
+    <!-- Export/Import Uninstalled Apps -->
+    <string name="settings_uninstalled_apps_title">Aplicații dezinstalate</string>
+    <string name="settings_uninstalled_apps_description">Exportă și importă lista aplicațiilor de sistem dezinstalate</string>
+    <string name="button_export_uninstalled_apps">Exportă</string>
+    <string name="button_import_uninstalled_apps">Importă</string>
+
+    <!-- Export Messages -->
+    <string name="success_export_uninstalled">✅ Export reușit: %d pachete</string>
+    <string name="error_export_requires_privileges">❌ Root sau Shizuku necesar pentru a exporta aplicații dezinstalate</string>
+    <string name="error_export_no_uninstalled_apps">Nu s-au găsit pachete de sistem dezinstalate</string>
+    <string name="error_export_failed">Export eșuat: %s</string>
+
+    <!-- Import Messages -->
+    <string name="dialog_import_preview_title">Importă &amp; dezinstalează aplicații</string>
+    <string name="dialog_import_preview_message">S-au găsit %1$d pachete de dezinstalat:\n\n%2$s\n\n⚠️ Aceasta va dezinstala toate aplicațiile listate.</string>
+    <string name="dialog_import_warning_title">Unele pachete nu au fost găsite</string>
+    <string name="dialog_import_warning_message">%1$d din %2$d pachete găsite.\n\nGăsite:\n%3$s\n\nNegăsite:\n%4$s\n\nContinuă cu pachetele găsite?</string>
+    <string name="dialog_import_failed_title">Import eșuat</string>
+    <string name="dialog_import_all_not_found">❌ Niciunul dintre cele %d pachete din fișier nu este instalat în prezent</string>
+    <string name="dialog_import_empty_file">❌ Fișierul este gol sau nu conține nume de pachete valide</string>
+    <string name="dialog_import_confirm">Dezinstalează tot</string>
+    <string name="error_import_requires_privileges">❌ Root sau Shizuku necesar pentru a dezinstala aplicații</string>
+    <string name="error_import_file_read_failed">Citirea fișierului a eșuat: %s</string>
+    <string name="error_import_failed">Import eșuat: %s</string>
+
     <string name="settings_captive_portal_title">Control portal captiv</string>
     <string name="settings_captive_portal_description">Controlează sistemul de detectare portal captiv Android</string>
     <string name="settings_captive_portal_current_settings">Setări curente</string>
@@ -598,6 +623,11 @@
     <string name="batch_uninstall_dialog_and_more">... și încă %d</string>
     <string name="batch_uninstall_results_and_more">... și încă %d</string>
     <string name="batch_uninstall_results_error_prefix">  Eroare: %s</string>
+    <string name="batch_uninstall_progress_title">Dezinstalare aplicații</string>
+    <string name="batch_uninstall_progress_message">Dezinstalare %1$d din %2$d aplicații…</string>
+    <string name="batch_uninstall_results_title">Rezultate dezinstalare</string>
+    <string name="batch_uninstall_results_success">✅ Dezinstalate cu succes %d aplicații:</string>
+    <string name="batch_uninstall_results_failed">❌ Eșec la dezinstalarea a %d aplicații:</string>
 
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>

@@ -404,6 +404,31 @@
     <string name="settings_backup_button">备份</string>
     <string name="settings_restore_button">恢复</string>
 
+    <!-- Export/Import Uninstalled Apps -->
+    <string name="settings_uninstalled_apps_title">已卸载的应用</string>
+    <string name="settings_uninstalled_apps_description">导出和导入已卸载的系统软件包列表</string>
+    <string name="button_export_uninstalled_apps">导出</string>
+    <string name="button_import_uninstalled_apps">导入</string>
+
+    <!-- Export Messages -->
+    <string name="success_export_uninstalled">✅ 导出成功：%d 个软件包</string>
+    <string name="error_export_requires_privileges">❌ 需要 Root 或 Shizuku 权限才能导出已卸载的应用</string>
+    <string name="error_export_no_uninstalled_apps">未找到已卸载的系统软件包</string>
+    <string name="error_export_failed">导出失败：%s</string>
+
+    <!-- Import Messages -->
+    <string name="dialog_import_preview_title">导入并卸载应用</string>
+    <string name="dialog_import_preview_message">找到 %1$d 个要卸载的软件包：\n\n%2$s\n\n⚠️ 这将卸载所有列出的应用。</string>
+    <string name="dialog_import_warning_title">部分软件包未找到</string>
+    <string name="dialog_import_warning_message">找到 %1$d / %2$d 个软件包。\n\n已找到：\n%3$s\n\n未找到：\n%4$s\n\n继续处理已找到的软件包？</string>
+    <string name="dialog_import_failed_title">导入失败</string>
+    <string name="dialog_import_all_not_found">❌ 文件中的 %d 个软件包当前均未安装</string>
+    <string name="dialog_import_empty_file">❌ 文件为空或不包含有效的软件包名称</string>
+    <string name="dialog_import_confirm">全部卸载</string>
+    <string name="error_import_requires_privileges">❌ 需要 Root 或 Shizuku 权限才能卸载应用</string>
+    <string name="error_import_file_read_failed">读取文件失败：%s</string>
+    <string name="error_import_failed">导入失败：%s</string>
+
     <string name="settings_captive_portal_title">强制门户控制器</string>
     <string name="settings_captive_portal_description">控制 Android 的强制门户检测系统</string>
     <string name="settings_captive_portal_current_settings">当前设置</string>
@@ -606,6 +631,11 @@
     <string name="batch_uninstall_dialog_and_more">…以及其他 %d 个</string>
     <string name="batch_uninstall_results_and_more">…以及其他 %d 个</string>
     <string name="batch_uninstall_results_error_prefix">  错误：%s</string>
+    <string name="batch_uninstall_progress_title">正在卸载应用</string>
+    <string name="batch_uninstall_progress_message">正在卸载 %1$d / %2$d 个应用…</string>
+    <string name="batch_uninstall_results_title">卸载结果</string>
+    <string name="batch_uninstall_results_success">✅ 成功卸载 %d 个应用：</string>
+    <string name="batch_uninstall_results_failed">❌ 卸载失败 %d 个应用：</string>
 
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>

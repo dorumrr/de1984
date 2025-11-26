@@ -76,7 +76,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             app.dependencies.firewallRepository,
             app.dependencies.captivePortalManager,
             app.dependencies.bootProtectionManager,
-            app.dependencies.provideSmartPolicySwitchUseCase()
+            app.dependencies.provideSmartPolicySwitchUseCase(),
+            app.dependencies.packageRepository
         )
     }
 

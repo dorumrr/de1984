@@ -24,7 +24,10 @@ import io.github.dorumrr.de1984.domain.model.CaptivePortalMode
 import io.github.dorumrr.de1984.domain.model.CaptivePortalPreset
 import io.github.dorumrr.de1984.domain.model.CaptivePortalSettings
 import io.github.dorumrr.de1984.domain.model.FirewallRulesBackup
+import io.github.dorumrr.de1984.domain.model.Package
+import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
+import io.github.dorumrr.de1984.domain.repository.PackageRepository
 import io.github.dorumrr.de1984.domain.usecase.SmartPolicySwitchUseCase
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +54,8 @@ class SettingsViewModel(
     private val firewallRepository: FirewallRepository,
     private val captivePortalManager: CaptivePortalManager,
     private val bootProtectionManager: BootProtectionManager,
-    private val smartPolicySwitchUseCase: SmartPolicySwitchUseCase
+    private val smartPolicySwitchUseCase: SmartPolicySwitchUseCase,
+    private val packageRepository: PackageRepository
 ) : ViewModel() {
 
     companion object {
@@ -628,6 +632,221 @@ class SettingsViewModel(
     }
 
     // =============================================================================================
+    // Export/Import Uninstalled Apps
+    // =============================================================================================
+
+    /**
+     * Export uninstalled system packages to a text file.
+     */
+    fun exportUninstalledApps(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "📤 EXPORT: Starting export of uninstalled apps")
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null, message = null)
+
+                // Check privileges
+                Log.d(TAG, "📤 EXPORT: Privilege check - root=${rootManager.hasRootPermission}, shizuku=${shizukuManager.hasShizukuPermission}")
+                if (!rootManager.hasRootPermission && !shizukuManager.hasShizukuPermission) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = context.getString(io.github.dorumrr.de1984.R.string.error_export_requires_privileges)
+                    )
+                    return@launch
+                }
+
+                // Get uninstalled system packages
+                val result = packageRepository.getUninstalledSystemPackages()
+                val packages = result.getOrNull()
+
+                if (packages.isNullOrEmpty()) {
+                    Log.d(TAG, "📤 EXPORT: No uninstalled system packages found")
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = context.getString(io.github.dorumrr.de1984.R.string.error_export_no_uninstalled_apps)
+                    )
+                    return@launch
+                }
+
+                Log.d(TAG, "📤 EXPORT: Found ${packages.size} uninstalled system packages")
+
+                // Create export content with metadata
+                val content = createExportContent(packages)
+
+                // Write to file
+                Log.d(TAG, "📤 EXPORT: Writing to file: $uri")
+                writeToUri(uri, content)
+
+                Log.d(TAG, "📤 EXPORT: Success - exported ${packages.size} packages")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    message = context.getString(io.github.dorumrr.de1984.R.string.success_export_uninstalled, packages.size)
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "📤 EXPORT: Failed", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = context.getString(io.github.dorumrr.de1984.R.string.error_export_failed, e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
+                )
+            }
+        }
+    }
+
+    /**
+     * Create export file content with metadata.
+     */
+    private fun createExportContent(packages: List<Package>): String {
+        return buildString {
+            appendLine("# De1984 Uninstalled Apps Export")
+            appendLine("# Date: ${getCurrentDate()}")
+            appendLine("# App Version: ${BuildConfig.VERSION_NAME}")
+            appendLine("# Count: ${packages.size}")
+            appendLine()
+            packages.forEach { pkg ->
+                appendLine(pkg.packageName)
+            }
+        }
+    }
+
+    /**
+     * Import uninstalled apps from a text file and validate.
+     */
+    fun importUninstalledApps(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "📥 IMPORT: Starting import from file: $uri")
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null, message = null)
+
+                // Check privileges
+                Log.d(TAG, "📥 IMPORT: Privilege check - root=${rootManager.hasRootPermission}, shizuku=${shizukuManager.hasShizukuPermission}")
+                if (!rootManager.hasRootPermission && !shizukuManager.hasShizukuPermission) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = context.getString(io.github.dorumrr.de1984.R.string.error_import_requires_privileges)
+                    )
+                    return@launch
+                }
+
+                // Read and parse file
+                val content = readFromUri(uri)
+                val packageNames = parseUninstalledAppsFile(content)
+
+                Log.d(TAG, "📥 IMPORT: Parsed ${packageNames.size} package names from file")
+
+                if (packageNames.isEmpty()) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = context.getString(io.github.dorumrr.de1984.R.string.dialog_import_empty_file)
+                    )
+                    return@launch
+                }
+
+                // Get currently installed packages to validate
+                val installedPackages = packageRepository.getPackages().first()
+                val installedPackageNames = installedPackages.map { it.packageName }.toSet()
+
+                val packagesToUninstall = packageNames.filter { it in installedPackageNames }
+                val packagesNotFound = packageNames.filter { it !in installedPackageNames }
+
+                Log.d(TAG, "📥 IMPORT: Validation - ${packagesToUninstall.size} found, ${packagesNotFound.size} not found")
+
+                // Handle different scenarios
+                when {
+                    packagesToUninstall.isEmpty() -> {
+                        // ALL packages not found
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = context.getString(io.github.dorumrr.de1984.R.string.dialog_import_all_not_found, packagesNotFound.size)
+                        )
+                    }
+                    else -> {
+                        // Show preview (with or without warning)
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            importUninstalledPreview = ImportUninstalledPreview(
+                                totalPackages = packageNames.size,
+                                packagesToUninstall = packagesToUninstall,
+                                packagesNotFound = packagesNotFound
+                            )
+                        )
+                    }
+                }
+            } catch (e: IOException) {
+                Log.e(TAG, "📥 IMPORT: File read failed", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = context.getString(io.github.dorumrr.de1984.R.string.error_import_file_read_failed, e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "📥 IMPORT: Failed", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = context.getString(io.github.dorumrr.de1984.R.string.error_import_failed, e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
+                )
+            }
+        }
+    }
+
+    /**
+     * Parse uninstalled apps file content.
+     */
+    private fun parseUninstalledAppsFile(content: String): List<String> {
+        return content.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .filter { !it.startsWith("#") }
+            .filter { it.contains(".") }
+            .distinct()
+    }
+
+    /**
+     * Confirm and execute batch uninstall of imported packages.
+     */
+    fun confirmImportUninstall() {
+        viewModelScope.launch {
+            val preview = _uiState.value.importUninstalledPreview ?: return@launch
+
+            Log.d(TAG, "📥 IMPORT: User confirmed - starting batch uninstall of ${preview.packagesToUninstall.size} packages")
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                importUninstalledPreview = null
+            )
+
+            val result = packageRepository.uninstallMultiplePackages(preview.packagesToUninstall)
+
+            result.fold(
+                onSuccess = { batchResult ->
+                    Log.d(TAG, "📥 IMPORT: Batch uninstall complete - ${batchResult.succeeded.size} succeeded, ${batchResult.failed.size} failed")
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        batchUninstallResult = batchResult
+                    )
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "📥 IMPORT: Batch uninstall failed", error)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = error.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown)
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * Clear import preview state.
+     */
+    fun clearImportPreview() {
+        _uiState.value = _uiState.value.copy(importUninstalledPreview = null)
+    }
+
+    /**
+     * Clear batch uninstall result.
+     */
+    fun clearBatchUninstallResult() {
+        _uiState.value = _uiState.value.copy(batchUninstallResult = null)
+    }
+
+    // =============================================================================================
     // Captive Portal Controller
     // =============================================================================================
 
@@ -853,7 +1072,8 @@ class SettingsViewModel(
         private val firewallRepository: FirewallRepository,
         private val captivePortalManager: CaptivePortalManager,
         private val bootProtectionManager: BootProtectionManager,
-        private val smartPolicySwitchUseCase: SmartPolicySwitchUseCase
+        private val smartPolicySwitchUseCase: SmartPolicySwitchUseCase,
+        private val packageRepository: PackageRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -867,7 +1087,8 @@ class SettingsViewModel(
                     firewallRepository,
                     captivePortalManager,
                     bootProtectionManager,
-                    smartPolicySwitchUseCase
+                    smartPolicySwitchUseCase,
+                    packageRepository
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
@@ -919,7 +1140,11 @@ data class SettingsUiState(
     val captivePortalOriginalCaptured: Boolean = false,
     val captivePortalHasPrivileges: Boolean = false,
     val captivePortalLoading: Boolean = false,
-    val captivePortalError: String? = null
+    val captivePortalError: String? = null,
+
+    // Export/Import Uninstalled Apps
+    val importUninstalledPreview: ImportUninstalledPreview? = null,
+    val batchUninstallResult: UninstallBatchResult? = null
 )
 
 data class SystemInfo(
@@ -928,6 +1153,12 @@ data class SystemInfo(
     val androidROM: String,
     val hasRoot: Boolean,
     val architecture: String
+)
+
+data class ImportUninstalledPreview(
+    val totalPackages: Int,
+    val packagesToUninstall: List<String>,
+    val packagesNotFound: List<String>
 )
 
 

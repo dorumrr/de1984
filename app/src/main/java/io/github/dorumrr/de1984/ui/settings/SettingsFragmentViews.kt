@@ -38,8 +38,10 @@ import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.databinding.FragmentSettingsBinding
 import io.github.dorumrr.de1984.domain.model.CaptivePortalMode
+import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.model.CaptivePortalPreset
 import io.github.dorumrr.de1984.databinding.PermissionTierSectionBinding
+import io.github.dorumrr.de1984.presentation.viewmodel.ImportUninstalledPreview
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 import io.github.dorumrr.de1984.ui.common.StandardDialog
@@ -71,7 +73,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             app.dependencies.firewallRepository,
             app.dependencies.captivePortalManager,
             app.dependencies.bootProtectionManager,
-            app.dependencies.provideSmartPolicySwitchUseCase()
+            app.dependencies.provideSmartPolicySwitchUseCase(),
+            app.dependencies.packageRepository
         )
     }
 
@@ -126,6 +129,22 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     ) { uri ->
         uri?.let { showRestorePreview(it) }
     }
+
+    // Export uninstalled apps launcher - creates a new text file
+    private val exportUninstalledLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        uri?.let { viewModel.exportUninstalledApps(it) }
+    }
+
+    // Import uninstalled apps launcher - opens an existing text file
+    private val importUninstalledLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importUninstalledApps(it) }
+    }
+
+    private var progressDialog: androidx.appcompat.app.AlertDialog? = null
 
     private var lastRootTestTime = 0L
 
@@ -237,6 +256,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         // Restore rules button
         binding.restoreRulesButton.setOnClickListener {
             restoreLauncher.launch(arrayOf("application/json"))
+        }
+
+        // Export uninstalled apps button
+        binding.exportUninstalledAppsButton.setOnClickListener {
+            val filename = "de1984-uninstalled-apps-${viewModel.getCurrentDate()}.txt"
+            exportUninstalledLauncher.launch(filename)
+        }
+
+        // Import uninstalled apps button
+        binding.importUninstalledAppsButton.setOnClickListener {
+            importUninstalledLauncher.launch(arrayOf("text/plain", "text/*"))
         }
 
         // Captive Portal Controller
@@ -441,6 +471,24 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 context = requireContext(),
                 message = error
             )
+        }
+
+        // Handle import preview
+        state.importUninstalledPreview?.let { preview ->
+            if (preview.packagesNotFound.isEmpty()) {
+                // All packages found - show confirmation dialog
+                showImportPreviewDialog(preview)
+            } else {
+                // Some packages not found - show warning dialog
+                showImportWarningDialog(preview)
+            }
+        }
+
+        // Handle batch uninstall result
+        state.batchUninstallResult?.let { result ->
+            progressDialog?.dismiss()
+            showBatchUninstallResults(result)
+            viewModel.clearBatchUninstallResult()
         }
     }
 
@@ -1612,6 +1660,135 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             errorText?.text = getString(R.string.settings_captive_portal_no_privileges)
             errorText?.visibility = View.VISIBLE
         }
+    }
+
+    // =============================================================================================
+    // Export/Import Uninstalled Apps Dialogs
+    // =============================================================================================
+
+    /**
+     * Show import preview dialog when all packages are found.
+     */
+    private fun showImportPreviewDialog(preview: ImportUninstalledPreview) {
+        val packageList = preview.packagesToUninstall.take(10).joinToString("\n") { pkg -> "• $pkg" }
+        val moreText = if (preview.packagesToUninstall.size > 10) {
+            "\n${getString(R.string.batch_uninstall_results_and_more, preview.packagesToUninstall.size - 10)}"
+        } else {
+            ""
+        }
+
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = getString(R.string.dialog_import_preview_title),
+            message = getString(
+                R.string.dialog_import_preview_message,
+                preview.packagesToUninstall.size,
+                packageList + moreText
+            ),
+            confirmButtonText = getString(R.string.dialog_import_confirm),
+            cancelButtonText = getString(R.string.dialog_cancel),
+            onConfirm = {
+                performBatchUninstall(preview.packagesToUninstall.size)
+                viewModel.confirmImportUninstall()
+            },
+            onCancel = {
+                viewModel.clearImportPreview()
+            }
+        )
+    }
+
+    /**
+     * Show import warning dialog when some packages are not found.
+     */
+    private fun showImportWarningDialog(preview: ImportUninstalledPreview) {
+        val foundList = preview.packagesToUninstall.take(10).joinToString("\n") { pkg -> "• $pkg" }
+        val foundMoreText = if (preview.packagesToUninstall.size > 10) {
+            "\n${getString(R.string.batch_uninstall_results_and_more, preview.packagesToUninstall.size - 10)}"
+        } else {
+            ""
+        }
+
+        val notFoundList = preview.packagesNotFound.take(10).joinToString("\n") { pkg -> "• $pkg" }
+        val notFoundMoreText = if (preview.packagesNotFound.size > 10) {
+            "\n${getString(R.string.batch_uninstall_results_and_more, preview.packagesNotFound.size - 10)}"
+        } else {
+            ""
+        }
+
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = getString(R.string.dialog_import_warning_title),
+            message = getString(
+                R.string.dialog_import_warning_message,
+                preview.packagesToUninstall.size,
+                preview.totalPackages,
+                foundList + foundMoreText,
+                notFoundList + notFoundMoreText
+            ),
+            confirmButtonText = getString(R.string.dialog_import_confirm),
+            cancelButtonText = getString(R.string.dialog_cancel),
+            onConfirm = {
+                performBatchUninstall(preview.packagesToUninstall.size)
+                viewModel.confirmImportUninstall()
+            },
+            onCancel = {
+                viewModel.clearImportPreview()
+            }
+        )
+    }
+
+    /**
+     * Show progress dialog during batch uninstall.
+     */
+    private fun performBatchUninstall(totalPackages: Int) {
+        progressDialog?.dismiss()
+
+        progressDialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.batch_uninstall_progress_title))
+            .setMessage(getString(R.string.batch_uninstall_progress_message, 0, totalPackages))
+            .setCancelable(false)
+            .create()
+
+        progressDialog?.show()
+    }
+
+    /**
+     * Show batch uninstall results dialog.
+     */
+    private fun showBatchUninstallResults(result: UninstallBatchResult) {
+        val message = buildString {
+            if (result.succeeded.isNotEmpty()) {
+                append(getString(R.string.batch_uninstall_results_success, result.succeeded.size))
+                append("\n")
+                result.succeeded.take(10).forEach { packageName ->
+                    append("• $packageName\n")
+                }
+                if (result.succeeded.size > 10) {
+                    append(getString(R.string.batch_uninstall_results_and_more, result.succeeded.size - 10) + "\n")
+                }
+            }
+
+            if (result.failed.isNotEmpty()) {
+                if (result.succeeded.isNotEmpty()) {
+                    append("\n")
+                }
+                append(getString(R.string.batch_uninstall_results_failed, result.failed.size))
+                append("\n")
+                result.failed.take(10).forEach { (packageName, error) ->
+                    append("• $packageName: $error\n")
+                }
+                if (result.failed.size > 10) {
+                    append(getString(R.string.batch_uninstall_results_and_more, result.failed.size - 10))
+                }
+            }
+        }
+
+        StandardDialog.show(
+            context = requireContext(),
+            title = getString(R.string.batch_uninstall_results_title),
+            message = message,
+            positiveButtonText = getString(R.string.dialog_ok)
+        )
     }
 }
 

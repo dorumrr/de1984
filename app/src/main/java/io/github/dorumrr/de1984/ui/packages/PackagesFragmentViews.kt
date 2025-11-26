@@ -70,7 +70,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             app.dependencies.firewallRepository,
             app.dependencies.captivePortalManager,
             app.dependencies.bootProtectionManager,
-            app.dependencies.provideSmartPolicySwitchUseCase()
+            app.dependencies.provideSmartPolicySwitchUseCase(),
+            app.dependencies.packageRepository
         )
     }
 

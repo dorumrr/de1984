@@ -83,7 +83,8 @@ class MainActivity : AppCompatActivity() {
             firewallRepository = deps.firewallRepository,
             captivePortalManager = deps.captivePortalManager,
             bootProtectionManager = deps.bootProtectionManager,
-            smartPolicySwitchUseCase = deps.provideSmartPolicySwitchUseCase()
+            smartPolicySwitchUseCase = deps.provideSmartPolicySwitchUseCase(),
+            packageRepository = deps.packageRepository
         )
     }
 
@@ -694,21 +695,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showFirewallStopDialog() {
-        StandardDialog.showConfirmation(
+        var confirmed = false
+
+        StandardDialog.show(
             context = this,
             title = getString(R.string.dialog_firewall_stop_title),
             message = getString(R.string.dialog_firewall_stop_message),
-            confirmButtonText = getString(R.string.dialog_firewall_stop_confirm),
-            onConfirm = {
+            positiveButtonText = getString(R.string.dialog_firewall_stop_confirm),
+            onPositiveClick = {
                 Log.d(TAG, "🔘 USER CONFIRMED: Stopping firewall")
+                confirmed = true
                 firewallViewModel.stopFirewall()
             },
-            onCancel = {
+            negativeButtonText = getString(R.string.dialog_cancel),
+            onNegativeClick = {
                 Log.d(TAG, "🔘 USER CANCELLED: Firewall stop cancelled - reverting toggle")
                 // User cancelled - revert the toggle back to ON
                 binding.firewallToggle.isChecked = true
             },
-            cancelButtonText = getString(R.string.dialog_cancel)
+            cancelable = true,
+            onDismiss = {
+                // Only revert toggle if dialog was dismissed without confirmation
+                // This handles: tap outside, back button, swipe down
+                if (!confirmed) {
+                    Log.d(TAG, "🔘 DIALOG DISMISSED: Reverting toggle to ON")
+                    binding.firewallToggle.isChecked = true
+                }
+            }
         )
     }
 

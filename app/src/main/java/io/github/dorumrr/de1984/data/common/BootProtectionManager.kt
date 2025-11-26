@@ -88,17 +88,49 @@ class BootProtectionManager(
         Log.d(TAG, "Creating boot protection script...")
 
         // Script content that blocks all network traffic during boot
+        // We use a custom chain to isolate boot protection rules from system rules
+        // This allows clean removal when De1984 starts
         val scriptContent = """#!/system/bin/sh
 # De1984 Boot Protection
 # Blocks all network traffic until De1984 starts
+# Author: Doru Moraru
 
-# Block all OUTPUT traffic (apps trying to send data)
-iptables -P OUTPUT DROP
-iptables -A OUTPUT -o lo -j ACCEPT
+# Create custom chain for boot protection
+iptables -N de1984_boot 2>/dev/null || iptables -F de1984_boot
+ip6tables -N de1984_boot 2>/dev/null || ip6tables -F de1984_boot
 
-# Block IPv6 as well
-ip6tables -P OUTPUT DROP
-ip6tables -A OUTPUT -o lo -j ACCEPT
+# Allow loopback traffic (required for system services)
+iptables -A de1984_boot -o lo -j ACCEPT
+ip6tables -A de1984_boot -o lo -j ACCEPT
+
+# Allow critical system UIDs needed for network connectivity
+# UID 0 (root) - netd and other critical network daemons
+iptables -A de1984_boot -m owner --uid-owner 0 -j ACCEPT
+ip6tables -A de1984_boot -m owner --uid-owner 0 -j ACCEPT
+
+# UID 1000 (system) - system_server and Android framework
+iptables -A de1984_boot -m owner --uid-owner 1000 -j ACCEPT
+ip6tables -A de1984_boot -m owner --uid-owner 1000 -j ACCEPT
+
+# UID 1010 (wifi) - WiFi services (wpa_supplicant, wificond)
+iptables -A de1984_boot -m owner --uid-owner 1010 -j ACCEPT
+ip6tables -A de1984_boot -m owner --uid-owner 1010 -j ACCEPT
+
+# UID 1016 (media) - May be needed for captive portal detection
+iptables -A de1984_boot -m owner --uid-owner 1016 -j ACCEPT
+ip6tables -A de1984_boot -m owner --uid-owner 1016 -j ACCEPT
+
+# UID 1051 (gps) - GPS/location services
+iptables -A de1984_boot -m owner --uid-owner 1051 -j ACCEPT
+ip6tables -A de1984_boot -m owner --uid-owner 1051 -j ACCEPT
+
+# Block everything else (user apps)
+iptables -A de1984_boot -j DROP
+ip6tables -A de1984_boot -j DROP
+
+# Insert boot protection chain at the beginning of OUTPUT
+iptables -I OUTPUT -j de1984_boot
+ip6tables -I OUTPUT -j de1984_boot
 """
 
         // Create the script file
@@ -151,34 +183,47 @@ ip6tables -A OUTPUT -o lo -j ACCEPT
     }
 
     /**
-     * Reset iptables policies to ACCEPT after firewall starts.
+     * Remove boot protection iptables rules after firewall starts.
      * This is called after boot when boot protection was enabled.
+     *
+     * We remove the custom boot protection chain that was created by the boot script.
+     * This allows De1984's firewall to take over network control cleanly.
      */
     suspend fun resetIptablesPolicies(): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "Resetting iptables policies to ACCEPT...")
+                Log.d(TAG, "Removing boot protection iptables rules...")
 
-                // Reset IPv4 OUTPUT policy
-                val ipv4Result = executeCommand("iptables -P OUTPUT ACCEPT")
-                if (ipv4Result.first != 0) {
-                    val error = "Failed to reset IPv4 OUTPUT policy: ${ipv4Result.second}"
-                    Log.e(TAG, error)
-                    return@withContext Result.failure(Exception(error))
-                }
+                // IPv4: Remove boot protection chain
+                // 1. Unlink the chain from OUTPUT
+                var result = executeCommand("iptables -D OUTPUT -j de1984_boot 2>/dev/null || true")
+                Log.d(TAG, "IPv4: Unlinked de1984_boot chain (exit code: ${result.first})")
 
-                // Reset IPv6 OUTPUT policy
-                val ipv6Result = executeCommand("ip6tables -P OUTPUT ACCEPT")
-                if (ipv6Result.first != 0) {
-                    val error = "Failed to reset IPv6 OUTPUT policy: ${ipv6Result.second}"
-                    Log.e(TAG, error)
-                    return@withContext Result.failure(Exception(error))
-                }
+                // 2. Flush the chain
+                result = executeCommand("iptables -F de1984_boot 2>/dev/null || true")
+                Log.d(TAG, "IPv4: Flushed de1984_boot chain (exit code: ${result.first})")
 
-                Log.d(TAG, "✅ iptables policies reset to ACCEPT successfully")
+                // 3. Delete the chain
+                result = executeCommand("iptables -X de1984_boot 2>/dev/null || true")
+                Log.d(TAG, "IPv4: Deleted de1984_boot chain (exit code: ${result.first})")
+
+                // IPv6: Remove boot protection chain
+                // 1. Unlink the chain from OUTPUT
+                result = executeCommand("ip6tables -D OUTPUT -j de1984_boot 2>/dev/null || true")
+                Log.d(TAG, "IPv6: Unlinked de1984_boot chain (exit code: ${result.first})")
+
+                // 2. Flush the chain
+                result = executeCommand("ip6tables -F de1984_boot 2>/dev/null || true")
+                Log.d(TAG, "IPv6: Flushed de1984_boot chain (exit code: ${result.first})")
+
+                // 3. Delete the chain
+                result = executeCommand("ip6tables -X de1984_boot 2>/dev/null || true")
+                Log.d(TAG, "IPv6: Deleted de1984_boot chain (exit code: ${result.first})")
+
+                Log.d(TAG, "✅ Boot protection iptables rules removed successfully")
                 Result.success(Unit)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to reset iptables policies", e)
+                Log.e(TAG, "Failed to remove boot protection iptables rules", e)
                 Result.failure(e)
             }
         }

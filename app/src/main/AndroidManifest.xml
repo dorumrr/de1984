@@ -41,6 +41,9 @@
     <uses-permission android:name="android.permission.ACCESS_SUPERUSER"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Shizuku/SUI API permission (required for Shizuku and Sui integration) -->
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
     <application
         android:name=".De1984Application"
         android:allowBackup="false"

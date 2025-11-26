@@ -1,0 +1,6 @@
+- Implemented export/import functionality for uninstalled apps
+- Enhanced firewall rule application with non cancellable context for better stability
+- Refactored boot protection script to use custom iptables chain for better isolation and removal
+- Add confirmation dialog for stopping the firewall
+- Fixed Shizuku/SUI API permission
+- Multiple UI/UX improvements

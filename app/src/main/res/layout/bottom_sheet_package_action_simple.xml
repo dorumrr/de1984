@@ -96,6 +96,23 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
+        <!-- LAN Divider -->
+        <View
+            android:id="@+id/lan_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- LAN Toggle (always shown, disabled without root) -->
+        <include
+            android:id="@+id/lan_toggle"
+            layout="@layout/network_type_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
         <!-- Info message about all-or-nothing blocking (text set dynamically based on backend) -->
         <TextView
             android:id="@+id/info_message"

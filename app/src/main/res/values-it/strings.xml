@@ -517,11 +517,12 @@
     <string name="firewall_network_label_mobile">Dati Mobili</string>
     <string name="firewall_network_label_roaming">Roaming</string>
     <string name="firewall_network_label_lan">Accesso LAN</string>
+    <string name="firewall_lan_requires_root">Richiede accesso root</string>
     <string name="firewall_network_label_background_access">Accesso in Background</string>
-    <string name="firewall_network_label_block_internet">Blocca Internet</string>
+    <string name="firewall_network_label_internet_access">Accesso Internet</string>
+    <string name="firewall_internet_access_subtitle">WiFi, Mobile, Roaming</string>
     <string name="firewall_background_access_description">Permetti l’accesso internet dell’app in background</string>
-    <string name="firewall_connectivity_manager_info">Questo blocca tutti i tipi di rete (WiFi, Mobile, Roaming).\n\nIl firewall di sistema non supporta il controllo granulare. Per la gestione avanzata è necessario il root.</string>
-    <string name="firewall_block_all_info">Questo blocca tutti i tipi di rete (WiFi, Mobile, Roaming).</string>
+    <string name="firewall_connectivity_manager_info">Il firewall di sistema non supporta il controllo granulare. Per la gestione avanzata è necessario il root.</string>
     <string name="firewall_system_critical_info">⚠️ Pacchetto di Sistema Critico — Non è possibile modificare l’accesso alla rete per evitare instabilità.</string>
     <string name="firewall_vpn_app_info">🔒 App VPN — Sempre consentita per evitare problemi di riconnessione della VPN dopo blocco/sblocco del dispositivo.</string>
     <string name="firewall_critical_allowed_info">⚠️ La protezione dei pacchetti critici è disabilitata nelle Impostazioni. Bloccare l\'accesso alla rete può causare instabilità del sistema o problemi VPN.</string>

@@ -519,11 +519,12 @@
     <string name="firewall_network_label_mobile">Date mobile</string>
     <string name="firewall_network_label_roaming">Roaming</string>
     <string name="firewall_network_label_lan">Acces LAN</string>
+    <string name="firewall_lan_requires_root">Necesită acces root</string>
     <string name="firewall_network_label_background_access">Permite în fundal</string>
-    <string name="firewall_network_label_block_internet">Blochează Internet</string>
+    <string name="firewall_network_label_internet_access">Acces Internet</string>
+    <string name="firewall_internet_access_subtitle">WiFi, Date mobile, Roaming</string>
     <string name="firewall_background_access_description">Permite aplicației să acceseze internetul când este în fundal</string>
-    <string name="firewall_connectivity_manager_info">Aceasta blochează toate tipurile de rețea (WiFi, Date mobile, Roaming).\n\nDispozitivul tău folosește un Firewall la nivel de sistem care nu suportă blocare per rețea. Pentru control granular, este necesar acces root.</string>
-    <string name="firewall_block_all_info">Aceasta blochează toate tipurile de rețea (WiFi, Date mobile, Roaming).</string>
+    <string name="firewall_connectivity_manager_info">Dispozitivul tău folosește un Firewall la nivel de sistem care nu suportă blocare per rețea. Pentru control granular, este necesar acces root.</string>
     <string name="firewall_system_critical_info">⚠️ Pachet critic de sistem - Accesul la rețea nu poate fi modificat pentru a preveni instabilitatea sistemului.</string>
     <string name="firewall_vpn_app_info">🔒 Aplicație VPN - Întotdeauna permisă pentru a preveni probleme de reconectare VPN după blocare/deblocare dispozitiv.</string>
     <string name="firewall_critical_allowed_info">⚠️ Protecția pachetelor critice este dezactivată în Setări. Blocarea accesului la rețea poate cauza instabilitate a sistemului sau probleme VPN.</string>

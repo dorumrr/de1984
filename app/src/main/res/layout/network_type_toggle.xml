@@ -7,15 +7,32 @@
     android:gravity="center_vertical"
     android:paddingVertical="8dp">
 
-    <!-- Network Type Label -->
-    <TextView
-        android:id="@+id/network_type_label"
+    <!-- Network Type Label Container (with optional subtitle) -->
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="@string/firewall_network_label_wifi"
-        android:textSize="16sp"
-        android:textColor="?android:attr/textColorPrimary" />
+        android:orientation="vertical">
+
+        <!-- Network Type Label -->
+        <TextView
+            android:id="@+id/network_type_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/firewall_network_label_wifi"
+            android:textSize="16sp"
+            android:textColor="?android:attr/textColorPrimary" />
+
+        <!-- Optional Subtitle (hidden by default) -->
+        <TextView
+            android:id="@+id/network_type_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone" />
+
+    </LinearLayout>
 
     <!-- Allow Label (left side) -->
     <TextView

@@ -649,11 +649,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 updateSwitchColors(binding.roamingToggle.toggleSwitch, currentPkg.roamingBlocked)
             }
 
-            // Update LAN toggle (if using iptables backend)
+            // Update LAN toggle - always update checked state, only update colors if enabled (iptables)
             val app = requireActivity().application as De1984Application
             val backendType = app.dependencies.firewallManager.activeBackendType.value
+            binding.lanToggle.toggleSwitch.isChecked = currentPkg.lanBlocked
             if (backendType == FirewallBackendType.IPTABLES) {
-                binding.lanToggle.toggleSwitch.isChecked = currentPkg.lanBlocked
                 updateSwitchColors(binding.lanToggle.toggleSwitch, currentPkg.lanBlocked)
             }
 
@@ -787,24 +787,32 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             )
         }
 
-        // Setup LAN toggle (only if using iptables backend)
+        // Setup LAN toggle - always visible, disabled when not using iptables backend
         val appForLan = requireActivity().application as De1984Application
         val backendTypeForLan = appForLan.dependencies.firewallManager.activeBackendType.value
-        if (backendTypeForLan == FirewallBackendType.IPTABLES) {
-            binding.lanDivider.visibility = View.VISIBLE
-            binding.lanToggle.root.visibility = View.VISIBLE
+        val isIptablesBackend = backendTypeForLan == FirewallBackendType.IPTABLES
 
-            setupNetworkToggle(
-                binding = binding.lanToggle,
-                label = getString(R.string.firewall_network_label_lan),
-                isBlocked = pkg.lanBlocked,
-                enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
-                onToggle = { blocked ->
-                    if (isUpdatingProgrammatically) return@setupNetworkToggle
-                    viewModel.setLanBlocking(pkg.packageName, blocked)
-                }
-            )
+        // Always show LAN toggle
+        binding.lanDivider.visibility = View.VISIBLE
+        binding.lanToggle.root.visibility = View.VISIBLE
+
+        // Show "Requires root access" subtitle when LAN blocking is unavailable
+        if (!isIptablesBackend) {
+            binding.lanToggle.root.alpha = 0.6f
+            binding.lanToggle.networkTypeSubtitle.visibility = View.VISIBLE
+            binding.lanToggle.networkTypeSubtitle.text = getString(R.string.firewall_lan_requires_root)
         }
+
+        setupNetworkToggle(
+            binding = binding.lanToggle,
+            label = getString(R.string.firewall_network_label_lan),
+            isBlocked = pkg.lanBlocked,
+            enabled = isIptablesBackend && (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
+            onToggle = { blocked ->
+                if (isUpdatingProgrammatically) return@setupNetworkToggle
+                viewModel.setLanBlocking(pkg.packageName, blocked)
+            }
+        )
 
         // Add click listeners to toggle containers for protected packages
         if (isProtected) {
@@ -831,12 +839,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 }
             }
 
-            // LAN toggle - click on entire row to show snackbar (if visible)
-            if (backendTypeForLan == FirewallBackendType.IPTABLES) {
-                binding.lanToggle.root.setOnClickListener {
-                    if (!binding.lanToggle.toggleSwitch.isEnabled) {
-                        showProtectionSnackbar(dialog)
-                    }
+            // LAN toggle - show protection snackbar when protected and using iptables
+            binding.lanToggle.root.setOnClickListener {
+                if (!binding.lanToggle.toggleSwitch.isEnabled && isIptablesBackend) {
+                    showProtectionSnackbar(dialog)
                 }
             }
         }
@@ -946,8 +952,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val backendType = firewallManager.getActiveBackendType()
         val allowCriticalSimple = settingsViewModel.uiState.value.allowCriticalPackageFirewall
 
-        val infoMessage = if (!pkg.hasInternetPermission) {
-            // Show "No Internet Permission" info message
+        // Only show info message for special cases - normal apps show info as subtitle under Internet Access
+        val infoMessage: String? = if (!pkg.hasInternetPermission) {
             getString(R.string.firewall_no_internet_info)
         } else if ((pkg.isSystemCritical || pkg.isVpnApp) && allowCriticalSimple) {
             getString(R.string.firewall_critical_allowed_info)
@@ -955,17 +961,19 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             getString(R.string.firewall_system_critical_info)
         } else if (pkg.isVpnApp) {
             getString(R.string.firewall_vpn_app_info)
+        } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER) {
+            // Show ConnectivityManager info only (explains granular control requires root)
+            getString(R.string.firewall_connectivity_manager_info)
         } else {
-            when (backendType) {
-                io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER -> {
-                    getString(R.string.firewall_connectivity_manager_info)
-                }
-                else -> {
-                    getString(R.string.firewall_block_all_info)
-                }
-            }
+            null  // Hide info message for normal apps on VPN backend
         }
-        binding.infoMessage.text = infoMessage
+
+        if (infoMessage != null) {
+            binding.infoMessage.visibility = View.VISIBLE
+            binding.infoMessage.text = infoMessage
+        } else {
+            binding.infoMessage.visibility = View.GONE
+        }
 
         // Flag to prevent infinite recursion when updating switch programmatically
         var isUpdatingProgrammatically = false
@@ -1001,10 +1009,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             observerJob.cancel()
         }
 
-        // Setup single "Block Internet" toggle
+        // Setup single "Internet Access" toggle
         setupNetworkToggle(
             binding = binding.internetToggle,
-            label = getString(R.string.firewall_network_label_block_internet),
+            label = getString(R.string.firewall_network_label_internet_access),
             isBlocked = pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked,
             enabled = (!pkg.isSystemCritical || allowCriticalSimple) && (!pkg.isVpnApp || allowCriticalSimple),
             onToggle = { blocked ->
@@ -1014,6 +1022,22 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 viewModel.setAllNetworkBlocking(pkg.packageName, blocked)
             }
         )
+        // Show "WiFi, Mobile, Roaming" subtitle under Internet Access
+        binding.internetToggle.networkTypeSubtitle.visibility = View.VISIBLE
+        binding.internetToggle.networkTypeSubtitle.text = getString(R.string.firewall_internet_access_subtitle)
+
+        // Setup LAN toggle - always shown but disabled (requires root/iptables which isn't available in simple mode)
+        setupNetworkToggle(
+            binding = binding.lanToggle,
+            label = getString(R.string.firewall_network_label_lan),
+            isBlocked = pkg.lanBlocked,
+            enabled = false,  // Always disabled in simple control sheet (requires iptables/root)
+            onToggle = { /* No-op - disabled */ }
+        )
+        // Show "Requires root access" subtitle
+        binding.lanToggle.root.alpha = 0.6f
+        binding.lanToggle.networkTypeSubtitle.visibility = View.VISIBLE
+        binding.lanToggle.networkTypeSubtitle.text = getString(R.string.firewall_lan_requires_root)
 
         // Cross-navigation action to Packages screen
         binding.manageAppAction.setOnClickListener {

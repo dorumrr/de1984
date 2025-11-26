@@ -220,9 +220,22 @@ class ConnectivityManagerFirewallBackend(
                 Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
             )
 
+            // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
+            // Even though this backend operates per-package, Android's network permissions are UID-based
+            // So if ANY package in a UID is critical with no rule, all packages in that UID should be allowed
+            val uidsWithCritical = if (allowCritical) {
+                allPackages
+                    .filter { Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName) }
+                    .map { it.uid }
+                    .toSet()
+            } else {
+                emptySet()
+            }
+
             // First pass: Calculate what the policy should be for each package
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
+                val uid = appInfo.uid
 
                 // Never block system-critical packages - always allow (unless setting is enabled)
                 if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
@@ -251,7 +264,17 @@ class ConnectivityManagerFirewallBackend(
                     // Per FIREWALL.md lines 220-230:
                     // - Block All mode: Apps without rules are blocked on all networks
                     // - Allow All mode: Apps without rules are allowed on all networks
-                    isBlockAllDefault
+                    // EXCEPT: When allowCritical is ON and UID contains critical package, default to ALLOW for stability
+                    // IMPORTANT: Check at UID level because Android's network permissions are UID-based
+                    if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
+                        val isSelfCritical = Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName)
+                        if (!isSelfCritical) {
+                            Log.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
+                        }
+                        false  // Allow UIDs with critical packages without rules for system stability
+                    } else {
+                        isBlockAllDefault
+                    }
                 }
 
                 desiredPolicies[packageName] = shouldBlock

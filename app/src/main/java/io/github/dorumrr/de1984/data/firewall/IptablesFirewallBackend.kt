@@ -211,6 +211,24 @@ class IptablesFirewallBackend(
 
                 Log.d(TAG, "Block All mode: found ${allPackages.size} packages with network permissions")
 
+                // Get critical package protection setting once (outside the loop)
+                val allowCritical = prefs.getBoolean(
+                    Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                    Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+                )
+
+                // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
+                // This is needed because we block by UID, not by package - so if ANY package
+                // in a UID is critical with no rule, the entire UID should be allowed
+                val uidsWithCritical = if (allowCritical) {
+                    allPackages
+                        .filter { Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName) }
+                        .map { it.uid }
+                        .toSet()
+                } else {
+                    emptySet()
+                }
+
                 for (appInfo in allPackages) {
                     val uid = appInfo.uid
                     val packageName = appInfo.packageName
@@ -236,9 +254,22 @@ class IptablesFirewallBackend(
                         Log.d(TAG, "  $packageName (UID $uid): has rule, shouldBlock=$blockDecision")
                         blockDecision
                     } else {
-                        // No rule - apply default policy (block all)
-                        Log.d(TAG, "  $packageName (UID $uid): no rule, blocking by default")
-                        true
+                        // No rule - check if this UID contains ANY critical package with allowCritical enabled
+                        // When allowCritical is ON and no explicit rule exists, default to ALLOW for system stability
+                        // IMPORTANT: Check at UID level because we block by UID, not by package
+                        if (allowCritical && uidsWithCritical.contains(uid)) {
+                            val isSelfCritical = Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName)
+                            if (isSelfCritical) {
+                                Log.d(TAG, "  $packageName (UID $uid): no rule, critical package → allowing")
+                            } else {
+                                Log.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
+                            }
+                            false
+                        } else {
+                            // Normal non-critical package/UID - apply default policy (block all)
+                            Log.d(TAG, "  $packageName (UID $uid): no rule, blocking by default")
+                            true
+                        }
                     }
 
                     if (shouldBlock) {

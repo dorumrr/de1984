@@ -212,7 +212,13 @@ class NetworkPolicyManagerFirewallBackend(
             ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
             val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
-            Log.d(TAG, "Default policy: $defaultPolicy (isBlockAllDefault=$isBlockAllDefault)")
+            // Get critical package protection setting once (outside the loop)
+            val allowCritical = prefs.getBoolean(
+                Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+            )
+
+            Log.d(TAG, "Default policy: $defaultPolicy (isBlockAllDefault=$isBlockAllDefault, allowCritical=$allowCritical)")
 
             var appliedCount = 0
             var errorCount = 0
@@ -238,6 +244,18 @@ class NetworkPolicyManagerFirewallBackend(
                 }
 
             Log.d(TAG, "Found ${allPackages.size} packages with network permissions")
+
+            // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
+            // This is needed because we block by UID, not by package - so if ANY package
+            // in a UID is critical with no rule, the entire UID should be allowed
+            val uidsWithCritical = if (allowCritical) {
+                allPackages
+                    .filter { Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName) }
+                    .map { it.uid }
+                    .toSet()
+            } else {
+                emptySet()
+            }
 
             // First pass: Calculate desired policies for all UIDs
             // This is done separately to enable differential application (memory leak fix)
@@ -269,7 +287,19 @@ class NetworkPolicyManagerFirewallBackend(
                     // Per FIREWALL.md lines 220-230:
                     // - Block All mode: Apps without rules are blocked on all networks
                     // - Allow All mode: Apps without rules are allowed on all networks
-                    isBlockAllDefault
+                    // EXCEPT: When allowCritical is ON and UID contains critical package, default to ALLOW for stability
+                    // IMPORTANT: Check at UID level because we block by UID, not by package
+                    if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
+                        // Log shared UID scenario for debugging
+                        val packagesInUid = allPackages.filter { it.uid == uid }.map { it.packageName }
+                        val criticalInUid = packagesInUid.filter { Constants.Firewall.isSystemCritical(it) || hasVpnService(it) }
+                        if (criticalInUid.isNotEmpty() && packagesInUid.size > 1) {
+                            Log.d(TAG, "  UID $uid: allowing (shares UID with critical: ${criticalInUid.joinToString()})")
+                        }
+                        false  // Allow UIDs with critical packages without rules for system stability
+                    } else {
+                        isBlockAllDefault
+                    }
                 }
 
                 desiredPolicies[uid] = shouldBlock

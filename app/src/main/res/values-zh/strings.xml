@@ -376,6 +376,10 @@
     <string name="settings_show_icons_title">显示应用图标</string>
     <string name="settings_show_icons_description">禁用时可能会加快应用速度</string>
 
+    <string name="settings_boot_protection_title">启动保护</string>
+    <string name="settings_boot_protection_description">在设备启动期间阻止所有网络流量，直到防火墙激活（需要 Root）</string>
+    <string name="settings_boot_protection_unavailable">需要 Root 访问权限</string>
+
     <string name="settings_new_app_notifications_title">新应用通知</string>
     <string name="settings_new_app_notifications_description">安装具有网络权限的新应用时显示通知</string>
 
@@ -504,6 +508,8 @@
     <string name="firewall_critical_allowed_info">⚠️ 关键软件包保护已在设置中禁用。阻止网络访问可能导致系统不稳定或 VPN 问题。</string>
     <string name="firewall_badge_system_critical">系统关键</string>
     <string name="firewall_badge_vpn_app">VPN 应用</string>
+    <string name="firewall_badge_no_internet">无互联网权限</string>
+    <string name="firewall_no_internet_info">ℹ️ 此应用当前在其清单中未声明互联网权限。\n\n现在阻止它将在应用在未来更新中获得互联网权限时生效，提供主动保护。</string>
 
     <!-- Protection Warning Banner -->
     <string name="protection_banner_title">🛡️ 受保护的软件包</string>
@@ -600,6 +606,7 @@
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">取消</string>
+    <string name="dialog_continue">继续</string>
     <string name="dialog_error_title">错误</string>
     <string name="dialog_no_access_message">❌ 无特权访问可用\n\n您的设备似乎未 Root。要启用高级软件包管理功能：\n• 安装并配置 Shizuku（推荐 - 无需 Root）\n• 或使用 Magisk、KernelSU 或 APatch Root 您的设备</string>
     <string name="dialog_root_denied_message">❌ Root 访问被拒绝\n\n您的设备已 Root，但 De1984 被拒绝超级用户权限。\n\n要授予访问权限：\n• 打开您的超级用户应用（Magisk、KernelSU、APatch 等）并授予 De1984 权限\n• 如果权限提示未出现，请卸载并重新安装应用，然后在首次启动时出现提示时授予权限\n• 或手动将 De1984 添加到您的超级用户应用（Magisk、KernelSU 等）</string>
@@ -673,6 +680,16 @@
     <string name="success_custom_urls_applied">成功应用自定义 URL</string>
     <string name="success_original_settings_restored">成功恢复原始设置</string>
     <string name="success_reset_to_google_defaults">成功重置为 Google 默认值</string>
+
+    <!-- Boot Protection Dialogs -->
+    <string name="boot_protection_enable_warning_title">启用启动保护？</string>
+    <string name="boot_protection_enable_warning_message">这将在设备启动期间阻止所有网络流量，直到 De1984 启动。\n\n⚠️ 如果 De1984 无法启动，您的设备将无法联网。\n\n恢复选项：\n1. 打开 De1984 → 设置 → 禁用启动保护 → 重启\n2. 如果不起作用，使用 ADB：\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_disable_warning_title">禁用启动保护？</string>
+    <string name="boot_protection_disable_warning_message">网络流量将不再在启动期间被阻止。应用可能在防火墙启动前泄露数据。\n\n注意：此更改将在下次重启时生效。</string>
+    <string name="boot_protection_enabled_success">启动保护已成功启用</string>
+    <string name="boot_protection_disabled_success">启动保护已成功禁用</string>
+    <string name="boot_protection_enable_failed">启用启动保护失败：%s</string>
+    <string name="boot_protection_disable_failed">禁用启动保护失败：%s</string>
 
     <!-- Input Hints -->
     <string name="hint_detection_mode">检测模式</string>

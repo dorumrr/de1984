@@ -366,6 +366,10 @@
     <string name="settings_show_icons_title">Mostra Icone App</string>
     <string name="settings_show_icons_description">Può velocizzare l’app se disattivato</string>
 
+    <string name="settings_boot_protection_title">Protezione all\'Avvio</string>
+    <string name="settings_boot_protection_description">Blocca tutto il traffico di rete durante l\'avvio del dispositivo fino all\'attivazione del firewall (richiede root)</string>
+    <string name="settings_boot_protection_unavailable">Richiede accesso root</string>
+
     <string name="settings_new_app_notifications_title">Notifiche Nuove App</string>
     <string name="settings_new_app_notifications_description">Mostra notifiche quando vengono installate nuove app con permessi di rete</string>
 
@@ -494,6 +498,8 @@
     <string name="firewall_critical_allowed_info">⚠️ La protezione dei pacchetti critici è disabilitata nelle Impostazioni. Bloccare l\'accesso alla rete può causare instabilità del sistema o problemi VPN.</string>
     <string name="firewall_badge_system_critical">Sistema Critico</string>
     <string name="firewall_badge_vpn_app">App VPN</string>
+    <string name="firewall_badge_no_internet">Nessun Permesso Internet</string>
+    <string name="firewall_no_internet_info">ℹ️ Questa app attualmente non ha il permesso internet dichiarato nel suo manifest.\n\nBloccandola ora avrà effetto se l\'app ottiene il permesso internet in un aggiornamento futuro, fornendo protezione proattiva.</string>
 
     <!-- Protection Warning Banner -->
     <string name="protection_banner_title">🛡️ Pacchetto Protetto</string>
@@ -590,6 +596,7 @@
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Annulla</string>
+    <string name="dialog_continue">Continua</string>
     <string name="dialog_error_title">Errore</string>
     <string name="dialog_no_access_message">❌ Nessun Accesso Privilegiato Disponibile\n\nIl dispositivo non sembra essere rootato. Per abilitare le funzioni avanzate di controllo pacchetti:\n• Installa e configura Shizuku (consigliato — non richiede root)\n• Oppure effettua il root del dispositivo tramite Magisk, KernelSU o APatch</string>
     <string name="dialog_root_denied_message">❌ Accesso Root Negato\n\nIl dispositivo è rootato, ma l’app ha negato il permesso superuser.\n\nPer concedere l’accesso:\n• Apri la tua app superuser (Magisk, KernelSU, APatch, ecc.) e concedi il permesso a De1984\n• Se il popup non appare, reinstalla l’app ed accetta il permesso al primo avvio\n• Oppure aggiungi manualmente De1984 nell’app superuser</string>
@@ -663,6 +670,16 @@
     <string name="success_custom_urls_applied">URL personalizzati applicati correttamente</string>
     <string name="success_original_settings_restored">Impostazioni originali ripristinate con successo</string>
     <string name="success_reset_to_google_defaults">Ripristino ai valori Google completato</string>
+
+    <!-- Boot Protection Dialogs -->
+    <string name="boot_protection_enable_warning_title">Attivare Protezione all\'Avvio?</string>
+    <string name="boot_protection_enable_warning_message">Questo bloccherà TUTTO il traffico di rete durante l\'avvio del dispositivo fino a quando De1984 si avvia.\n\n⚠️ Se De1984 non riesce ad avviarsi, il dispositivo non avrà rete.\n\nOpzioni di recupero:\n1. Apri De1984 → Impostazioni → Disattiva Protezione all\'Avvio → Riavvia\n2. Se non funziona, usa ADB:\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_disable_warning_title">Disattivare Protezione all\'Avvio?</string>
+    <string name="boot_protection_disable_warning_message">Il traffico di rete non sarà più bloccato durante l\'avvio. Le app potrebbero perdere dati prima che il firewall si avvii.\n\nNota: Questa modifica avrà effetto al prossimo riavvio.</string>
+    <string name="boot_protection_enabled_success">Protezione all\'avvio attivata con successo</string>
+    <string name="boot_protection_disabled_success">Protezione all\'avvio disattivata con successo</string>
+    <string name="boot_protection_enable_failed">Impossibile attivare la protezione all\'avvio: %s</string>
+    <string name="boot_protection_disable_failed">Impossibile disattivare la protezione all\'avvio: %s</string>
 
     <!-- Input Hints -->
     <string name="hint_detection_mode">Modalità di rilevamento</string>

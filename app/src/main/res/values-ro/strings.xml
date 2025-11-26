@@ -368,6 +368,10 @@
     <string name="settings_show_icons_title">Arată iconițele aplicațiilor</string>
     <string name="settings_show_icons_description">Ar putea fluidiza aplicația când este dezactivat</string>
 
+    <string name="settings_boot_protection_title">Protecție la Pornire</string>
+    <string name="settings_boot_protection_description">Blochează tot traficul de rețea în timpul pornirii dispozitivului până când firewall-ul se activează (necesită root)</string>
+    <string name="settings_boot_protection_unavailable">Necesită acces root</string>
+
     <string name="settings_new_app_notifications_title">Notificare pentru aplicațiile noi</string>
     <string name="settings_new_app_notifications_description">Arată notificări când aplicații noi cu permisiuni de rețea sunt instalate</string>
 
@@ -496,6 +500,8 @@
     <string name="firewall_critical_allowed_info">⚠️ Protecția pachetelor critice este dezactivată în Setări. Blocarea accesului la rețea poate cauza instabilitate a sistemului sau probleme VPN.</string>
     <string name="firewall_badge_system_critical">Critic de sistem</string>
     <string name="firewall_badge_vpn_app">Aplicație VPN</string>
+    <string name="firewall_badge_no_internet">Fără Permisiune Internet</string>
+    <string name="firewall_no_internet_info">ℹ️ Această aplicație nu are în prezent permisiunea de internet declarată în manifestul său.\n\nBlocarea ei acum va avea efect dacă aplicația obține permisiunea de internet într-o actualizare viitoare, oferind protecție proactivă.</string>
 
     <!-- Protection Warning Banner -->
     <string name="protection_banner_title">🛡️ Pachet Protejat</string>
@@ -592,6 +598,7 @@
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Anulează</string>
+    <string name="dialog_continue">Continuă</string>
     <string name="dialog_error_title">Eroare</string>
     <string name="dialog_no_access_message">❌ Niciun acces privilegiat disponibil\n\nDispozitivul tău nu pare să fie rootat. Pentru a activa funcțiile avansate de gestionare a pachetelor:\n• Instalează și configurează Shizuku (recomandat - nu necesită root)\n• Sau rootează dispozitivul folosind Magisk, KernelSU sau APatch</string>
     <string name="dialog_root_denied_message">❌ Acces Root refuzat\n\nDispozitivul tău este rootat dar De1984 a fost refuzat permisiunea superuser.\n\nPentru a acorda acces:\n• Deschide aplicația ta Superuser (Magisk, KernelSU, APatch, etc.) și acordă permisiune pentru De1984\n• Dacă promptul de permisiune nu apare, dezinstalează și reinstalează aplicația, apoi acordă permisiunea când ești solicitat la prima lansare\n• Sau adaugă manual De1984 în aplicația ta superuser (Magisk, KernelSU, etc.)</string>
@@ -665,6 +672,16 @@
     <string name="success_custom_urls_applied">URL-uri personalizate aplicate cu succes</string>
     <string name="success_original_settings_restored">Setări originale restaurate cu succes</string>
     <string name="success_reset_to_google_defaults">Resetat la valorile implicite Google cu succes</string>
+
+    <!-- Boot Protection Dialogs -->
+    <string name="boot_protection_enable_warning_title">Activezi Protecția la Pornire?</string>
+    <string name="boot_protection_enable_warning_message">Aceasta va bloca TOT traficul de rețea în timpul pornirii dispozitivului până când De1984 pornește.\n\n⚠️ Dacă De1984 nu reușește să pornească, dispozitivul tău nu va avea rețea.\n\nOpțiuni de recuperare:\n1. Deschide De1984 → Setări → Dezactivează Protecția la Pornire → Repornește\n2. Dacă asta nu funcționează, folosește ADB:\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_disable_warning_title">Dezactivezi Protecția la Pornire?</string>
+    <string name="boot_protection_disable_warning_message">Traficul de rețea nu va mai fi blocat în timpul pornirii. Aplicațiile pot scurge date înainte ca firewall-ul să pornească.\n\nNotă: Această schimbare va avea efect la următoarea repornire.</string>
+    <string name="boot_protection_enabled_success">Protecția la pornire activată cu succes</string>
+    <string name="boot_protection_disabled_success">Protecția la pornire dezactivată cu succes</string>
+    <string name="boot_protection_enable_failed">Eșec la activarea protecției la pornire: %s</string>
+    <string name="boot_protection_disable_failed">Eșec la dezactivarea protecției la pornire: %s</string>
 
     <!-- Input Hints -->
     <string name="hint_detection_mode">Mod detectare</string>

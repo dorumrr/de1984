@@ -329,6 +329,7 @@
     <string name="language_portuguese">Português (Portoghese)</string>
     <string name="language_chinese">中文 (Cinese)</string>
     <string name="language_italian">Italiano</string>
+    <string name="language_french">Français (Francese)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Versione %s</string>

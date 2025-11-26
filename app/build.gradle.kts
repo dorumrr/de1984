@@ -37,7 +37,7 @@ android {
         versionName = "2.4.7"
 
         // Specify supported languages (reduces APK size by excluding unused translations)
-        resourceConfigurations += listOf("en", "ro", "pt", "zh", "it")
+        resourceConfigurations += listOf("en", "ro", "pt", "zh", "it", "fr")
 
         vectorDrawables {
             useSupportLibrary = true

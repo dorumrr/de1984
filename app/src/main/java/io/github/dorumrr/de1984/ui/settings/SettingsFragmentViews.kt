@@ -549,7 +549,8 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             LanguageOption(Constants.Settings.LANGUAGE_ROMANIAN, getString(io.github.dorumrr.de1984.R.string.language_romanian)),
             LanguageOption(Constants.Settings.LANGUAGE_PORTUGUESE, getString(io.github.dorumrr.de1984.R.string.language_portuguese)),
             LanguageOption(Constants.Settings.LANGUAGE_CHINESE, getString(io.github.dorumrr.de1984.R.string.language_chinese)),
-            LanguageOption(Constants.Settings.LANGUAGE_ITALIAN, getString(io.github.dorumrr.de1984.R.string.language_italian))
+            LanguageOption(Constants.Settings.LANGUAGE_ITALIAN, getString(io.github.dorumrr.de1984.R.string.language_italian)),
+            LanguageOption(Constants.Settings.LANGUAGE_FRENCH, getString(io.github.dorumrr.de1984.R.string.language_french))
         ).let { list ->
             // Keep "System Default" first, sort the rest alphabetically by display name
             listOf(list.first()) + list.drop(1).sortedBy { it.displayName }
@@ -603,6 +604,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     Constants.Settings.LANGUAGE_PORTUGUESE -> androidx.core.os.LocaleListCompat.forLanguageTags("pt")
                     Constants.Settings.LANGUAGE_CHINESE -> androidx.core.os.LocaleListCompat.forLanguageTags("zh")
                     Constants.Settings.LANGUAGE_ITALIAN -> androidx.core.os.LocaleListCompat.forLanguageTags("it")
+                    Constants.Settings.LANGUAGE_FRENCH -> androidx.core.os.LocaleListCompat.forLanguageTags("fr")
                     else -> androidx.core.os.LocaleListCompat.getEmptyLocaleList()
                 }
                 androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)

@@ -48,6 +48,7 @@ class NetworkPackageAdapter(
         private val packageName: TextView = itemView.findViewById(R.id.package_name)
         private val systemCriticalBadge: TextView = itemView.findViewById(R.id.system_critical_badge)
         private val vpnAppBadge: TextView = itemView.findViewById(R.id.vpn_app_badge)
+        private val noInternetBadge: TextView = itemView.findViewById(R.id.no_internet_badge)
         private val wifiIcon: ImageView = itemView.findViewById(R.id.wifi_icon)
         private val wifiBlockedOverlay: ImageView = itemView.findViewById(R.id.wifi_blocked_overlay)
         private val mobileIcon: ImageView = itemView.findViewById(R.id.mobile_icon)
@@ -72,6 +73,9 @@ class NetworkPackageAdapter(
 
             // Show/hide VPN app badge
             vpnAppBadge.visibility = if (pkg.isVpnApp) View.VISIBLE else View.GONE
+
+            // Show/hide no internet permission badge
+            noInternetBadge.visibility = if (!pkg.hasInternetPermission) View.VISIBLE else View.GONE
 
             // Dim the entire item if system critical or VPN app (unless setting is enabled)
             val prefs = itemView.context.getSharedPreferences(

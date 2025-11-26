@@ -20,7 +20,8 @@ class NetworkPackageRepositoryImpl(
         return packageDataSource.getPackages()
             .map { entities ->
                 entities
-                    .filter { it.hasNetworkAccess }
+                    // Show ALL apps (including those without network permissions)
+                    // This allows users to proactively block apps before they gain internet permission via updates
                     .filter { it.isEnabled }  // Hide disabled apps from firewall screen
                     .map { entity ->
                         entity.toNetworkDomain().copy(
@@ -70,14 +71,14 @@ class NetworkPackageRepositoryImpl(
     override suspend fun getNetworkPackage(packageName: String): Result<NetworkPackage> {
         return try {
             val entity = packageDataSource.getPackage(packageName)
-            if (entity != null && entity.hasNetworkAccess) {
+            if (entity != null) {
                 Result.success(
                     entity.toNetworkDomain().copy(
                         isSystemCritical = Constants.Firewall.isSystemCritical(entity.packageName)
                     )
                 )
             } else {
-                Result.failure(Exception("Network package not found: $packageName"))
+                Result.failure(Exception("Package not found: $packageName"))
             }
         } catch (e: Exception) {
             Result.failure(e)

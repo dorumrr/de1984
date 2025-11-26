@@ -498,6 +498,8 @@
     <string name="firewall_critical_allowed_info">⚠️ Critical package protection is disabled in Settings. Blocking network access may cause system instability or VPN issues.</string>
     <string name="firewall_badge_system_critical">System Critical</string>
     <string name="firewall_badge_vpn_app">VPN App</string>
+    <string name="firewall_badge_no_internet">No Internet Permission</string>
+    <string name="firewall_no_internet_info">ℹ️ This app currently has no internet permission declared in its manifest.\n\nBlocking it now will take effect if the app gains internet permission in a future update, providing proactive protection.</string>
 
     <!-- Protection Warning Banner -->
     <string name="protection_banner_title">🛡️ Protected Package</string>

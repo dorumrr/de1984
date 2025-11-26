@@ -875,7 +875,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val firewallManager = app.dependencies.firewallManager
         val backendType = firewallManager.getActiveBackendType()
 
-        if (pkg.isVpnApp) {
+        if (!pkg.hasInternetPermission) {
+            // Show "No Internet Permission" info message
+            binding.infoMessage.visibility = View.VISIBLE
+            binding.infoMessage.text = getString(R.string.firewall_no_internet_info)
+        } else if (pkg.isVpnApp) {
             binding.infoMessage.visibility = View.VISIBLE
             binding.infoMessage.text = getString(R.string.firewall_vpn_app_info)
         } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN) {
@@ -941,7 +945,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val backendType = firewallManager.getActiveBackendType()
         val allowCriticalSimple = settingsViewModel.uiState.value.allowCriticalPackageFirewall
 
-        val infoMessage = if ((pkg.isSystemCritical || pkg.isVpnApp) && allowCriticalSimple) {
+        val infoMessage = if (!pkg.hasInternetPermission) {
+            // Show "No Internet Permission" info message
+            getString(R.string.firewall_no_internet_info)
+        } else if ((pkg.isSystemCritical || pkg.isVpnApp) && allowCriticalSimple) {
             getString(R.string.firewall_critical_allowed_info)
         } else if (pkg.isSystemCritical) {
             getString(R.string.firewall_system_critical_info)

@@ -95,6 +95,23 @@
                 android:background="@drawable/badge_background_vpn"
                 android:visibility="gone" />
 
+            <!-- No Internet Permission Badge -->
+            <TextView
+                android:id="@+id/no_internet_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/firewall_badge_no_internet"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="#757575"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/badge_background_no_internet"
+                android:visibility="gone" />
+
         </LinearLayout>
 
         <!-- Badges Column (Right Side) -->

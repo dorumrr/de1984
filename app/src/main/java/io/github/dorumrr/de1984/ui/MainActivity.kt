@@ -672,7 +672,8 @@ class MainActivity : AppCompatActivity() {
                 vpnPermissionLauncher.launch(prepareIntent)
             }
         } else {
-            firewallViewModel.stopFirewall()
+            // Show confirmation dialog before stopping firewall
+            showFirewallStopDialog()
         }
     }
 
@@ -689,6 +690,25 @@ class MainActivity : AppCompatActivity() {
                 }
             },
             cancelButtonText = getString(R.string.dialog_firewall_start_skip)
+        )
+    }
+
+    private fun showFirewallStopDialog() {
+        StandardDialog.showConfirmation(
+            context = this,
+            title = getString(R.string.dialog_firewall_stop_title),
+            message = getString(R.string.dialog_firewall_stop_message),
+            confirmButtonText = getString(R.string.dialog_firewall_stop_confirm),
+            onConfirm = {
+                Log.d(TAG, "🔘 USER CONFIRMED: Stopping firewall")
+                firewallViewModel.stopFirewall()
+            },
+            onCancel = {
+                Log.d(TAG, "🔘 USER CANCELLED: Firewall stop cancelled - reverting toggle")
+                // User cancelled - revert the toggle back to ON
+                binding.firewallToggle.isChecked = true
+            },
+            cancelButtonText = getString(R.string.dialog_cancel)
         )
     }
 

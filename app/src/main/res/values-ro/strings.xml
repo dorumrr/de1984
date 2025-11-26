@@ -43,6 +43,10 @@
     <string name="dialog_firewall_start_confirm">Pornește Firewall</string>
     <string name="dialog_firewall_start_skip">Mai târziu</string>
 
+    <string name="dialog_firewall_stop_title">Oprește Firewall-ul?</string>
+    <string name="dialog_firewall_stop_message">⚠️ Oprirea firewall-ului va permite tuturor aplicațiilor să acceseze internetul.\n\nProtecția confidențialității tale va fi dezactivată până când vei porni din nou firewall-ul.</string>
+    <string name="dialog_firewall_stop_confirm">Oprește Firewall-ul</string>
+
     <string name="dialog_policy_change_title">Schimbi politica implicită?</string>
     <string name="dialog_policy_change_confirm">Schimbă politica</string>
     <string name="dialog_policy_change_cancel">Anulează</string>

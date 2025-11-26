@@ -42,6 +42,10 @@
     <string name="dialog_firewall_start_confirm">启动防火墙</string>
     <string name="dialog_firewall_start_skip">稍后</string>
 
+    <string name="dialog_firewall_stop_title">停止防火墙？</string>
+    <string name="dialog_firewall_stop_message">⚠️ 停止防火墙将允许所有应用访问互联网。\n\n您的隐私保护将被禁用，直到您重新打开防火墙。</string>
+    <string name="dialog_firewall_stop_confirm">停止防火墙</string>
+
     <string name="dialog_policy_change_title">更改默认策略？</string>
     <string name="dialog_policy_change_confirm">更改策略</string>
     <string name="dialog_policy_change_cancel">取消</string>

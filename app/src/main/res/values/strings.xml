@@ -42,6 +42,10 @@
     <string name="dialog_firewall_start_confirm">Start Firewall</string>
     <string name="dialog_firewall_start_skip">Later</string>
 
+    <string name="dialog_firewall_stop_title">Stop Firewall?</string>
+    <string name="dialog_firewall_stop_message">⚠️ Stopping the firewall will allow all apps to access the internet.\n\nYour privacy protection will be disabled until you turn the firewall back on.</string>
+    <string name="dialog_firewall_stop_confirm">Stop Firewall</string>
+
     <string name="dialog_policy_change_title">Change Default Policy?</string>
     <string name="dialog_policy_change_confirm">Change Policy</string>
     <string name="dialog_policy_change_cancel">Cancel</string>

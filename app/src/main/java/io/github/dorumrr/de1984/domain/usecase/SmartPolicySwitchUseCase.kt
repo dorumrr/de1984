@@ -1,6 +1,7 @@
 package io.github.dorumrr.de1984.domain.usecase
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.utils.Constants
@@ -13,6 +14,7 @@ import io.github.dorumrr.de1984.utils.Constants
  * - Preserves existing user preferences for critical packages (if they've explicitly configured them)
  * - Defaults critical packages to ALLOW (if no user preference exists) to ensure system stability
  * - Applies normal policy to non-critical packages
+ * - Critical packages include SYSTEM_WHITELIST packages AND VPN apps
  *
  * When allowCriticalPackageFirewall is OFF:
  * - Uses standard blockAllApps/allowAllApps (critical packages are protected by backend logic anyway)
@@ -49,19 +51,19 @@ class SmartPolicySwitchUseCase(
         // Smart behavior - preserve user preferences for critical packages
         Log.d(TAG, "Using smart policy switching for critical packages")
 
-        // Get all existing rules
+        // Get all existing rules BEFORE blockAllApps (snapshot)
         val allRules = firewallRepository.getAllRulesSync()
         Log.d(TAG, "Found ${allRules.size} existing rules")
 
-        // Get all critical package names
-        val criticalPackages = Constants.Firewall.SYSTEM_WHITELIST
-        Log.d(TAG, "System whitelist contains ${criticalPackages.size} critical packages")
+        // Get all critical package names (SYSTEM_WHITELIST + VPN apps)
+        val criticalPackages = getCriticalPackageNames()
+        Log.d(TAG, "Critical packages: ${criticalPackages.size} (SYSTEM_WHITELIST + VPN apps)")
 
-        // Block all non-critical packages
+        // Block all apps (this updates existing rules to blocked)
         firewallRepository.blockAllApps()
         Log.d(TAG, "Blocked all apps (including critical packages)")
 
-        // Now restore critical packages to their previous state or default to ALLOW
+        // Now restore critical packages to their previous state
         var preservedCount = 0
         var defaultedCount = 0
 
@@ -75,8 +77,7 @@ class SmartPolicySwitchUseCase(
                 preservedCount++
             } else {
                 // No user preference - DEFAULT to ALLOW for system stability
-                // Note: We don't create a rule here because the package might not be installed
-                // The backend logic will handle allowing it when it's encountered
+                // Note: We don't create a rule here because the backend + UI logic will handle allowing it
                 Log.d(TAG, "No existing rule for critical package: $packageName (will be allowed by backend)")
                 defaultedCount++
             }
@@ -109,15 +110,15 @@ class SmartPolicySwitchUseCase(
         // Smart behavior - preserve user preferences for critical packages
         Log.d(TAG, "Using smart policy switching for critical packages")
 
-        // Get all existing rules
+        // Get all existing rules BEFORE allowAllApps (snapshot)
         val allRules = firewallRepository.getAllRulesSync()
         Log.d(TAG, "Found ${allRules.size} existing rules")
 
-        // Get all critical package names
-        val criticalPackages = Constants.Firewall.SYSTEM_WHITELIST
-        Log.d(TAG, "System whitelist contains ${criticalPackages.size} critical packages")
+        // Get all critical package names (SYSTEM_WHITELIST + VPN apps)
+        val criticalPackages = getCriticalPackageNames()
+        Log.d(TAG, "Critical packages: ${criticalPackages.size} (SYSTEM_WHITELIST + VPN apps)")
 
-        // Allow all non-critical packages
+        // Allow all apps (this updates existing rules to allowed)
         firewallRepository.allowAllApps()
         Log.d(TAG, "Allowed all apps (including critical packages)")
 
@@ -137,6 +138,51 @@ class SmartPolicySwitchUseCase(
         }
 
         Log.d(TAG, "Smart policy switch complete: preserved=$preservedCount")
+    }
+
+    /**
+     * Get all critical package names: SYSTEM_WHITELIST + dynamically detected VPN apps
+     */
+    private fun getCriticalPackageNames(): Set<String> {
+        val criticalPackages = mutableSetOf<String>()
+
+        // Add SYSTEM_WHITELIST packages
+        criticalPackages.addAll(Constants.Firewall.SYSTEM_WHITELIST)
+
+        // Add VPN apps (detected dynamically)
+        try {
+            val packageManager = context.packageManager
+            val installedPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+
+            for (appInfo in installedPackages) {
+                if (hasVpnService(appInfo.packageName)) {
+                    criticalPackages.add(appInfo.packageName)
+                    Log.d(TAG, "Detected VPN app: ${appInfo.packageName}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error detecting VPN apps", e)
+        }
+
+        return criticalPackages
+    }
+
+    /**
+     * Check if an app has a VPN service by looking for services with BIND_VPN_SERVICE permission.
+     */
+    private fun hasVpnService(packageName: String): Boolean {
+        return try {
+            val packageInfo = context.packageManager.getPackageInfo(
+                packageName,
+                PackageManager.GET_SERVICES
+            )
+
+            packageInfo.services?.any { serviceInfo ->
+                serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
     }
 }
 

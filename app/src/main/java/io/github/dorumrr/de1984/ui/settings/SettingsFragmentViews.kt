@@ -828,15 +828,27 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         )
 
         // Setup VPN Tier
+        // When using privileged backend (iptables/CM), VPN permission is not needed
+        val vpnStatus = when {
+            state.isUsingPrivilegedBackend -> getString(io.github.dorumrr.de1984.R.string.permission_status_not_required)
+            state.hasVpnPermission -> getString(io.github.dorumrr.de1984.R.string.permission_status_completed)
+            else -> getString(io.github.dorumrr.de1984.R.string.permission_status_required)
+        }
+        val vpnDescription = if (state.isUsingPrivilegedBackend) {
+            getString(io.github.dorumrr.de1984.R.string.permission_tier_vpn_desc_privileged)
+        } else {
+            getString(io.github.dorumrr.de1984.R.string.permission_tier_vpn_desc)
+        }
         setupPermissionTier(
             binding.permissionTierVpn,
             title = getString(io.github.dorumrr.de1984.R.string.permission_tier_vpn_title),
-            description = getString(io.github.dorumrr.de1984.R.string.permission_tier_vpn_desc),
-            status = if (state.hasVpnPermission) getString(io.github.dorumrr.de1984.R.string.permission_status_completed) else getString(io.github.dorumrr.de1984.R.string.permission_status_required),
-            isComplete = state.hasVpnPermission,
+            description = vpnDescription,
+            status = vpnStatus,
+            isComplete = state.hasVpnPermission || state.isUsingPrivilegedBackend,
             permissions = state.vpnPermissionInfo,
             setupButtonText = getString(io.github.dorumrr.de1984.R.string.permission_button_grant_vpn),
-            onSetupClick = if (!state.hasVpnPermission) {
+            // Don't show grant button when using privileged backend
+            onSetupClick = if (!state.hasVpnPermission && !state.isUsingPrivilegedBackend) {
                 { handleVpnPermissionRequest() }
             } else null
         )
@@ -1100,13 +1112,17 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun handleVpnPermissionRequest() {
+        Log.d(TAG, "handleVpnPermissionRequest() called")
         try {
             val prepareIntent = VpnService.prepare(requireContext())
+            Log.d(TAG, "VpnService.prepare() returned: $prepareIntent")
             if (prepareIntent != null) {
                 // VPN permission not granted - request it
+                Log.d(TAG, "Launching VPN permission request dialog")
                 vpnPermissionLauncher.launch(prepareIntent)
             } else {
                 // VPN permission already granted
+                Log.d(TAG, "VPN permission already granted, refreshing permissions")
                 permissionViewModel.refreshPermissions()
             }
         } catch (e: Exception) {

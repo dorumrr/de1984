@@ -32,17 +32,24 @@ class PermissionSetupViewModel constructor(
             val basicPermissions = getBasicPermissionInfo()
             val advancedPermissions = getAdvancedPermissionInfo()
             val batteryOptimizationInfo = getBatteryOptimizationInfo()
-            val vpnPermissionInfo = getVpnPermissionInfo()
 
-            // Get current backend type to avoid killing user's VPN when using privileged backends
+            // Get current backend type to determine if VPN permission is needed
             val currentBackendType = firewallManager?.getActiveBackendType()
+            val isUsingPrivilegedBackend = currentBackendType != null &&
+                currentBackendType != io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN
+
+            // For VPN permission info display, check actual permission status (without safety guards)
+            // This is safe because we're only reading the status, not taking over the VPN
+            val vpnPermissionInfo = getVpnPermissionInfo(isUsingPrivilegedBackend)
 
             _uiState.value = _uiState.value.copy(
                 hasBasicPermissions = permissionManager.hasBasicPermissions(),
                 hasEnhancedPermissions = true,
                 hasAdvancedPermissions = permissionManager.hasRootAccess() || permissionManager.hasShizukuAccess() || permissionManager.hasSystemPermissions(),
                 hasBatteryOptimizationExemption = permissionManager.isBatteryOptimizationDisabled(),
-                hasVpnPermission = permissionManager.hasVpnPermission(currentBackendType, firewallManager),
+                // When using privileged backend, VPN permission is not required
+                hasVpnPermission = isUsingPrivilegedBackend || permissionManager.hasVpnPermission(null, null),
+                isUsingPrivilegedBackend = isUsingPrivilegedBackend,
                 basicPermissions = basicPermissions,
                 enhancedPermissions = emptyList(),
                 advancedPermissions = advancedPermissions,
@@ -127,10 +134,10 @@ class PermissionSetupViewModel constructor(
         )
     }
 
-    private fun getVpnPermissionInfo(): List<PermissionInfo> {
-        // Get current backend type to avoid killing user's VPN when using privileged backends
-        val currentBackendType = firewallManager?.getActiveBackendType()
-        val hasVpn = permissionManager.hasVpnPermission(currentBackendType, firewallManager)
+    private fun getVpnPermissionInfo(isUsingPrivilegedBackend: Boolean): List<PermissionInfo> {
+        // When using privileged backend, VPN permission is not required - show as granted/not needed
+        // Otherwise, check actual VPN permission status (without safety guards for display only)
+        val hasVpn = isUsingPrivilegedBackend || permissionManager.hasVpnPermission(null, null)
         return listOf(
             PermissionInfo(
                 permission = "android.permission.BIND_VPN_SERVICE",
@@ -163,6 +170,7 @@ data class PermissionSetupUiState(
     val hasAdvancedPermissions: Boolean = false,
     val hasBatteryOptimizationExemption: Boolean = false,
     val hasVpnPermission: Boolean = false,
+    val isUsingPrivilegedBackend: Boolean = false,
     val basicPermissions: List<PermissionInfo> = emptyList(),
     val enhancedPermissions: List<PermissionInfo> = emptyList(),
     val advancedPermissions: List<PermissionInfo> = emptyList(),

@@ -183,6 +183,18 @@
     <string name="multiselect_progress_message_format_reinstall">正在重新安装 %1$d / %2$d…</string>
 
     <string name="multiselect_checkbox_content_description">选择软件包</string>
+    <string name="multiselect_toast_limit_reached">一次最多可选择 %d 个软件包</string>
+
+    <!-- Firewall Multi-Select -->
+    <string name="firewall_multiselect_toast_cannot_select_critical">无法选择关键/VPN软件包</string>
+    <string name="firewall_multiselect_toolbar_button_block">阻止</string>
+    <string name="firewall_multiselect_toolbar_button_allow">允许</string>
+    <string name="firewall_multiselect_dialog_title_block">阻止 %d 个选定的应用？</string>
+    <string name="firewall_multiselect_dialog_title_allow">允许 %d 个选定的应用？</string>
+    <string name="firewall_multiselect_dialog_message">这将更改 %d 个应用的网络访问权限。</string>
+    <string name="firewall_multiselect_dialog_title_results">防火墙结果</string>
+    <string name="firewall_multiselect_dialog_message_success_format">✓ 成功%2$s：%1$d 个应用</string>
+    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d 成功，✗ %2$d 失败%3$s</string>
 
     <!-- Theme -->
     <string name="theme_light">浅色主题</string>

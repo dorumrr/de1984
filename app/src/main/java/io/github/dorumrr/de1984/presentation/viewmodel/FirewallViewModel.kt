@@ -563,6 +563,118 @@ class FirewallViewModel(
         _uiState.value = _uiState.value.copy(searchQuery = query)
     }
 
+    // ========== BATCH OPERATIONS FOR MULTI-SELECT ==========
+
+    /**
+     * Block all network access for multiple packages at once.
+     * Reports progress and results via UI state.
+     */
+    fun batchBlockPackages(packageNames: List<String>) {
+        viewModelScope.launch {
+            Log.d(TAG, "🔥 batchBlockPackages: Starting batch block for ${packageNames.size} packages")
+            val succeeded = mutableListOf<String>()
+            val failed = mutableListOf<String>()
+
+            for ((index, packageName) in packageNames.withIndex()) {
+                Log.d(TAG, "🔥 batchBlockPackages: Processing ${index + 1}/${packageNames.size}: $packageName")
+
+                // Update progress
+                _uiState.value = _uiState.value.copy(
+                    batchProgress = BatchProgress(
+                        current = index + 1,
+                        total = packageNames.size,
+                        isBlocking = true
+                    )
+                )
+
+                // Optimistically update UI
+                updatePackageInList(packageName) { pkg ->
+                    pkg.copy(wifiBlocked = true, mobileBlocked = true, roamingBlocked = true)
+                }
+
+                // Persist
+                manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, blocked = true)
+                    .onSuccess {
+                        succeeded.add(packageName)
+                    }
+                    .onFailure { error ->
+                        Log.e(TAG, "🔥 batchBlockPackages: Failed to block $packageName: ${error.message}")
+                        failed.add(packageName)
+                        // Revert optimistic update
+                        loadNetworkPackages()
+                    }
+            }
+
+            // Clear progress and set result
+            _uiState.value = _uiState.value.copy(
+                batchProgress = null,
+                batchBlockResult = BatchBlockResult(
+                    succeeded = succeeded,
+                    failed = failed,
+                    wasBlocking = true
+                )
+            )
+            Log.d(TAG, "🔥 batchBlockPackages: Complete. Succeeded: ${succeeded.size}, Failed: ${failed.size}")
+        }
+    }
+
+    /**
+     * Allow all network access for multiple packages at once.
+     * Reports progress and results via UI state.
+     */
+    fun batchAllowPackages(packageNames: List<String>) {
+        viewModelScope.launch {
+            Log.d(TAG, "🔥 batchAllowPackages: Starting batch allow for ${packageNames.size} packages")
+            val succeeded = mutableListOf<String>()
+            val failed = mutableListOf<String>()
+
+            for ((index, packageName) in packageNames.withIndex()) {
+                Log.d(TAG, "🔥 batchAllowPackages: Processing ${index + 1}/${packageNames.size}: $packageName")
+
+                // Update progress
+                _uiState.value = _uiState.value.copy(
+                    batchProgress = BatchProgress(
+                        current = index + 1,
+                        total = packageNames.size,
+                        isBlocking = false
+                    )
+                )
+
+                // Optimistically update UI
+                updatePackageInList(packageName) { pkg ->
+                    pkg.copy(wifiBlocked = false, mobileBlocked = false, roamingBlocked = false)
+                }
+
+                // Persist
+                manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, blocked = false)
+                    .onSuccess {
+                        succeeded.add(packageName)
+                    }
+                    .onFailure { error ->
+                        Log.e(TAG, "🔥 batchAllowPackages: Failed to allow $packageName: ${error.message}")
+                        failed.add(packageName)
+                        // Revert optimistic update
+                        loadNetworkPackages()
+                    }
+            }
+
+            // Clear progress and set result
+            _uiState.value = _uiState.value.copy(
+                batchProgress = null,
+                batchBlockResult = BatchBlockResult(
+                    succeeded = succeeded,
+                    failed = failed,
+                    wasBlocking = false
+                )
+            )
+            Log.d(TAG, "🔥 batchAllowPackages: Complete. Succeeded: ${succeeded.size}, Failed: ${failed.size}")
+        }
+    }
+
+    fun clearBatchBlockResult() {
+        _uiState.value = _uiState.value.copy(batchBlockResult = null)
+    }
+
     class Factory(
         private val application: Application,
         private val getNetworkPackagesUseCase: GetNetworkPackagesUseCase,
@@ -597,7 +709,27 @@ data class FirewallUiState(
     val error: String? = null,
     val isFirewallEnabled: Boolean = false,
     val defaultFirewallPolicy: String = Constants.Settings.DEFAULT_FIREWALL_POLICY,
-    val shouldRequestBatteryOptimization: Boolean = false
+    val shouldRequestBatteryOptimization: Boolean = false,
+    val batchProgress: BatchProgress? = null,
+    val batchBlockResult: BatchBlockResult? = null
 ) {
     val isLoading: Boolean get() = isLoadingData || isRenderingUI
 }
+
+/**
+ * Progress tracking for batch firewall operations
+ */
+data class BatchProgress(
+    val current: Int,
+    val total: Int,
+    val isBlocking: Boolean
+)
+
+/**
+ * Result of a batch block/allow operation
+ */
+data class BatchBlockResult(
+    val succeeded: List<String>,
+    val failed: List<String>,
+    val wasBlocking: Boolean
+)

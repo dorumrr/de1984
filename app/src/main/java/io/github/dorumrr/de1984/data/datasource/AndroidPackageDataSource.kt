@@ -72,22 +72,11 @@ class AndroidPackageDataSource(
                             Log.d(TAG, "🔍 VPN APP DETECTED: ${appInfo.packageName}, hasRule=${rule != null}, isSystemCritical=${Constants.Firewall.isSystemCritical(appInfo.packageName)}")
                         }
 
-                        val blockingState = if (Constants.Firewall.isSystemCritical(appInfo.packageName) && !allowCritical) {
-                            // System-critical packages MUST ALWAYS be allowed (unless setting is enabled)
-                            if (isVpnApp) {
-                                Log.d(TAG, "✅ ${appInfo.packageName}: System-critical VPN app → ALLOW ALL")
-                            }
-                            BlockingState(
-                                isNetworkBlocked = false,
-                                wifiBlocked = false,
-                                mobileBlocked = false,
-                                roamingBlocked = false,
-                                backgroundBlocked = false,
-                                lanBlocked = false
-                            )
-                        } else if (isVpnApp && !allowCritical) {
-                            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues (unless setting is enabled)
-                            Log.d(TAG, "✅ ${appInfo.packageName}: VPN app → ALLOW ALL (wifi=false, mobile=false, roaming=false)")
+                        val isCriticalPackage = Constants.Firewall.isSystemCritical(appInfo.packageName) || isVpnApp
+
+                        val blockingState = if (isCriticalPackage && !allowCritical) {
+                            // Setting OFF: Critical packages are FORCED to ALLOW (locked, cannot be changed)
+                            Log.d(TAG, "✅ ${appInfo.packageName}: Critical package (setting OFF) → FORCE ALLOW")
                             BlockingState(
                                 isNetworkBlocked = false,
                                 wifiBlocked = false,
@@ -106,8 +95,20 @@ class AndroidPackageDataSource(
                                 backgroundBlocked = rule.blockWhenBackground,
                                 lanBlocked = rule.lanBlocked
                             )
+                        } else if (isCriticalPackage && allowCritical) {
+                            // Setting ON + No explicit rule: Critical packages default to ALLOW
+                            // User can manually change them, but they're not affected by Block All / Allow All
+                            Log.d(TAG, "✅ ${appInfo.packageName}: Critical package (setting ON, no rule) → DEFAULT ALLOW")
+                            BlockingState(
+                                isNetworkBlocked = false,
+                                wifiBlocked = false,
+                                mobileBlocked = false,
+                                roamingBlocked = false,
+                                backgroundBlocked = false,
+                                lanBlocked = false
+                            )
                         } else {
-                            // No explicit rule - use default policy
+                            // No explicit rule - use default policy (only for non-critical packages)
                             BlockingState(
                                 isNetworkBlocked = isBlockAllDefault,
                                 wifiBlocked = isBlockAllDefault,
@@ -183,22 +184,11 @@ class AndroidPackageDataSource(
                     Log.d(TAG, "🔍 VPN APP DETECTED (getPackage): $packageName, hasRule=${rule != null}, isSystemCritical=${Constants.Firewall.isSystemCritical(packageName)}")
                 }
 
-                val blockingState = if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
-                    // System-critical packages MUST ALWAYS be allowed (unless setting is enabled)
-                    if (isVpnApp) {
-                        Log.d(TAG, "✅ $packageName: System-critical VPN app → ALLOW ALL")
-                    }
-                    BlockingState(
-                        isNetworkBlocked = false,
-                        wifiBlocked = false,
-                        mobileBlocked = false,
-                        roamingBlocked = false,
-                        backgroundBlocked = false,
-                        lanBlocked = false
-                    )
-                } else if (isVpnApp && !allowCritical) {
-                    // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues (unless setting is enabled)
-                    Log.d(TAG, "✅ $packageName: VPN app → ALLOW ALL (wifi=false, mobile=false, roaming=false)")
+                val isCriticalPackage = Constants.Firewall.isSystemCritical(packageName) || isVpnApp
+
+                val blockingState = if (isCriticalPackage && !allowCritical) {
+                    // Setting OFF: Critical packages are FORCED to ALLOW (locked, cannot be changed)
+                    Log.d(TAG, "✅ $packageName: Critical package (setting OFF) → FORCE ALLOW")
                     BlockingState(
                         isNetworkBlocked = false,
                         wifiBlocked = false,
@@ -217,8 +207,20 @@ class AndroidPackageDataSource(
                         backgroundBlocked = rule.blockWhenBackground,
                         lanBlocked = rule.lanBlocked
                     )
+                } else if (isCriticalPackage && allowCritical) {
+                    // Setting ON + No explicit rule: Critical packages default to ALLOW
+                    // User can manually change them, but they're not affected by Block All / Allow All
+                    Log.d(TAG, "✅ $packageName: Critical package (setting ON, no rule) → DEFAULT ALLOW")
+                    BlockingState(
+                        isNetworkBlocked = false,
+                        wifiBlocked = false,
+                        mobileBlocked = false,
+                        roamingBlocked = false,
+                        backgroundBlocked = false,
+                        lanBlocked = false
+                    )
                 } else {
-                    // No explicit rule - use default policy
+                    // No explicit rule - use default policy (only for non-critical packages)
                     BlockingState(
                         isNetworkBlocked = isBlockAllDefault,
                         wifiBlocked = isBlockAllDefault,

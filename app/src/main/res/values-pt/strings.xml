@@ -173,6 +173,18 @@
     <string name="multiselect_progress_message_format_reinstall">Reinstalando %1$d de %2$d…</string>
 
     <string name="multiselect_checkbox_content_description">Selecionar pacote</string>
+    <string name="multiselect_toast_limit_reached">Máximo de %d pacotes podem ser selecionados de uma vez</string>
+
+    <!-- Firewall Multi-Select -->
+    <string name="firewall_multiselect_toast_cannot_select_critical">Pacotes críticos/VPN não podem ser selecionados</string>
+    <string name="firewall_multiselect_toolbar_button_block">Bloquear</string>
+    <string name="firewall_multiselect_toolbar_button_allow">Permitir</string>
+    <string name="firewall_multiselect_dialog_title_block">Bloquear %d Apps Selecionados?</string>
+    <string name="firewall_multiselect_dialog_title_allow">Permitir %d Apps Selecionados?</string>
+    <string name="firewall_multiselect_dialog_message">Isso alterará o acesso à rede para %d apps.</string>
+    <string name="firewall_multiselect_dialog_title_results">Resultados do Firewall</string>
+    <string name="firewall_multiselect_dialog_message_success_format">✓ %2$s com sucesso: %1$d apps</string>
+    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d sucesso, ✗ %2$d falha ao %3$s</string>
 
     <!-- Theme -->
     <string name="theme_light">Tema Claro</string>

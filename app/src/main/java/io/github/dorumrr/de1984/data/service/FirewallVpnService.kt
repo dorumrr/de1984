@@ -529,22 +529,34 @@ class FirewallVpnService : VpnService() {
                 }
             }
 
+        // Get critical package protection setting once (outside the loop)
+        val prefs = getSharedPreferences(io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = prefs.getBoolean(
+            io.github.dorumrr.de1984.utils.Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+
+        // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
+        // Even though VPN backend operates per-package, Android's network permissions are UID-based
+        val uidsWithCritical = if (allowCritical) {
+            allPackages
+                .filter { io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName) }
+                .map { it.uid }
+                .toSet()
+        } else {
+            emptySet()
+        }
+
         for (appInfo in allPackages) {
             val packageName = appInfo.packageName
+            val uid = appInfo.uid
 
             // Never block our own app
             if (io.github.dorumrr.de1984.utils.Constants.App.isOwnApp(packageName)) {
                 continue
             }
 
-            // Never block system-critical packages
-            // Check if critical package protection is disabled
-            val prefs = getSharedPreferences(io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-            val allowCritical = prefs.getBoolean(
-                io.github.dorumrr.de1984.utils.Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
-                io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
-            )
-
+            // Never block system-critical packages (unless setting is enabled)
             if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
                 continue
             }
@@ -566,7 +578,17 @@ class FirewallVpnService : VpnService() {
                 }
             } else {
                 // No rule - apply default policy
-                isBlockAllDefault
+                // EXCEPT: When allowCritical is ON and UID contains critical package, default to ALLOW for stability
+                // IMPORTANT: Check at UID level because Android's network permissions are UID-based
+                if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
+                    val isSelfCritical = io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName)
+                    if (!isSelfCritical) {
+                        Log.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
+                    }
+                    false  // Allow UIDs with critical packages without rules for system stability
+                } else {
+                    isBlockAllDefault
+                }
             }
 
             if (shouldBlock) {
@@ -674,6 +696,17 @@ class FirewallVpnService : VpnService() {
                 }
             Log.d(TAG, "applyFirewallRules: found ${allPackages.size} packages with network permissions")
 
+            // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
+            // Even though VPN backend operates per-package, Android's network permissions are UID-based
+            val uidsWithCritical = if (allowCritical) {
+                allPackages
+                    .filter { io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName) }
+                    .map { it.uid }
+                    .toSet()
+            } else {
+                emptySet()
+            }
+
             var allowedCount = 0
             var blockedCount = 0
             var defaultPolicyCount = 0
@@ -691,6 +724,7 @@ class FirewallVpnService : VpnService() {
 
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
+                val uid = appInfo.uid
 
                 // Never block system-critical packages (unless setting is enabled)
                 if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
@@ -719,8 +753,18 @@ class FirewallVpnService : VpnService() {
                     blocked
                 } else {
                     // No explicit rule - use default policy
+                    // EXCEPT: When allowCritical is ON and UID contains critical package, default to ALLOW for stability
+                    // IMPORTANT: Check at UID level because Android's network permissions are UID-based
                     defaultPolicyCount++
-                    isBlockAllDefault
+                    if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
+                        val isSelfCritical = io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName)
+                        if (!isSelfCritical) {
+                            Log.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
+                        }
+                        false  // Allow UIDs with critical packages without rules for system stability
+                    } else {
+                        isBlockAllDefault
+                    }
                 }
 
                 if (shouldBlock) {

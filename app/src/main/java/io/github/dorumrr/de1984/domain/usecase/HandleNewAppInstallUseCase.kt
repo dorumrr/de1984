@@ -100,18 +100,20 @@ class HandleNewAppInstallUseCase constructor(
         val uid = appInfo.uid
         val isSystemApp = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
 
-        // Check if this is a VPN app
+        // Check if this is a critical package (SYSTEM_WHITELIST or VPN app)
+        val isSystemCritical = Constants.Firewall.isSystemCritical(packageName)
         val isVpnApp = hasVpnService(packageName)
+        val isCriticalPackage = isSystemCritical || isVpnApp
 
         // System-recommended apps are ALWAYS allowed, regardless of default policy
         val isRecommendedAllow = Constants.Firewall.isSystemRecommendedAllow(packageName)
 
         return when {
-            // VPN apps MUST ALWAYS be allowed to prevent VPN reconnection issues (unless setting is enabled)
-            isVpnApp -> {
-
+            // Critical packages (SYSTEM_WHITELIST + VPN apps) - handle based on allowCritical setting
+            isCriticalPackage -> {
                 if (!allowCritical) {
-                    Log.d(TAG, "Creating 'allow all' rule for VPN app: $packageName")
+                    // Setting OFF: Create 'allow all' rule to protect critical package
+                    Log.d(TAG, "Creating 'allow all' rule for critical package (protection ON): $packageName")
                     FirewallRule(
                         packageName = packageName,
                         uid = uid,
@@ -123,31 +125,10 @@ class HandleNewAppInstallUseCase constructor(
                         isSystemApp = isSystemApp
                     )
                 } else {
-                    // Setting is enabled - treat VPN app according to default policy
-                    Log.d(TAG, "Creating default policy rule for VPN app (critical protection disabled): $packageName")
-                    if (defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL) {
-                        FirewallRule(
-                            packageName = packageName,
-                            uid = uid,
-                            appName = appName,
-                            wifiBlocked = true,
-                            mobileBlocked = true,
-                            blockWhenRoaming = true,
-                            enabled = true,
-                            isSystemApp = isSystemApp
-                        )
-                    } else {
-                        FirewallRule(
-                            packageName = packageName,
-                            uid = uid,
-                            appName = appName,
-                            wifiBlocked = false,
-                            mobileBlocked = false,
-                            blockWhenRoaming = false,
-                            enabled = true,
-                            isSystemApp = isSystemApp
-                        )
-                    }
+                    // Setting ON: Don't create a rule - critical package will default to ALLOW
+                    // User can manually change it if they want (critical packages are immune to bulk operations)
+                    Log.d(TAG, "Skipping rule creation for critical package (protection OFF, user can manually configure): $packageName")
+                    null
                 }
             }
             // System-recommended apps always get "allow all" rules

@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984.ui.firewall
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Bundle
@@ -8,13 +9,15 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
+import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.chip.Chip
@@ -38,7 +41,6 @@ import io.github.dorumrr.de1984.utils.copyToClipboard
 import io.github.dorumrr.de1984.utils.openAppSettings
 import io.github.dorumrr.de1984.utils.setOnClickListenerDebounced
 import kotlinx.coroutines.launch
-import androidx.core.widget.addTextChangedListener
 
 /**
  * Firewall Fragment using XML Views
@@ -95,6 +97,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private var dialogOpenTimestamp: Long = 0
     private var pendingDialogPackageName: String? = null  // Track which package we're waiting to show
 
+    // Selection mode state
+    private var isSelectionMode = false
+    private val selectedPackages = mutableSetOf<String>()
+    private var backPressedCallback: OnBackPressedCallback? = null
+
     override fun getViewBinding(
         inflater: LayoutInflater,
         container: ViewGroup?
@@ -133,6 +140,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         setupRecyclerView()
         setupFilterChips()
         setupSearchBox()
+        setupSelectionToolbar()
+        setupBackPressHandler()
 
         // Sync search query with EditText after restoration
         // Fix: EditText state is restored by Android before TextWatcher is attached,
@@ -176,8 +185,26 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             showIcons = true, // Will be updated from settings
             onPackageClick = { pkg ->
                 showPackageActionSheet(pkg)
+            },
+            onPackageLongClick = { pkg ->
+                onPackageLongClick(pkg)
             }
         )
+
+        // Setup selection listeners
+        adapter.setOnSelectionChangedListener { selected ->
+            selectedPackages.clear()
+            selectedPackages.addAll(selected)
+            updateSelectionToolbar()
+        }
+
+        adapter.setOnSelectionLimitReachedListener {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.multiselect_toast_limit_reached, Constants.Packages.MultiSelect.MAX_SELECTION_COUNT),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
 
         // Reset last submitted packages when creating new adapter
         // This ensures the new adapter gets populated even if the list hasn't changed
@@ -230,6 +257,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             onStateFilterSelected = { filter ->
                 if (filter != currentStateFilter) {
                     Log.d(TAG, "🔘 USER ACTION: Network state filter changed: ${filter ?: "none"}")
+
+                    // Exit selection mode when state filter changes
+                    if (isSelectionMode) {
+                        Log.d(TAG, "🔘 Exiting selection mode due to state filter change")
+                        exitSelectionMode()
+                    }
+
                     currentStateFilter = filter
                     // Map translated string to internal constant
                     val internalFilter = filter?.let { mapStateFilterToInternal(it) }
@@ -378,13 +412,38 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     Log.d(TAG, "observeSettingsState: settingsState changed - showAppIcons=${settingsState.showAppIcons}, defaultFirewallPolicy=${settingsState.defaultFirewallPolicy}")
                     Log.d(TAG, "observeSettingsState: previousObservedPolicy=$previousObservedPolicy, newPolicy=${settingsState.defaultFirewallPolicy}")
 
+                    // Exit selection mode before recreating adapter
+                    if (isSelectionMode) {
+                        Log.d(TAG, "observeSettingsState: Exiting selection mode before adapter recreation")
+                        exitSelectionMode()
+                    }
+
                     // Update adapter when showIcons setting changes
                     adapter = NetworkPackageAdapter(
                         showIcons = settingsState.showAppIcons,
                         onPackageClick = { pkg ->
                             showPackageActionSheet(pkg)
+                        },
+                        onPackageLongClick = { pkg ->
+                            onPackageLongClick(pkg)
                         }
                     )
+
+                    // Setup selection listeners for new adapter
+                    adapter.setOnSelectionChangedListener { selected ->
+                        selectedPackages.clear()
+                        selectedPackages.addAll(selected)
+                        updateSelectionToolbar()
+                    }
+
+                    adapter.setOnSelectionLimitReachedListener {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.multiselect_toast_limit_reached, Constants.Packages.MultiSelect.MAX_SELECTION_COUNT),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
                     binding.packagesRecyclerView.adapter = adapter
 
                     // Reset last submitted packages when creating new adapter
@@ -432,6 +491,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             networkStateFilter = state.filterState.networkState,
             internetOnlyFilter = state.filterState.internetOnly
         )
+
+        // Handle batch operation results
+        state.batchBlockResult?.let { result ->
+            showBatchResultDialog(result)
+            viewModel.clearBatchBlockResult()
+        }
 
         // Apply search filtering with partial substring matching (app name only)
         val displayedPackages = if (state.searchQuery.isBlank()) {
@@ -1199,6 +1264,163 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             dialog.dismiss()
             (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToSettings()
         }.show()
+    }
+
+    // ========== SELECTION MODE METHODS ==========
+
+    private fun setupSelectionToolbar() {
+        binding.selectionToolbar.setNavigationOnClickListener {
+            exitSelectionMode()
+        }
+
+        binding.blockButton.setOnClickListener {
+            if (selectedPackages.isNotEmpty()) {
+                showBatchBlockConfirmation()
+            }
+        }
+
+        binding.allowButton.setOnClickListener {
+            if (selectedPackages.isNotEmpty()) {
+                showBatchAllowConfirmation()
+            }
+        }
+    }
+
+    private fun setupBackPressHandler() {
+        backPressedCallback = object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() {
+                if (isSelectionMode) {
+                    exitSelectionMode()
+                }
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backPressedCallback!!)
+    }
+
+    /**
+     * Handle long click on a package to enter selection mode
+     */
+    private fun onPackageLongClick(pkg: NetworkPackage): Boolean {
+        Log.d(TAG, "🔘 Long click on package: ${pkg.packageName}")
+
+        // Check if package can be selected
+        if (!adapter.canSelectPackage(pkg, requireContext())) {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.firewall_multiselect_toast_cannot_select_critical),
+                Toast.LENGTH_SHORT
+            ).show()
+            return true
+        }
+
+        if (!isSelectionMode) {
+            enterSelectionMode()
+        }
+
+        // Select the long-pressed package
+        adapter.selectPackage(pkg.packageName)
+        return true
+    }
+
+    private fun enterSelectionMode() {
+        Log.d(TAG, "🔘 Entering selection mode")
+        isSelectionMode = true
+        adapter.setSelectionMode(true)
+        binding.selectionToolbar.visibility = View.VISIBLE
+        backPressedCallback?.isEnabled = true
+        updateSelectionToolbar()
+    }
+
+    private fun exitSelectionMode() {
+        Log.d(TAG, "🔘 Exiting selection mode")
+        isSelectionMode = false
+        selectedPackages.clear()
+        adapter.setSelectionMode(false)
+        binding.selectionToolbar.visibility = View.GONE
+        backPressedCallback?.isEnabled = false
+    }
+
+    private fun updateSelectionToolbar() {
+        val count = selectedPackages.size
+        binding.selectionCount.text = getString(R.string.multiselect_toolbar_title_format, count)
+
+        // Update button visibility based on current state filter
+        val currentFilter = viewModel.uiState.value.filterState.networkState
+        when (currentFilter) {
+            Constants.Firewall.STATE_ALLOWED -> {
+                // In Allowed filter, only show Block button
+                binding.blockButton.visibility = View.VISIBLE
+                binding.allowButton.visibility = View.GONE
+            }
+            Constants.Firewall.STATE_BLOCKED -> {
+                // In Blocked filter, only show Allow button
+                binding.blockButton.visibility = View.GONE
+                binding.allowButton.visibility = View.VISIBLE
+            }
+            else -> {
+                // No filter (All) - show both buttons
+                binding.blockButton.visibility = View.VISIBLE
+                binding.allowButton.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun showBatchBlockConfirmation() {
+        val count = selectedPackages.size
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.firewall_multiselect_dialog_title_block, count))
+            .setMessage(getString(R.string.firewall_multiselect_dialog_message, count))
+            .setPositiveButton(getString(R.string.firewall_multiselect_toolbar_button_block)) { _, _ ->
+                performBatchBlock()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showBatchAllowConfirmation() {
+        val count = selectedPackages.size
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.firewall_multiselect_dialog_title_allow, count))
+            .setMessage(getString(R.string.firewall_multiselect_dialog_message, count))
+            .setPositiveButton(getString(R.string.firewall_multiselect_toolbar_button_allow)) { _, _ ->
+                performBatchAllow()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun performBatchBlock() {
+        val packageNames = selectedPackages.toList()
+        Log.d(TAG, "🔘 Performing batch block for ${packageNames.size} packages")
+        exitSelectionMode()
+        viewModel.batchBlockPackages(packageNames)
+    }
+
+    private fun performBatchAllow() {
+        val packageNames = selectedPackages.toList()
+        Log.d(TAG, "🔘 Performing batch allow for ${packageNames.size} packages")
+        exitSelectionMode()
+        viewModel.batchAllowPackages(packageNames)
+    }
+
+    private fun showBatchResultDialog(result: io.github.dorumrr.de1984.presentation.viewmodel.BatchBlockResult) {
+        val actionName = if (result.wasBlocking) {
+            getString(R.string.firewall_multiselect_toolbar_button_block).lowercase()
+        } else {
+            getString(R.string.firewall_multiselect_toolbar_button_allow).lowercase()
+        }
+
+        val message = if (result.failed.isEmpty()) {
+            getString(R.string.firewall_multiselect_dialog_message_success_format, result.succeeded.size, actionName)
+        } else {
+            getString(R.string.firewall_multiselect_dialog_message_failed_format, result.succeeded.size, result.failed.size, actionName)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.firewall_multiselect_dialog_title_results))
+            .setMessage(message)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     companion object {

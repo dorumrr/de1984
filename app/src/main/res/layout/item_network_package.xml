@@ -20,6 +20,17 @@
         android:padding="12dp"
         android:gravity="center_vertical">
 
+        <!-- Selection Checkbox (hidden by default) -->
+        <CheckBox
+            android:id="@+id/selection_checkbox"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="0dp"
+            android:contentDescription="@string/select_package"
+            android:visibility="gone"
+            android:clickable="false"
+            android:focusable="false" />
+
         <!-- App Icon -->
         <ImageView
             android:id="@+id/app_icon"

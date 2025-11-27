@@ -9,6 +9,60 @@
     android:focusable="true"
     android:focusableInTouchMode="true">
 
+    <!-- Selection Toolbar (hidden by default) -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/selection_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:minHeight="44dp"
+        android:background="@drawable/selection_toolbar_background"
+        android:elevation="4dp"
+        android:visibility="gone"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationContentDescription="@string/close_selection"
+        app:contentInsetStartWithNavigation="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/selection_count"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/multiselect_toolbar_title_format"
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnPrimary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/block_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:text="@string/firewall_multiselect_toolbar_button_block"
+                android:textColor="?attr/colorOnPrimary"
+                style="@style/Widget.Material3.Button.TextButton"
+                app:icon="@drawable/ic_block"
+                app:iconTint="?attr/colorOnPrimary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/allow_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="@string/firewall_multiselect_toolbar_button_allow"
+                android:textColor="?attr/colorOnPrimary"
+                style="@style/Widget.Material3.Button.TextButton"
+                app:icon="@drawable/ic_check"
+                app:iconTint="?attr/colorOnPrimary" />
+
+        </LinearLayout>
+
+    </com.google.android.material.appbar.MaterialToolbar>
+
     <!-- Filter Chips - Edge to Edge -->
     <HorizontalScrollView
         android:layout_width="match_parent"

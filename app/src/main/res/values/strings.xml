@@ -147,6 +147,8 @@
     <!-- Multi-Select Package Operations -->
     <string name="multiselect_toast_cannot_select_critical">Important/Essential packages must be uninstalled individually</string>
     <string name="multiselect_toast_selection_limit">Maximum 50 packages can be selected at once</string>
+    <string name="multiselect_toast_not_available_disabled">Multi-select not available for disabled packages</string>
+    <string name="multiselect_toast_not_available_uninstalled">Multi-select not available for uninstalled packages</string>
     <string name="multiselect_toolbar_title_format">%d selected</string>
     <string name="multiselect_toolbar_button_uninstall">Uninstall</string>
     <string name="multiselect_toolbar_button_reinstall">Reinstall</string>
@@ -173,6 +175,18 @@
     <string name="multiselect_progress_message_format_reinstall">Reinstalling %1$d of %2$d…</string>
 
     <string name="multiselect_checkbox_content_description">Select package</string>
+    <string name="multiselect_toast_limit_reached">Maximum %d packages can be selected at once</string>
+
+    <!-- Firewall Multi-Select -->
+    <string name="firewall_multiselect_toast_cannot_select_critical">Critical/VPN packages cannot be selected</string>
+    <string name="firewall_multiselect_toolbar_button_block">Block</string>
+    <string name="firewall_multiselect_toolbar_button_allow">Allow</string>
+    <string name="firewall_multiselect_dialog_title_block">Block %d Selected Apps?</string>
+    <string name="firewall_multiselect_dialog_title_allow">Allow %d Selected Apps?</string>
+    <string name="firewall_multiselect_dialog_message">This will change network access for %d apps.</string>
+    <string name="firewall_multiselect_dialog_title_results">Firewall Results</string>
+    <string name="firewall_multiselect_dialog_message_success_format">✓ Successfully %2$s: %1$d apps</string>
+    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d succeeded, ✗ %2$d failed to %3$s</string>
 
     <!-- Theme -->
     <string name="theme_light">Light Theme</string>

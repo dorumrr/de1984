@@ -255,10 +255,18 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             onStateFilterSelected = { filter ->
                 // Only trigger if different from current
                 if (filter != currentStateFilter) {
+                    // Map translated string to internal constant BEFORE updating currentStateFilter
+                    val internalFilter = filter?.let { mapStateFilterToInternal(it) }
+
+                    // Exit selection mode if switching to Disabled or Uninstalled filter
+                    val isRestrictedFilter = internalFilter?.lowercase() == Constants.Packages.STATE_DISABLED.lowercase() ||
+                                              internalFilter?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()
+                    if (isSelectionMode && isRestrictedFilter) {
+                        exitSelectionMode()
+                    }
+
                     // Don't clear adapter - let ViewModel handle the state transition
                     currentStateFilter = filter
-                    // Map translated string to internal constant
-                    val internalFilter = filter?.let { mapStateFilterToInternal(it) }
                     viewModel.setPackageStateFilter(internalFilter)
                 }
             },
@@ -1125,7 +1133,33 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         }
     }
 
+    /**
+     * Check if multi-select mode is allowed for the current filter.
+     * Multi-select is NOT allowed for Disabled or Uninstalled filters because:
+     * - Disabled packages: can't be uninstalled without enabling first
+     * - Uninstalled packages: already uninstalled, reinstall should be done individually
+     */
+    private fun isSelectionModeAllowedForCurrentFilter(): Boolean {
+        val currentState = viewModel.uiState.value.filterState.packageState?.lowercase()
+        return currentState != Constants.Packages.STATE_DISABLED.lowercase() &&
+               currentState != Constants.Packages.STATE_UNINSTALLED.lowercase()
+    }
+
     private fun enterSelectionMode(initialPackage: Package? = null) {
+        // Block selection mode for Disabled and Uninstalled filters
+        if (!isSelectionModeAllowedForCurrentFilter()) {
+            val currentState = viewModel.uiState.value.filterState.packageState?.lowercase()
+            val toastMessage = when (currentState) {
+                Constants.Packages.STATE_DISABLED.lowercase() ->
+                    getString(R.string.multiselect_toast_not_available_disabled)
+                Constants.Packages.STATE_UNINSTALLED.lowercase() ->
+                    getString(R.string.multiselect_toast_not_available_uninstalled)
+                else -> return
+            }
+            android.widget.Toast.makeText(requireContext(), toastMessage, android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
         isSelectionMode = true
         adapter.setSelectionMode(true)
 

@@ -4,9 +4,11 @@ import android.content.Context
 import android.graphics.PorterDuff
 import android.graphics.drawable.Drawable
 import android.telephony.TelephonyManager
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -16,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.PackageType
+import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
 
 /**
@@ -24,25 +27,133 @@ import io.github.dorumrr.de1984.utils.PackageUtils
  */
 class NetworkPackageAdapter(
     private val showIcons: Boolean,
-    private val onPackageClick: (NetworkPackage) -> Unit
+    private val onPackageClick: (NetworkPackage) -> Unit,
+    private val onPackageLongClick: (NetworkPackage) -> Boolean = { false }
 ) : ListAdapter<NetworkPackage, NetworkPackageAdapter.NetworkPackageViewHolder>(NetworkPackageDiffCallback()) {
+
+    companion object {
+        private const val TAG = "NetworkPackageAdapter"
+    }
+
+    private var isSelectionMode = false
+    private val selectedPackages = mutableSetOf<String>()
+    private var onSelectionChanged: ((Set<String>) -> Unit)? = null
+    private var onSelectionLimitReached: (() -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NetworkPackageViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_network_package, parent, false)
-        return NetworkPackageViewHolder(view, showIcons, onPackageClick)
+        val context = parent.context
+        return NetworkPackageViewHolder(
+            view,
+            showIcons,
+            onPackageClick,
+            onPackageLongClick,
+            ::isPackageSelected,
+            { pkg -> canSelectPackage(pkg, context) },
+            ::togglePackageSelection
+        )
     }
 
     override fun onBindViewHolder(holder: NetworkPackageViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), isSelectionMode)
+    }
+
+    fun setOnSelectionLimitReachedListener(listener: () -> Unit) {
+        onSelectionLimitReached = listener
+    }
+
+    fun setSelectionMode(enabled: Boolean) {
+        if (isSelectionMode != enabled) {
+            isSelectionMode = enabled
+            if (!enabled) {
+                selectedPackages.clear()
+            }
+            notifyDataSetChanged()
+        }
+    }
+
+    fun setOnSelectionChangedListener(listener: (Set<String>) -> Unit) {
+        onSelectionChanged = listener
+    }
+
+    fun getSelectedPackages(): Set<String> = selectedPackages.toSet()
+
+    fun clearSelection() {
+        selectedPackages.clear()
+        onSelectionChanged?.invoke(selectedPackages)
+        notifyDataSetChanged()
+    }
+
+    /**
+     * Programmatically select a package (used when entering selection mode via long press)
+     */
+    fun selectPackage(packageName: String) {
+        if (!selectedPackages.contains(packageName) &&
+            selectedPackages.size < Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
+            selectedPackages.add(packageName)
+            onSelectionChanged?.invoke(selectedPackages)
+            notifyDataSetChanged()
+        }
+    }
+
+    /**
+     * Check if a package can be selected (with context).
+     * Critical packages and VPN apps cannot be selected unless the setting is enabled.
+     */
+    fun canSelectPackage(pkg: NetworkPackage, context: Context): Boolean {
+        val prefs = context.getSharedPreferences(
+            Constants.Settings.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        val allowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+        // Cannot select if critical/VPN and setting is OFF
+        if ((pkg.isSystemCritical || pkg.isVpnApp) && !allowCritical) return false
+        return true
+    }
+
+    private fun isPackageSelected(packageName: String): Boolean {
+        return selectedPackages.contains(packageName)
+    }
+
+    private fun togglePackageSelection(pkg: NetworkPackage, context: Context) {
+        if (!canSelectPackage(pkg, context)) {
+            // Show toast for non-selectable packages
+            android.widget.Toast.makeText(
+                context,
+                context.getString(R.string.firewall_multiselect_toast_cannot_select_critical),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        if (selectedPackages.contains(pkg.packageName)) {
+            selectedPackages.remove(pkg.packageName)
+        } else {
+            if (selectedPackages.size >= Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
+                onSelectionLimitReached?.invoke()
+                return
+            }
+            selectedPackages.add(pkg.packageName)
+        }
+        onSelectionChanged?.invoke(selectedPackages)
+        notifyDataSetChanged()
     }
 
     class NetworkPackageViewHolder(
         itemView: View,
         private val showIcons: Boolean,
-        private val onPackageClick: (NetworkPackage) -> Unit
+        private val onPackageClick: (NetworkPackage) -> Unit,
+        private val onPackageLongClick: (NetworkPackage) -> Boolean,
+        private val isPackageSelected: (String) -> Boolean,
+        private val canSelectPackage: (NetworkPackage) -> Boolean,
+        private val togglePackageSelection: (NetworkPackage, Context) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
 
+        private val selectionCheckbox: CheckBox = itemView.findViewById(R.id.selection_checkbox)
         private val appIcon: ImageView = itemView.findViewById(R.id.app_icon)
         private val appName: TextView = itemView.findViewById(R.id.app_name)
         private val packageName: TextView = itemView.findViewById(R.id.package_name)
@@ -63,7 +174,14 @@ class NetworkPackageAdapter(
             telephonyManager?.phoneType != TelephonyManager.PHONE_TYPE_NONE
         }
 
-        fun bind(pkg: NetworkPackage) {
+        // Store current package for selection mode click handling
+        private var currentPackage: NetworkPackage? = null
+        private var currentIsSelectionMode: Boolean = false
+
+        fun bind(pkg: NetworkPackage, isSelectionMode: Boolean) {
+            currentPackage = pkg
+            currentIsSelectionMode = isSelectionMode
+
             // Set app name and package name
             appName.text = pkg.name
             packageName.text = pkg.packageName
@@ -79,15 +197,28 @@ class NetworkPackageAdapter(
 
             // Dim the entire item if system critical or VPN app (unless setting is enabled)
             val prefs = itemView.context.getSharedPreferences(
-                io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
-                android.content.Context.MODE_PRIVATE
+                Constants.Settings.PREFS_NAME,
+                Context.MODE_PRIVATE
             )
             val allowCritical = prefs.getBoolean(
-                io.github.dorumrr.de1984.utils.Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
-                io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+                Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+                Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
             )
             val shouldDim = !allowCritical && (pkg.isSystemCritical || pkg.isVpnApp)
             itemView.alpha = if (shouldDim) 0.6f else 1.0f
+
+            // Selection mode UI
+            if (isSelectionMode) {
+                selectionCheckbox.visibility = View.VISIBLE
+                val isSelected = isPackageSelected(pkg.packageName)
+                selectionCheckbox.isChecked = isSelected
+
+                // Dim checkbox for non-selectable packages
+                val canSelect = !shouldDim // If dimmed, can't select
+                selectionCheckbox.alpha = if (canSelect) 1.0f else 0.5f
+            } else {
+                selectionCheckbox.visibility = View.GONE
+            }
 
             // Set app icon
             if (showIcons) {
@@ -141,7 +272,20 @@ class NetworkPackageAdapter(
 
             // Set click listener
             itemView.setOnClickListener {
-                onPackageClick(pkg)
+                currentPackage?.let { pkg ->
+                    if (currentIsSelectionMode) {
+                        togglePackageSelection(pkg, itemView.context)
+                    } else {
+                        onPackageClick(pkg)
+                    }
+                }
+            }
+
+            // Set long click listener
+            itemView.setOnLongClickListener {
+                currentPackage?.let { pkg ->
+                    onPackageLongClick(pkg)
+                } ?: false
             }
         }
     }

@@ -132,10 +132,12 @@
     <string name="permission_tier_battery_desc">Evita che il firewall venga chiuso da Android. Essenziale per la VPN.</string>
     <string name="permission_tier_advanced_desc">Controllo pacchetti e operazioni di sistema (Shizuku o root)</string>
     <string name="permission_tier_vpn_desc">Abilita il fallback VPN per mantenere il firewall attivo</string>
+    <string name="permission_tier_vpn_desc_privileged">Non necessario quando si utilizza un backend firewall privilegiato (iptables/ConnectivityManager). Richiesto solo come fallback.</string>
 
     <!-- Permission Tier Status -->
     <string name="permission_status_completed">Completato</string>
     <string name="permission_status_required">Permesso richiesto</string>
+    <string name="permission_status_not_required">Non richiesto</string>
     <string name="permission_status_shizuku_or_root_required">Richiede Shizuku o Root</string>
 
     <!-- Permission Tier Buttons -->
@@ -147,6 +149,8 @@
     <!-- Multi-Select Package Operations -->
     <string name="multiselect_toast_cannot_select_critical">I pacchetti critici devono essere disinstallati singolarmente</string>
     <string name="multiselect_toast_selection_limit">È possibile selezionare massimo 50 pacchetti</string>
+    <string name="multiselect_toast_not_available_disabled">Selezione multipla non disponibile per i pacchetti disabilitati</string>
+    <string name="multiselect_toast_not_available_uninstalled">Selezione multipla non disponibile per i pacchetti disinstallati</string>
     <string name="multiselect_toolbar_title_format">%d selezionati</string>
     <string name="multiselect_toolbar_button_uninstall">Disinstalla</string>
     <string name="multiselect_toolbar_button_reinstall">Reinstalla</string>

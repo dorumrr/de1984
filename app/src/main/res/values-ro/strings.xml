@@ -174,7 +174,19 @@
     <string name="multiselect_progress_message_format_reinstall">Reinstalare %1$d din %2$d…</string>
 
     <string name="multiselect_checkbox_content_description">Selectează pachet</string>
-    
+    <string name="multiselect_toast_limit_reached">Maximum %d pachete pot fi selectate odată</string>
+
+    <!-- Firewall Multi-Select -->
+    <string name="firewall_multiselect_toast_cannot_select_critical">Pachetele critice/VPN nu pot fi selectate</string>
+    <string name="firewall_multiselect_toolbar_button_block">Blochează</string>
+    <string name="firewall_multiselect_toolbar_button_allow">Permite</string>
+    <string name="firewall_multiselect_dialog_title_block">Blochezi %d aplicații selectate?</string>
+    <string name="firewall_multiselect_dialog_title_allow">Permiți %d aplicații selectate?</string>
+    <string name="firewall_multiselect_dialog_message">Aceasta va schimba accesul la rețea pentru %d aplicații.</string>
+    <string name="firewall_multiselect_dialog_title_results">Rezultate Firewall</string>
+    <string name="firewall_multiselect_dialog_message_success_format">✓ %2$s cu succes: %1$d aplicații</string>
+    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d reușite, ✗ %2$d eșuate la %3$s</string>
+
     <!-- Theme -->
     <string name="theme_light">Temă luminoasă</string>
     <string name="theme_dark">Temă întunecată</string>

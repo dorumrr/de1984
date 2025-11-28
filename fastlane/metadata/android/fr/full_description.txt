@@ -1,0 +1,60 @@
+De1984 est un puissant pare‑feu et gestionnaire de paquets pour appareils Android, avec plusieurs backends pour une flexibilité et des performances maximales.
+
+Le nom **De1984** s'inspire du roman de George Orwell, Nineteen Eighty‑Four, et reflète la philosophie de l'application visant à résister à la surveillance et à reprendre le contrôle de la vie numérique. Il symbolise une inversion du contrôle dystopique décrit dans le livre, permettant aux utilisateurs de reprendre la maîtrise de leurs appareils et de leurs données.
+
+<b>FONCTIONNALITÉS DU PARE‑FEU</b>
+
+- Plusieurs modes de pare‑feu : iptables (root/Shizuku), ConnectivityManager (Android 13+) et fallback VPN
+- Sélection automatique de la méthode de pare‑feu en fonction des capacités de l'appareil
+- La méthode iptables complète pour appareils rootés offre un blocage au niveau du noyau avec des performances supérieures
+- ConnectivityManager pour les appareils Android 13+ sans root
+- Backend VPN en solution de repli pour une compatibilité maximale (pas de root requis)
+- Bloquer l'accès des applications au Wi‑Fi, aux données mobiles ou à l'itinérance de manière indépendante
+- Politiques globales du pare‑feu : "Bloquer tout par défaut" (liste blanche) ou "Autoriser tout par défaut" (liste de blocage)
+- Blocage lorsque l'écran est éteint pour économiser la batterie et les données
+- Surveillance de l'état réseau en temps réel et application automatique des règles
+
+<b>GESTION DES PAQUETS (avec Shizuku ou root)</b>
+
+- Activer/désactiver les applications système
+- Forcer l'arrêt des applications en cours d'exécution
+- Désinstaller les applications système et utilisateur
+- Fonctionne avec Shizuku (pas de root requis) ou avec un accès root classique
+- Filtrer les paquets par type (système/utilisateur) et par état (activé/désactivé)
+- Fonction de recherche pour retrouver rapidement un paquet
+
+<b>CONFIDENTIALITÉ D'ABORD</b>
+
+- Aucun traçage ni collecte d'analyses
+- Pas de télémétrie
+- Stockage des données uniquement en local
+- Aucune bibliothèque propriétaire
+- Aucun Google Play Services
+- 100 % open source (licence MIT)
+- Peut être compilé à partir des sources
+
+<b>EXIGENCES</b>
+
+- Android 8.0 (API 26) ou supérieur
+- Pour le pare‑feu iptables : accès root OU Shizuku en mode root
+- Pour le pare‑feu ConnectivityManager : Shizuku + Android 13+
+- Pour le pare‑feu VPN : permission VPN (pas de root requis, fonctionne sur toutes les versions d'Android)
+- Pour la gestion des paquets : Shizuku ou accès root
+
+<b>AUTORISATIONS</b>
+
+- ACCESS_NETWORK_STATE : Surveille la connectivité réseau pour l'application automatique des règles
+- BIND_VPN_SERVICE : Créer un VPN local pour le backend pare‑feu basé sur VPN
+- QUERY_ALL_PACKAGES : Voir toutes les applications installées
+- POST_NOTIFICATIONS : Afficher des notifications pour les nouvelles installations d'applications (optionnel)
+- RECEIVE_BOOT_COMPLETED : Démarrer automatiquement le pare‑feu au démarrage de l'appareil
+- Accès Shizuku ou root : Pour le pare‑feu iptables et la gestion des paquets (optionnel)
+
+<b>OPEN SOURCE</b>
+
+Code source: https://github.com/dorumrr/de1984
+Licence: MIT
+Issues: https://github.com/dorumrr/de1984/issues
+
+Des nuits tardives pour des jours meilleurs.
+Créé par Doru Moraru

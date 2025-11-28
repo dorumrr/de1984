@@ -132,10 +132,12 @@
     <string name="permission_tier_battery_desc">Impede o Android de encerrar o serviço de firewall para economizar bateria. Crítico para confiabilidade da VPN.</string>
     <string name="permission_tier_advanced_desc">Gestão de pacotes e operações de nível de sistema (via Shizuku ou root)</string>
     <string name="permission_tier_vpn_desc">Permite fallback automático para VPN quando backends privilegiados (iptables/ConnectivityManager) falham. Garante que o firewall permaneça ativo.</string>
+    <string name="permission_tier_vpn_desc_privileged">Não necessário ao usar backend de firewall privilegiado (iptables/ConnectivityManager). Necessário apenas como fallback.</string>
 
     <!-- Permission Tier Status -->
     <string name="permission_status_completed">Concluído</string>
     <string name="permission_status_required">Permissão Necessária</string>
+    <string name="permission_status_not_required">Não Necessário</string>
     <string name="permission_status_shizuku_or_root_required">Shizuku ou Root Necessário</string>
 
     <!-- Permission Tier Buttons -->
@@ -147,6 +149,8 @@
     <!-- Multi-Select Package Operations -->
     <string name="multiselect_toast_cannot_select_critical">Pacotes Importantes/Essenciais devem ser desinstalados individualmente</string>
     <string name="multiselect_toast_selection_limit">Máximo de 50 pacotes podem ser selecionados de uma vez</string>
+    <string name="multiselect_toast_not_available_disabled">Seleção múltipla não disponível para pacotes desativados</string>
+    <string name="multiselect_toast_not_available_uninstalled">Seleção múltipla não disponível para pacotes desinstalados</string>
     <string name="multiselect_toolbar_title_format">%d selecionados</string>
     <string name="multiselect_toolbar_button_uninstall">Desinstalar</string>
     <string name="multiselect_toolbar_button_reinstall">Reinstalar</string>
@@ -341,6 +345,7 @@
     <string name="language_portuguese">Português</string>
     <string name="language_chinese">中文 (Chinês)</string>
     <string name="language_italian">Italiano (Italiano)</string>
+    <string name="language_french">Français (Francesa)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Versão %s</string>

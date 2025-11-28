@@ -142,10 +142,12 @@
     <string name="permission_tier_battery_desc">防止 Android 为节省电量而终止防火墙服务。对 VPN 可靠性至关重要。</string>
     <string name="permission_tier_advanced_desc">软件包管理和系统级操作（通过 Shizuku 或 root）</string>
     <string name="permission_tier_vpn_desc">当特权后端（iptables/ConnectivityManager）失败时允许自动回退到 VPN。确保防火墙保持活动状态。</string>
+    <string name="permission_tier_vpn_desc_privileged">使用特权防火墙后端（iptables/ConnectivityManager）时不需要。仅作为备用方案需要。</string>
 
     <!-- Permission Tier Status -->
     <string name="permission_status_completed">已完成</string>
     <string name="permission_status_required">需要权限</string>
+    <string name="permission_status_not_required">不需要</string>
     <string name="permission_status_shizuku_or_root_required">需要 Shizuku 或 Root</string>
 
     <!-- Permission Tier Buttons -->
@@ -157,6 +159,8 @@
     <!-- Multi-Select Package Operations -->
     <string name="multiselect_toast_cannot_select_critical">重要/必需软件包必须单独卸载</string>
     <string name="multiselect_toast_selection_limit">一次最多可选择 50 个软件包</string>
+    <string name="multiselect_toast_not_available_disabled">多选不适用于已禁用的软件包</string>
+    <string name="multiselect_toast_not_available_uninstalled">多选不适用于已卸载的软件包</string>
     <string name="multiselect_toolbar_title_format">%d selected</string>
     <string name="multiselect_toolbar_button_uninstall">卸载</string>
     <string name="multiselect_toolbar_button_reinstall">重新安装</string>
@@ -351,6 +355,7 @@
     <string name="language_portuguese">Português (葡萄牙语)</string>
     <string name="language_chinese">中文</string>
     <string name="language_italian">Italiano (意大利语)</string>
+    <string name="language_french">Français (法语)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">版本 %s</string>

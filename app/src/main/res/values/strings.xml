@@ -132,10 +132,12 @@
     <string name="permission_tier_battery_desc">Prevents Android from killing the firewall service to save battery. Critical for VPN reliability.</string>
     <string name="permission_tier_advanced_desc">Package management and system-level operations (via Shizuku or root)</string>
     <string name="permission_tier_vpn_desc">Allows automatic fallback to VPN when privileged backends (iptables/ConnectivityManager) fail. Ensures firewall stays active.</string>
+    <string name="permission_tier_vpn_desc_privileged">Not needed when using privileged firewall backend (iptables/ConnectivityManager). Only required as fallback.</string>
 
     <!-- Permission Tier Status -->
     <string name="permission_status_completed">Completed</string>
     <string name="permission_status_required">Permission Required</string>
+    <string name="permission_status_not_required">Not Required</string>
     <string name="permission_status_shizuku_or_root_required">Shizuku or Root Required</string>
 
     <!-- Permission Tier Buttons -->
@@ -343,6 +345,7 @@
     <string name="language_portuguese">Português (Portuguese)</string>
     <string name="language_chinese">中文 (Chinese)</string>
     <string name="language_italian">Italiano (Italian)</string>
+    <string name="language_french">Français (French)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Version %s</string>

@@ -61,6 +61,7 @@ class FirewallManager(
     companion object {
         private const val TAG = "FirewallManager"
         private const val RULE_APPLICATION_DEBOUNCE_MS = 300L
+        private const val VPN_CONFLICT_NOTIFICATION_DEBOUNCE_MS = 30_000L
     }
 
     private val scope = CoroutineScope(SupervisorJob())
@@ -77,6 +78,7 @@ class FirewallManager(
     private var currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
 
     private var currentBackend: FirewallBackend? = null
+    private var lastVpnConflictNotificationTime = 0L
 
     /**
      * Canonical firewall state exposed to the rest of the app.
@@ -513,6 +515,7 @@ class FirewallManager(
 
             // Clear firewall down flag - firewall is now running successfully
             _isFirewallDown.value = false
+            dismissBackendFailedNotification()
 
             // Start monitoring for iptables, ConnectivityManager, and NetworkPolicyManager backends
             // (VPN backend monitors internally)
@@ -572,6 +575,7 @@ class FirewallManager(
 
             // Clear firewall down flag - firewall is intentionally stopped by user
             _isFirewallDown.value = false
+            dismissBackendFailedNotification()
 
             Log.d(TAG, "Firewall stopped successfully")
             Result.success(Unit)
@@ -1004,7 +1008,7 @@ class FirewallManager(
      * Handle backend failure using the planner.
      *
      * Rules (per FIREWALL_BACKEND_RELIABILITY_PLAN):
-     * - If manually selected backend fails, normalize to AUTO.
+     * - If manually selected backend fails, surface error (no automatic fallback).
      * - Use [computeStartPlan] to determine the best available backend.
      * - If planner selects VPN, honor VPN permission state and show notification when needed.
      */
@@ -1015,12 +1019,27 @@ class FirewallManager(
         val currentMode = getCurrentMode()
         val wasManualSelection = currentMode != FirewallMode.AUTO
 
-        var effectiveMode = currentMode
         if (wasManualSelection) {
-            Log.e(TAG, "Manually selected backend ($currentMode) failed. Normalizing to AUTO mode per plan")
-            setMode(FirewallMode.AUTO)
-            effectiveMode = FirewallMode.AUTO
+            Log.e(TAG, "Manually selected backend ($currentMode) failed. Waiting for user action or privilege recovery")
+
+            currentBackend = null
+            _activeBackendType.value = null
+            _backendHealthWarning.value = "FIREWALL DOWN: $failedBackendType backend failed. Restore privileges or choose another backend."
+            _firewallState.value = FirewallState.Error(
+                message = "$failedBackendType backend not available",
+                lastBackend = failedBackendType
+            )
+
+            // Preserve user intent for recovery attempts
+            _isFirewallDown.value = true
+
+            // Surface notification to guide the user
+            showBackendFailedNotification(failedBackendType)
+            dismissVpnFallbackNotification()
+            return@withLock
         }
+
+        val effectiveMode = currentMode
 
         // Ask planner what we should do next
         val planResult = computeStartPlan(effectiveMode)
@@ -1323,6 +1342,15 @@ class FirewallManager(
      * Uses the same notification ID as VPN fallback notification since they're mutually exclusive.
      */
     private fun showVpnConflictNotification() {
+        val now = System.currentTimeMillis()
+        val elapsed = now - lastVpnConflictNotificationTime
+
+        if (elapsed in 1 until VPN_CONFLICT_NOTIFICATION_DEBOUNCE_MS) {
+            Log.d(TAG, "Skipping VPN conflict notification - last shown ${elapsed}ms ago")
+            return
+        }
+
+        lastVpnConflictNotificationTime = now
         Log.d(TAG, "Showing VPN conflict notification")
 
         // Create notification channel (Android O+)
@@ -1381,6 +1409,64 @@ class FirewallManager(
      */
     private fun dismissVpnConflictNotification() {
         dismissVpnFallbackNotification()
+    }
+
+    /**
+     * Show notification when a manually selected backend fails and no automatic fallback is attempted.
+     */
+    private fun showBackendFailedNotification(failedBackendType: FirewallBackendType) {
+        Log.d(TAG, "Showing backend failed notification for $failedBackendType")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                Constants.BackendFailure.CHANNEL_ID,
+                Constants.BackendFailure.CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications when preferred firewall backend fails"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val backendName = when (failedBackendType) {
+            FirewallBackendType.CONNECTIVITY_MANAGER -> "Connectivity Manager"
+            FirewallBackendType.IPTABLES -> "iptables"
+            FirewallBackendType.NETWORK_POLICY_MANAGER -> "Network Policy Manager"
+            FirewallBackendType.VPN -> "VPN"
+        }
+
+        val body = "$backendName backend is not available. Restore required privileges or choose another backend in settings."
+
+        val notification = NotificationCompat.Builder(context, Constants.BackendFailure.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_shield)
+            .setContentTitle(context.getString(R.string.privileged_firewall_failure_notification_title))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(Constants.BackendFailure.NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Clear backend failure notification when firewall recovers or is intentionally stopped.
+     */
+    private fun dismissBackendFailedNotification() {
+        Log.d(TAG, "Dismissing backend failed notification")
+        notificationManager.cancel(Constants.BackendFailure.NOTIFICATION_ID)
     }
 
     /**
@@ -1445,6 +1531,23 @@ class FirewallManager(
                     // Another VPN is still active - don't check permission yet
                     Log.d(TAG, "Another VPN still active - skipping permission check")
                     showVpnConflictNotification()
+                    
+                    // On first retry, check if we have VPN permission to determine if situation is hopeless:
+                    // - If we have permission: keep trying (user may disconnect their VPN)
+                    // - If no permission AND VPN conflict: exit monitoring (can't proceed without both)
+                    if (retryCount == 1) {
+                        val prepareIntent = try {
+                            VpnService.prepare(context)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "VPN permission check failed: ${e.message}")
+                            null
+                        }
+
+                        if (prepareIntent != null) {
+                            Log.w(TAG, "No VPN permission and another VPN active - stopping monitoring (situation is hopeless)")
+                            break
+                        }
+                    }
                     continue
                 }
 
@@ -1770,9 +1873,20 @@ class FirewallManager(
         }
 
         // Manual mode: respect user choice as long as backend remains viable.
-        // If manual backend becomes invalid under new privileges, normalize to AUTO.
+        // If manual backend becomes invalid under new privileges, keep firewall down and notify user.
         if (currentBackendType == null) {
-            Log.d(TAG, "Manual mode $currentMode but no active backend, nothing to do")
+            if (_isFirewallDown.value) {
+                Log.d(TAG, "Manual mode $currentMode with firewall down - attempting automatic recovery")
+                val restartResult = startFirewall(currentMode)
+                restartResult.onSuccess { backendType ->
+                    Log.d(TAG, "✅ Manual backend $backendType restarted after privilege recovery")
+                    dismissBackendFailedNotification()
+                }.onFailure { error ->
+                    Log.e(TAG, "❌ Failed to restart manual backend $currentMode: ${error.message}")
+                }
+            } else {
+                Log.d(TAG, "Manual mode $currentMode but no active backend and firewall disabled by user - nothing to do")
+            }
             return
         }
 
@@ -1792,21 +1906,8 @@ class FirewallManager(
             return
         }
 
-        Log.e(TAG, "Manual backend $currentMode/$currentBackendType no longer viable after privilege change; normalizing to AUTO and restarting via planner")
-        setMode(FirewallMode.AUTO)
-
-        val autoPlanResult = computeStartPlan(FirewallMode.AUTO)
-        if (autoPlanResult.isFailure) {
-            Log.e(TAG, "handlePrivilegeChange: Failed to compute AUTO plan after normalizing from manual mode", autoPlanResult.exceptionOrNull())
-            return
-        }
-
-        val autoResult = startFirewall(FirewallMode.AUTO)
-        autoResult.onSuccess { newBackend ->
-            Log.d(TAG, "✅ Firewall normalized to AUTO and switched to $newBackend backend after privilege change")
-        }.onFailure { error ->
-            Log.e(TAG, "❌ Failed to switch backend after normalizing to AUTO: ${error.message}")
-        }
+        Log.e(TAG, "Manual backend $currentMode/$currentBackendType no longer viable after privilege change; keeping manual mode and notifying user")
+        handleBackendFailure(currentBackendType)
     }
 
     // NOTE: wouldBackendChange is now obsolete; planner-based flows in handlePrivilegeChange

@@ -471,6 +471,12 @@ object Constants {
         const val PERMISSION_DESCRIPTION = "Create VPN connection for firewall fallback"
     }
 
+    object BackendFailure {
+        const val NOTIFICATION_ID = 1006
+        const val CHANNEL_ID = "backend_failure_channel"
+        const val CHANNEL_NAME = "Backend Failure"
+    }
+
     object BootFailure {
         // Notification Channel
         const val CHANNEL_ID = "boot_failure_channel"

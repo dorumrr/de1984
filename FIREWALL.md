@@ -6,7 +6,7 @@ This document defines how each firewall backend works in De1984.
 
 ## Backend Selection Logic
 
-The app can operate in different modes: **AUTO** (automatic selection) or **MANUAL** (force specific backend) unless it crashes or something goes wrong, then the app returns to AUTO.
+The app can operate in different modes: **AUTO** (automatic selection) or **MANUAL** (force specific backend). Manual mode is sticky—if something goes wrong, the firewall surfaces the error and waits for user or privilege recovery instead of silently returning to AUTO.
 
 ### AUTO Mode (Default)
 
@@ -44,7 +44,7 @@ User can force a specific backend from Settings.
 - **Force iptables**: Only use iptables (only selectable if root/Shizuku root mode available)
 - **Force ConnectivityManager**: Only use ConnectivityManager (only selectable if Shizuku available and Android 13+)
 
-If a previously selected backend becomes unavailable (e.g., Shizuku stops, user revokes root), the app should automatically fall back to AUTO mode and select the best available backend and ensure Firewall works correctly.
+If a manually selected backend becomes unavailable (e.g., Shizuku stops, user revokes root), the firewall enters an **error** state and stays on the chosen backend. The user must restore the required privileges or manually pick another backend. AUTO mode continues to fall back automatically.
 
 ### Why This Priority Order?
 
@@ -160,7 +160,7 @@ The app uses adaptive health check intervals to balance responsiveness and batte
 - Immediately on **first** health check failure
 - Do NOT wait for multiple failures (security-critical)
 - Atomic switch to prevent security gap
-- If manual mode backend fails, normalize to AUTO mode first
+- If manual mode backend fails, keep firewall in ERROR state (no automatic fallback)
 
 **Monitoring Lifecycle**:
 
@@ -527,7 +527,7 @@ Health checks ensure the firewall backend remains functional and triggers fallba
 When health check fails:
 
 1. **Determine Current Mode**:
-   - If manual mode: Normalize to AUTO mode
+   - If manual mode: Stay in ERROR and wait for privileges/user action
    - If AUTO mode: Keep AUTO mode
 
 2. **Compute Fallback Plan**:

@@ -1,0 +1,8 @@
+- Updated backend selection logic to maintain manual mode during backend failures, requiring user intervention for recovery.
+- Introduced a new notification system for backend failures that informs users of necessary actions.
+- Added new translation strings for new features.
+- Included the French translation by smed79.
+- Implemented multi-select functionality for firewall packages with batch block/allow operations.
+- Enhanced multi-select functionality by restricting selection for Disabled and Uninstalled packages.
+- Enhanced Firewall stability by allowing critical packages without rules at UID level.
+- Fixed VPN fallback notification loop.

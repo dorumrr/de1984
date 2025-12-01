@@ -401,13 +401,7 @@ class PrivilegedFirewallService : Service() {
         consecutiveSuccessfulHealthChecks = 0
         currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
 
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  🔍 STARTING ADAPTIVE SERVICE HEALTH MONITORING              ║")
-        AppLogger.d(TAG, "║  Initial interval: ${currentHealthCheckInterval}ms (30 seconds)")
-        AppLogger.d(TAG, "║  Stable interval: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_STABLE_MS}ms (5 minutes)")
-        AppLogger.d(TAG, "║  Threshold: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD} successful checks")
-        AppLogger.d(TAG, "║  Purpose: Detect permission loss within service              ║")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        AppLogger.d(TAG, "🔍 STARTING ADAPTIVE SERVICE HEALTH MONITORING | Initial interval: ${currentHealthCheckInterval}ms (30 seconds) | Stable interval: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_STABLE_MS}ms (5 minutes) | Threshold: ${Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD} successful checks | Purpose: Detect permission loss within service")
 
         healthMonitoringJob = serviceScope.launch {
             while (isServiceActive) {
@@ -422,7 +416,6 @@ class PrivilegedFirewallService : Service() {
                 }
 
                 try {
-                    AppLogger.d(TAG, "")
                     AppLogger.d(TAG, "=== SERVICE HEALTH CHECK: $backendType ===")
                     AppLogger.d(TAG, "Checking if backend still has required permissions... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
 
@@ -445,14 +438,7 @@ class PrivilegedFirewallService : Service() {
                     val availabilityResult = backend.checkAvailability()
 
                     if (availabilityResult.isFailure) {
-                        AppLogger.e(TAG, "")
-                        AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                        AppLogger.e(TAG, "║  ❌ SERVICE: BACKEND AVAILABILITY CHECK FAILED               ║")
-                        AppLogger.e(TAG, "║  Backend: $backendType")
-                        AppLogger.e(TAG, "║  Reason: ${availabilityResult.exceptionOrNull()?.message}")
-                        AppLogger.e(TAG, "║  Action: Stopping service to trigger FirewallManager fallback║")
-                        AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                        AppLogger.e(TAG, "")
+                        AppLogger.e(TAG, "❌ SERVICE: BACKEND AVAILABILITY CHECK FAILED | Backend: $backendType | Reason: ${availabilityResult.exceptionOrNull()?.message} | Action: Stopping service to trigger FirewallManager fallback")
 
                         // Reset adaptive tracking on failure
                         consecutiveSuccessfulHealthChecks = 0
@@ -469,30 +455,16 @@ class PrivilegedFirewallService : Service() {
                     // Health check passed - increment success counter
                     consecutiveSuccessfulHealthChecks++
                     AppLogger.d(TAG, "✅ SERVICE: Health check passed - $backendType is healthy (consecutive successes: $consecutiveSuccessfulHealthChecks)")
-                    AppLogger.d(TAG, "")
 
                     // Check if we should increase interval (backend is stable)
                     if (consecutiveSuccessfulHealthChecks >= Constants.HealthCheck.BACKEND_HEALTH_CHECK_STABLE_THRESHOLD &&
                         currentHealthCheckInterval == Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS) {
                         currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_STABLE_MS
-                        AppLogger.d(TAG, "")
-                        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                        AppLogger.d(TAG, "║  ⚡ SERVICE: BACKEND STABLE - INCREASING INTERVAL            ║")
-                        AppLogger.d(TAG, "║  Backend: $backendType")
-                        AppLogger.d(TAG, "║  New interval: ${currentHealthCheckInterval}ms (5 minutes)")
-                        AppLogger.d(TAG, "║  Battery savings: ~90% reduction in wake-ups                 ║")
-                        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                        AppLogger.d(TAG, "")
+                        AppLogger.d(TAG, "⚡ SERVICE: BACKEND STABLE - INCREASING INTERVAL | Backend: $backendType | New interval: ${currentHealthCheckInterval}ms (5 minutes) | Battery savings: ~90% reduction in wake-ups")
                     }
 
                 } catch (e: Exception) {
-                    AppLogger.e(TAG, "")
-                    AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                    AppLogger.e(TAG, "║  ❌ SERVICE: HEALTH CHECK EXCEPTION                          ║")
-                    AppLogger.e(TAG, "║  Backend: $backendType")
-                    AppLogger.e(TAG, "║  Exception: ${e.message}")
-                    AppLogger.e(TAG, "║  Action: Stopping service to trigger FirewallManager fallback║")
-                    AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
+                    AppLogger.e(TAG, "❌ SERVICE: HEALTH CHECK EXCEPTION | Backend: $backendType | Exception: ${e.message} | Action: Stopping service to trigger FirewallManager fallback")
                     AppLogger.e(TAG, "", e)
 
                     // Reset adaptive tracking on exception
@@ -507,11 +479,7 @@ class PrivilegedFirewallService : Service() {
     }
 
     private fun handleBackendFailure(backendType: FirewallBackendType) {
-        AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.e(TAG, "║  ⚠️  BACKEND FAILURE DETECTED IN SERVICE                     ║")
-        AppLogger.e(TAG, "║  Backend: $backendType")
-        AppLogger.e(TAG, "║  Action: Notifying FirewallManager and stopping service       ║")
-        AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        AppLogger.e(TAG, "⚠️  BACKEND FAILURE DETECTED IN SERVICE | Backend: $backendType | Action: Notifying FirewallManager and stopping service")
 
         // Show notification to user
         showFailureNotification(backendType)

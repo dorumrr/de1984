@@ -566,13 +566,7 @@ class NetworkPolicyManagerFirewallBackend(
             AppLogger.d(TAG, "✅ Using policy: $policyName")
 
             if (blockingPolicy == POLICY_REJECT_METERED_BACKGROUND) {
-                AppLogger.w(TAG, "")
-                AppLogger.w(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                AppLogger.w(TAG, "║  ⚠️  IMPORTANT: WiFi networks will NOT be blocked!           ║")
-                AppLogger.w(TAG, "║  Only Mobile/Roaming data will be blocked.                   ║")
-                AppLogger.w(TAG, "║  For full WiFi blocking, root your device and use iptables.  ║")
-                AppLogger.w(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                AppLogger.w(TAG, "")
+                AppLogger.w(TAG, "⚠️  IMPORTANT: WiFi networks will NOT be blocked! | Only Mobile/Roaming data will be blocked. | For full WiFi blocking, root your device and use iptables.")
             }
 
         } catch (e: Exception) {

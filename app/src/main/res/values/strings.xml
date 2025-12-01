@@ -742,18 +742,20 @@
     <!-- App Logs -->
     <string name="logs_title">App Logs</string>
     <string name="logs_menu_item">App Logs</string>
-    <string name="logs_menu_description">View debug logs for troubleshooting</string>
+    <string name="logs_menu_description">View logs for troubleshooting</string>
     <string name="logs_enable_title">Enable Logging</string>
-    <string name="logs_enable_description">Store logs in memory for debugging. Logs are not sent anywhere.</string>
-    <string name="logs_debug_mode_note">ℹ️ Debug build - logging is always enabled</string>
+    <string name="logs_enable_description">Store logs to file for debugging. Logs are not sent anywhere.</string>
+    <string name="logs_debug_mode_note">ℹ️ Debug build - logging enabled by default</string>
     <string name="logs_clear">Clear</string>
-    <string name="logs_copy">Copy</string>
-    <string name="logs_share">Share</string>
+    <string name="logs_clear_confirm_title">Clear Logs?</string>
+    <string name="logs_clear_confirm_message">This will delete existing log entries.</string>
+    <string name="logs_share">Share Logs</string>
     <string name="logs_count">%d log entries</string>
-    <string name="logs_empty">No logs yet. Enable logging and use the app to see logs here.</string>
-    <string name="logs_copied">Logs copied to clipboard</string>
+    <string name="logs_file_info">%1$d lines • %2$s</string>
+    <string name="logs_empty">No logs yet. Enable logging and use the app to generate logs.</string>
     <string name="logs_cleared">Logs cleared</string>
     <string name="logs_share_title">Share De1984 Logs</string>
+    <string name="logs_disabled_message">Logging disabled. New logs won\'t be recorded.</string>
 
     <!-- Input Hints -->
     <string name="hint_detection_mode">Detection Mode</string>

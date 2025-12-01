@@ -1,8 +1,5 @@
 package io.github.dorumrr.de1984.ui.logs
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -10,25 +7,24 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.dorumrr.de1984.BuildConfig
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.databinding.ActivityLogsBinding
 import io.github.dorumrr.de1984.utils.AppLogger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.coroutines.withContext
 
 /**
  * Activity to view and share app logs.
  * 
  * Features:
- * - Enable/disable logging toggle (only for release builds)
- * - View last 1000 log entries
- * - Copy logs to clipboard
- * - Share logs via intent
+ * - Enable/disable logging toggle
+ * - Shows file info (size, line count)
+ * - Preview last 100 lines
+ * - Share log file directly
  * - Clear logs
  */
 class LogsActivity : AppCompatActivity() {
@@ -43,10 +39,8 @@ class LogsActivity : AppCompatActivity() {
         setupToolbar()
         setupLoggingToggle()
         setupButtons()
-        observeLogs()
-        
-        // Initial log display
-        updateLogDisplay()
+        observeLogStats()
+        updatePreview()
     }
 
     private fun setupToolbar() {
@@ -56,32 +50,26 @@ class LogsActivity : AppCompatActivity() {
     }
 
     private fun setupLoggingToggle() {
-        // In debug builds, logging is always enabled
+        binding.enableLoggingSwitch.isChecked = AppLogger.isEnabledInPrefs(this)
+        binding.enableLoggingSwitch.isEnabled = true
+        
         if (BuildConfig.DEBUG) {
-            binding.enableLoggingSwitch.isChecked = true
-            binding.enableLoggingSwitch.isEnabled = false
             binding.debugModeNote.visibility = View.VISIBLE
         } else {
-            binding.enableLoggingSwitch.isChecked = AppLogger.isEnabledInPrefs(this)
-            binding.enableLoggingSwitch.isEnabled = true
             binding.debugModeNote.visibility = View.GONE
-            
-            binding.enableLoggingSwitch.setOnCheckedChangeListener { _, isChecked ->
-                AppLogger.setLoggingEnabled(this, isChecked)
-                updateLogDisplay()
+        }
+        
+        binding.enableLoggingSwitch.setOnCheckedChangeListener { _, isChecked ->
+            AppLogger.setLoggingEnabled(this, isChecked)
+            if (!isChecked) {
+                Toast.makeText(this, R.string.logs_disabled_message, Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun setupButtons() {
         binding.clearLogsButton.setOnClickListener {
-            AppLogger.clearLogs()
-            updateLogDisplay()
-            Toast.makeText(this, R.string.logs_cleared, Toast.LENGTH_SHORT).show()
-        }
-
-        binding.copyLogsButton.setOnClickListener {
-            copyLogsToClipboard()
+            showClearLogsConfirmation()
         }
 
         binding.shareLogsButton.setOnClickListener {
@@ -89,72 +77,89 @@ class LogsActivity : AppCompatActivity() {
         }
     }
 
-    private fun observeLogs() {
+    private fun showClearLogsConfirmation() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.logs_clear_confirm_title)
+            .setMessage(R.string.logs_clear_confirm_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.logs_clear) { _, _ ->
+                AppLogger.clearLogs()
+                updatePreview()
+                Toast.makeText(this, R.string.logs_cleared, Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+
+    private fun observeLogStats() {
         lifecycleScope.launch {
-            AppLogger.logCount.collectLatest { count ->
-                binding.logCountText.text = getString(R.string.logs_count, count)
+            AppLogger.logFileSize.collectLatest { _ ->
+                val formattedSize = AppLogger.getFormattedFileSize()
+                val lineCount = AppLogger.logCount.value
+                binding.logCountText.text = getString(R.string.logs_file_info, lineCount, formattedSize)
             }
         }
     }
 
-    private fun updateLogDisplay() {
-        val logs = AppLogger.getLogs()
-        if (logs.isEmpty()) {
-            binding.logTextView.text = getString(R.string.logs_empty)
-        } else {
-            binding.logTextView.text = logs.joinToString("\n") { it.formatForDisplay() }
-            // Scroll to bottom
-            binding.logScrollView.post {
-                binding.logScrollView.fullScroll(View.FOCUS_DOWN)
+    private fun updatePreview() {
+        lifecycleScope.launch {
+            val preview = withContext(Dispatchers.IO) {
+                AppLogger.getLastLines(100)
             }
+            
+            if (preview.isEmpty()) {
+                binding.logTextView.text = getString(R.string.logs_empty)
+            } else {
+                binding.logTextView.text = preview
+                // Scroll to bottom
+                binding.logScrollView.post {
+                    binding.logScrollView.fullScroll(View.FOCUS_DOWN)
+                }
+            }
+            
+            // Update stats
+            AppLogger.refreshStats()
+            val formattedSize = AppLogger.getFormattedFileSize()
+            val lineCount = AppLogger.logCount.value
+            binding.logCountText.text = getString(R.string.logs_file_info, lineCount, formattedSize)
         }
-        binding.logCountText.text = getString(R.string.logs_count, logs.size)
-    }
-
-    private fun copyLogsToClipboard() {
-        val logsText = AppLogger.getLogsForExport()
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("De1984 Logs", logsText)
-        clipboard.setPrimaryClip(clip)
-        Toast.makeText(this, R.string.logs_copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun shareLogs() {
-        try {
-            // Create a temp file with the logs
-            val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
-            val filename = "de1984_logs_${dateFormat.format(Date())}.txt"
-            val logsDir = File(cacheDir, "logs")
-            logsDir.mkdirs()
-            val logFile = File(logsDir, filename)
-            
-            logFile.writeText(AppLogger.getLogsForExport())
-            
-            // Get URI using FileProvider
-            val uri = FileProvider.getUriForFile(
-                this,
-                "${applicationContext.packageName}.fileprovider",
-                logFile
-            )
-            
-            // Create share intent
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "De1984 Debug Logs")
-                putExtra(Intent.EXTRA_TEXT, "De1984 debug logs attached. Please include these when reporting issues.")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        lifecycleScope.launch {
+            try {
+                val exportFile = withContext(Dispatchers.IO) {
+                    AppLogger.createExportFile(this@LogsActivity)
+                }
+                
+                if (exportFile == null) {
+                    Toast.makeText(this@LogsActivity, R.string.logs_empty, Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                
+                val uri = FileProvider.getUriForFile(
+                    this@LogsActivity,
+                    "${applicationContext.packageName}.fileprovider",
+                    exportFile
+                )
+                
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "De1984 Debug Logs")
+                    putExtra(Intent.EXTRA_TEXT, "De1984 debug logs attached. Please include these when reporting issues.")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                
+                startActivity(Intent.createChooser(shareIntent, getString(R.string.logs_share_title)))
+            } catch (e: Exception) {
+                AppLogger.e("LogsActivity", "Failed to share logs", e)
+                Toast.makeText(this@LogsActivity, "Failed to share logs: ${e.message}", Toast.LENGTH_LONG).show()
             }
-            
-            startActivity(Intent.createChooser(shareIntent, getString(R.string.logs_share_title)))
-        } catch (e: Exception) {
-            AppLogger.e("LogsActivity", "Failed to share logs", e)
-            Toast.makeText(this, "Failed to share logs: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
     override fun onResume() {
         super.onResume()
-        updateLogDisplay()
+        updatePreview()
     }
 }

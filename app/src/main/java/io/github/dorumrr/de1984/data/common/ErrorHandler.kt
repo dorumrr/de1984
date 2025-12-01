@@ -1,7 +1,7 @@
 package io.github.dorumrr.de1984.data.common
 
 import android.content.pm.PackageManager
-import android.util.Log
+import io.github.dorumrr.de1984.utils.AppLogger
 import java.io.IOException
 import java.util.concurrent.CancellationException
 import kotlin.coroutines.cancellation.CancellationException as KotlinCancellationException
@@ -16,7 +16,7 @@ class ErrorHandler {
         // CRITICAL: CancellationException must be re-thrown, not converted to an error
         // This allows coroutine cancellation to propagate correctly
         if (throwable is CancellationException || throwable is KotlinCancellationException) {
-            Log.d(TAG, "handleError: Re-throwing CancellationException for operation: $operation")
+            AppLogger.d(TAG, "handleError: Re-throwing CancellationException for operation: $operation")
             throw throwable
         }
         

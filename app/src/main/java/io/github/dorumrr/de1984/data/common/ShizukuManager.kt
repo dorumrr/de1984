@@ -59,11 +59,7 @@ class ShizukuManager(private val context: Context) {
 
     // Permission result listener - handles permission changes
     private val permissionResultListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
-        AppLogger.d(TAG, "")
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  🔧 SYSTEM EVENT: Shizuku permission result received         ║")
-        AppLogger.d(TAG, "║  requestCode: $requestCode, grantResult: $grantResult        ║")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        AppLogger.d(TAG, "🔧 SYSTEM EVENT: Shizuku permission result received | requestCode: $requestCode, grantResult: $grantResult")
         if (requestCode == REQUEST_CODE_PERMISSION) {
             if (grantResult == PackageManager.PERMISSION_GRANTED) {
                 AppLogger.d(TAG, "✅ Shizuku permission GRANTED - updating status to RUNNING_WITH_PERMISSION")
@@ -75,17 +71,12 @@ class ShizukuManager(private val context: Context) {
                 _shizukuStatus.value = ShizukuStatus.RUNNING_NO_PERMISSION
             }
         }
-        AppLogger.d(TAG, "")
     }
 
     // Binder received/dead listeners - monitor Shizuku service lifecycle
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         // Shizuku binder received, check status
-        AppLogger.d(TAG, "")
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  🔧 SYSTEM EVENT: Shizuku binder received (Shizuku started)  ║")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-        AppLogger.d(TAG, "")
+        AppLogger.d(TAG, "🔧 SYSTEM EVENT: Shizuku binder received (Shizuku started)")
 
         // Update Shizuku status
         checkShizukuStatusSync()
@@ -102,11 +93,7 @@ class ShizukuManager(private val context: Context) {
 
     private val binderDeadListener = Shizuku.OnBinderDeadListener {
         // Shizuku binder died
-        AppLogger.d(TAG, "")
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  🔧 SYSTEM EVENT: Shizuku binder died (Shizuku stopped)      ║")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-        AppLogger.d(TAG, "")
+        AppLogger.d(TAG, "🔧 SYSTEM EVENT: Shizuku binder died (Shizuku stopped)")
         _shizukuStatus.value = ShizukuStatus.INSTALLED_NOT_RUNNING
     }
 

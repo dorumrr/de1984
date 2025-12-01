@@ -37,12 +37,7 @@ class BootWorker(
 
     override suspend fun doWork(): Result {
         try {
-            AppLogger.d(TAG, "")
-            AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            AppLogger.d(TAG, "║  🔄 BOOT WORKER STARTED                                      ║")
-            AppLogger.d(TAG, "║  WorkManager-based boot restoration (Android 12+ compatible) ║")
-            AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-            AppLogger.d(TAG, "")
+            AppLogger.d(TAG, "🔄 BOOT WORKER STARTED | WorkManager-based boot restoration (Android 12+ compatible)")
 
             // Check if firewall was enabled before boot
             val prefs = applicationContext.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -51,12 +46,7 @@ class BootWorker(
             AppLogger.d(TAG, "Firewall was enabled before boot: $wasEnabled")
 
             if (!wasEnabled) {
-                AppLogger.d(TAG, "")
-                AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                AppLogger.d(TAG, "║  ℹ️  FIREWALL WAS NOT ENABLED                                ║")
-                AppLogger.d(TAG, "║  Skipping firewall restoration after boot                   ║")
-                AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                AppLogger.d(TAG, "")
+                AppLogger.d(TAG, "ℹ️  FIREWALL WAS NOT ENABLED | Skipping firewall restoration after boot")
                 return Result.success()
             }
 
@@ -65,12 +55,7 @@ class BootWorker(
             // Get FirewallManager from application
             val app = applicationContext as? De1984Application
             if (app == null) {
-                AppLogger.e(TAG, "")
-                AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                AppLogger.e(TAG, "║  ❌ FAILED TO GET APPLICATION INSTANCE                       ║")
-                AppLogger.e(TAG, "║  Cannot restore firewall - application context not available ║")
-                AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                AppLogger.e(TAG, "")
+                AppLogger.e(TAG, "❌ FAILED TO GET APPLICATION INSTANCE | Cannot restore firewall - application context not available")
                 return Result.failure()
             }
 
@@ -98,13 +83,7 @@ class BootWorker(
             val result = firewallManager.startFirewall()
 
             result.onSuccess { backendType ->
-                AppLogger.d(TAG, "")
-                AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                AppLogger.d(TAG, "║  ✅ FIREWALL RESTORED SUCCESSFULLY                           ║")
-                AppLogger.d(TAG, "║  Trigger: BOOT_COMPLETED (WorkManager)                       ║")
-                AppLogger.d(TAG, "║  Backend: $backendType")
-                AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                AppLogger.d(TAG, "")
+                AppLogger.d(TAG, "✅ FIREWALL RESTORED SUCCESSFULLY | Trigger: BOOT_COMPLETED (WorkManager) | Backend: $backendType")
 
                 // Reset iptables policies if boot protection was enabled
                 val bootProtectionEnabled = prefs.getBoolean(
@@ -141,15 +120,7 @@ class BootWorker(
                          shizukuStatus == ShizukuStatus.RUNNING_NO_PERMISSION)
 
                     if (shouldMonitor) {
-                        AppLogger.d(TAG, "")
-                        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                        AppLogger.d(TAG, "║  🔍 STARTING BACKEND MONITORING SERVICE                      ║")
-                        AppLogger.d(TAG, "║  Reason: Firewall fell back to VPN (Shizuku not ready)      ║")
-                        AppLogger.d(TAG, "║  Shizuku status: $shizukuStatus")
-                        AppLogger.d(TAG, "║  This service will automatically switch to ConnectivityManager")
-                        AppLogger.d(TAG, "║  when Shizuku becomes available                              ║")
-                        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                        AppLogger.d(TAG, "")
+                        AppLogger.d(TAG, "🔍 STARTING BACKEND MONITORING SERVICE | Reason: Firewall fell back to VPN (Shizuku not ready) | Shizuku status: $shizukuStatus | This service will automatically switch to ConnectivityManager | when Shizuku becomes available")
 
                         val monitorIntent = Intent(applicationContext, BackendMonitoringService::class.java).apply {
                             action = Constants.BackendMonitoring.ACTION_START
@@ -167,25 +138,14 @@ class BootWorker(
                     }
                 }
             }.onFailure { error ->
-                AppLogger.e(TAG, "")
-                AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                AppLogger.e(TAG, "║  ❌ FAILED TO RESTORE FIREWALL                               ║")
-                AppLogger.e(TAG, "║  Trigger: BOOT_COMPLETED (WorkManager)                       ║")
-                AppLogger.e(TAG, "║  Error: ${error.message}")
-                AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                AppLogger.e(TAG, "")
+                AppLogger.e(TAG, "❌ FAILED TO RESTORE FIREWALL | Trigger: BOOT_COMPLETED (WorkManager) | Error: ${error.message}")
                 return Result.failure()
             }
 
             return Result.success()
 
         } catch (e: Exception) {
-            AppLogger.e(TAG, "")
-            AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            AppLogger.e(TAG, "║  ❌ ERROR IN BOOT WORKER                                     ║")
-            AppLogger.e(TAG, "║  Error: ${e.message}")
-            AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-            AppLogger.e(TAG, "")
+            AppLogger.e(TAG, "❌ ERROR IN BOOT WORKER | Error: ${e.message}")
             AppLogger.e(TAG, "Stack trace:", e)
             return Result.failure()
         }

@@ -1,7 +1,7 @@
 package io.github.dorumrr.de1984
 
 import android.content.Context
-import android.util.Log
+import io.github.dorumrr.de1984.utils.AppLogger
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
@@ -77,7 +77,7 @@ class De1984Dependencies(private val context: Context) {
             .fallbackToDestructiveMigration()
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
-                    Log.w(TAG, "Database destructive migration triggered - firewall rules reset to defaults")
+                    AppLogger.w(TAG, "Database destructive migration triggered - firewall rules reset to defaults")
                 }
             })
             .build()

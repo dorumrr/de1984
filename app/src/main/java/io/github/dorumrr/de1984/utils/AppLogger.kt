@@ -6,93 +6,82 @@ import io.github.dorumrr.de1984.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
+import java.io.FileWriter
+import java.io.PrintWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.ConcurrentLinkedDeque
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 /**
  * Centralized logging utility for De1984.
  * 
  * Behavior:
- * - In DEBUG builds: Logging is always enabled, logs go to Logcat AND in-memory buffer
+ * - In DEBUG builds: Logging is always enabled, logs go to Logcat AND file
  * - In RELEASE builds: Logging is disabled by default, can be enabled via Settings
- *   When enabled, logs only go to in-memory buffer (not Logcat for privacy)
+ *   When enabled, logs only go to file (not Logcat for privacy)
  * 
  * Features:
- * - Stores last 1000 log entries in memory for viewing in the app
- * - Thread-safe log storage using ConcurrentLinkedDeque
- * - Provides formatted log export for sharing
+ * - Writes logs directly to file (no memory buffer)
+ * - Rotates log file when it exceeds 1MB
+ * - Thread-safe file writing
+ * - Provides log file for sharing
  */
 object AppLogger {
     
-    private const val MAX_LOG_ENTRIES = 1000
+    private const val LOG_FILE_NAME = "de1984_logs.txt"
+    private const val LOG_FILE_OLD_NAME = "de1984_logs_old.txt"
+    private const val MAX_LOG_FILE_SIZE = 1 * 1024 * 1024L // 1MB
     private const val PREFS_NAME = "de1984_prefs"
     private const val KEY_LOGGING_ENABLED = "app_logging_enabled"
     
-    // Thread-safe log storage
-    private val logBuffer = ConcurrentLinkedDeque<LogEntry>()
+    private val writeLock = ReentrantLock()
+    
+    @Volatile
+    private var logFile: File? = null
+    
+    @Volatile
+    private var appContext: Context? = null
     
     // Observable log count for UI updates
     private val _logCount = MutableStateFlow(0)
     val logCount: StateFlow<Int> = _logCount.asStateFlow()
     
+    // Observable file size for UI
+    private val _logFileSize = MutableStateFlow(0L)
+    val logFileSize: StateFlow<Long> = _logFileSize.asStateFlow()
+    
     // Whether logging is enabled (checked at runtime for release builds)
     @Volatile
     private var isLoggingEnabled = BuildConfig.DEBUG
     
-    private val dateFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
-    private val exportDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
-    
-    /**
-     * Log entry data class
-     */
-    data class LogEntry(
-        val timestamp: Long,
-        val level: LogLevel,
-        val tag: String,
-        val message: String,
-        val throwable: Throwable? = null
-    ) {
-        fun formatForDisplay(): String {
-            val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date(timestamp))
-            val levelChar = when (level) {
-                LogLevel.VERBOSE -> "V"
-                LogLevel.DEBUG -> "D"
-                LogLevel.INFO -> "I"
-                LogLevel.WARN -> "W"
-                LogLevel.ERROR -> "E"
-            }
-            val throwableStr = throwable?.let { "\n${it.stackTraceToString()}" } ?: ""
-            return "$time $levelChar/$tag: $message$throwableStr"
-        }
-        
-        fun formatForExport(): String {
-            val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date(timestamp))
-            val levelStr = level.name.padEnd(7)
-            val throwableStr = throwable?.let { "\n${it.stackTraceToString()}" } ?: ""
-            return "$time $levelStr $tag: $message$throwableStr"
-        }
-    }
+    private val logDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
     
     enum class LogLevel {
         VERBOSE, DEBUG, INFO, WARN, ERROR
     }
     
     /**
-     * Initialize logger with context to read preferences.
+     * Initialize logger with context.
      * Call this from Application.onCreate()
      */
     fun init(context: Context) {
+        appContext = context.applicationContext
+        logFile = File(context.filesDir, LOG_FILE_NAME)
+        
         if (!BuildConfig.DEBUG) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             isLoggingEnabled = prefs.getBoolean(KEY_LOGGING_ENABLED, false)
         }
-        d("AppLogger", "Logger initialized (debug=${BuildConfig.DEBUG}, enabled=$isLoggingEnabled)")
+        
+        updateStats()
+        d("AppLogger", "Logger initialized | debug=${BuildConfig.DEBUG} | enabled=$isLoggingEnabled")
     }
     
     /**
-     * Enable or disable logging (only affects release builds)
+     * Enable or disable logging
      */
     fun setLoggingEnabled(context: Context, enabled: Boolean) {
         isLoggingEnabled = enabled || BuildConfig.DEBUG
@@ -154,78 +143,182 @@ object AppLogger {
             }
         }
         
-        // Store in buffer if logging is enabled
+        // Write to file if logging is enabled
         if (isLoggingEnabled) {
-            val entry = LogEntry(
-                timestamp = System.currentTimeMillis(),
-                level = level,
-                tag = tag,  // Store original tag in buffer for cleaner display
-                message = message,
-                throwable = throwable
-            )
-            
-            logBuffer.addLast(entry)
-            
-            // Trim buffer if too large
-            while (logBuffer.size > MAX_LOG_ENTRIES) {
-                logBuffer.pollFirst()
-            }
-            
-            _logCount.value = logBuffer.size
+            writeToFile(level, tag, message, throwable)
         }
     }
     
-    /**
-     * Get all log entries (newest last)
-     */
-    fun getLogs(): List<LogEntry> = logBuffer.toList()
-    
-    /**
-     * Get logs formatted for display
-     */
-    fun getLogsForDisplay(): String {
-        return logBuffer.joinToString("\n") { it.formatForDisplay() }
-    }
-    
-    /**
-     * Get logs formatted for export/sharing
-     */
-    fun getLogsForExport(): String {
-        val header = buildString {
-            appendLine("═══════════════════════════════════════════════════════════════")
-            appendLine("De1984 Debug Logs")
-            appendLine("═══════════════════════════════════════════════════════════════")
-            appendLine("Export Time: ${exportDateFormat.format(Date())}")
-            appendLine("App Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-            appendLine("Debug Build: ${BuildConfig.DEBUG}")
-            appendLine("Log Entries: ${logBuffer.size}")
-            appendLine("═══════════════════════════════════════════════════════════════")
-            appendLine()
-        }
+    private fun writeToFile(level: LogLevel, tag: String, message: String, throwable: Throwable?) {
+        val file = logFile ?: return
         
-        return header + logBuffer.joinToString("\n") { it.formatForExport() }
+        writeLock.withLock {
+            try {
+                // Rotate if needed
+                if (file.exists() && file.length() > MAX_LOG_FILE_SIZE) {
+                    rotateLogFile()
+                }
+                
+                // Format log entry
+                val timestamp = logDateFormat.format(Date())
+                val levelChar = when (level) {
+                    LogLevel.VERBOSE -> "V"
+                    LogLevel.DEBUG -> "D"
+                    LogLevel.INFO -> "I"
+                    LogLevel.WARN -> "W"
+                    LogLevel.ERROR -> "E"
+                }
+                val logLine = "$timestamp $levelChar/$tag: $message"
+                
+                // Append to file
+                FileWriter(file, true).use { writer ->
+                    writer.appendLine(logLine)
+                    if (throwable != null) {
+                        PrintWriter(writer).use { pw ->
+                            throwable.printStackTrace(pw)
+                        }
+                    }
+                }
+                
+                updateStats()
+                
+            } catch (e: Exception) {
+                // Can't log here - would cause infinite loop
+                if (BuildConfig.DEBUG) {
+                    Log.e("De1984/AppLogger", "Failed to write log", e)
+                }
+            }
+        }
+    }
+    
+    private fun rotateLogFile() {
+        val file = logFile ?: return
+        val context = appContext ?: return
+        
+        try {
+            val oldFile = File(context.filesDir, LOG_FILE_OLD_NAME)
+            oldFile.delete()
+            file.renameTo(oldFile)
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.e("De1984/AppLogger", "Failed to rotate log", e)
+            }
+        }
+    }
+    
+    private fun updateStats() {
+        val file = logFile ?: return
+        try {
+            if (file.exists()) {
+                _logFileSize.value = file.length()
+                // Count lines (approximate log entries)
+                _logCount.value = file.useLines { it.count() }
+            } else {
+                _logFileSize.value = 0
+                _logCount.value = 0
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
     }
     
     /**
-     * Clear all stored logs
+     * Get the log file for sharing
+     */
+    fun getLogFile(): File? = logFile?.takeIf { it.exists() }
+    
+    /**
+     * Get log file size in bytes
+     */
+    fun getLogFileSizeBytes(): Long = logFile?.length() ?: 0
+    
+    /**
+     * Get formatted log file size
+     */
+    fun getFormattedFileSize(): String {
+        val bytes = getLogFileSizeBytes()
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            else -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
+        }
+    }
+    
+    /**
+     * Get last N lines from log file (for preview)
+     */
+    fun getLastLines(count: Int = 50): String {
+        val file = logFile ?: return ""
+        if (!file.exists()) return ""
+        
+        return try {
+            val lines = file.readLines()
+            lines.takeLast(count).joinToString("\n")
+        } catch (e: Exception) {
+            "Error reading logs: ${e.message}"
+        }
+    }
+    
+    /**
+     * Create export file with header
+     */
+    fun createExportFile(context: Context): File? {
+        val sourceFile = logFile ?: return null
+        if (!sourceFile.exists()) return null
+        
+        return try {
+            val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
+            val filename = "de1984_logs_${dateFormat.format(Date())}.txt"
+            val exportDir = File(context.cacheDir, "logs")
+            exportDir.mkdirs()
+            val exportFile = File(exportDir, filename)
+            
+            // Write header + logs
+            exportFile.writeText(buildString {
+                appendLine("═══════════════════════════════════════════════════════════════")
+                appendLine("De1984 Debug Logs")
+                appendLine("═══════════════════════════════════════════════════════════════")
+                appendLine("Export Time: ${logDateFormat.format(Date())}")
+                appendLine("App Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                appendLine("Debug Build: ${BuildConfig.DEBUG}")
+                appendLine("Log File Size: ${getFormattedFileSize()}")
+                appendLine("═══════════════════════════════════════════════════════════════")
+                appendLine()
+                append(sourceFile.readText())
+            })
+            
+            exportFile
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.e("De1984/AppLogger", "Failed to create export file", e)
+            }
+            null
+        }
+    }
+    
+    /**
+     * Clear all logs
      */
     fun clearLogs() {
-        logBuffer.clear()
-        _logCount.value = 0
+        writeLock.withLock {
+            try {
+                logFile?.delete()
+                appContext?.let { ctx ->
+                    File(ctx.filesDir, LOG_FILE_OLD_NAME).delete()
+                }
+                _logCount.value = 0
+                _logFileSize.value = 0
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
         d("AppLogger", "Logs cleared")
     }
     
     /**
-     * Filter logs by tag prefix
+     * Refresh stats (call after external changes)
      */
-    fun getLogsByTagPrefix(prefix: String): List<LogEntry> {
-        return logBuffer.filter { it.tag.startsWith(prefix, ignoreCase = true) }
-    }
-    
-    /**
-     * Filter logs by level (and above)
-     */
-    fun getLogsByMinLevel(minLevel: LogLevel): List<LogEntry> {
-        return logBuffer.filter { it.level.ordinal >= minLevel.ordinal }
+    fun refreshStats() {
+        updateStats()
     }
 }

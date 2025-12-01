@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984.data.common
 
+import io.github.dorumrr.de1984.utils.AppLogger
 import android.Manifest
 import android.app.AppOpsManager
 import android.content.Context
@@ -178,7 +179,7 @@ class PermissionManager(
         // This prevents killing user's third-party VPN (like Proton VPN) during app initialization
         // or when checking permissions in the Settings screen
         if (firewallManager?.isAnotherVpnActive() == true) {
-            android.util.Log.d("PermissionManager", "hasVpnPermission: Another VPN is active - skipping permission check")
+            AppLogger.d("PermissionManager", "hasVpnPermission: Another VPN is active - skipping permission check")
             return false
         }
 

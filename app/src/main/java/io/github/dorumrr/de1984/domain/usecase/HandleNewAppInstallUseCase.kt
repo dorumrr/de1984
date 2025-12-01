@@ -2,7 +2,7 @@ package io.github.dorumrr.de1984.domain.usecase
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.util.Log
+import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
@@ -113,7 +113,7 @@ class HandleNewAppInstallUseCase constructor(
             isCriticalPackage -> {
                 if (!allowCritical) {
                     // Setting OFF: Create 'allow all' rule to protect critical package
-                    Log.d(TAG, "Creating 'allow all' rule for critical package (protection ON): $packageName")
+                    AppLogger.d(TAG, "Creating 'allow all' rule for critical package (protection ON): $packageName")
                     FirewallRule(
                         packageName = packageName,
                         uid = uid,
@@ -127,7 +127,7 @@ class HandleNewAppInstallUseCase constructor(
                 } else {
                     // Setting ON: Don't create a rule - critical package will default to ALLOW
                     // User can manually change it if they want (critical packages are immune to bulk operations)
-                    Log.d(TAG, "Skipping rule creation for critical package (protection OFF, user can manually configure): $packageName")
+                    AppLogger.d(TAG, "Skipping rule creation for critical package (protection OFF, user can manually configure): $packageName")
                     null
                 }
             }

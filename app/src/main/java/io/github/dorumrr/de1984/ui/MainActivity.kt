@@ -165,11 +165,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        AppLogger.d(TAG, "")
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  📱 MAINACTIVITY CREATED                                     ║")
-        AppLogger.d(TAG, "║  savedInstanceState: ${if (savedInstanceState == null) "null (first launch)" else "present (restored)"}  ║")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        AppLogger.d(TAG, "📱 MAINACTIVITY CREATED | savedInstanceState: ${if (savedInstanceState == null) "null (first launch)" else "present (restored)"}")
 
         // Enable edge-to-edge display
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -194,19 +190,13 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
 
         AppLogger.d(TAG, "✅ MainActivity onCreate complete")
-        AppLogger.d(TAG, "")
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        AppLogger.d(TAG, "")
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  📱 MAINACTIVITY NEW INTENT                                  ║")
-        AppLogger.d(TAG, "║  Action: ${intent.action ?: "null"}                         ║")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        AppLogger.d(TAG, "📱 MAINACTIVITY NEW INTENT | Action: ${intent.action ?: "null"}")
         setIntent(intent)
         handleIntent(intent)
-        AppLogger.d(TAG, "")
     }
 
     private fun handleIntent(intent: Intent?) {
@@ -225,9 +215,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  📱 MAINACTIVITY RESUMED - CHECKING PRIVILEGES               ║")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+        AppLogger.d(TAG, "📱 MAINACTIVITY RESUMED - CHECKING PRIVILEGES")
 
         // Re-check privileges when app comes to foreground
         // This ensures we detect newly available Shizuku/root and request permissions
@@ -767,11 +755,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        AppLogger.d(TAG, "")
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  📱 MAINACTIVITY DESTROYED                                   ║")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-        AppLogger.d(TAG, "")
+        AppLogger.d(TAG, "📱 MAINACTIVITY DESTROYED")
         // NOTE: We do NOT unregister Shizuku listeners here because they need to survive
         // for the entire application process lifetime to enable automatic backend switching
         // even when the app is not open. The listeners are registered in De1984Application.onCreate()

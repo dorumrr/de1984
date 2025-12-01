@@ -4,7 +4,7 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
@@ -40,11 +40,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
             val blocked = intent.getBooleanExtra(Constants.Notifications.EXTRA_BLOCKED, false)
 
             if (packageName.isNullOrBlank()) {
-                Log.w(TAG, "Received action with null/blank package name")
+                AppLogger.w(TAG, "Received action with null/blank package name")
                 return
             }
 
-            Log.d(TAG, "Notification action: packageName=$packageName, blocked=$blocked")
+            AppLogger.d(TAG, "Notification action: packageName=$packageName, blocked=$blocked")
 
             // Initialize dependencies
             val app = context.applicationContext as De1984Application
@@ -59,16 +59,16 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     // Update firewall rule for all networks
                     manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, blocked)
                         .onSuccess {
-                            Log.d(TAG, "Successfully updated network access for $packageName: blocked=$blocked")
+                            AppLogger.d(TAG, "Successfully updated network access for $packageName: blocked=$blocked")
                             
                             // Dismiss the notification
                             dismissNotification(context, packageName)
                         }
                         .onFailure { error ->
-                            Log.e(TAG, "Failed to update network access for $packageName: ${error.message}")
+                            AppLogger.e(TAG, "Failed to update network access for $packageName: ${error.message}")
                         }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error processing notification action", e)
+                    AppLogger.e(TAG, "Error processing notification action", e)
                 } finally {
                     // Signal that async work is complete
                     pendingResult.finish()
@@ -76,7 +76,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error in NotificationActionReceiver", e)
+            AppLogger.e(TAG, "Error in NotificationActionReceiver", e)
         }
     }
 
@@ -85,9 +85,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val notificationId = NOTIFICATION_ID_BASE + packageName.hashCode()
             notificationManager.cancel(notificationId)
-            Log.d(TAG, "Dismissed notification for $packageName")
+            AppLogger.d(TAG, "Dismissed notification for $packageName")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to dismiss notification for $packageName", e)
+            AppLogger.e(TAG, "Failed to dismiss notification for $packageName", e)
         }
     }
 }

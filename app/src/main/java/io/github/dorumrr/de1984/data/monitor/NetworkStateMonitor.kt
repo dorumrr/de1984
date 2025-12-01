@@ -30,12 +30,12 @@ class NetworkStateMonitor(
      * This monitors all VPN connections, not just DE1984's own VPN.
      */
     fun observeVpnState(): Flow<Boolean> = callbackFlow {
-        Log.d(TAG, "🔐 Starting VPN state monitoring")
+        AppLogger.d(TAG, "🔐 Starting VPN state monitoring")
 
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 val hasVpn = isVpnActive()
-                Log.d(TAG, "🔐 SYSTEM EVENT: Network available - VPN active: $hasVpn")
+                AppLogger.d(TAG, "🔐 SYSTEM EVENT: Network available - VPN active: $hasVpn")
                 trySend(hasVpn)
             }
 
@@ -45,13 +45,13 @@ class NetworkStateMonitor(
             ) {
                 val hasVpn = isVpnActive()
                 val thisNetworkIsVpn = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-                Log.d(TAG, "🔐 SYSTEM EVENT: Network capabilities changed - this network is VPN: $thisNetworkIsVpn, any VPN active: $hasVpn")
+                AppLogger.d(TAG, "🔐 SYSTEM EVENT: Network capabilities changed - this network is VPN: $thisNetworkIsVpn, any VPN active: $hasVpn")
                 trySend(hasVpn)
             }
 
             override fun onLost(network: Network) {
                 val hasVpn = isVpnActive()
-                Log.d(TAG, "🔐 SYSTEM EVENT: Network lost - VPN active: $hasVpn")
+                AppLogger.d(TAG, "🔐 SYSTEM EVENT: Network lost - VPN active: $hasVpn")
                 trySend(hasVpn)
             }
         }
@@ -63,11 +63,11 @@ class NetworkStateMonitor(
         connectivityManager.registerNetworkCallback(request, callback)
 
         val initialVpnState = isVpnActive()
-        Log.d(TAG, "🔐 Initial VPN state: $initialVpnState")
+        AppLogger.d(TAG, "🔐 Initial VPN state: $initialVpnState")
         trySend(initialVpnState)
 
         awaitClose {
-            Log.d(TAG, "🔐 Stopping VPN state monitoring")
+            AppLogger.d(TAG, "🔐 Stopping VPN state monitoring")
             connectivityManager.unregisterNetworkCallback(callback)
         }
     }.distinctUntilChanged()
@@ -97,7 +97,7 @@ class NetworkStateMonitor(
             }
             false
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to check VPN status", e)
+            AppLogger.e(TAG, "Failed to check VPN status", e)
             false
         }
     }
@@ -157,12 +157,12 @@ class NetworkStateMonitor(
     }
 
     fun observeNetworkType(): Flow<NetworkType> = callbackFlow {
-        Log.d(TAG, "📡 Starting network state monitoring")
+        AppLogger.d(TAG, "📡 Starting network state monitoring")
 
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 val networkType = getCurrentNetworkType()
-                Log.d(TAG, "📡 SYSTEM EVENT: Network available - type: $networkType")
+                AppLogger.d(TAG, "📡 SYSTEM EVENT: Network available - type: $networkType")
                 trySend(networkType)
             }
 
@@ -171,12 +171,12 @@ class NetworkStateMonitor(
                 networkCapabilities: NetworkCapabilities
             ) {
                 val networkType = getCurrentNetworkType()
-                Log.d(TAG, "📡 SYSTEM EVENT: Network capabilities changed - type: $networkType")
+                AppLogger.d(TAG, "📡 SYSTEM EVENT: Network capabilities changed - type: $networkType")
                 trySend(networkType)
             }
 
             override fun onLost(network: Network) {
-                Log.d(TAG, "📡 SYSTEM EVENT: Network lost - type: NONE")
+                AppLogger.d(TAG, "📡 SYSTEM EVENT: Network lost - type: NONE")
                 trySend(NetworkType.NONE)
             }
         }
@@ -187,11 +187,11 @@ class NetworkStateMonitor(
         connectivityManager.registerNetworkCallback(request, callback)
 
         val initialType = getCurrentNetworkType()
-        Log.d(TAG, "📡 Initial network type: $initialType")
+        AppLogger.d(TAG, "📡 Initial network type: $initialType")
         trySend(initialType)
 
         awaitClose {
-            Log.d(TAG, "📡 Stopping network state monitoring")
+            AppLogger.d(TAG, "📡 Stopping network state monitoring")
             connectivityManager.unregisterNetworkCallback(callback)
         }
     }.distinctUntilChanged()

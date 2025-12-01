@@ -145,9 +145,7 @@ class RootManager(private val context: Context) {
 
     private suspend fun checkRootStatusInternal(): RootStatus = withContext(Dispatchers.IO) {
         try {
-            AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            AppLogger.d(TAG, "║  🔍 CHECKING ROOT STATUS (using libsu)                       ║")
-            AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+            AppLogger.d(TAG, "🔍 CHECKING ROOT STATUS (using libsu)")
 
             // STEP 1: Try to verify using cached shell first (NO TOAST)
             // This is the preferred path for health checks and periodic verification

@@ -1,7 +1,7 @@
 package io.github.dorumrr.de1984.utils
 
 import android.content.Context
-import android.util.Log
+import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.domain.model.PackageCriticality
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -28,7 +28,7 @@ object PackageSafetyLoader {
         cachedData?.let { return it }
         
         try {
-            Log.d(TAG, "Loading package safety data from assets...")
+            AppLogger.d(TAG, "Loading package safety data from assets...")
             
             val jsonString = context.assets.open(SAFETY_DATA_FILE).bufferedReader().use { 
                 it.readText() 
@@ -37,12 +37,12 @@ object PackageSafetyLoader {
             val data = json.decodeFromString<PackageSafetyData>(jsonString)
             cachedData = data
             
-            Log.d(TAG, "Loaded safety data for ${data.packages.size} packages")
-            Log.d(TAG, "Data version: ${data.version}, last updated: ${data.lastUpdated}")
+            AppLogger.d(TAG, "Loaded safety data for ${data.packages.size} packages")
+            AppLogger.d(TAG, "Data version: ${data.version}, last updated: ${data.lastUpdated}")
 
             return data
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load safety data", e)
+            AppLogger.e(TAG, "Failed to load safety data", e)
             // Return empty data on error
             val emptyData = PackageSafetyData(
                 version = 0,
@@ -110,7 +110,7 @@ object PackageSafetyLoader {
      */
     fun clearCache() {
         cachedData = null
-        Log.d(TAG, "Safety data cache cleared")
+        AppLogger.d(TAG, "Safety data cache cleared")
     }
 }
 

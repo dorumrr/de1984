@@ -47,13 +47,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action
 
-        AppLogger.d(TAG, "")
-        AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-        AppLogger.d(TAG, "║  🔄 BOOT RECEIVER TRIGGERED                                  ║")
-        AppLogger.d(TAG, "║  Action: $action")
-        AppLogger.d(TAG, "║  Android Version: ${Build.VERSION.SDK_INT} (API ${Build.VERSION.SDK_INT})")
-        AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-        AppLogger.d(TAG, "")
+        AppLogger.d(TAG, "🔄 BOOT RECEIVER TRIGGERED | Action: $action | Android Version: ${Build.VERSION.SDK_INT} (API ${Build.VERSION.SDK_INT})")
 
         when (action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_LOCKED_BOOT_COMPLETED -> {
@@ -166,13 +160,7 @@ class BootReceiver : BroadcastReceiver() {
                             AppLogger.d(TAG, "🚀 Starting firewall after $trigger...")
                             val result = firewallManager.startFirewall()
                             result.onSuccess { backendType ->
-                                AppLogger.d(TAG, "")
-                                AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                                AppLogger.d(TAG, "║  ✅ FIREWALL RESTORED SUCCESSFULLY                           ║")
-                                AppLogger.d(TAG, "║  Trigger: $trigger")
-                                AppLogger.d(TAG, "║  Backend: $backendType")
-                                AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                                AppLogger.d(TAG, "")
+                                AppLogger.d(TAG, "✅ FIREWALL RESTORED SUCCESSFULLY | Trigger: $trigger | Backend: $backendType")
 
                                 // Reset iptables policies if boot protection was enabled
                                 val bootProtectionEnabled = prefs.getBoolean(
@@ -226,13 +214,7 @@ class BootReceiver : BroadcastReceiver() {
                                     }
                                 }
                             }.onFailure { error ->
-                                AppLogger.e(TAG, "")
-                                AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                                AppLogger.e(TAG, "║  ❌ FAILED TO RESTORE FIREWALL                               ║")
-                                AppLogger.e(TAG, "║  Trigger: $trigger")
-                                AppLogger.e(TAG, "║  Error: ${error.message}")
-                                AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                                AppLogger.e(TAG, "")
+                                AppLogger.e(TAG, "❌ FAILED TO RESTORE FIREWALL | Trigger: $trigger | Error: ${error.message}")
 
                                 // Show notification asking user to open app
                                 // (VPN permission likely needs to be re-granted)
@@ -244,12 +226,7 @@ class BootReceiver : BroadcastReceiver() {
                         }
                     }
                 } else {
-                    AppLogger.e(TAG, "")
-                    AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                    AppLogger.e(TAG, "║  ❌ FAILED TO GET APPLICATION INSTANCE                       ║")
-                    AppLogger.e(TAG, "║  Cannot restore firewall - application context not available ║")
-                    AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                    AppLogger.e(TAG, "")
+                    AppLogger.e(TAG, "❌ FAILED TO GET APPLICATION INSTANCE | Cannot restore firewall - application context not available")
 
                     // Fallback to VPN service for backward compatibility
                     AppLogger.d(TAG, "Attempting fallback to VPN service...")
@@ -265,21 +242,10 @@ class BootReceiver : BroadcastReceiver() {
                     }
                 }
             } else {
-                AppLogger.d(TAG, "")
-                AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                AppLogger.d(TAG, "║  ℹ️  FIREWALL WAS NOT ENABLED                                ║")
-                AppLogger.d(TAG, "║  Skipping firewall restoration after $trigger")
-                AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                AppLogger.d(TAG, "")
+                AppLogger.d(TAG, "ℹ️  FIREWALL WAS NOT ENABLED | Skipping firewall restoration after $trigger")
             }
         } catch (e: Exception) {
-            AppLogger.e(TAG, "")
-            AppLogger.e(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            AppLogger.e(TAG, "║  ❌ ERROR IN BOOT RECEIVER                                   ║")
-            AppLogger.e(TAG, "║  Trigger: $trigger")
-            AppLogger.e(TAG, "║  Error: ${e.message}")
-            AppLogger.e(TAG, "╚════════════════════════════════════════════════════════════════╝")
-            AppLogger.e(TAG, "")
+            AppLogger.e(TAG, "❌ ERROR IN BOOT RECEIVER | Trigger: $trigger | Error: ${e.message}")
             AppLogger.e(TAG, "Stack trace:", e)
         }
     }

@@ -190,7 +190,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(TAG, "onViewCreated: Settings fragment view created")
+        AppLogger.d(TAG, "onViewCreated: Settings fragment view created")
 
         setupViews()
         observeUiState()
@@ -199,21 +199,21 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "onResume: Settings fragment resumed")
+        AppLogger.d(TAG, "onResume: Settings fragment resumed")
     }
 
     override fun onPause() {
         super.onPause()
-        Log.d(TAG, "onPause: Settings fragment paused")
+        AppLogger.d(TAG, "onPause: Settings fragment paused")
     }
 
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)
-        Log.d(TAG, "onHiddenChanged: hidden=$hidden")
+        AppLogger.d(TAG, "onHiddenChanged: hidden=$hidden")
 
         // When fragment becomes visible, update UI with current state
         if (!hidden) {
-            Log.d(TAG, "onHiddenChanged: Fragment became visible, updating UI")
+            AppLogger.d(TAG, "onHiddenChanged: Fragment became visible, updating UI")
             updateUI(viewModel.uiState.value)
             // Refresh permission state to show current status (fixes UI not updating after granting permissions)
             permissionViewModel.refreshPermissions()
@@ -347,12 +347,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 viewModel.uiState.collect { state ->
                     // Only update UI if fragment is visible (not hidden)
                     if (!isHidden) {
-                        Log.d(TAG, "observeUiState: Fragment is visible, updating UI (requiresRestart=${state.requiresRestart})")
+                        AppLogger.d(TAG, "observeUiState: Fragment is visible, updating UI (requiresRestart=${state.requiresRestart})")
                         updateUI(state)
 
                         // Show restart dialog if needed (only when user toggles the switch)
                         if (state.requiresRestart) {
-                            Log.d(TAG, "observeUiState: Showing restart dialog")
+                            AppLogger.d(TAG, "observeUiState: Showing restart dialog")
                             showRestartDialog()
                             viewModel.clearRestartPrompt()
                         }
@@ -374,7 +374,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                             }
                         }
                     } else {
-                        Log.d(TAG, "observeUiState: Fragment is hidden, skipping UI update")
+                        AppLogger.d(TAG, "observeUiState: Fragment is hidden, skipping UI update")
                     }
                 }
             }
@@ -437,44 +437,44 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             binding.useDynamicColorsSwitch.setOnCheckedChangeListener(null)
         }
 
-        Log.d(TAG, "updateUI: Setting useDynamicColorsSwitch.isChecked = ${state.useDynamicColors}")
+        AppLogger.d(TAG, "updateUI: Setting useDynamicColorsSwitch.isChecked = ${state.useDynamicColors}")
         binding.useDynamicColorsSwitch.isChecked = state.useDynamicColors
 
         // Attach listener (only if not already attached, or re-attach after removing)
         binding.useDynamicColorsSwitch.setOnCheckedChangeListener { _, isChecked ->
-            Log.d(TAG, "updateUI: Dynamic colors switch toggled to $isChecked by user")
+            AppLogger.d(TAG, "updateUI: Dynamic colors switch toggled to $isChecked by user")
             viewModel.setUseDynamicColors(isChecked, showRestartDialog = true)
         }
         isDynamicColorsSwitchListenerAttached = true
 
         binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener(null)
-        Log.d(TAG, "updateUI: Setting allowCriticalUninstallSwitch.isChecked = ${state.allowCriticalPackageUninstall}")
+        AppLogger.d(TAG, "updateUI: Setting allowCriticalUninstallSwitch.isChecked = ${state.allowCriticalPackageUninstall}")
         binding.allowCriticalUninstallSwitch.isChecked = state.allowCriticalPackageUninstall
         binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener { _, isChecked ->
-            Log.d(TAG, "allowCriticalUninstallSwitch listener (from updateUI) triggered: isChecked=$isChecked")
+            AppLogger.d(TAG, "allowCriticalUninstallSwitch listener (from updateUI) triggered: isChecked=$isChecked")
             if (isChecked) {
-                Log.d(TAG, "Showing critical uninstall warning dialog (from updateUI)")
+                AppLogger.d(TAG, "Showing critical uninstall warning dialog (from updateUI)")
                 showCriticalUninstallWarning {
                     viewModel.setAllowCriticalPackageUninstall(true)
                 }
             } else {
-                Log.d(TAG, "Disabling critical package uninstall (from updateUI)")
+                AppLogger.d(TAG, "Disabling critical package uninstall (from updateUI)")
                 viewModel.setAllowCriticalPackageUninstall(false)
             }
         }
 
         binding.allowCriticalFirewallSwitch.setOnCheckedChangeListener(null)
-        Log.d(TAG, "updateUI: Setting allowCriticalFirewallSwitch.isChecked = ${state.allowCriticalPackageFirewall}")
+        AppLogger.d(TAG, "updateUI: Setting allowCriticalFirewallSwitch.isChecked = ${state.allowCriticalPackageFirewall}")
         binding.allowCriticalFirewallSwitch.isChecked = state.allowCriticalPackageFirewall
         binding.allowCriticalFirewallSwitch.setOnCheckedChangeListener { _, isChecked ->
-            Log.d(TAG, "allowCriticalFirewallSwitch listener (from updateUI) triggered: isChecked=$isChecked")
+            AppLogger.d(TAG, "allowCriticalFirewallSwitch listener (from updateUI) triggered: isChecked=$isChecked")
             if (isChecked) {
-                Log.d(TAG, "Showing critical firewall warning dialog (from updateUI)")
+                AppLogger.d(TAG, "Showing critical firewall warning dialog (from updateUI)")
                 showCriticalFirewallWarning {
                     viewModel.setAllowCriticalPackageFirewall(true)
                 }
             } else {
-                Log.d(TAG, "Disabling critical package firewall (from updateUI)")
+                AppLogger.d(TAG, "Disabling critical package firewall (from updateUI)")
                 viewModel.setAllowCriticalPackageFirewall(false)
             }
         }
@@ -506,14 +506,14 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         }
 
         binding.bootProtectionSwitch.setOnCheckedChangeListener { _, isChecked ->
-            Log.d(TAG, "bootProtectionSwitch listener triggered: isChecked=$isChecked")
+            AppLogger.d(TAG, "bootProtectionSwitch listener triggered: isChecked=$isChecked")
             if (isChecked) {
-                Log.d(TAG, "Showing boot protection enable warning dialog")
+                AppLogger.d(TAG, "Showing boot protection enable warning dialog")
                 showBootProtectionWarning(true) {
                     viewModel.setBootProtection(true)
                 }
             } else {
-                Log.d(TAG, "Showing boot protection disable warning dialog")
+                AppLogger.d(TAG, "Showing boot protection disable warning dialog")
                 showBootProtectionWarning(false) {
                     viewModel.setBootProtection(false)
                 }
@@ -1187,21 +1187,21 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun handleVpnPermissionRequest() {
-        Log.d(TAG, "handleVpnPermissionRequest() called")
+        AppLogger.d(TAG, "handleVpnPermissionRequest() called")
         try {
             val prepareIntent = VpnService.prepare(requireContext())
-            Log.d(TAG, "VpnService.prepare() returned: $prepareIntent")
+            AppLogger.d(TAG, "VpnService.prepare() returned: $prepareIntent")
             if (prepareIntent != null) {
                 // VPN permission not granted - request it
-                Log.d(TAG, "Launching VPN permission request dialog")
+                AppLogger.d(TAG, "Launching VPN permission request dialog")
                 vpnPermissionLauncher.launch(prepareIntent)
             } else {
                 // VPN permission already granted
-                Log.d(TAG, "VPN permission already granted, refreshing permissions")
+                AppLogger.d(TAG, "VPN permission already granted, refreshing permissions")
                 permissionViewModel.refreshPermissions()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to request VPN permission", e)
+            AppLogger.e(TAG, "Failed to request VPN permission", e)
             // Show error to user
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle(getString(R.string.dialog_vpn_permission_error_title))
@@ -1461,19 +1461,19 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun showCriticalUninstallWarning(onConfirm: () -> Unit) {
-        Log.d(TAG, "showCriticalUninstallWarning: Displaying warning dialog")
+        AppLogger.d(TAG, "showCriticalUninstallWarning: Displaying warning dialog")
         StandardDialog.showConfirmation(
             context = requireContext(),
             title = getString(R.string.dialog_critical_uninstall_title),
             message = getString(R.string.dialog_critical_uninstall_message),
             confirmButtonText = getString(R.string.dialog_critical_uninstall_enable),
             onConfirm = {
-                Log.d(TAG, "showCriticalUninstallWarning: User confirmed")
+                AppLogger.d(TAG, "showCriticalUninstallWarning: User confirmed")
                 onConfirm()
             },
             cancelButtonText = getString(R.string.dialog_cancel),
             onCancel = {
-                Log.d(TAG, "showCriticalUninstallWarning: User cancelled, reverting switch")
+                AppLogger.d(TAG, "showCriticalUninstallWarning: User cancelled, reverting switch")
                 // Revert switch state
                 binding.allowCriticalUninstallSwitch.setOnCheckedChangeListener(null)
                 binding.allowCriticalUninstallSwitch.isChecked = false
@@ -1491,19 +1491,19 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun showCriticalFirewallWarning(onConfirm: () -> Unit) {
-        Log.d(TAG, "showCriticalFirewallWarning: Displaying warning dialog")
+        AppLogger.d(TAG, "showCriticalFirewallWarning: Displaying warning dialog")
         StandardDialog.showConfirmation(
             context = requireContext(),
             title = getString(R.string.dialog_critical_firewall_title),
             message = getString(R.string.dialog_critical_firewall_message),
             confirmButtonText = getString(R.string.dialog_critical_firewall_enable),
             onConfirm = {
-                Log.d(TAG, "showCriticalFirewallWarning: User confirmed")
+                AppLogger.d(TAG, "showCriticalFirewallWarning: User confirmed")
                 onConfirm()
             },
             cancelButtonText = getString(R.string.dialog_cancel),
             onCancel = {
-                Log.d(TAG, "showCriticalFirewallWarning: User cancelled, reverting switch")
+                AppLogger.d(TAG, "showCriticalFirewallWarning: User cancelled, reverting switch")
                 // Revert switch state
                 binding.allowCriticalFirewallSwitch.setOnCheckedChangeListener(null)
                 binding.allowCriticalFirewallSwitch.isChecked = false
@@ -1521,7 +1521,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     }
 
     private fun showBootProtectionWarning(enable: Boolean, onConfirm: () -> Unit) {
-        Log.d(TAG, "showBootProtectionWarning: enable=$enable, displaying warning dialog")
+        AppLogger.d(TAG, "showBootProtectionWarning: enable=$enable, displaying warning dialog")
 
         val title = if (enable) {
             getString(R.string.boot_protection_enable_warning_title)
@@ -1541,12 +1541,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             message = message,
             confirmButtonText = getString(R.string.dialog_continue),
             onConfirm = {
-                Log.d(TAG, "showBootProtectionWarning: User confirmed")
+                AppLogger.d(TAG, "showBootProtectionWarning: User confirmed")
                 onConfirm()
             },
             cancelButtonText = getString(R.string.dialog_cancel),
             onCancel = {
-                Log.d(TAG, "showBootProtectionWarning: User cancelled, reverting switch")
+                AppLogger.d(TAG, "showBootProtectionWarning: User cancelled, reverting switch")
                 // Revert switch state
                 binding.bootProtectionSwitch.setOnCheckedChangeListener(null)
                 binding.bootProtectionSwitch.isChecked = !enable
@@ -1572,12 +1572,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             message = getString(R.string.dialog_restart_message),
             confirmButtonText = getString(R.string.dialog_restart_confirm),
             onConfirm = {
-                Log.d(TAG, "showRestartDialog: User confirmed restart")
+                AppLogger.d(TAG, "showRestartDialog: User confirmed restart")
                 restartApp()
             },
             cancelButtonText = getString(R.string.dialog_cancel),
             onCancel = {
-                Log.d(TAG, "showRestartDialog: User cancelled restart")
+                AppLogger.d(TAG, "showRestartDialog: User cancelled restart")
             }
         )
     }
@@ -1593,10 +1593,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                 // Kill the current process to ensure a full restart
                 android.os.Process.killProcess(android.os.Process.myPid())
             } else {
-                Log.e(TAG, "Failed to get launch intent for restart")
+                AppLogger.e(TAG, "Failed to get launch intent for restart")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to restart app: ${e.message}")
+            AppLogger.e(TAG, "Failed to restart app: ${e.message}")
         }
     }
 

@@ -66,9 +66,7 @@ class BootProtectionManager(
      */
     suspend fun setBootProtection(enabled: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            AppLogger.d(TAG, "║  ${if (enabled) "ENABLING" else "DISABLING"} BOOT PROTECTION                              ║")
-            AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+            AppLogger.d(TAG, "${if (enabled) "ENABLING" else "DISABLING"} BOOT PROTECTION")
 
             if (enabled) {
                 createBootScript()

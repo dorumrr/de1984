@@ -20,5 +20,9 @@
     <color name="badge_bloatware_bg">#F5F5DC</color>      <!-- Cream/Beige background -->
     <color name="badge_bloatware_stroke">#FFFFFF</color>  <!-- White border -->
     <color name="badge_bloatware_text">#424242</color>    <!-- Dark grey text -->
+
+    <!-- Log Viewer Colors (Dark Mode) -->
+    <color name="log_viewer_background">#1A1A1A</color>   <!-- Darker terminal style -->
+    <color name="log_text_color">#B0BEC5</color>          <!-- Light blue-grey text -->
 </resources>
 

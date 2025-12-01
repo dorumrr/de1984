@@ -739,6 +739,22 @@
     <string name="boot_protection_enable_failed">Failed to enable boot protection: %s</string>
     <string name="boot_protection_disable_failed">Failed to disable boot protection: %s</string>
 
+    <!-- App Logs -->
+    <string name="logs_title">App Logs</string>
+    <string name="logs_menu_item">App Logs</string>
+    <string name="logs_menu_description">View debug logs for troubleshooting</string>
+    <string name="logs_enable_title">Enable Logging</string>
+    <string name="logs_enable_description">Store logs in memory for debugging. Logs are not sent anywhere.</string>
+    <string name="logs_debug_mode_note">ℹ️ Debug build - logging is always enabled</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_copy">Copy</string>
+    <string name="logs_share">Share</string>
+    <string name="logs_count">%d log entries</string>
+    <string name="logs_empty">No logs yet. Enable logging and use the app to see logs here.</string>
+    <string name="logs_copied">Logs copied to clipboard</string>
+    <string name="logs_cleared">Logs cleared</string>
+    <string name="logs_share_title">Share De1984 Logs</string>
+
     <!-- Input Hints -->
     <string name="hint_detection_mode">Detection Mode</string>
     <string name="hint_server_preset">Server Preset</string>

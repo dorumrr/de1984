@@ -25,6 +25,7 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallMode
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.ui.MainActivity
+import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -1810,7 +1811,7 @@ class FirewallManager(
      * 4. If in VPN mode: show notification and update UI to reflect conflict
      */
     private fun startVpnStateMonitoring() {
-        Log.d(TAG, "🔐 Starting VPN state monitoring for external VPN conflict detection")
+        AppLogger.i(TAG, "🔐 Starting VPN state monitoring for external VPN conflict detection")
 
         vpnStateMonitoringJob?.cancel()
         vpnStateMonitoringJob = scope.launch {
@@ -1836,23 +1837,23 @@ class FirewallManager(
         val firewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
         
         if (!firewallEnabled) {
-            Log.d(TAG, "🔐 VPN state changed but firewall not enabled - ignoring")
+            AppLogger.d(TAG, "🔐 VPN state changed but firewall not enabled - ignoring")
             return
         }
 
         // Use the new isOtherVpnActive() which checks VPN session ID
         val isOtherVpnActive = networkStateMonitor.isOtherVpnActive()
         
-        Log.d(TAG, "🔐 VPN state change: isAnyVpnActive=$isAnyVpnActive, isOtherVpnActive=$isOtherVpnActive, currentBackend=$currentBackendType, mode=$currentMode")
+        AppLogger.i(TAG, "🔐 VPN state change: isAnyVpnActive=$isAnyVpnActive, isOtherVpnActive=$isOtherVpnActive, currentBackend=$currentBackendType, mode=$currentMode")
 
         // Case 1: Another VPN (not De1984's) is active
         if (isOtherVpnActive) {
-            Log.d(TAG, "🔐 EXTERNAL VPN DETECTED (not De1984's VPN)")
+            AppLogger.w(TAG, "🔐 EXTERNAL VPN DETECTED (not De1984's VPN)")
             
             // Case 1a: We're using VPN backend - another VPN will kick us out
             if (currentBackendType == FirewallBackendType.VPN) {
-                Log.w(TAG, "🔐 VPN CONFLICT: Another VPN is active while we're using VPN backend!")
-                Log.d(TAG, "🔐 Switching to privileged backend to maintain protection...")
+                AppLogger.w(TAG, "🔐 VPN CONFLICT: Another VPN is active while we're using VPN backend!")
+                AppLogger.i(TAG, "🔐 Switching to privileged backend to maintain protection...")
                 handleVpnConflict(currentMode)
                 return
             }
@@ -1860,31 +1861,31 @@ class FirewallManager(
             // Case 1b: We're using privileged backend but mode says VPN
             // Update mode to AUTO to reflect reality
             if (currentMode == FirewallMode.VPN && currentBackendType != null) {
-                Log.d(TAG, "🔐 Mode is VPN but we're using $currentBackendType - updating mode to AUTO")
+                AppLogger.i(TAG, "🔐 Mode is VPN but we're using $currentBackendType - updating mode to AUTO")
                 setMode(FirewallMode.AUTO)
                 return
             }
             
             // Case 1c: We're in AUTO mode with privileged backend - all good
-            Log.d(TAG, "🔐 External VPN active but we're protected with $currentBackendType backend")
+            AppLogger.d(TAG, "🔐 External VPN active but we're protected with $currentBackendType backend")
             return
         }
         
         // Case 2: No external VPN active
         if (!isAnyVpnActive) {
-            Log.d(TAG, "🔐 No VPN active")
+            AppLogger.d(TAG, "🔐 No VPN active")
             
             // If our VPN backend was supposed to be active but isn't, something went wrong
             if (currentBackendType == FirewallBackendType.VPN) {
                 val isOurVpnStillActive = currentBackend?.isActive() == true
                 if (!isOurVpnStillActive) {
-                    Log.w(TAG, "🔐 Our VPN backend appears to have stopped")
+                    AppLogger.w(TAG, "🔐 Our VPN backend appears to have stopped")
                     // Health monitoring will handle recovery
                 }
             }
         } else {
             // A VPN is active but it's not an "other" VPN - must be ours
-            Log.d(TAG, "🔐 De1984's VPN is active - no conflict")
+            AppLogger.d(TAG, "🔐 De1984's VPN is active - no conflict")
         }
     }
 
@@ -1897,11 +1898,11 @@ class FirewallManager(
         Log.d(TAG, "🔐 Handling VPN conflict in mode: $currentMode")
         
         // Always try to find a non-VPN backend, regardless of current mode
-        Log.d(TAG, "🔐 Attempting to switch to privileged backend due to VPN conflict...")
+        AppLogger.i(TAG, "🔐 Attempting to switch to privileged backend due to VPN conflict...")
         
         val planResult = computeStartPlan(FirewallMode.AUTO)
         if (planResult.isFailure) {
-            Log.e(TAG, "🔐 Failed to compute fallback plan", planResult.exceptionOrNull())
+            AppLogger.e(TAG, "🔐 Failed to compute fallback plan", planResult.exceptionOrNull())
             handleVpnConflictFallbackFailed()
             return
         }
@@ -1910,14 +1911,14 @@ class FirewallManager(
         
         // Check if there's a non-VPN backend available
         if (plan.selectedBackendType != FirewallBackendType.VPN) {
-            Log.d(TAG, "🔐 Switching to ${plan.selectedBackendType} backend due to VPN conflict")
+            AppLogger.i(TAG, "🔐 Switching to ${plan.selectedBackendType} backend due to VPN conflict")
             
             // Stop the current (dead) VPN backend first
             if (currentBackend != null) {
-                Log.d(TAG, "🔐 Stopping current VPN backend before switching...")
+                AppLogger.d(TAG, "🔐 Stopping current VPN backend before switching...")
                 stopMonitoring()
                 currentBackend?.stop()?.onFailure { error ->
-                    Log.w(TAG, "🔐 Failed to stop old VPN backend: ${error.message}")
+                    AppLogger.w(TAG, "🔐 Failed to stop old VPN backend: ${error.message}")
                 }
                 currentBackend = null
                 _activeBackendType.value = null
@@ -1925,7 +1926,7 @@ class FirewallManager(
             
             // Update mode to AUTO so UI dropdown reflects the change
             if (currentMode != FirewallMode.AUTO) {
-                Log.d(TAG, "🔐 Switching mode from $currentMode to AUTO due to VPN conflict")
+                AppLogger.i(TAG, "🔐 Switching mode from $currentMode to AUTO due to VPN conflict")
                 setMode(FirewallMode.AUTO)
             }
             
@@ -1934,16 +1935,16 @@ class FirewallManager(
             
             if (restartResult.isSuccess) {
                 val newBackend = restartResult.getOrThrow()
-                Log.d(TAG, "🔐 ✅ Successfully switched to $newBackend due to VPN conflict")
+                AppLogger.i(TAG, "🔐 ✅ Successfully switched to $newBackend due to VPN conflict")
                 // Show persistent notification informing user
                 showVpnConflictSwitchNotification(newBackend)
             } else {
-                Log.e(TAG, "🔐 ❌ Failed to switch backend: ${restartResult.exceptionOrNull()?.message}")
+                AppLogger.e(TAG, "🔐 ❌ Failed to switch backend: ${restartResult.exceptionOrNull()?.message}")
                 handleVpnConflictFallbackFailed()
             }
         } else {
             // No privileged backend available - VPN conflict cannot be resolved
-            Log.w(TAG, "🔐 No privileged backend available - VPN conflict cannot be resolved")
+            AppLogger.w(TAG, "🔐 No privileged backend available - VPN conflict cannot be resolved")
             handleVpnConflictFallbackFailed()
         }
     }
@@ -1952,7 +1953,7 @@ class FirewallManager(
      * Called when VPN conflict cannot be resolved (no fallback available).
      */
     private fun handleVpnConflictFallbackFailed() {
-        Log.w(TAG, "🔐 VPN conflict: No fallback available - firewall protection LOST")
+        AppLogger.w(TAG, "🔐 VPN conflict: No fallback available - firewall protection LOST")
         
         // Mark firewall as down
         _isFirewallDown.value = true

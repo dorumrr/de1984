@@ -94,4 +94,8 @@
     <color name="affects_info_box_background">#F5F5F5</color> <!-- Light gray -->
     <color name="affects_info_box_stroke">#E0E0E0</color>     <!-- Gray border -->
     <color name="affects_info_box_text">#616161</color>       <!-- Dark gray text -->
+
+    <!-- Log Viewer Colors (Light Mode) -->
+    <color name="log_viewer_background">#263238</color>   <!-- Dark blue-grey terminal style -->
+    <color name="log_text_color">#ECEFF1</color>          <!-- Light grey text -->
 </resources>

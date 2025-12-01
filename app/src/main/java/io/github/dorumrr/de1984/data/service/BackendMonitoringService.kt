@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984.data.service
 
+import io.github.dorumrr.de1984.utils.AppLogger
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,7 +8,6 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
-import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import io.github.dorumrr.de1984.De1984Application
@@ -64,7 +64,7 @@ class BackendMonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "Service created")
+        AppLogger.d(TAG, "Service created")
 
         val app = application as De1984Application
         val deps = app.dependencies
@@ -76,23 +76,23 @@ class BackendMonitoringService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: action=${intent?.action}")
+        AppLogger.d(TAG, "onStartCommand: action=${intent?.action}")
 
         when (intent?.action) {
             Constants.BackendMonitoring.ACTION_START -> {
                 val shizukuStatusName = intent.getStringExtra(Constants.BackendMonitoring.EXTRA_SHIZUKU_STATUS)
-                Log.d(TAG, "Starting monitoring service. Shizuku status: $shizukuStatusName")
+                AppLogger.d(TAG, "Starting monitoring service. Shizuku status: $shizukuStatusName")
                 
                 startMonitoring()
             }
             Constants.BackendMonitoring.ACTION_RETRY -> {
-                Log.d(TAG, "Manual retry requested")
+                AppLogger.d(TAG, "Manual retry requested")
                 serviceScope.launch {
                     attemptBackendSwitch()
                 }
             }
             Constants.BackendMonitoring.ACTION_STOP -> {
-                Log.d(TAG, "Stop action received")
+                AppLogger.d(TAG, "Stop action received")
                 stopSelf()
             }
         }
@@ -103,7 +103,7 @@ class BackendMonitoringService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        Log.d(TAG, "Service destroyed")
+        AppLogger.d(TAG, "Service destroyed")
         monitoringJob?.cancel()
         backendMonitoringJob?.cancel()
         timeoutJob?.cancel()
@@ -135,7 +135,7 @@ class BackendMonitoringService : Service() {
         // Monitor Shizuku status changes
         monitoringJob = serviceScope.launch {
             shizukuManager.shizukuStatus.collect { status ->
-                Log.d(TAG, "Shizuku status changed: $status")
+                AppLogger.d(TAG, "Shizuku status changed: $status")
                 
                 when (status) {
                     ShizukuStatus.RUNNING_WITH_PERMISSION -> {
@@ -163,17 +163,17 @@ class BackendMonitoringService : Service() {
         // Monitor active backend type changes
         backendMonitoringJob = serviceScope.launch {
             firewallManager.activeBackendType.collect { backendType ->
-                Log.d(TAG, "Active backend changed: $backendType")
+                AppLogger.d(TAG, "Active backend changed: $backendType")
 
                 // Don't stop during backend switch attempt - let attemptBackendSwitch() handle it
                 if (!isAttemptingSwitch) {
                     // Check if we should continue monitoring
                     if (!shouldContinueMonitoring()) {
-                        Log.d(TAG, "Monitoring no longer needed. Stopping service.")
+                        AppLogger.d(TAG, "Monitoring no longer needed. Stopping service.")
                         stopSelf()
                     }
                 } else {
-                    Log.d(TAG, "Backend switch in progress, not stopping service yet")
+                    AppLogger.d(TAG, "Backend switch in progress, not stopping service yet")
                 }
             }
         }
@@ -195,28 +195,28 @@ class BackendMonitoringService : Service() {
         val shouldContinue = currentMode == FirewallMode.AUTO &&
             (activeBackend == FirewallBackendType.VPN || activeBackend == null)
 
-        Log.d(TAG, "shouldContinueMonitoring: mode=$currentMode, backend=$activeBackend, result=$shouldContinue")
+        AppLogger.d(TAG, "shouldContinueMonitoring: mode=$currentMode, backend=$activeBackend, result=$shouldContinue")
         return shouldContinue
     }
 
     private fun startTimeoutTimer() {
         timeoutJob?.cancel()
         timeoutJob = serviceScope.launch {
-            Log.d(TAG, "Starting timeout timer: ${Constants.BackendMonitoring.TIMEOUT_NO_SHIZUKU_MS}ms")
+            AppLogger.d(TAG, "Starting timeout timer: ${Constants.BackendMonitoring.TIMEOUT_NO_SHIZUKU_MS}ms")
             delay(Constants.BackendMonitoring.TIMEOUT_NO_SHIZUKU_MS)
-            Log.d(TAG, "Timeout reached. Stopping service.")
+            AppLogger.d(TAG, "Timeout reached. Stopping service.")
             stopSelf()
         }
     }
 
     private suspend fun attemptBackendSwitch() {
         if (isAttemptingSwitch) {
-            Log.d(TAG, "Backend switch already in progress, skipping")
+            AppLogger.d(TAG, "Backend switch already in progress, skipping")
             return
         }
 
         isAttemptingSwitch = true
-        Log.d(TAG, "Attempting backend switch...")
+        AppLogger.d(TAG, "Attempting backend switch...")
 
         // Update notification to show switching state
         updateSwitchingNotification()
@@ -225,7 +225,7 @@ class BackendMonitoringService : Service() {
             val result = firewallManager.startFirewall()
             
             result.onSuccess { backendType ->
-                Log.d(TAG, "Backend switch result: $backendType")
+                AppLogger.d(TAG, "Backend switch result: $backendType")
                 
                 if (backendType != FirewallBackendType.VPN) {
                     // Success! Switched away from VPN
@@ -236,7 +236,7 @@ class BackendMonitoringService : Service() {
                     handleSwitchFailure()
                 }
             }.onFailure { error ->
-                Log.e(TAG, "Backend switch failed", error)
+                AppLogger.e(TAG, "Backend switch failed", error)
                 handleSwitchFailure()
             }
         } finally {
@@ -261,7 +261,7 @@ class BackendMonitoringService : Service() {
             else -> "Now using $backendType backend"
         }
 
-        Log.d(TAG, "Backend switch successful: $backendType")
+        AppLogger.d(TAG, "Backend switch successful: $backendType")
 
         // Show toast
         Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show()
@@ -275,7 +275,7 @@ class BackendMonitoringService : Service() {
     }
 
     private fun handleSwitchFailure() {
-        Log.e(TAG, "Backend switch failed")
+        AppLogger.e(TAG, "Backend switch failed")
 
         // Show toast
         Toast.makeText(this, getString(R.string.backend_toast_failed), Toast.LENGTH_SHORT).show()

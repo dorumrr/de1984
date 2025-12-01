@@ -1,11 +1,11 @@
 package io.github.dorumrr.de1984.data.monitor
 
+import io.github.dorumrr.de1984.utils.AppLogger
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.PowerManager
-import android.util.Log
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -22,17 +22,17 @@ class ScreenStateMonitor(
     }
 
     fun observeScreenState(): Flow<Boolean> = callbackFlow {
-        Log.d(TAG, "📱 Starting screen state monitoring")
+        AppLogger.d(TAG, "📱 Starting screen state monitoring")
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
                     Intent.ACTION_SCREEN_ON -> {
-                        Log.d(TAG, "📱 SYSTEM EVENT: Screen turned ON")
+                        AppLogger.d(TAG, "📱 SYSTEM EVENT: Screen turned ON")
                         trySend(true)
                     }
                     Intent.ACTION_SCREEN_OFF -> {
-                        Log.d(TAG, "📱 SYSTEM EVENT: Screen turned OFF")
+                        AppLogger.d(TAG, "📱 SYSTEM EVENT: Screen turned OFF")
                         trySend(false)
                     }
                 }
@@ -46,11 +46,11 @@ class ScreenStateMonitor(
         context.registerReceiver(receiver, filter)
 
         val initialState = isScreenOn()
-        Log.d(TAG, "📱 Initial screen state: ${if (initialState) "ON" else "OFF"}")
+        AppLogger.d(TAG, "📱 Initial screen state: ${if (initialState) "ON" else "OFF"}")
         trySend(initialState)
 
         awaitClose {
-            Log.d(TAG, "📱 Stopping screen state monitoring")
+            AppLogger.d(TAG, "📱 Stopping screen state monitoring")
             context.unregisterReceiver(receiver)
         }
     }.distinctUntilChanged()

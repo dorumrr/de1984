@@ -45,7 +45,9 @@ import io.github.dorumrr.de1984.presentation.viewmodel.ImportUninstalledPreview
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
 import io.github.dorumrr.de1984.ui.common.StandardDialog
+import io.github.dorumrr.de1984.ui.logs.LogsActivity
 import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
+import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
@@ -57,7 +59,7 @@ import java.util.Locale
  * Settings Fragment using XML Views
  */
 class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
-
+    
     companion object {
         private const val TAG = "SettingsFragment"
     }
@@ -247,6 +249,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         // Language selection dropdown
         setupLanguageSelectionDropdown()
+
+        // App Logs menu item
+        binding.appLogsItem.setOnClickListener {
+            val intent = Intent(requireContext(), io.github.dorumrr.de1984.ui.logs.LogsActivity::class.java)
+            startActivity(intent)
+        }
 
         // Show app icons switch
         binding.showAppIconsSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -585,8 +593,10 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         binding.backendSelectionDropdown.setOnItemClickListener { _, _, position, _ ->
             val selectedBackend = allBackends[position]
             if (selectedBackend.isAvailable) {
+                AppLogger.i(TAG, "👤 User selected firewall mode: ${selectedBackend.mode} (${selectedBackend.displayName})")
                 viewModel.setFirewallMode(selectedBackend.mode)
             } else {
+                AppLogger.d(TAG, "👤 User tried to select unavailable backend: ${selectedBackend.displayName}")
                 // Revert to current selection if unavailable backend was clicked
                 binding.backendSelectionDropdown.setText(allBackends[currentIndex].displayName, false)
 

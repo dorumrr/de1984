@@ -67,6 +67,25 @@
             </intent-filter>
         </activity>
 
+        <!-- Logs Activity -->
+        <activity
+            android:name=".ui.logs.LogsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.De1984.Views"
+            android:parentActivityName=".ui.MainActivity" />
+
+        <!-- FileProvider for sharing logs -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- VPN Service for firewall functionality -->
         <service
             android:name=".data.service.FirewallVpnService"

@@ -1,9 +1,9 @@
 package io.github.dorumrr.de1984.data.common
 
+import io.github.dorumrr.de1984.utils.AppLogger
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
-import android.util.Log
 import io.github.dorumrr.de1984.domain.model.CaptivePortalMode
 import io.github.dorumrr.de1984.domain.model.CaptivePortalPreset
 import io.github.dorumrr.de1984.domain.model.CaptivePortalSettings
@@ -63,10 +63,10 @@ class CaptivePortalManager(
                 useHttps = useHttps
             )
 
-            Log.d(TAG, "Current settings: mode=$mode, httpUrl=$httpUrl, httpsUrl=$httpsUrl")
+            AppLogger.d(TAG, "Current settings: mode=$mode, httpUrl=$httpUrl, httpsUrl=$httpsUrl")
             Result.success(settings)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get current settings", e)
+            AppLogger.e(TAG, "Failed to get current settings", e)
             Result.failure(Exception("Failed to read captive portal settings: ${e.message}"))
         }
     }
@@ -101,7 +101,7 @@ class CaptivePortalManager(
                 useHttps = useHttps
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load original settings", e)
+            AppLogger.e(TAG, "Failed to load original settings", e)
             null
         }
     }
@@ -113,7 +113,7 @@ class CaptivePortalManager(
     suspend fun captureOriginalSettings(): Result<Unit> = withContext(Dispatchers.IO) {
         return@withContext try {
             if (hasOriginalSettings()) {
-                Log.d(TAG, "Original settings already captured, skipping")
+                AppLogger.d(TAG, "Original settings already captured, skipping")
                 return@withContext Result.success(Unit)
             }
 
@@ -132,10 +132,10 @@ class CaptivePortalManager(
                 .putString(Constants.CaptivePortal.KEY_ORIGINAL_ROM_NAME, Build.DISPLAY)
                 .apply()
 
-            Log.d(TAG, "Original settings captured successfully")
+            AppLogger.d(TAG, "Original settings captured successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to capture original settings", e)
+            AppLogger.e(TAG, "Failed to capture original settings", e)
             Result.failure(Exception("Failed to capture original settings: ${e.message}"))
         }
     }
@@ -154,7 +154,7 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Cannot apply CUSTOM preset directly. Use setCustomUrls() instead."))
             }
 
-            Log.d(TAG, "Applying preset: ${preset.name}")
+            AppLogger.d(TAG, "Applying preset: ${preset.name}")
 
             // Set HTTP URL
             val httpResult = setSystemSetting(Constants.CaptivePortal.SYSTEM_KEY_HTTP_URL, preset.httpUrl)
@@ -168,10 +168,10 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Failed to set HTTPS URL: ${httpsResult.second}"))
             }
 
-            Log.d(TAG, "Preset applied successfully: ${preset.name}")
+            AppLogger.d(TAG, "Preset applied successfully: ${preset.name}")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to apply preset", e)
+            AppLogger.e(TAG, "Failed to apply preset", e)
             Result.failure(Exception("Failed to apply preset: ${e.message}"))
         }
     }
@@ -186,17 +186,17 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Root or Shizuku access required"))
             }
 
-            Log.d(TAG, "Setting detection mode: ${mode.name} (${mode.value})")
+            AppLogger.d(TAG, "Setting detection mode: ${mode.name} (${mode.value})")
 
             val result = setSystemSetting(Constants.CaptivePortal.SYSTEM_KEY_MODE, mode.value.toString())
             if (result.first != 0) {
                 return@withContext Result.failure(Exception("Failed to set detection mode: ${result.second}"))
             }
 
-            Log.d(TAG, "Detection mode set successfully")
+            AppLogger.d(TAG, "Detection mode set successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to set detection mode", e)
+            AppLogger.e(TAG, "Failed to set detection mode", e)
             Result.failure(Exception("Failed to set detection mode: ${e.message}"))
         }
     }
@@ -219,7 +219,7 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Invalid HTTPS URL: must start with https://"))
             }
 
-            Log.d(TAG, "Setting custom URLs: http=$httpUrl, https=$httpsUrl")
+            AppLogger.d(TAG, "Setting custom URLs: http=$httpUrl, https=$httpsUrl")
 
             // Set HTTP URL
             val httpResult = setSystemSetting(Constants.CaptivePortal.SYSTEM_KEY_HTTP_URL, httpUrl)
@@ -233,10 +233,10 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Failed to set HTTPS URL: ${httpsResult.second}"))
             }
 
-            Log.d(TAG, "Custom URLs set successfully")
+            AppLogger.d(TAG, "Custom URLs set successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to set custom URLs", e)
+            AppLogger.e(TAG, "Failed to set custom URLs", e)
             Result.failure(Exception("Failed to set custom URLs: ${e.message}"))
         }
     }
@@ -254,7 +254,7 @@ class CaptivePortalManager(
             val originalSettings = getOriginalSettings()
                 ?: return@withContext Result.failure(Exception("No original settings found. Cannot restore."))
 
-            Log.d(TAG, "Restoring original settings")
+            AppLogger.d(TAG, "Restoring original settings")
 
             // Restore mode
             val modeResult = setSystemSetting(Constants.CaptivePortal.SYSTEM_KEY_MODE, originalSettings.mode.value.toString())
@@ -278,10 +278,10 @@ class CaptivePortalManager(
                 }
             }
 
-            Log.d(TAG, "Original settings restored successfully")
+            AppLogger.d(TAG, "Original settings restored successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to restore original settings", e)
+            AppLogger.e(TAG, "Failed to restore original settings", e)
             Result.failure(Exception("Failed to restore original settings: ${e.message}"))
         }
     }
@@ -296,7 +296,7 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Root or Shizuku access required"))
             }
 
-            Log.d(TAG, "Resetting to Google defaults")
+            AppLogger.d(TAG, "Resetting to Google defaults")
 
             // Set mode to ENABLED (1)
             val modeResult = setSystemSetting(Constants.CaptivePortal.SYSTEM_KEY_MODE, Constants.CaptivePortal.DEFAULT_MODE.toString())
@@ -316,10 +316,10 @@ class CaptivePortalManager(
                 return@withContext Result.failure(Exception("Failed to set HTTPS URL: ${httpsResult.second}"))
             }
 
-            Log.d(TAG, "Reset to Google defaults successfully")
+            AppLogger.d(TAG, "Reset to Google defaults successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to reset to Google defaults", e)
+            AppLogger.e(TAG, "Failed to reset to Google defaults", e)
             Result.failure(Exception("Failed to reset to Google defaults: ${e.message}"))
         }
     }
@@ -354,7 +354,7 @@ class CaptivePortalManager(
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get system setting: $key", e)
+            AppLogger.e(TAG, "Failed to get system setting: $key", e)
             null
         }
     }
@@ -373,7 +373,7 @@ class CaptivePortalManager(
                 else -> Pair(-1, "No root or Shizuku access")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to set system setting: $key", e)
+            AppLogger.e(TAG, "Failed to set system setting: $key", e)
             Pair(-1, e.message ?: "Unknown error")
         }
     }

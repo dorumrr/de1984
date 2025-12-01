@@ -3,11 +3,11 @@ package io.github.dorumrr.de1984
 import android.app.Application
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import com.google.android.material.color.DynamicColors
 import com.topjohnwu.superuser.Shell
 import io.github.dorumrr.de1984.data.firewall.ConnectivityManagerFirewallBackend
 import io.github.dorumrr.de1984.data.firewall.IptablesFirewallBackend
+import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +40,10 @@ class De1984Application : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Initialize AppLogger with context for SharedPreferences access
+        AppLogger.init(this)
+        AppLogger.i(TAG, "Application starting")
+
         // Apply dynamic colors if enabled
         applyDynamicColorsIfEnabled()
 
@@ -51,6 +55,8 @@ class De1984Application : Application() {
 
         // Clean up orphaned firewall rules if app was killed while privileged backends were running
         cleanupOrphanedFirewallRules()
+        
+        AppLogger.i(TAG, "Application initialized")
     }
 
     /**
@@ -67,7 +73,7 @@ class De1984Application : Application() {
                 // Only clean up if firewall was NOT enabled (meaning it shouldn't have rules)
                 // If firewall was enabled, BootReceiver will restore it properly
                 if (!wasFirewallEnabled) {
-                    Log.d(TAG, "Cleaning up orphaned firewall rules (firewall was not enabled)")
+                    AppLogger.d(TAG, "Cleaning up orphaned firewall rules (firewall was not enabled)")
 
                     // Clean up iptables rules
                     try {
@@ -78,9 +84,9 @@ class De1984Application : Application() {
                             dependencies.errorHandler
                         )
                         iptablesBackend.stopInternal()
-                        Log.d(TAG, "Cleaned up orphaned iptables rules")
+                        AppLogger.d(TAG, "Cleaned up orphaned iptables rules")
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to clean up orphaned iptables rules: ${e.message}")
+                        AppLogger.w(TAG, "Failed to clean up orphaned iptables rules: ${e.message}")
                     }
 
                     // Clean up ConnectivityManager rules
@@ -91,15 +97,15 @@ class De1984Application : Application() {
                             dependencies.errorHandler
                         )
                         cmBackend.stopInternal()
-                        Log.d(TAG, "Cleaned up orphaned ConnectivityManager rules")
+                        AppLogger.d(TAG, "Cleaned up orphaned ConnectivityManager rules")
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to clean up orphaned ConnectivityManager rules: ${e.message}")
+                        AppLogger.w(TAG, "Failed to clean up orphaned ConnectivityManager rules: ${e.message}")
                     }
 
                     // NetworkPolicyManager doesn't need cleanup (no persistent state)
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to clean up orphaned firewall rules: ${e.message}")
+                AppLogger.w(TAG, "Failed to clean up orphaned firewall rules: ${e.message}")
                 // Ignore errors - this is best-effort cleanup
             }
         }
@@ -117,21 +123,21 @@ class De1984Application : Application() {
                 Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS
             )
 
-            Log.d(TAG, "applyDynamicColorsIfEnabled: useDynamicColors=$useDynamicColors, SDK=${Build.VERSION.SDK_INT}")
+            AppLogger.d(TAG, "applyDynamicColorsIfEnabled: useDynamicColors=$useDynamicColors, SDK=${Build.VERSION.SDK_INT}")
 
             if (useDynamicColors) {
                 // Check if Dynamic Colors is available (Android 12+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     DynamicColors.applyToActivitiesIfAvailable(this)
-                    Log.d(TAG, "Dynamic colors enabled and applied (Android 12+)")
+                    AppLogger.d(TAG, "Dynamic colors enabled and applied (Android 12+)")
                 } else {
-                    Log.d(TAG, "Dynamic colors enabled but not available (Android < 12)")
+                    AppLogger.d(TAG, "Dynamic colors enabled but not available (Android < 12)")
                 }
             } else {
-                Log.d(TAG, "Dynamic colors disabled by user")
+                AppLogger.d(TAG, "Dynamic colors disabled by user")
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to apply dynamic colors: ${e.message}", e)
+            AppLogger.w(TAG, "Failed to apply dynamic colors: ${e.message}", e)
             // Ignore errors - dynamic colors are optional
         }
     }

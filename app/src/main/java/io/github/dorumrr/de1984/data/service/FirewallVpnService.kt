@@ -10,7 +10,6 @@ import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
@@ -20,6 +19,7 @@ import io.github.dorumrr.de1984.data.monitor.ScreenStateMonitor
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.ui.MainActivity
+import io.github.dorumrr.de1984.utils.AppLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -115,29 +115,29 @@ class FirewallVpnService : VpnService() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: action=${intent?.action}, wasExplicitlyStopped=$wasExplicitlyStopped")
+        AppLogger.d(TAG, "onStartCommand: action=${intent?.action}, wasExplicitlyStopped=$wasExplicitlyStopped")
 
         if (wasExplicitlyStopped && intent?.action != ACTION_START) {
-            Log.d(TAG, "Service was explicitly stopped and no START action - stopping self")
+            AppLogger.d(TAG, "Service was explicitly stopped and no START action - stopping self")
             stopSelf()
             return START_NOT_STICKY
         }
 
         when (intent?.action) {
             ACTION_START -> {
-                Log.d(TAG, "ACTION_START received - starting VPN")
+                AppLogger.d(TAG, "ACTION_START received - starting VPN")
                 wasExplicitlyStopped = false
                 startVpn()
                 return START_STICKY
             }
             ACTION_STOP -> {
-                Log.d(TAG, "ACTION_STOP received - stopping VPN")
+                AppLogger.d(TAG, "ACTION_STOP received - stopping VPN")
                 wasExplicitlyStopped = true
                 stopVpn()
                 return START_NOT_STICKY
             }
             else -> {
-                Log.w(TAG, "Unknown action or null intent - stopping self")
+                AppLogger.w(TAG, "Unknown action or null intent - stopping self")
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -164,7 +164,7 @@ class FirewallVpnService : VpnService() {
         // 2. Airplane mode enabled (SHOULD auto-restart when network restored)
         // 3. Network temporarily unavailable (SHOULD auto-restart)
 
-        Log.w(TAG, "VPN permission revoked by system")
+        AppLogger.w(TAG, "VPN permission revoked by system")
 
         // Check if another VPN is active
         // VpnService.prepare() returns:
@@ -173,11 +173,11 @@ class FirewallVpnService : VpnService() {
         val prepareIntent = VpnService.prepare(this@FirewallVpnService)
         if (prepareIntent != null) {
             // Permission NOT granted - another VPN is active
-            Log.w(TAG, "Another VPN app is active - will not auto-restart")
+            AppLogger.w(TAG, "Another VPN app is active - will not auto-restart")
             wasExplicitlyStopped = true
         } else {
             // Permission still granted - likely airplane mode or network issue
-            Log.w(TAG, "VPN permission still available - will allow auto-restart when network restored")
+            AppLogger.w(TAG, "VPN permission still available - will allow auto-restart when network restored")
             wasExplicitlyStopped = false
         }
 
@@ -222,7 +222,7 @@ class FirewallVpnService : VpnService() {
     }
 
     private fun startVpn() {
-        Log.d(TAG, "startVpn() called")
+        AppLogger.d(TAG, "startVpn() called")
         vpnSetupJob?.cancel()
 
         isServiceActive = true
@@ -231,7 +231,7 @@ class FirewallVpnService : VpnService() {
         // This ensures that if user manually restarts firewall, retry starts from 1s instead of 30s
         consecutiveFailures = 0
         retryAttempt = 0
-        Log.d(TAG, "Reset retry counters: consecutiveFailures=0, retryAttempt=0")
+        AppLogger.d(TAG, "Reset retry counters: consecutiveFailures=0, retryAttempt=0")
 
         // Update SharedPreferences to indicate VPN service is running
         // IMPORTANT: Use commit() instead of apply() to ensure synchronous write
@@ -244,19 +244,19 @@ class FirewallVpnService : VpnService() {
             .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING, true)
             .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE, false)  // Will be set to true when interface established
             .commit()
-        Log.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=true, VPN_INTERFACE_ACTIVE=false (pending)")
+        AppLogger.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=true, VPN_INTERFACE_ACTIVE=false (pending)")
 
         vpnSetupJob = serviceScope.launch {
             try {
-                Log.d(TAG, "Starting foreground service with notification")
+                AppLogger.d(TAG, "Starting foreground service with notification")
                 startForeground(NOTIFICATION_ID, createNotification())
                 checkBatteryOptimization()
 
-                Log.d(TAG, "Building VPN interface")
+                AppLogger.d(TAG, "Building VPN interface")
                 vpnInterface = buildVpnInterface()
 
                 if (!isServiceActive) {
-                    Log.w(TAG, "Service became inactive during VPN setup")
+                    AppLogger.w(TAG, "Service became inactive during VPN setup")
                     vpnInterface?.close()
                     vpnInterface = null
                     return@launch
@@ -266,11 +266,11 @@ class FirewallVpnService : VpnService() {
                     // Distinguish between zero-app optimization and failure
                     if (lastBlockedCount > 0) {
                         // This is a FAILURE - we expected VPN but establish() returned null
-                        Log.e(TAG, "startVpn: VPN interface FAILED (blockedCount=$lastBlockedCount)")
+                        AppLogger.e(TAG, "startVpn: VPN interface FAILED (blockedCount=$lastBlockedCount)")
                         handleVpnInterfaceFailure()
                     } else {
                         // This is zero-app optimization - expected behavior
-                        Log.w(TAG, "VPN interface is null - no apps to block (zero-app optimization)")
+                        AppLogger.w(TAG, "VPN interface is null - no apps to block (zero-app optimization)")
                         consecutiveFailures = 0
                         retryAttempt = 0
 
@@ -280,11 +280,11 @@ class FirewallVpnService : VpnService() {
                             io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
                             true
                         ).commit()
-                        Log.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
+                        AppLogger.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
                     }
                     lastAppliedBlockedApps = emptySet()
                 } else {
-                    Log.d(TAG, "VPN interface established successfully")
+                    AppLogger.d(TAG, "VPN interface established successfully")
 
                     // Track successful VPN establishment
                     onVpnInterfaceSuccess()
@@ -292,13 +292,13 @@ class FirewallVpnService : VpnService() {
                     startPacketDropping()
 
                     lastAppliedBlockedApps = getBlockedAppsForCurrentState()
-                    Log.d(TAG, "Blocking ${lastAppliedBlockedApps.size} apps")
+                    AppLogger.d(TAG, "Blocking ${lastAppliedBlockedApps.size} apps")
                 }
 
                 lastAppliedNetworkType = currentNetworkType
                 lastAppliedScreenState = isScreenOn
             } catch (e: Exception) {
-                Log.e(TAG, "Error in startVpn", e)
+                AppLogger.e(TAG, "Error in startVpn", e)
                 if (isServiceActive) {
                     stopSelf()
                 }
@@ -307,18 +307,18 @@ class FirewallVpnService : VpnService() {
     }
 
     private fun restartVpn() {
-        Log.d(TAG, "restartVpn: called")
+        AppLogger.d(TAG, "restartVpn: called")
         restartDebounceJob?.cancel()
 
         restartDebounceJob = serviceScope.launch debounce@{
             delay(300)
 
             if (!shouldRestartVpn()) {
-                Log.d(TAG, "restartVpn: shouldRestartVpn() returned false, skipping restart")
+                AppLogger.d(TAG, "restartVpn: shouldRestartVpn() returned false, skipping restart")
                 return@debounce
             }
 
-            Log.d(TAG, "restartVpn: proceeding with VPN restart")
+            AppLogger.d(TAG, "restartVpn: proceeding with VPN restart")
             vpnSetupJob?.cancel()
 
             packetForwardingJob?.cancel()
@@ -330,16 +330,16 @@ class FirewallVpnService : VpnService() {
                 withContext(NonCancellable) {
                     try {
                         if (!isServiceActive) {
-                            Log.w(TAG, "restartVpn: service not active, aborting")
+                            AppLogger.w(TAG, "restartVpn: service not active, aborting")
                             return@withContext
                         }
 
-                        Log.d(TAG, "restartVpn: calling buildVpnInterface()...")
+                        AppLogger.d(TAG, "restartVpn: calling buildVpnInterface()...")
                         val oldVpnInterface = vpnInterface
                         val newVpnInterface = buildVpnInterface()
 
                         if (!isServiceActive) {
-                            Log.w(TAG, "restartVpn: service became inactive during build, aborting")
+                            AppLogger.w(TAG, "restartVpn: service became inactive during build, aborting")
                             newVpnInterface?.close()
                             return@withContext
                         }
@@ -352,11 +352,11 @@ class FirewallVpnService : VpnService() {
                             // Distinguish between zero-app optimization and failure
                             if (lastBlockedCount > 0) {
                                 // This is a FAILURE - we expected VPN but establish() returned null
-                                Log.e(TAG, "restartVpn: VPN interface FAILED (blockedCount=$lastBlockedCount)")
+                                AppLogger.e(TAG, "restartVpn: VPN interface FAILED (blockedCount=$lastBlockedCount)")
                                 handleVpnInterfaceFailure()
                             } else {
                                 // This is zero-app optimization - expected behavior
-                                Log.d(TAG, "restartVpn: No apps to block (zero-app optimization)")
+                                AppLogger.d(TAG, "restartVpn: No apps to block (zero-app optimization)")
                                 consecutiveFailures = 0
                                 retryAttempt = 0
 
@@ -369,7 +369,7 @@ class FirewallVpnService : VpnService() {
                                     io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE,
                                     true
                                 ).commit()
-                                Log.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
+                                AppLogger.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
                             }
 
                             lastAppliedBlockedApps = emptySet()
@@ -381,7 +381,7 @@ class FirewallVpnService : VpnService() {
                             // Track successful VPN establishment
                             onVpnInterfaceSuccess()
 
-                            Log.d(TAG, "restartVpn: VPN interface established, starting packet dropping")
+                            AppLogger.d(TAG, "restartVpn: VPN interface established, starting packet dropping")
                             startPacketDropping()
 
                             lastAppliedBlockedApps = getBlockedAppsForCurrentState()
@@ -390,7 +390,7 @@ class FirewallVpnService : VpnService() {
                         lastAppliedNetworkType = currentNetworkType
                         lastAppliedScreenState = isScreenOn
                     } catch (e: Exception) {
-                        Log.e(TAG, "restartVpn: Exception during restart", e)
+                        AppLogger.e(TAG, "restartVpn: Exception during restart", e)
                         if (isServiceActive) {
                             stopSelf()
                         }
@@ -403,7 +403,7 @@ class FirewallVpnService : VpnService() {
     private fun handleVpnInterfaceFailure() {
         consecutiveFailures++
 
-        Log.e(TAG, "handleVpnInterfaceFailure: consecutiveFailures=$consecutiveFailures")
+        AppLogger.e(TAG, "handleVpnInterfaceFailure: consecutiveFailures=$consecutiveFailures")
 
         // Update SharedPreferences to indicate VPN interface is down
         val prefs = getSharedPreferences(
@@ -434,12 +434,12 @@ class FirewallVpnService : VpnService() {
             }
 
             retryAttempt++
-            Log.d(TAG, "scheduleVpnRetry: attempt=$retryAttempt, delay=${delay}ms")
+            AppLogger.d(TAG, "scheduleVpnRetry: attempt=$retryAttempt, delay=${delay}ms")
 
             delay(delay)
 
             if (isServiceActive) {
-                Log.d(TAG, "scheduleVpnRetry: Attempting VPN restart...")
+                AppLogger.d(TAG, "scheduleVpnRetry: Attempting VPN restart...")
                 restartVpn()
             }
         }
@@ -495,7 +495,7 @@ class FirewallVpnService : VpnService() {
     private suspend fun getBlockedAppsForCurrentState(): Set<String> {
         val blockedApps = mutableSetOf<String>()
 
-        Log.d(TAG, "getBlockedAppsForCurrentState: currentNetworkType=$currentNetworkType, isScreenOn=$isScreenOn")
+        AppLogger.d(TAG, "getBlockedAppsForCurrentState: currentNetworkType=$currentNetworkType, isScreenOn=$isScreenOn")
 
         val sharedPreferences = getSharedPreferences(
             io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
@@ -507,12 +507,12 @@ class FirewallVpnService : VpnService() {
         ) ?: io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_FIREWALL_POLICY
         val isBlockAllDefault = defaultPolicy == io.github.dorumrr.de1984.utils.Constants.Settings.POLICY_BLOCK_ALL
 
-        Log.d(TAG, "getBlockedAppsForCurrentState: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
+        AppLogger.d(TAG, "getBlockedAppsForCurrentState: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
 
         val allRules = firewallRepository.getAllRules().first()
         val rulesMap = allRules.associateBy { it.packageName }
 
-        Log.d(TAG, "getBlockedAppsForCurrentState: loaded ${allRules.size} rules from database")
+        AppLogger.d(TAG, "getBlockedAppsForCurrentState: loaded ${allRules.size} rules from database")
 
         val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
             .filter { appInfo ->
@@ -583,7 +583,7 @@ class FirewallVpnService : VpnService() {
                 if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
                     val isSelfCritical = io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName)
                     if (!isSelfCritical) {
-                        Log.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
+                        AppLogger.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
                     }
                     false  // Allow UIDs with critical packages without rules for system stability
                 } else {
@@ -596,7 +596,7 @@ class FirewallVpnService : VpnService() {
             }
         }
 
-        Log.d(TAG, "getBlockedAppsForCurrentState: returning ${blockedApps.size} blocked apps")
+        AppLogger.d(TAG, "getBlockedAppsForCurrentState: returning ${blockedApps.size} blocked apps")
         return blockedApps
     }
 
@@ -610,12 +610,12 @@ class FirewallVpnService : VpnService() {
 
             val blockedCount = applyFirewallRules(builder)
             lastBlockedCount = blockedCount  // Track for failure detection
-            Log.d(TAG, "buildVpnInterface: blockedCount=$blockedCount")
+            AppLogger.d(TAG, "buildVpnInterface: blockedCount=$blockedCount")
 
             // If blockedCount is -1, it means no apps need to be blocked
             // In this case, don't establish VPN to avoid routing all apps through it
             if (blockedCount < 0) {
-                Log.d(TAG, "buildVpnInterface: No apps to block, not establishing VPN")
+                AppLogger.d(TAG, "buildVpnInterface: No apps to block, not establishing VPN")
                 return null
             }
 
@@ -623,7 +623,7 @@ class FirewallVpnService : VpnService() {
             val prepareIntent = VpnService.prepare(this@FirewallVpnService)
             if (prepareIntent != null) {
                 // VPN permission not granted - stop the service and update firewall state
-                Log.e(TAG, "VPN permission not granted - cannot establish VPN interface")
+                AppLogger.e(TAG, "VPN permission not granted - cannot establish VPN interface")
 
                 // Update SharedPreferences to indicate VPN service is not running
                 // IMPORTANT: Do NOT clear KEY_FIREWALL_ENABLED here!
@@ -641,20 +641,20 @@ class FirewallVpnService : VpnService() {
                 return null
             }
 
-            Log.d(TAG, "buildVpnInterface: calling builder.establish()...")
+            AppLogger.d(TAG, "buildVpnInterface: calling builder.establish()...")
             val vpn = builder.establish()
             if (vpn == null) {
-                Log.e(TAG, "buildVpnInterface: builder.establish() returned NULL! This usually means:")
-                Log.e(TAG, "  1. VPN permission was revoked")
-                Log.e(TAG, "  2. Another VPN app took over")
-                Log.e(TAG, "  3. VPN configuration is invalid")
-                Log.e(TAG, "  blockedCount was: $blockedCount")
+                AppLogger.e(TAG, "buildVpnInterface: builder.establish() returned NULL! This usually means:")
+                AppLogger.e(TAG, "  1. VPN permission was revoked")
+                AppLogger.e(TAG, "  2. Another VPN app took over")
+                AppLogger.e(TAG, "  3. VPN configuration is invalid")
+                AppLogger.e(TAG, "  blockedCount was: $blockedCount")
             } else {
-                Log.d(TAG, "buildVpnInterface: VPN established successfully with blockedCount=$blockedCount")
+                AppLogger.d(TAG, "buildVpnInterface: VPN established successfully with blockedCount=$blockedCount")
             }
             vpn
         } catch (e: Exception) {
-            Log.e(TAG, "buildVpnInterface: Exception caught", e)
+            AppLogger.e(TAG, "buildVpnInterface: Exception caught", e)
             e.printStackTrace()
             null
         }
@@ -669,7 +669,7 @@ class FirewallVpnService : VpnService() {
             ) ?: io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_FIREWALL_POLICY
 
             val isBlockAllDefault = defaultPolicy == io.github.dorumrr.de1984.utils.Constants.Settings.POLICY_BLOCK_ALL
-            Log.d(TAG, "applyFirewallRules: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
+            AppLogger.d(TAG, "applyFirewallRules: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
 
             // Check if critical package protection is disabled (read once, not in loop)
             val allowCritical = prefs.getBoolean(
@@ -678,7 +678,7 @@ class FirewallVpnService : VpnService() {
             )
 
             val rulesList = firewallRepository.getAllRules().first()
-            Log.d(TAG, "applyFirewallRules: loaded ${rulesList.size} rules from database")
+            AppLogger.d(TAG, "applyFirewallRules: loaded ${rulesList.size} rules from database")
 
             val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
                 .filter { appInfo ->
@@ -694,7 +694,7 @@ class FirewallVpnService : VpnService() {
                         false
                     }
                 }
-            Log.d(TAG, "applyFirewallRules: found ${allPackages.size} packages with network permissions")
+            AppLogger.d(TAG, "applyFirewallRules: found ${allPackages.size} packages with network permissions")
 
             // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
             // Even though VPN backend operates per-package, Android's network permissions are UID-based
@@ -720,7 +720,7 @@ class FirewallVpnService : VpnService() {
             // - Allowed apps: NOT added → bypass VPN → use normal internet
             // This works for both "Block All" and "Allow All" modes
 
-            Log.d(TAG, "applyFirewallRules: Using simple strategy (addAllowedApplication for blocked apps)")
+            AppLogger.d(TAG, "applyFirewallRules: Using simple strategy (addAllowedApplication for blocked apps)")
 
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
@@ -749,7 +749,7 @@ class FirewallVpnService : VpnService() {
                         currentNetworkType == NetworkType.NONE -> rule.wifiBlocked || rule.mobileBlocked
                         else -> rule.isBlockedOn(currentNetworkType)
                     }
-                    Log.d(TAG, "  $packageName: explicit rule, shouldBlock=$blocked (wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, currentNetwork=$currentNetworkType)")
+                    AppLogger.d(TAG, "  $packageName: explicit rule, shouldBlock=$blocked (wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, currentNetwork=$currentNetworkType)")
                     blocked
                 } else {
                     // No explicit rule - use default policy
@@ -759,7 +759,7 @@ class FirewallVpnService : VpnService() {
                     if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
                         val isSelfCritical = io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName)
                         if (!isSelfCritical) {
-                            Log.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
+                            AppLogger.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
                         }
                         false  // Allow UIDs with critical packages without rules for system stability
                     } else {
@@ -773,7 +773,7 @@ class FirewallVpnService : VpnService() {
                         builder.addAllowedApplication(packageName)
                         blockedCount++
                     } catch (e: PackageManager.NameNotFoundException) {
-                        Log.w(TAG, "  $packageName: NameNotFoundException when adding to VPN")
+                        AppLogger.w(TAG, "  $packageName: NameNotFoundException when adding to VPN")
                         failedCount++
                     }
                 } else {
@@ -786,14 +786,14 @@ class FirewallVpnService : VpnService() {
             // Android will route ALL apps through the VPN by default!
             // To prevent this, if blockedCount==0, we return -1 to signal "don't establish VPN"
             if (blockedCount == 0) {
-                Log.w(TAG, "applyFirewallRules: No apps to block, returning -1 to skip VPN establishment")
+                AppLogger.w(TAG, "applyFirewallRules: No apps to block, returning -1 to skip VPN establishment")
                 return -1
             }
 
-            Log.d(TAG, "applyFirewallRules: FINAL COUNTS - blocked=$blockedCount, allowed=$allowedCount, defaultPolicy=$defaultPolicyCount, failed=$failedCount")
+            AppLogger.d(TAG, "applyFirewallRules: FINAL COUNTS - blocked=$blockedCount, allowed=$allowedCount, defaultPolicy=$defaultPolicyCount, failed=$failedCount")
             return blockedCount
         } catch (e: Exception) {
-            Log.e(TAG, "applyFirewallRules: Exception", e)
+            AppLogger.e(TAG, "applyFirewallRules: Exception", e)
             e.printStackTrace()
             return 0
         }
@@ -812,12 +812,12 @@ class FirewallVpnService : VpnService() {
             .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING, false)
             .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE, false)
             .commit()
-        Log.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=false, VPN_INTERFACE_ACTIVE=false")
+        AppLogger.d(TAG, "Updated SharedPreferences: VPN_SERVICE_RUNNING=false, VPN_INTERFACE_ACTIVE=false")
 
         // Dismiss failure notification if it's showing
         // This prevents notification from persisting after manual stop
         dismissVpnFailureNotification()
-        Log.d(TAG, "Dismissed VPN failure notification (if any)")
+        AppLogger.d(TAG, "Dismissed VPN failure notification (if any)")
 
         vpnSetupJob?.cancel()
         vpnSetupJob = null
@@ -877,7 +877,7 @@ class FirewallVpnService : VpnService() {
                 val inputStream = java.io.FileInputStream(vpn.fileDescriptor)
                 val buffer = ByteArray(32767) // Max IP packet size
 
-                Log.d(TAG, "startPacketDropping: Started reading packets to drop them")
+                AppLogger.d(TAG, "startPacketDropping: Started reading packets to drop them")
 
                 while (isServiceActive && vpnInterface != null) {
                     try {
@@ -887,20 +887,20 @@ class FirewallVpnService : VpnService() {
                             // This effectively blocks the app's network access
                         } else if (length < 0) {
                             // End of stream - VPN closed
-                            Log.d(TAG, "startPacketDropping: End of stream, stopping")
+                            AppLogger.d(TAG, "startPacketDropping: End of stream, stopping")
                             break
                         }
                     } catch (e: Exception) {
                         if (isServiceActive) {
-                            Log.w(TAG, "startPacketDropping: Error reading packet", e)
+                            AppLogger.w(TAG, "startPacketDropping: Error reading packet", e)
                         }
                         break
                     }
                 }
 
-                Log.d(TAG, "startPacketDropping: Stopped reading packets")
+                AppLogger.d(TAG, "startPacketDropping: Stopped reading packets")
             } catch (e: Exception) {
-                Log.e(TAG, "startPacketDropping: Exception", e)
+                AppLogger.e(TAG, "startPacketDropping: Exception", e)
             }
         }
     }

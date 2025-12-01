@@ -8,6 +8,7 @@ import android.net.NetworkRequest
 import android.os.Build
 import android.util.Log
 import io.github.dorumrr.de1984.domain.model.NetworkType
+import io.github.dorumrr.de1984.utils.AppLogger
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -117,21 +118,22 @@ class NetworkStateMonitor(
                         val transportInfo = capabilities.transportInfo
                         if (transportInfo != null) {
                             val sessionId = getVpnSessionId(transportInfo)
-                            Log.d(TAG, "🔐 Found VPN with session: $sessionId")
+                            AppLogger.d(TAG, "🔐 Found VPN with session: $sessionId")
                             if (sessionId != null && sessionId != "De1984 Firewall") {
+                                AppLogger.i(TAG, "🔐 External VPN detected: $sessionId")
                                 return true
                             }
                         } else {
                             // If we can't get transport info, assume it might be another VPN
                             // unless our VPN is running (checked elsewhere)
-                            Log.d(TAG, "🔐 Found VPN without transport info")
+                            AppLogger.d(TAG, "🔐 Found VPN without transport info")
                         }
                     }
                 }
             }
             false
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to check other VPN status", e)
+            AppLogger.e(TAG, "Failed to check other VPN status", e)
             false
         }
     }

@@ -1,8 +1,8 @@
 package io.github.dorumrr.de1984.data.common
 
+import io.github.dorumrr.de1984.utils.AppLogger
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import com.topjohnwu.superuser.Shell
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
@@ -71,26 +71,26 @@ class RootManager(private val context: Context) {
     private suspend fun checkRootStatusInternalWithCaching(forceRecheck: Boolean) {
         val currentStatus = _rootStatus.value
 
-        Log.d(TAG, "=== checkRootStatusInternalWithCaching() called ===")
-        Log.d(TAG, "Current status: $currentStatus, hasCheckedOnce: $hasCheckedOnce, forceRecheck: $forceRecheck")
+        AppLogger.d(TAG, "=== checkRootStatusInternalWithCaching() called ===")
+        AppLogger.d(TAG, "Current status: $currentStatus, hasCheckedOnce: $hasCheckedOnce, forceRecheck: $forceRecheck")
 
         // Only skip check if we have definitive permission AND caller did not
         // explicitly request a re-check (e.g., health monitoring after root
         // revocation from Magisk).
         if (!forceRecheck && hasCheckedOnce && currentStatus == RootStatus.ROOTED_WITH_PERMISSION) {
-            Log.d(TAG, "Skipping check - already have permission and no forceRecheck")
+            AppLogger.d(TAG, "Skipping check - already have permission and no forceRecheck")
             return
         }
 
         if (!hasCheckedOnce) {
             _rootStatus.value = RootStatus.CHECKING
-            Log.d(TAG, "First check - setting status to CHECKING")
+            AppLogger.d(TAG, "First check - setting status to CHECKING")
         }
 
         val newStatus = checkRootStatusInternal()
         _rootStatus.value = newStatus
         hasCheckedOnce = true
-        Log.d(TAG, "Root status check complete: $newStatus")
+        AppLogger.d(TAG, "Root status check complete: $newStatus")
     }
 
     /**
@@ -107,15 +107,15 @@ class RootManager(private val context: Context) {
     private fun verifyRootWithCachedShell(): Boolean {
         val cachedShell = Shell.getCachedShell()
         if (cachedShell == null) {
-            Log.d(TAG, "No cached shell available")
+            AppLogger.d(TAG, "No cached shell available")
             return false
         }
         if (!cachedShell.isAlive) {
-            Log.d(TAG, "Cached shell is no longer alive")
+            AppLogger.d(TAG, "Cached shell is no longer alive")
             return false
         }
         if (!cachedShell.isRoot) {
-            Log.d(TAG, "Cached shell is not a root shell (isRoot=false)")
+            AppLogger.d(TAG, "Cached shell is not a root shell (isRoot=false)")
             return false
         }
 
@@ -132,27 +132,27 @@ class RootManager(private val context: Context) {
                 outputList.any { it.contains(Constants.RootAccess.ROOT_VERIFICATION_SUCCESS_MARKER) }
             
             if (isValid) {
-                Log.d(TAG, "✅ Cached shell verified - root still valid (no toast triggered)")
+                AppLogger.d(TAG, "✅ Cached shell verified - root still valid (no toast triggered)")
             } else {
-                Log.w(TAG, "⚠️ Cached shell verification failed - root likely revoked")
+                AppLogger.w(TAG, "⚠️ Cached shell verification failed - root likely revoked")
             }
             isValid
         } catch (e: Exception) {
-            Log.e(TAG, "Exception verifying cached shell: ${e.message}", e)
+            AppLogger.e(TAG, "Exception verifying cached shell: ${e.message}", e)
             false
         }
     }
 
     private suspend fun checkRootStatusInternal(): RootStatus = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            Log.d(TAG, "║  🔍 CHECKING ROOT STATUS (using libsu)                       ║")
-            Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+            AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+            AppLogger.d(TAG, "║  🔍 CHECKING ROOT STATUS (using libsu)                       ║")
+            AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
             // STEP 1: Try to verify using cached shell first (NO TOAST)
             // This is the preferred path for health checks and periodic verification
             if (verifyRootWithCachedShell()) {
-                Log.d(TAG, "✅ Root verified via cached shell (no toast triggered)")
+                AppLogger.d(TAG, "✅ Root verified via cached shell (no toast triggered)")
                 return@withContext RootStatus.ROOTED_WITH_PERMISSION
             }
 
@@ -161,12 +161,12 @@ class RootManager(private val context: Context) {
             // In this case, we need to invalidate the cache and try fresh
             val cachedShell = Shell.getCachedShell()
             if (cachedShell != null && cachedShell.isAlive && !cachedShell.isRoot) {
-                Log.w(TAG, "⚠️ Found cached NON-root shell - this may be from a previous timeout")
-                Log.w(TAG, "   Closing cached shell and retrying fresh...")
+                AppLogger.w(TAG, "⚠️ Found cached NON-root shell - this may be from a previous timeout")
+                AppLogger.w(TAG, "   Closing cached shell and retrying fresh...")
                 try {
                     cachedShell.close()
                 } catch (e: Exception) {
-                    Log.w(TAG, "   Exception closing cached shell: ${e.message}")
+                    AppLogger.w(TAG, "   Exception closing cached shell: ${e.message}")
                 }
             }
 
@@ -175,18 +175,18 @@ class RootManager(private val context: Context) {
             // - Return existing cached shell if alive (no toast)
             // - Create new shell if none exists (shows toast ONCE on first grant)
             // - Show permission dialog if never granted
-            Log.d(TAG, "Getting main shell (may show toast on first creation)...")
+            AppLogger.d(TAG, "Getting main shell (may show toast on first creation)...")
             val shell = Shell.getShell()
 
             return@withContext if (shell.isRoot) {
-                Log.d(TAG, "✅ Root access GRANTED - ROOTED_WITH_PERMISSION")
+                AppLogger.d(TAG, "✅ Root access GRANTED - ROOTED_WITH_PERMISSION")
                 RootStatus.ROOTED_WITH_PERMISSION
             } else {
-                Log.d(TAG, "❌ Root access DENIED or not available - NOT_ROOTED")
+                AppLogger.d(TAG, "❌ Root access DENIED or not available - NOT_ROOTED")
                 RootStatus.NOT_ROOTED
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Exception during root check: ${e.message}", e)
+            AppLogger.e(TAG, "❌ Exception during root check: ${e.message}", e)
             return@withContext RootStatus.NOT_ROOTED
         }
     }

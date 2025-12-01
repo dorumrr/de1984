@@ -5,12 +5,12 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
-import android.util.Log
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
+import io.github.dorumrr.de1984.utils.AppLogger
 
 /**
  * VPN-based firewall backend.
@@ -44,7 +44,7 @@ class VpnFirewallBackend(
             }
             context.startService(intent)
 
-            Log.d(TAG, "VPN firewall start intent sent, waiting for service to become active...")
+            AppLogger.d(TAG, "VPN firewall start intent sent, waiting for service to become active...")
 
             // Wait for VPN service to become active by polling isActive()
             // The service sets KEY_VPN_SERVICE_RUNNING=true immediately, then
@@ -57,21 +57,21 @@ class VpnFirewallBackend(
             while (!isActive()) {
                 val elapsed = System.currentTimeMillis() - startTime
                 if (elapsed >= timeout) {
-                    Log.e(TAG, "VPN service failed to become active after ${elapsed}ms (timeout)")
+                    AppLogger.e(TAG, "VPN service failed to become active after ${elapsed}ms (timeout)")
                     return Result.failure(Exception("VPN service failed to become active within ${timeout}ms"))
                 }
                 attempts++
                 if (attempts % 10 == 0) {  // Log every 500ms
-                    Log.d(TAG, "Waiting for VPN to become active... (${elapsed}ms elapsed)")
+                    AppLogger.d(TAG, "Waiting for VPN to become active... (${elapsed}ms elapsed)")
                 }
                 kotlinx.coroutines.delay(50)  // Check every 50ms
             }
 
             val totalTime = System.currentTimeMillis() - startTime
-            Log.d(TAG, "VPN firewall started successfully (${totalTime}ms, $attempts checks)")
+            AppLogger.i(TAG, "✅ VPN firewall started successfully (${totalTime}ms, $attempts checks)")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start VPN firewall", e)
+            AppLogger.e(TAG, "❌ Failed to start VPN firewall", e)
             Result.failure(e)
         }
     }
@@ -84,7 +84,7 @@ class VpnFirewallBackend(
             }
             context.startService(intent)
 
-            Log.d(TAG, "VPN stop intent sent, waiting for service to stop...")
+            AppLogger.d(TAG, "VPN stop intent sent, waiting for service to stop...")
 
             // Wait for service to actually stop by polling isActive()
             // The SharedPreferences flag is updated immediately (in-memory) when stopVpn() is called,
@@ -96,7 +96,7 @@ class VpnFirewallBackend(
             while (isActive()) {
                 val elapsed = System.currentTimeMillis() - startTime
                 if (elapsed >= timeout) {
-                    Log.w(TAG, "VPN service still active after ${elapsed}ms (timeout). Continuing anyway.")
+                    AppLogger.w(TAG, "VPN service still active after ${elapsed}ms (timeout). Continuing anyway.")
                     break
                 }
                 attempts++
@@ -105,19 +105,19 @@ class VpnFirewallBackend(
 
             val totalTime = System.currentTimeMillis() - startTime
             if (attempts > 0) {
-                Log.d(TAG, "VPN service stopped after ${totalTime}ms ($attempts checks)")
+                AppLogger.d(TAG, "VPN service stopped after ${totalTime}ms ($attempts checks)")
             } else {
-                Log.d(TAG, "VPN service already stopped (${totalTime}ms)")
+                AppLogger.d(TAG, "VPN service already stopped (${totalTime}ms)")
             }
 
             // Additional small delay to ensure VPN interface is fully closed
             // ParcelFileDescriptor.close() might take 100-500ms even after service stops
             kotlinx.coroutines.delay(200)
 
-            Log.d(TAG, "VPN firewall stopped")
+            AppLogger.i(TAG, "✅ VPN firewall stopped")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to stop VPN firewall", e)
+            AppLogger.e(TAG, "❌ Failed to stop VPN firewall", e)
             Result.failure(e)
         }
     }
@@ -168,7 +168,7 @@ class VpnFirewallBackend(
                 }
 
                 if (!isServiceActuallyRunning) {
-                    Log.w(TAG, "Service not actually running. Clearing flags.")
+                    AppLogger.w(TAG, "Service not actually running. Clearing flags.")
                     prefs.edit()
                         .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_SERVICE_RUNNING, false)
                         .putBoolean(io.github.dorumrr.de1984.utils.Constants.Settings.KEY_VPN_INTERFACE_ACTIVE, false)
@@ -182,7 +182,7 @@ class VpnFirewallBackend(
             // Fallback: trust SharedPreferences
             return isServiceRunning && isInterfaceActive
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to check if VPN is active", e)
+            AppLogger.e(TAG, "Failed to check if VPN is active", e)
             false
         }
     }

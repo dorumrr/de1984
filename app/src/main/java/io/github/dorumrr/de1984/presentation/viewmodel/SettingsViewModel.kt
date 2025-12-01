@@ -29,6 +29,7 @@ import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
 import io.github.dorumrr.de1984.domain.usecase.SmartPolicySwitchUseCase
+import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -423,8 +424,8 @@ class SettingsViewModel(
     }
 
     fun setFirewallMode(mode: FirewallMode, forceEvenIfOtherVpnActive: Boolean = false) {
-        Log.d(TAG, "👆 USER ACTION: setFirewallMode($mode, forceEvenIfOtherVpnActive=$forceEvenIfOtherVpnActive)")
-        Log.d(TAG, "   Current UI state: mode=${_uiState.value.firewallMode}, activeBackend=${firewallManager.activeBackendType.value}")
+        AppLogger.i(TAG, "👆 USER ACTION: setFirewallMode($mode, forceEvenIfOtherVpnActive=$forceEvenIfOtherVpnActive)")
+        AppLogger.d(TAG, "   Current UI state: mode=${_uiState.value.firewallMode}, activeBackend=${firewallManager.activeBackendType.value}")
         
         // Dismiss VPN conflict notification since user is taking action
         firewallManager.dismissVpnConflictSwitchNotification()
@@ -434,7 +435,7 @@ class SettingsViewModel(
         // we skip the restart to let the UI handle it.
         val wouldDisconnectVpn = wouldDisconnectOtherVpn(mode)
         if (wouldDisconnectVpn && !forceEvenIfOtherVpnActive) {
-            Log.d(TAG, "   Another VPN is active and user hasn't confirmed - showing warning")
+            AppLogger.d(TAG, "   Another VPN is active and user hasn't confirmed - showing warning")
             // Just update the mode preference, but don't restart yet
             // The UI will call this again with forceEvenIfOtherVpnActive=true if user confirms
             _uiState.value = _uiState.value.copy(
@@ -444,7 +445,7 @@ class SettingsViewModel(
             return
         }
         
-        Log.d(TAG, "   Updating mode to $mode and restarting firewall")
+        AppLogger.i(TAG, "   Updating mode to $mode and restarting firewall")
         
         // Clear any pending mode change
         _uiState.value = _uiState.value.copy(
@@ -459,9 +460,9 @@ class SettingsViewModel(
         viewModelScope.launch {
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
             val isFirewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
-            Log.d(TAG, "   Firewall enabled: $isFirewallEnabled")
+            AppLogger.d(TAG, "   Firewall enabled: $isFirewallEnabled")
             if (isFirewallEnabled) {
-                Log.d(TAG, "   Calling restartFirewallIfRunning() with mode=$mode")
+                AppLogger.d(TAG, "   Calling restartFirewallIfRunning() with mode=$mode")
                 restartFirewallIfRunning()
             }
         }

@@ -1,7 +1,7 @@
 package io.github.dorumrr.de1984.data.common
 
+import io.github.dorumrr.de1984.utils.AppLogger
 import android.content.Context
-import android.util.Log
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,17 +25,17 @@ class BootProtectionManager(
      */
     suspend fun isBootScriptSupportAvailable(): Boolean = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Checking if boot script support is available...")
+            AppLogger.d(TAG, "Checking if boot script support is available...")
 
             val command = "test -d ${Constants.BootProtection.MAGISK_POST_FS_DIR} && echo 'exists' || echo 'not_found'"
             val result = executeCommand(command)
 
             val available = result.first == 0 && result.second.trim() == "exists"
-            Log.d(TAG, "Boot script support available: $available (exitCode=${result.first}, output='${result.second.trim()}')")
+            AppLogger.d(TAG, "Boot script support available: $available (exitCode=${result.first}, output='${result.second.trim()}')")
 
             available
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to check boot script support availability", e)
+            AppLogger.e(TAG, "Failed to check boot script support availability", e)
             false
         }
     }
@@ -49,11 +49,11 @@ class BootProtectionManager(
             val result = executeCommand(command)
             
             val enabled = result.first == 0 && result.second.trim() == "exists"
-            Log.d(TAG, "Boot protection enabled: $enabled")
+            AppLogger.d(TAG, "Boot protection enabled: $enabled")
             
             enabled
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to check boot protection status", e)
+            AppLogger.e(TAG, "Failed to check boot protection status", e)
             false
         }
     }
@@ -66,9 +66,9 @@ class BootProtectionManager(
      */
     suspend fun setBootProtection(enabled: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-            Log.d(TAG, "║  ${if (enabled) "ENABLING" else "DISABLING"} BOOT PROTECTION                              ║")
-            Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+            AppLogger.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+            AppLogger.d(TAG, "║  ${if (enabled) "ENABLING" else "DISABLING"} BOOT PROTECTION                              ║")
+            AppLogger.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
             if (enabled) {
                 createBootScript()
@@ -76,7 +76,7 @@ class BootProtectionManager(
                 deleteBootScript()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to ${if (enabled) "enable" else "disable"} boot protection", e)
+            AppLogger.e(TAG, "Failed to ${if (enabled) "enable" else "disable"} boot protection", e)
             Result.failure(e)
         }
     }
@@ -85,7 +85,7 @@ class BootProtectionManager(
      * Create the boot protection script in Magisk's post-fs-data.d directory.
      */
     private suspend fun createBootScript(): Result<Unit> {
-        Log.d(TAG, "Creating boot protection script...")
+        AppLogger.d(TAG, "Creating boot protection script...")
 
         // Script content that blocks all network traffic during boot
         // We use a custom chain to isolate boot protection rules from system rules
@@ -139,11 +139,11 @@ ip6tables -I OUTPUT -j de1984_boot
         
         if (createResult.first != 0) {
             val error = "Failed to create boot script (exit code: ${createResult.first})"
-            Log.e(TAG, error)
+            AppLogger.e(TAG, error)
             return Result.failure(Exception(error))
         }
         
-        Log.d(TAG, "✅ Boot script created successfully")
+        AppLogger.d(TAG, "✅ Boot script created successfully")
 
         // Set executable permissions (755)
         val chmodCommand = "chmod ${Constants.BootProtection.BOOT_SCRIPT_PERMISSIONS} ${Constants.BootProtection.BOOT_SCRIPT_PATH}"
@@ -151,12 +151,12 @@ ip6tables -I OUTPUT -j de1984_boot
         
         if (chmodResult.first != 0) {
             val error = "Failed to set script permissions (exit code: ${chmodResult.first})"
-            Log.e(TAG, error)
+            AppLogger.e(TAG, error)
             return Result.failure(Exception(error))
         }
         
-        Log.d(TAG, "✅ Script permissions set to ${Constants.BootProtection.BOOT_SCRIPT_PERMISSIONS}")
-        Log.d(TAG, "✅ Boot protection enabled successfully")
+        AppLogger.d(TAG, "✅ Script permissions set to ${Constants.BootProtection.BOOT_SCRIPT_PERMISSIONS}")
+        AppLogger.d(TAG, "✅ Boot protection enabled successfully")
         
         return Result.success(Unit)
     }
@@ -165,19 +165,19 @@ ip6tables -I OUTPUT -j de1984_boot
      * Delete the boot protection script.
      */
     private suspend fun deleteBootScript(): Result<Unit> {
-        Log.d(TAG, "Deleting boot protection script...")
+        AppLogger.d(TAG, "Deleting boot protection script...")
 
         val deleteCommand = "rm -f ${Constants.BootProtection.BOOT_SCRIPT_PATH}"
         val deleteResult = executeCommand(deleteCommand)
         
         if (deleteResult.first != 0) {
             val error = "Failed to delete boot script (exit code: ${deleteResult.first})"
-            Log.e(TAG, error)
+            AppLogger.e(TAG, error)
             return Result.failure(Exception(error))
         }
         
-        Log.d(TAG, "✅ Boot script deleted successfully")
-        Log.d(TAG, "✅ Boot protection disabled successfully")
+        AppLogger.d(TAG, "✅ Boot script deleted successfully")
+        AppLogger.d(TAG, "✅ Boot protection disabled successfully")
         
         return Result.success(Unit)
     }
@@ -192,38 +192,38 @@ ip6tables -I OUTPUT -j de1984_boot
     suspend fun resetIptablesPolicies(): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                Log.d(TAG, "Removing boot protection iptables rules...")
+                AppLogger.d(TAG, "Removing boot protection iptables rules...")
 
                 // IPv4: Remove boot protection chain
                 // 1. Unlink the chain from OUTPUT
                 var result = executeCommand("iptables -D OUTPUT -j de1984_boot 2>/dev/null || true")
-                Log.d(TAG, "IPv4: Unlinked de1984_boot chain (exit code: ${result.first})")
+                AppLogger.d(TAG, "IPv4: Unlinked de1984_boot chain (exit code: ${result.first})")
 
                 // 2. Flush the chain
                 result = executeCommand("iptables -F de1984_boot 2>/dev/null || true")
-                Log.d(TAG, "IPv4: Flushed de1984_boot chain (exit code: ${result.first})")
+                AppLogger.d(TAG, "IPv4: Flushed de1984_boot chain (exit code: ${result.first})")
 
                 // 3. Delete the chain
                 result = executeCommand("iptables -X de1984_boot 2>/dev/null || true")
-                Log.d(TAG, "IPv4: Deleted de1984_boot chain (exit code: ${result.first})")
+                AppLogger.d(TAG, "IPv4: Deleted de1984_boot chain (exit code: ${result.first})")
 
                 // IPv6: Remove boot protection chain
                 // 1. Unlink the chain from OUTPUT
                 result = executeCommand("ip6tables -D OUTPUT -j de1984_boot 2>/dev/null || true")
-                Log.d(TAG, "IPv6: Unlinked de1984_boot chain (exit code: ${result.first})")
+                AppLogger.d(TAG, "IPv6: Unlinked de1984_boot chain (exit code: ${result.first})")
 
                 // 2. Flush the chain
                 result = executeCommand("ip6tables -F de1984_boot 2>/dev/null || true")
-                Log.d(TAG, "IPv6: Flushed de1984_boot chain (exit code: ${result.first})")
+                AppLogger.d(TAG, "IPv6: Flushed de1984_boot chain (exit code: ${result.first})")
 
                 // 3. Delete the chain
                 result = executeCommand("ip6tables -X de1984_boot 2>/dev/null || true")
-                Log.d(TAG, "IPv6: Deleted de1984_boot chain (exit code: ${result.first})")
+                AppLogger.d(TAG, "IPv6: Deleted de1984_boot chain (exit code: ${result.first})")
 
-                Log.d(TAG, "✅ Boot protection iptables rules removed successfully")
+                AppLogger.d(TAG, "✅ Boot protection iptables rules removed successfully")
                 Result.success(Unit)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to remove boot protection iptables rules", e)
+                AppLogger.e(TAG, "Failed to remove boot protection iptables rules", e)
                 Result.failure(e)
             }
         }

@@ -115,22 +115,24 @@ class RootManager(private val context: Context) {
             return false
         }
         if (!cachedShell.isRoot) {
-            Log.d(TAG, "Cached shell is not a root shell")
+            Log.d(TAG, "Cached shell is not a root shell (isRoot=false)")
             return false
         }
 
         // Verify root is still valid by running a command on the existing shell
         // This does NOT spawn a new su process = NO TOAST
         return try {
+            val outputList = mutableListOf<String>()
             val result = cachedShell.newJob()
                 .add(Constants.RootAccess.ROOT_VERIFICATION_COMMAND)
+                .to(outputList)
                 .exec()
             
             val isValid = result.isSuccess && 
-                result.out.any { it.contains(Constants.RootAccess.ROOT_VERIFICATION_SUCCESS_MARKER) }
+                outputList.any { it.contains(Constants.RootAccess.ROOT_VERIFICATION_SUCCESS_MARKER) }
             
             if (isValid) {
-                Log.d(TAG, "✅ Cached shell verified - ${Constants.RootAccess.ROOT_VERIFICATION_SUCCESS_MARKER} confirmed")
+                Log.d(TAG, "✅ Cached shell verified - root still valid (no toast triggered)")
             } else {
                 Log.w(TAG, "⚠️ Cached shell verification failed - root likely revoked")
             }
@@ -154,7 +156,21 @@ class RootManager(private val context: Context) {
                 return@withContext RootStatus.ROOTED_WITH_PERMISSION
             }
 
-            // STEP 2: No valid cached shell - need to get/create one
+            // STEP 2: Check if we have a cached NON-root shell
+            // This can happen if initial shell creation timed out (e.g., Magisk grant dialog)
+            // In this case, we need to invalidate the cache and try fresh
+            val cachedShell = Shell.getCachedShell()
+            if (cachedShell != null && cachedShell.isAlive && !cachedShell.isRoot) {
+                Log.w(TAG, "⚠️ Found cached NON-root shell - this may be from a previous timeout")
+                Log.w(TAG, "   Closing cached shell and retrying fresh...")
+                try {
+                    cachedShell.close()
+                } catch (e: Exception) {
+                    Log.w(TAG, "   Exception closing cached shell: ${e.message}")
+                }
+            }
+
+            // STEP 3: Get/create a shell
             // Shell.getShell() will:
             // - Return existing cached shell if alive (no toast)
             // - Create new shell if none exists (shows toast ONCE on first grant)

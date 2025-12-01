@@ -489,4 +489,11 @@ object Constants {
         const val NOTIFICATION_ID = 1005
     }
 
+    object VpnConflict {
+        // Notification Channel - shared with other firewall alerts
+        const val CHANNEL_ID = "firewall_alerts_channel"
+        const val CHANNEL_NAME = "Firewall Alerts"
+        const val NOTIFICATION_ID = 1007
+    }
+
 }

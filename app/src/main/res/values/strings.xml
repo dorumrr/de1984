@@ -655,6 +655,10 @@
     <string name="dialog_no_access_message">❌ No Privileged Access Available\n\nYour device does not appear to be rooted. To enable advanced package management features:\n• Install and configure Shizuku (recommended - no root required)\n• Or root your device using Magisk, KernelSU, or APatch</string>
     <string name="dialog_root_denied_message">❌ Root Access Denied\n\nYour device is rooted but De1984 was denied superuser permission.\n\nTo grant access:\n• Open your superuser app (Magisk, KernelSU, APatch, etc.) and grant permission to De1984\n• If the permission prompt doesn\'t appear, uninstall and reinstall the app, then grant permission when prompted at first launch\n• Or manually add De1984 to your superuser app (Magisk, KernelSU, etc.)</string>
     <string name="dialog_type_to_confirm_hint">Type \"%s\" to confirm</string>
+    <string name="dialog_vpn_conflict_title">Another VPN is Active</string>
+    <string name="dialog_vpn_conflict_message">Switching to VPN backend will disconnect your current VPN connection (e.g., Proton VPN, NordVPN, etc.).\n\nDo you want to continue?</string>
+    <string name="dialog_vpn_conflict_confirm">Disconnect &amp; Switch</string>
+    <string name="vpn_permission_denied">VPN permission denied. Reverting to AUTO mode.</string>
 
     <!-- Toast Messages -->
     <string name="toast_copied_to_clipboard">Copied to clipboard</string>

@@ -25,7 +25,11 @@ class De1984Application : Application() {
             Shell.enableVerboseLogging = BuildConfig.DEBUG
             Shell.setDefaultBuilder(
                 Shell.Builder.create()
-                    .setTimeout(10) // 10 second timeout for root operations
+                    // 30 second timeout for initial root shell creation
+                    // This needs to be long enough for Magisk to show the grant dialog
+                    // and for the user to respond. If this times out, libsu caches a
+                    // non-root shell and all subsequent checks fail!
+                    .setTimeout(30)
             )
         }
     }

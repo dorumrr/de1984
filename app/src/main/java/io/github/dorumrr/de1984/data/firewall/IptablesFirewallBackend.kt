@@ -481,6 +481,14 @@ class IptablesFirewallBackend(
             }
 
             Result.success(Unit)
+        } catch (e: java.util.concurrent.CancellationException) {
+            // Re-throw cancellation exceptions to allow coroutine cancellation to propagate
+            Log.d(TAG, "checkAvailability cancelled")
+            throw e
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Re-throw cancellation exceptions to allow coroutine cancellation to propagate
+            Log.d(TAG, "checkAvailability cancelled")
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to check iptables availability", e)
             val error = errorHandler.handleError(e, "check iptables availability")

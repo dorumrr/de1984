@@ -3,6 +3,8 @@ package io.github.dorumrr.de1984.data.common
 import android.content.pm.PackageManager
 import android.util.Log
 import java.io.IOException
+import java.util.concurrent.CancellationException
+import kotlin.coroutines.cancellation.CancellationException as KotlinCancellationException
 
 class ErrorHandler {
     
@@ -11,6 +13,13 @@ class ErrorHandler {
     }
     
     fun handleError(throwable: Throwable, operation: String): De1984Error {
+        // CRITICAL: CancellationException must be re-thrown, not converted to an error
+        // This allows coroutine cancellation to propagate correctly
+        if (throwable is CancellationException || throwable is KotlinCancellationException) {
+            Log.d(TAG, "handleError: Re-throwing CancellationException for operation: $operation")
+            throw throwable
+        }
+        
         return when (throwable) {
             is java.lang.SecurityException -> De1984Error.PermissionDenied(
                 message = "Permission denied for $operation",

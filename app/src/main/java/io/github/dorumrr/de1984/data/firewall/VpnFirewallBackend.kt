@@ -44,7 +44,31 @@ class VpnFirewallBackend(
             }
             context.startService(intent)
 
-            Log.d(TAG, "VPN firewall started")
+            Log.d(TAG, "VPN firewall start intent sent, waiting for service to become active...")
+
+            // Wait for VPN service to become active by polling isActive()
+            // The service sets KEY_VPN_SERVICE_RUNNING=true immediately, then
+            // KEY_VPN_INTERFACE_ACTIVE=true after VPN interface is established.
+            // This typically takes 500ms-2s depending on device/Android version.
+            val startTime = System.currentTimeMillis()
+            val timeout = 10000L  // 10 second timeout for VPN establishment
+            var attempts = 0
+
+            while (!isActive()) {
+                val elapsed = System.currentTimeMillis() - startTime
+                if (elapsed >= timeout) {
+                    Log.e(TAG, "VPN service failed to become active after ${elapsed}ms (timeout)")
+                    return Result.failure(Exception("VPN service failed to become active within ${timeout}ms"))
+                }
+                attempts++
+                if (attempts % 10 == 0) {  // Log every 500ms
+                    Log.d(TAG, "Waiting for VPN to become active... (${elapsed}ms elapsed)")
+                }
+                kotlinx.coroutines.delay(50)  // Check every 50ms
+            }
+
+            val totalTime = System.currentTimeMillis() - startTime
+            Log.d(TAG, "VPN firewall started successfully (${totalTime}ms, $attempts checks)")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start VPN firewall", e)

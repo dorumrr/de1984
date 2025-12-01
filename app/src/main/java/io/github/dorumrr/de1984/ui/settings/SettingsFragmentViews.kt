@@ -107,12 +107,37 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     private val vpnPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        // Check if permission was granted by trying to prepare again
+        val prepareIntent = android.net.VpnService.prepare(requireContext())
+        if (prepareIntent == null) {
             // VPN permission granted
             permissionViewModel.refreshPermissions()
+            
+            // If we were waiting for permission for backend switch, complete it
+            if (viewModel.uiState.value.vpnPermissionRequired) {
+                viewModel.clearVpnPermissionRequired()
+                viewModel.onVpnPermissionGranted()
+            }
         } else {
-            // VPN permission denied - refresh anyway to update UI
+            // VPN permission denied
             permissionViewModel.refreshPermissions()
+            
+            // If we were trying to switch backends, revert
+            if (viewModel.uiState.value.vpnPermissionRequired) {
+                viewModel.clearVpnPermissionRequired()
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    getString(io.github.dorumrr.de1984.R.string.vpn_permission_denied),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                // Revert dropdown to AUTO mode
+                val allBackends = getAllBackends()
+                val autoIndex = allBackends.indexOfFirst { it.mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO }
+                if (autoIndex >= 0) {
+                    binding.backendSelectionDropdown.setText(allBackends[autoIndex].displayName, false)
+                }
+                viewModel.setFirewallMode(io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO, forceEvenIfOtherVpnActive = true)
+            }
         }
     }
 
@@ -323,12 +348,52 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                             showRestartDialog()
                             viewModel.clearRestartPrompt()
                         }
+
+                        // Show VPN conflict warning if user tries to switch to VPN while another VPN is active
+                        if (state.showVpnConflictWarning && state.pendingModeChange != null) {
+                            showVpnConflictWarning()
+                        }
+
+                        // Request VPN permission if needed for backend switch
+                        if (state.vpnPermissionRequired) {
+                            val prepareIntent = viewModel.checkVpnPermissionNeeded()
+                            if (prepareIntent != null) {
+                                vpnPermissionLauncher.launch(prepareIntent)
+                            } else {
+                                // Permission already granted, proceed
+                                viewModel.clearVpnPermissionRequired()
+                                viewModel.onVpnPermissionGranted()
+                            }
+                        }
                     } else {
                         Log.d(TAG, "observeUiState: Fragment is hidden, skipping UI update")
                     }
                 }
             }
         }
+    }
+
+    private fun showVpnConflictWarning() {
+        StandardDialog.showConfirmation(
+            context = requireContext(),
+            title = getString(io.github.dorumrr.de1984.R.string.dialog_vpn_conflict_title),
+            message = getString(io.github.dorumrr.de1984.R.string.dialog_vpn_conflict_message),
+            confirmButtonText = getString(io.github.dorumrr.de1984.R.string.dialog_vpn_conflict_confirm),
+            cancelButtonText = getString(io.github.dorumrr.de1984.R.string.dialog_cancel),
+            onConfirm = {
+                viewModel.confirmPendingModeChange()
+            },
+            onCancel = {
+                viewModel.cancelPendingModeChange()
+                // Revert dropdown to current mode
+                val currentMode = viewModel.uiState.value.firewallMode
+                val allBackends = getAllBackends()
+                val currentIndex = allBackends.indexOfFirst { it.mode == currentMode }
+                if (currentIndex >= 0) {
+                    binding.backendSelectionDropdown.setText(allBackends[currentIndex].displayName, false)
+                }
+            }
+        )
     }
 
     private fun updateUI(state: io.github.dorumrr.de1984.presentation.viewmodel.SettingsUiState) {

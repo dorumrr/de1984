@@ -72,6 +72,7 @@ class FirewallManager(
     private var healthMonitoringJob: Job? = null
     private var privilegeMonitoringJob: Job? = null
     private var vpnPermissionMonitoringJob: Job? = null
+    private var vpnStateMonitoringJob: Job? = null  // Monitors for external VPN connections
 
     // Adaptive health check tracking
     private var consecutiveSuccessfulHealthChecks = 0
@@ -117,6 +118,10 @@ class FirewallManager(
     private val _backendHealthWarning = MutableStateFlow<String?>(null)
     val backendHealthWarning: StateFlow<String?> = _backendHealthWarning.asStateFlow()
 
+    // Current firewall mode - exposed as StateFlow so UI can observe changes
+    private val _currentMode = MutableStateFlow(FirewallMode.AUTO)
+    val currentMode: StateFlow<FirewallMode> = _currentMode.asStateFlow()
+
     /**
      * Tracks whether the firewall is down but user wants it running.
      * This is separate from KEY_FIREWALL_ENABLED to distinguish:
@@ -140,11 +145,17 @@ class FirewallManager(
     private var lastProcessedShizukuStatus: ShizukuStatus? = null
 
     init {
+        // Initialize mode StateFlow from SharedPreferences
+        _currentMode.value = getCurrentMode()
+        
         // Initialize backend state on startup
         initializeBackendState()
 
         // Start monitoring privilege changes for automatic backend switching
         startPrivilegeMonitoring()
+        
+        // Start monitoring VPN state for external VPN conflict detection
+        startVpnStateMonitoring()
     }
 
     /**
@@ -263,6 +274,7 @@ class FirewallManager(
 
     /**
      * Set the firewall mode in settings.
+     * Also updates the StateFlow so UI can observe the change.
      */
     fun setMode(mode: FirewallMode) {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -270,7 +282,8 @@ class FirewallManager(
             Constants.Settings.KEY_FIREWALL_MODE,
             FirewallMode.Companion.run { mode.toStorageString() }
         ).apply()
-        Log.d(TAG, "Firewall mode set to: $mode")
+        _currentMode.value = mode
+        Log.d(TAG, "Firewall mode set to: $mode (StateFlow updated)")
     }
     /**
      * Internal plan used to decide which backend will be used and what permissions
@@ -890,45 +903,67 @@ class FirewallManager(
 
                 try {
                     // VPN backend: Check if better backends become available (privilege gain detection)
+                    // BUT: Only switch if user is in AUTO mode. If user manually selected VPN mode,
+                    // respect their choice - they may have a reason for using VPN specifically.
                     if (backendType == FirewallBackendType.VPN) {
-                        Log.d(TAG, "Health check: Checking if better backends available (VPN privilege gain detection)... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
+                        val currentMode = getCurrentMode()
+                        
+                        // If user manually selected VPN mode, don't auto-switch to privileged backend
+                        // Only check for privilege gain if in AUTO mode
+                        if (currentMode == FirewallMode.VPN) {
+                            Log.d(TAG, "Health check: User is in manual VPN mode - respecting choice, not checking for privilege gain (interval: ${currentHealthCheckInterval}ms)")
+                            consecutiveSuccessfulHealthChecks++
+                            Log.d(TAG, "✅ Health check passed: VPN backend is active (manual mode, consecutive successes: $consecutiveSuccessfulHealthChecks)")
+                            _backendHealthWarning.value = null
+                        } else {
+                            // AUTO mode: Check if better backends become available
+                            Log.d(TAG, "Health check: Checking if better backends available (AUTO mode)... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
 
-                        // Force re-check root and Shizuku status to detect privilege gain
-                        rootManager.forceRecheckRootStatus()
-                        shizukuManager.checkShizukuStatus()
+                            // Force re-check root and Shizuku status to detect privilege gain
+                            rootManager.forceRecheckRootStatus()
+                            shizukuManager.checkShizukuStatus()
 
-                        // Compute what backend we SHOULD be using now
-                        val planResult = computeStartPlan(FirewallMode.AUTO)
+                            // Compute what backend we SHOULD be using now
+                            val planResult = computeStartPlan(FirewallMode.AUTO)
 
-                        if (planResult.isSuccess) {
-                            val plan = planResult.getOrThrow()
+                            if (planResult.isSuccess) {
+                                val plan = planResult.getOrThrow()
 
-                            // If planner suggests a better backend than VPN, switch to it
-                            if (plan.selectedBackendType != FirewallBackendType.VPN) {
-                                Log.d(TAG, "")
-                                Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
-                                Log.d(TAG, "║  ⚡ PRIVILEGE GAIN DETECTED - BETTER BACKEND AVAILABLE      ║")
-                                Log.d(TAG, "║  Current: VPN")
-                                Log.d(TAG, "║  Better: ${plan.selectedBackendType}")
-                                Log.d(TAG, "║  Action: Switching to better backend automatically          ║")
-                                Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
-                                Log.d(TAG, "")
+                                // If planner suggests a better backend than VPN, switch to it
+                                if (plan.selectedBackendType != FirewallBackendType.VPN) {
+                                    Log.d(TAG, "")
+                                    Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
+                                    Log.d(TAG, "║  ⚡ PRIVILEGE GAIN DETECTED - BETTER BACKEND AVAILABLE      ║")
+                                    Log.d(TAG, "║  Current: VPN (AUTO mode)")
+                                    Log.d(TAG, "║  Better: ${plan.selectedBackendType}")
+                                    Log.d(TAG, "║  Action: Switching to better backend automatically          ║")
+                                    Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
+                                    Log.d(TAG, "")
 
-                                // Stop current backend and switch to better one
-                                stopMonitoring()
-                                currentBackend?.stop()
-                                currentBackend = null
+                                    // Stop current VPN backend (don't call stopMonitoring() - we're inside the health job!)
+                                    // The startFirewall() will start new monitoring for the new backend
+                                    currentBackend?.stop()
+                                    currentBackend = null
+                                    _activeBackendType.value = null
 
-                                // Start with the better backend
-                                startFirewall(FirewallMode.AUTO)
-                                break // Stop monitoring - new backend will start its own monitoring
+                                    // Start with the better backend
+                                    val result = startFirewall(FirewallMode.AUTO)
+                                    result.onSuccess { newBackend ->
+                                        Log.d(TAG, "✅ Successfully switched to $newBackend backend via privilege gain detection")
+                                        // Show notification about the automatic switch
+                                        showPrivilegeGainSwitchNotification(newBackend)
+                                    }.onFailure { error ->
+                                        Log.e(TAG, "❌ Failed to switch to better backend: ${error.message}")
+                                    }
+                                    break // Stop this monitoring loop - new backend has its own monitoring
+                                }
                             }
-                        }
 
-                        // No better backend available - VPN is still the best option
-                        consecutiveSuccessfulHealthChecks++
-                        Log.d(TAG, "✅ Health check passed: VPN is still the best available backend (consecutive successes: $consecutiveSuccessfulHealthChecks)")
-                        _backendHealthWarning.value = null
+                            // No better backend available - VPN is still the best option
+                            consecutiveSuccessfulHealthChecks++
+                            Log.d(TAG, "✅ Health check passed: VPN is still the best available backend (AUTO mode, consecutive successes: $consecutiveSuccessfulHealthChecks)")
+                            _backendHealthWarning.value = null
+                        }
 
                     } else {
                         // Privileged backend: Check if backend still has permissions (privilege loss detection)
@@ -1761,6 +1796,289 @@ class FirewallManager(
             }.collect { (rootStatus, shizukuStatus) ->
                 handlePrivilegeChange(rootStatus, shizukuStatus)
             }
+        }
+    }
+
+    /**
+     * Start monitoring VPN state changes for external VPN conflict detection.
+     * This runs for the entire application lifetime, independent of UI lifecycle.
+     *
+     * When another VPN app connects while DE1984's VPN backend is active:
+     * 1. DE1984's VPN gets kicked out by the system (only one VPN can be active)
+     * 2. This monitoring detects the external VPN connection
+     * 3. If in AUTO mode: automatically switch to iptables/ConnectivityManager
+     * 4. If in VPN mode: show notification and update UI to reflect conflict
+     */
+    private fun startVpnStateMonitoring() {
+        Log.d(TAG, "🔐 Starting VPN state monitoring for external VPN conflict detection")
+
+        vpnStateMonitoringJob?.cancel()
+        vpnStateMonitoringJob = scope.launch {
+            networkStateMonitor.observeVpnState().collect { isAnyVpnActive ->
+                handleVpnStateChange(isAnyVpnActive)
+            }
+        }
+    }
+
+    /**
+     * Handle VPN state changes detected by NetworkStateMonitor.
+     * Detects when another VPN app takes over the VPN slot and reacts accordingly.
+     * 
+     * IMPORTANT: This is called whenever ANY VPN connects or disconnects.
+     * We need to distinguish between De1984's VPN and external VPNs.
+     */
+    private suspend fun handleVpnStateChange(isAnyVpnActive: Boolean) {
+        val currentBackendType = activeBackendType.value
+        val currentMode = getCurrentMode()
+        
+        // Check if firewall is supposed to be running
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val firewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
+        
+        if (!firewallEnabled) {
+            Log.d(TAG, "🔐 VPN state changed but firewall not enabled - ignoring")
+            return
+        }
+
+        // Use the new isOtherVpnActive() which checks VPN session ID
+        val isOtherVpnActive = networkStateMonitor.isOtherVpnActive()
+        
+        Log.d(TAG, "🔐 VPN state change: isAnyVpnActive=$isAnyVpnActive, isOtherVpnActive=$isOtherVpnActive, currentBackend=$currentBackendType, mode=$currentMode")
+
+        // Case 1: Another VPN (not De1984's) is active
+        if (isOtherVpnActive) {
+            Log.d(TAG, "🔐 EXTERNAL VPN DETECTED (not De1984's VPN)")
+            
+            // Case 1a: We're using VPN backend - another VPN will kick us out
+            if (currentBackendType == FirewallBackendType.VPN) {
+                Log.w(TAG, "🔐 VPN CONFLICT: Another VPN is active while we're using VPN backend!")
+                Log.d(TAG, "🔐 Switching to privileged backend to maintain protection...")
+                handleVpnConflict(currentMode)
+                return
+            }
+            
+            // Case 1b: We're using privileged backend but mode says VPN
+            // Update mode to AUTO to reflect reality
+            if (currentMode == FirewallMode.VPN && currentBackendType != null) {
+                Log.d(TAG, "🔐 Mode is VPN but we're using $currentBackendType - updating mode to AUTO")
+                setMode(FirewallMode.AUTO)
+                return
+            }
+            
+            // Case 1c: We're in AUTO mode with privileged backend - all good
+            Log.d(TAG, "🔐 External VPN active but we're protected with $currentBackendType backend")
+            return
+        }
+        
+        // Case 2: No external VPN active
+        if (!isAnyVpnActive) {
+            Log.d(TAG, "🔐 No VPN active")
+            
+            // If our VPN backend was supposed to be active but isn't, something went wrong
+            if (currentBackendType == FirewallBackendType.VPN) {
+                val isOurVpnStillActive = currentBackend?.isActive() == true
+                if (!isOurVpnStillActive) {
+                    Log.w(TAG, "🔐 Our VPN backend appears to have stopped")
+                    // Health monitoring will handle recovery
+                }
+            }
+        } else {
+            // A VPN is active but it's not an "other" VPN - must be ours
+            Log.d(TAG, "🔐 De1984's VPN is active - no conflict")
+        }
+    }
+
+    /**
+     * Handle VPN conflict when another VPN app takes over.
+     * Always try to switch to privileged backend if available, regardless of mode.
+     * If successful, update mode to AUTO so UI reflects the change.
+     */
+    private suspend fun handleVpnConflict(currentMode: FirewallMode) {
+        Log.d(TAG, "🔐 Handling VPN conflict in mode: $currentMode")
+        
+        // Always try to find a non-VPN backend, regardless of current mode
+        Log.d(TAG, "🔐 Attempting to switch to privileged backend due to VPN conflict...")
+        
+        val planResult = computeStartPlan(FirewallMode.AUTO)
+        if (planResult.isFailure) {
+            Log.e(TAG, "🔐 Failed to compute fallback plan", planResult.exceptionOrNull())
+            handleVpnConflictFallbackFailed()
+            return
+        }
+        
+        val plan = planResult.getOrThrow()
+        
+        // Check if there's a non-VPN backend available
+        if (plan.selectedBackendType != FirewallBackendType.VPN) {
+            Log.d(TAG, "🔐 Switching to ${plan.selectedBackendType} backend due to VPN conflict")
+            
+            // Stop the current (dead) VPN backend first
+            if (currentBackend != null) {
+                Log.d(TAG, "🔐 Stopping current VPN backend before switching...")
+                stopMonitoring()
+                currentBackend?.stop()?.onFailure { error ->
+                    Log.w(TAG, "🔐 Failed to stop old VPN backend: ${error.message}")
+                }
+                currentBackend = null
+                _activeBackendType.value = null
+            }
+            
+            // Update mode to AUTO so UI dropdown reflects the change
+            if (currentMode != FirewallMode.AUTO) {
+                Log.d(TAG, "🔐 Switching mode from $currentMode to AUTO due to VPN conflict")
+                setMode(FirewallMode.AUTO)
+            }
+            
+            // Start firewall with new backend
+            val restartResult = startFirewall(FirewallMode.AUTO)
+            
+            if (restartResult.isSuccess) {
+                val newBackend = restartResult.getOrThrow()
+                Log.d(TAG, "🔐 ✅ Successfully switched to $newBackend due to VPN conflict")
+                // Show persistent notification informing user
+                showVpnConflictSwitchNotification(newBackend)
+            } else {
+                Log.e(TAG, "🔐 ❌ Failed to switch backend: ${restartResult.exceptionOrNull()?.message}")
+                handleVpnConflictFallbackFailed()
+            }
+        } else {
+            // No privileged backend available - VPN conflict cannot be resolved
+            Log.w(TAG, "🔐 No privileged backend available - VPN conflict cannot be resolved")
+            handleVpnConflictFallbackFailed()
+        }
+    }
+
+    /**
+     * Called when VPN conflict cannot be resolved (no fallback available).
+     */
+    private fun handleVpnConflictFallbackFailed() {
+        Log.w(TAG, "🔐 VPN conflict: No fallback available - firewall protection LOST")
+        
+        // Mark firewall as down
+        _isFirewallDown.value = true
+        _firewallState.value = FirewallState.Error("Another VPN is active", FirewallBackendType.VPN)
+        _activeBackendType.value = null
+        
+        // Show notification
+        showVpnConflictNotification()
+    }
+
+    /**
+     * Show notification that firewall automatically switched backend due to VPN conflict.
+     */
+    private fun showVpnConflictSwitchNotification(newBackend: FirewallBackendType) {
+        try {
+            // Create notification channel (Android O+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    Constants.VpnConflict.CHANNEL_ID,
+                    Constants.VpnConflict.CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "Notifications for firewall status and alerts"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+            
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            val backendName = when (newBackend) {
+                FirewallBackendType.IPTABLES -> "iptables (root)"
+                FirewallBackendType.CONNECTIVITY_MANAGER -> "ConnectivityManager (Shizuku)"
+                FirewallBackendType.NETWORK_POLICY_MANAGER -> "NetworkPolicyManager (Shizuku)"
+                FirewallBackendType.VPN -> "VPN"
+            }
+            
+            val notification = NotificationCompat.Builder(context, Constants.VpnConflict.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Firewall Backend Switched")
+                .setContentText("Switched to $backendName - another VPN is active")
+                .setStyle(NotificationCompat.BigTextStyle()
+                    .bigText("Another VPN app connected. Firewall automatically switched to $backendName to maintain protection. Tap to open settings."))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)  // Persistent notification - user must dismiss
+                .setAutoCancel(false)  // Don't dismiss on tap
+                .build()
+            
+            notificationManager.notify(Constants.VpnConflict.NOTIFICATION_ID, notification)
+            Log.d(TAG, "🔐 Showed persistent VPN conflict switch notification")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to show VPN conflict switch notification", e)
+        }
+    }
+
+    /**
+     * Dismiss the VPN conflict switch notification.
+     * Called when user acknowledges the switch (e.g., by opening settings or selecting a backend).
+     */
+    fun dismissVpnConflictSwitchNotification() {
+        try {
+            notificationManager.cancel(Constants.VpnConflict.NOTIFICATION_ID)
+            Log.d(TAG, "🔐 Dismissed VPN conflict switch notification")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to dismiss VPN conflict switch notification", e)
+        }
+    }
+
+    /**
+     * Show notification when firewall automatically switched to a better backend
+     * due to privilege gain (e.g., root granted while using VPN).
+     */
+    private fun showPrivilegeGainSwitchNotification(newBackend: FirewallBackendType) {
+        try {
+            // Create notification channel (Android O+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    Constants.VpnConflict.CHANNEL_ID,
+                    Constants.VpnConflict.CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "Notifications for firewall status and alerts"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+            
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            val backendName = when (newBackend) {
+                FirewallBackendType.IPTABLES -> "iptables (root)"
+                FirewallBackendType.CONNECTIVITY_MANAGER -> "ConnectivityManager (Shizuku)"
+                FirewallBackendType.NETWORK_POLICY_MANAGER -> "NetworkPolicyManager (Shizuku)"
+                FirewallBackendType.VPN -> "VPN"
+            }
+            
+            val notification = NotificationCompat.Builder(context, Constants.VpnConflict.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Firewall Upgraded")
+                .setContentText("Switched from VPN to $backendName")
+                .setStyle(NotificationCompat.BigTextStyle()
+                    .bigText("Root access detected! Firewall automatically upgraded from VPN to $backendName for better protection. Mode set to AUTO."))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build()
+            
+            notificationManager.notify(Constants.VpnConflict.NOTIFICATION_ID, notification)
+            Log.d(TAG, "🔐 Showed privilege gain switch notification")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to show privilege gain switch notification", e)
         }
     }
 

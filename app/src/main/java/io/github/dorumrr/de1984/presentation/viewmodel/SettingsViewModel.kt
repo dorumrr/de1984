@@ -83,6 +83,8 @@ class SettingsViewModel(
             rootStatus.collect {
                 Log.d(TAG, "Root status changed: $it, re-checking boot protection availability")
                 checkBootProtectionAvailability()
+                // Update captive portal privileges when root status changes
+                updateCaptivePortalPrivileges()
             }
         }
 
@@ -90,8 +92,31 @@ class SettingsViewModel(
             shizukuStatus.collect {
                 Log.d(TAG, "Shizuku status changed: $it, re-checking boot protection availability")
                 checkBootProtectionAvailability()
+                // Update captive portal privileges when Shizuku status changes
+                updateCaptivePortalPrivileges()
             }
         }
+        
+        // Observe firewall mode changes from FirewallManager
+        // This updates UI when mode changes due to VPN conflict or privilege change
+        viewModelScope.launch {
+            firewallManager.currentMode.collect { mode ->
+                Log.d(TAG, "🔄 Firewall mode changed externally: $mode")
+                if (_uiState.value.firewallMode != mode) {
+                    Log.d(TAG, "🔄 Updating UI mode from ${_uiState.value.firewallMode} to $mode")
+                    _uiState.value = _uiState.value.copy(firewallMode = mode)
+                }
+            }
+        }
+    }
+
+    /**
+     * Update captive portal privileges in UI state based on current root/Shizuku status.
+     */
+    private fun updateCaptivePortalPrivileges() {
+        _uiState.value = _uiState.value.copy(
+            captivePortalHasPrivileges = captivePortalManager.hasPrivileges()
+        )
     }
 
 
@@ -385,16 +410,73 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(requiresRestart = false)
     }
 
-    fun setFirewallMode(mode: FirewallMode) {
-        _uiState.value = _uiState.value.copy(firewallMode = mode)
+    /**
+     * Check if switching to the given mode would require disconnecting another VPN.
+     * Returns true if user should be warned before proceeding.
+     */
+    fun wouldDisconnectOtherVpn(mode: FirewallMode): Boolean {
+        // Only VPN mode can conflict with other VPN apps
+        if (mode != FirewallMode.VPN) return false
+        
+        // Check if another VPN is currently active
+        return firewallManager.isAnotherVpnActive()
+    }
+
+    fun setFirewallMode(mode: FirewallMode, forceEvenIfOtherVpnActive: Boolean = false) {
+        Log.d(TAG, "👆 USER ACTION: setFirewallMode($mode, forceEvenIfOtherVpnActive=$forceEvenIfOtherVpnActive)")
+        Log.d(TAG, "   Current UI state: mode=${_uiState.value.firewallMode}, activeBackend=${firewallManager.activeBackendType.value}")
+        
+        // Dismiss VPN conflict notification since user is taking action
+        firewallManager.dismissVpnConflictSwitchNotification()
+        
+        // If switching to VPN mode and another VPN is active, the UI should have
+        // already shown a warning dialog. If forceEvenIfOtherVpnActive is false,
+        // we skip the restart to let the UI handle it.
+        val wouldDisconnectVpn = wouldDisconnectOtherVpn(mode)
+        if (wouldDisconnectVpn && !forceEvenIfOtherVpnActive) {
+            Log.d(TAG, "   Another VPN is active and user hasn't confirmed - showing warning")
+            // Just update the mode preference, but don't restart yet
+            // The UI will call this again with forceEvenIfOtherVpnActive=true if user confirms
+            _uiState.value = _uiState.value.copy(
+                pendingModeChange = mode,
+                showVpnConflictWarning = true
+            )
+            return
+        }
+        
+        Log.d(TAG, "   Updating mode to $mode and restarting firewall")
+        
+        // Clear any pending mode change
+        _uiState.value = _uiState.value.copy(
+            firewallMode = mode,
+            pendingModeChange = null,
+            showVpnConflictWarning = false
+        )
         firewallManager.setMode(mode)
 
-        // Restart firewall if running to apply new mode
+        // Restart firewall if user has it enabled (regardless of current active state)
+        // This handles the case where a previous backend switch failed and firewall is down
         viewModelScope.launch {
-            if (firewallManager.isActive()) {
+            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            val isFirewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
+            Log.d(TAG, "   Firewall enabled: $isFirewallEnabled")
+            if (isFirewallEnabled) {
+                Log.d(TAG, "   Calling restartFirewallIfRunning() with mode=$mode")
                 restartFirewallIfRunning()
             }
         }
+    }
+
+    fun cancelPendingModeChange() {
+        _uiState.value = _uiState.value.copy(
+            pendingModeChange = null,
+            showVpnConflictWarning = false
+        )
+    }
+
+    fun confirmPendingModeChange() {
+        val pendingMode = _uiState.value.pendingModeChange ?: return
+        setFirewallMode(pendingMode, forceEvenIfOtherVpnActive = true)
     }
 
     fun checkIptablesAvailability(callback: (Boolean) -> Unit) {
@@ -408,6 +490,26 @@ class SettingsViewModel(
         return shizukuManager.isShizukuRootMode()
     }
 
+    /**
+     * Check if switching to VPN mode requires VPN permission.
+     * Returns the prepare intent if permission is needed, null otherwise.
+     */
+    fun checkVpnPermissionNeeded(): android.content.Intent? {
+        val mode = _uiState.value.firewallMode
+        if (mode != FirewallMode.VPN) return null
+        
+        return android.net.VpnService.prepare(context)
+    }
+
+    /**
+     * Called after VPN permission is granted to complete the mode switch.
+     */
+    fun onVpnPermissionGranted() {
+        viewModelScope.launch {
+            restartFirewallIfRunning()
+        }
+    }
+
     private suspend fun restartFirewallIfRunning() {
         try {
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -417,10 +519,22 @@ class SettingsViewModel(
                 return
             }
 
+            // For VPN mode, check if permission is granted first
+            val newMode = _uiState.value.firewallMode
+            if (newMode == FirewallMode.VPN) {
+                val prepareIntent = android.net.VpnService.prepare(context)
+                if (prepareIntent != null) {
+                    // VPN permission not granted - notify UI to request it
+                    _uiState.value = _uiState.value.copy(
+                        vpnPermissionRequired = true
+                    )
+                    return
+                }
+            }
+
             firewallManager.stopFirewall()
             delay(500)
 
-            val newMode = _uiState.value.firewallMode
             val result = firewallManager.startFirewall(newMode)
 
             result.onFailure { error ->
@@ -436,6 +550,10 @@ class SettingsViewModel(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to restart firewall", e)
         }
+    }
+
+    fun clearVpnPermissionRequired() {
+        _uiState.value = _uiState.value.copy(vpnPermissionRequired = false)
     }
 
     fun setRefreshInterval(interval: Int) {
@@ -1144,7 +1262,12 @@ data class SettingsUiState(
 
     // Export/Import Uninstalled Apps
     val importUninstalledPreview: ImportUninstalledPreview? = null,
-    val batchUninstallResult: UninstallBatchResult? = null
+    val batchUninstallResult: UninstallBatchResult? = null,
+
+    // VPN conflict warning when switching to VPN mode
+    val pendingModeChange: FirewallMode? = null,
+    val showVpnConflictWarning: Boolean = false,
+    val vpnPermissionRequired: Boolean = false
 )
 
 data class SystemInfo(

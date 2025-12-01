@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.topjohnwu.superuser.Shell
+import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,24 +93,80 @@ class RootManager(private val context: Context) {
         Log.d(TAG, "Root status check complete: $newStatus")
     }
 
+    /**
+     * Verify root access is still valid using an existing cached shell.
+     * 
+     * This method runs a lightweight command on the EXISTING shell session,
+     * which does NOT spawn a new `su` process and therefore does NOT trigger
+     * Magisk's "superuser granted" toast notification.
+     * 
+     * Use this for periodic health checks to avoid toast spam.
+     * 
+     * @return true if root is still valid, false if revoked or shell died
+     */
+    private fun verifyRootWithCachedShell(): Boolean {
+        val cachedShell = Shell.getCachedShell()
+        if (cachedShell == null) {
+            Log.d(TAG, "No cached shell available")
+            return false
+        }
+        if (!cachedShell.isAlive) {
+            Log.d(TAG, "Cached shell is no longer alive")
+            return false
+        }
+        if (!cachedShell.isRoot) {
+            Log.d(TAG, "Cached shell is not a root shell")
+            return false
+        }
+
+        // Verify root is still valid by running a command on the existing shell
+        // This does NOT spawn a new su process = NO TOAST
+        return try {
+            val result = cachedShell.newJob()
+                .add(Constants.RootAccess.ROOT_VERIFICATION_COMMAND)
+                .exec()
+            
+            val isValid = result.isSuccess && 
+                result.out.any { it.contains(Constants.RootAccess.ROOT_VERIFICATION_SUCCESS_MARKER) }
+            
+            if (isValid) {
+                Log.d(TAG, "✅ Cached shell verified - ${Constants.RootAccess.ROOT_VERIFICATION_SUCCESS_MARKER} confirmed")
+            } else {
+                Log.w(TAG, "⚠️ Cached shell verification failed - root likely revoked")
+            }
+            isValid
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception verifying cached shell: ${e.message}", e)
+            false
+        }
+    }
+
     private suspend fun checkRootStatusInternal(): RootStatus = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "╔════════════════════════════════════════════════════════════════╗")
             Log.d(TAG, "║  🔍 CHECKING ROOT STATUS (using libsu)                       ║")
-            Log.d(TAG, "║  Creating NEW root shell to request permission...           ║")
             Log.d(TAG, "╚════════════════════════════════════════════════════════════════╝")
 
-            // Use libsu to check root status
-            // CRITICAL: We must use Shell.Builder.build() to create a NEW shell instance
-            // Shell.getShell() returns a cached shell, which won't detect permission changes
-            // This ensures we always get fresh root status from Magisk
-            val shell = Shell.Builder.create().build()
+            // STEP 1: Try to verify using cached shell first (NO TOAST)
+            // This is the preferred path for health checks and periodic verification
+            if (verifyRootWithCachedShell()) {
+                Log.d(TAG, "✅ Root verified via cached shell (no toast triggered)")
+                return@withContext RootStatus.ROOTED_WITH_PERMISSION
+            }
+
+            // STEP 2: No valid cached shell - need to get/create one
+            // Shell.getShell() will:
+            // - Return existing cached shell if alive (no toast)
+            // - Create new shell if none exists (shows toast ONCE on first grant)
+            // - Show permission dialog if never granted
+            Log.d(TAG, "Getting main shell (may show toast on first creation)...")
+            val shell = Shell.getShell()
 
             return@withContext if (shell.isRoot) {
                 Log.d(TAG, "✅ Root access GRANTED - ROOTED_WITH_PERMISSION")
                 RootStatus.ROOTED_WITH_PERMISSION
             } else {
-                Log.e(TAG, "❌ Root access DENIED or not available - NOT_ROOTED")
+                Log.d(TAG, "❌ Root access DENIED or not available - NOT_ROOTED")
                 RootStatus.NOT_ROOTED
             }
         } catch (e: Exception) {

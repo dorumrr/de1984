@@ -193,6 +193,11 @@ object Constants {
     }
 
     object RootAccess {
+        // Command used to verify root is still active on an existing shell
+        // Running this on a cached shell does NOT trigger Magisk toast
+        const val ROOT_VERIFICATION_COMMAND = "id"
+        const val ROOT_VERIFICATION_SUCCESS_MARKER = "uid=0"
+
         const val STATUS_GRANTED = "Root Access: Granted"
         const val STATUS_DENIED = "Root Access: Denied"
         const val STATUS_NOT_AVAILABLE = "Root Access: Not Available"

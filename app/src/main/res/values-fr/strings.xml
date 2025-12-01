@@ -739,4 +739,22 @@
     <string name="hint_custom_http_url">URL HTTP personnalisée</string>
     <string name="hint_custom_https_url">URL HTTPS personnalisée</string>
 
+    <!-- App Logs -->
+    <string name="logs_title">Journaux de l\'application</string>
+    <string name="logs_menu_item">Journaux de l\'application</string>
+    <string name="logs_menu_description">Voir les journaux pour le dépannage</string>
+    <string name="logs_enable_title">Activer les journaux</string>
+    <string name="logs_enable_description">Enregistrer les journaux dans un fichier pour le débogage. Les journaux ne sont envoyés nulle part.</string>
+    <string name="logs_debug_mode_note">ℹ️ Version debug - journalisation activée par défaut</string>
+    <string name="logs_clear">Effacer</string>
+    <string name="logs_clear_confirm_title">Effacer les journaux ?</string>
+    <string name="logs_clear_confirm_message">Ceci supprimera les entrées de journal existantes.</string>
+    <string name="logs_share">Partager les journaux</string>
+    <string name="logs_count">%d entrées de journal</string>
+    <string name="logs_file_info">%1$d lignes • %2$s</string>
+    <string name="logs_empty">Aucun journal pour l\'instant. Activez les journaux et utilisez l\'application pour en générer.</string>
+    <string name="logs_cleared">Journaux effacés</string>
+    <string name="logs_share_title">Partager les journaux De1984</string>
+    <string name="logs_disabled_message">Journalisation désactivée. Les nouveaux journaux ne seront pas enregistrés.</string>
+
 </resources>

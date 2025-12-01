@@ -749,4 +749,22 @@
     <string name="hint_custom_http_url">自定义 HTTP URL</string>
     <string name="hint_custom_https_url">自定义 HTTPS URL</string>
 
+    <!-- App Logs -->
+    <string name="logs_title">应用日志</string>
+    <string name="logs_menu_item">应用日志</string>
+    <string name="logs_menu_description">查看日志以进行故障排除</string>
+    <string name="logs_enable_title">启用日志记录</string>
+    <string name="logs_enable_description">将日志保存到文件以进行调试。日志不会发送到任何地方。</string>
+    <string name="logs_debug_mode_note">ℹ️ 调试版本 - 默认启用日志记录</string>
+    <string name="logs_clear">清除</string>
+    <string name="logs_clear_confirm_title">清除日志？</string>
+    <string name="logs_clear_confirm_message">这将删除现有的日志条目。</string>
+    <string name="logs_share">分享日志</string>
+    <string name="logs_count">%d 条日志</string>
+    <string name="logs_file_info">%1$d 行 • %2$s</string>
+    <string name="logs_empty">暂无日志。启用日志记录并使用应用以生成日志。</string>
+    <string name="logs_cleared">日志已清除</string>
+    <string name="logs_share_title">分享 De1984 日志</string>
+    <string name="logs_disabled_message">日志记录已禁用。新日志将不会被记录。</string>
+
 </resources>

@@ -739,4 +739,22 @@
     <string name="hint_custom_http_url">URL HTTP personalizzato</string>
     <string name="hint_custom_https_url">URL HTTPS personalizzato</string>
 
+    <!-- App Logs -->
+    <string name="logs_title">Log applicazione</string>
+    <string name="logs_menu_item">Log applicazione</string>
+    <string name="logs_menu_description">Visualizza i log per la risoluzione dei problemi</string>
+    <string name="logs_enable_title">Abilita registrazione</string>
+    <string name="logs_enable_description">Salva i log su file per il debug. I log non vengono inviati da nessuna parte.</string>
+    <string name="logs_debug_mode_note">ℹ️ Build debug - registrazione abilitata per impostazione predefinita</string>
+    <string name="logs_clear">Cancella</string>
+    <string name="logs_clear_confirm_title">Cancellare i log?</string>
+    <string name="logs_clear_confirm_message">Questo eliminerà le voci di log esistenti.</string>
+    <string name="logs_share">Condividi log</string>
+    <string name="logs_count">%d voci di log</string>
+    <string name="logs_file_info">%1$d righe • %2$s</string>
+    <string name="logs_empty">Nessun log ancora. Abilita la registrazione e usa l\'app per generare log.</string>
+    <string name="logs_cleared">Log cancellati</string>
+    <string name="logs_share_title">Condividi log De1984</string>
+    <string name="logs_disabled_message">Registrazione disabilitata. I nuovi log non verranno registrati.</string>
+
 </resources>

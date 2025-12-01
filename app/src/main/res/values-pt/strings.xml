@@ -739,5 +739,23 @@
     <string name="hint_custom_http_url">URL HTTP Personalizada</string>
     <string name="hint_custom_https_url">URL HTTPS Personalizada</string>
 
+    <!-- App Logs -->
+    <string name="logs_title">Logs do aplicativo</string>
+    <string name="logs_menu_item">Logs do aplicativo</string>
+    <string name="logs_menu_description">Ver logs para solução de problemas</string>
+    <string name="logs_enable_title">Ativar registro</string>
+    <string name="logs_enable_description">Salvar logs em arquivo para depuração. Os logs não são enviados para lugar nenhum.</string>
+    <string name="logs_debug_mode_note">ℹ️ Build de debug - registro ativado por padrão</string>
+    <string name="logs_clear">Limpar</string>
+    <string name="logs_clear_confirm_title">Limpar logs?</string>
+    <string name="logs_clear_confirm_message">Isso excluirá as entradas de log existentes.</string>
+    <string name="logs_share">Compartilhar logs</string>
+    <string name="logs_count">%d entradas de log</string>
+    <string name="logs_file_info">%1$d linhas • %2$s</string>
+    <string name="logs_empty">Nenhum log ainda. Ative o registro e use o app para gerar logs.</string>
+    <string name="logs_cleared">Logs limpos</string>
+    <string name="logs_share_title">Compartilhar logs do De1984</string>
+    <string name="logs_disabled_message">Registro desativado. Novos logs não serão gravados.</string>
+
 </resources>
 

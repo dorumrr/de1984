@@ -741,5 +741,23 @@
     <string name="hint_custom_http_url">URL HTTP personalizat</string>
     <string name="hint_custom_https_url">URL HTTPS personalizat</string>
 
+    <!-- App Logs -->
+    <string name="logs_title">Jurnale aplicație</string>
+    <string name="logs_menu_item">Jurnale aplicație</string>
+    <string name="logs_menu_description">Vezi jurnalele pentru depanare</string>
+    <string name="logs_enable_title">Activează jurnalizarea</string>
+    <string name="logs_enable_description">Salvează jurnalele într-un fișier pentru depanare. Jurnalele nu sunt trimise nicăieri.</string>
+    <string name="logs_debug_mode_note">ℹ️ Versiune debug - jurnalizare activată implicit</string>
+    <string name="logs_clear">Șterge</string>
+    <string name="logs_clear_confirm_title">Ștergi jurnalele?</string>
+    <string name="logs_clear_confirm_message">Aceasta va șterge intrările de jurnal existente.</string>
+    <string name="logs_share">Partajează jurnalele</string>
+    <string name="logs_count">%d intrări în jurnal</string>
+    <string name="logs_file_info">%1$d linii • %2$s</string>
+    <string name="logs_empty">Niciun jurnal încă. Activează jurnalizarea și folosește aplicația pentru a genera jurnale.</string>
+    <string name="logs_cleared">Jurnale șterse</string>
+    <string name="logs_share_title">Partajează jurnalele De1984</string>
+    <string name="logs_disabled_message">Jurnalizare dezactivată. Noile jurnale nu vor fi înregistrate.</string>
+
 </resources>
 

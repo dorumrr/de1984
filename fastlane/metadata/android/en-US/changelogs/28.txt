@@ -1,0 +1,3 @@
+- Improved permission validation and system health checks
+- Enhanced reliability of the VPN backend management
+- Added optional verbose logging (can be enabled in Settings)

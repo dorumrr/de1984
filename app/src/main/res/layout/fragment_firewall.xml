@@ -38,26 +38,13 @@
                 android:textColor="?attr/colorOnPrimary" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/block_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:text="@string/firewall_multiselect_toolbar_button_block"
-                android:textColor="?attr/colorOnPrimary"
-                style="@style/Widget.Material3.Button.TextButton"
-                app:icon="@drawable/ic_block"
-                app:iconTint="?attr/colorOnPrimary" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/allow_button"
+                android:id="@+id/rules_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:text="@string/firewall_multiselect_toolbar_button_allow"
+                android:text="@string/firewall_multiselect_toolbar_button_rules"
                 android:textColor="?attr/colorOnPrimary"
-                style="@style/Widget.Material3.Button.TextButton"
-                app:icon="@drawable/ic_check"
-                app:iconTint="?attr/colorOnPrimary" />
+                style="@style/Widget.Material3.Button.TextButton" />
 
         </LinearLayout>
 

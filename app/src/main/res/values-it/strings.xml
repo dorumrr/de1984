@@ -183,12 +183,21 @@
     <string name="firewall_multiselect_toast_cannot_select_critical">I pacchetti critici/VPN non possono essere selezionati</string>
     <string name="firewall_multiselect_toolbar_button_block">Blocca</string>
     <string name="firewall_multiselect_toolbar_button_allow">Consenti</string>
+    <string name="firewall_multiselect_toolbar_button_rules">Modifica regole</string>
     <string name="firewall_multiselect_dialog_title_block">Bloccare %d app selezionate?</string>
     <string name="firewall_multiselect_dialog_title_allow">Consentire %d app selezionate?</string>
     <string name="firewall_multiselect_dialog_message">Questo cambierà l\'accesso alla rete per %d app.</string>
     <string name="firewall_multiselect_dialog_title_results">Risultati Firewall</string>
     <string name="firewall_multiselect_dialog_message_success_format">✓ %2$s con successo: %1$d app</string>
     <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d riuscite, ✗ %2$d non riuscite a %3$s</string>
+
+    <!-- Firewall Multi-Select Bottom Sheet -->
+    <string name="firewall_multiselect_sheet_header_format">%d pacchetti selezionati</string>
+    <string name="firewall_multiselect_sheet_section_network_rules">Regole di rete</string>
+    <string name="firewall_multiselect_sheet_state_mixed">Misto</string>
+    <string name="firewall_multiselect_sheet_quick_actions">Azioni rapide</string>
+    <string name="firewall_multiselect_sheet_allow_all">Consenti tutte le reti</string>
+    <string name="firewall_multiselect_sheet_block_all">Blocca tutte le reti</string>
 
     <!-- Theme -->
     <string name="theme_light">Tema Chiaro</string>
@@ -708,6 +717,7 @@
     <string name="error_unable_to_allow_network">Impossibile consentire l’accesso alla rete. Root richiesto.</string>
     <string name="error_unable_to_block_network">Impossibile bloccare l’accesso alla rete. Root richiesto.</string>
     <string name="error_failed_to_block_mobile">Impossibile bloccare la rete mobile: %s</string>
+    <string name="error_failed_to_block_roaming">Impossibile bloccare il roaming: %s</string>
     <string name="error_failed_to_unblock_roaming">Impossibile sbloccare il roaming: %s</string>
 
     <!-- Captive Portal Error Messages -->

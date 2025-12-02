@@ -183,12 +183,21 @@
     <string name="firewall_multiselect_toast_cannot_select_critical">Les paquets critiques/VPN ne peuvent pas être sélectionnés</string>
     <string name="firewall_multiselect_toolbar_button_block">Bloquer</string>
     <string name="firewall_multiselect_toolbar_button_allow">Autoriser</string>
+    <string name="firewall_multiselect_toolbar_button_rules">Modifier les règles</string>
     <string name="firewall_multiselect_dialog_title_block">Bloquer %d applications sélectionnées?</string>
     <string name="firewall_multiselect_dialog_title_allow">Autoriser %d applications sélectionnées?</string>
     <string name="firewall_multiselect_dialog_message">Cela modifiera l\'accès réseau pour %d applications.</string>
     <string name="firewall_multiselect_dialog_title_results">Résultats du pare-feu</string>
     <string name="firewall_multiselect_dialog_message_success_format">✓ %2$s avec succès: %1$d applications</string>
     <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d réussi(s), ✗ %2$d échec(s) à %3$s</string>
+
+    <!-- Firewall Multi-Select Bottom Sheet -->
+    <string name="firewall_multiselect_sheet_header_format">%d paquets sélectionnés</string>
+    <string name="firewall_multiselect_sheet_section_network_rules">Règles réseau</string>
+    <string name="firewall_multiselect_sheet_state_mixed">Mixte</string>
+    <string name="firewall_multiselect_sheet_quick_actions">Actions rapides</string>
+    <string name="firewall_multiselect_sheet_allow_all">Autoriser tous les réseaux</string>
+    <string name="firewall_multiselect_sheet_block_all">Bloquer tous les réseaux</string>
 
     <!-- Theme -->
     <string name="theme_light">Thème clair</string>
@@ -708,6 +717,7 @@
     <string name="error_unable_to_allow_network">Impossible d\'autoriser l\'accès réseau. Accès root requis pour les opérations du pare-feu.</string>
     <string name="error_unable_to_block_network">Impossible de bloquer l\'accès réseau. Accès root requis pour les opérations du pare-feu.</string>
     <string name="error_failed_to_block_mobile">Échec du blocage des données mobiles: %s</string>
+    <string name="error_failed_to_block_roaming">Échec du blocage de l\'itinérance: %s</string>
     <string name="error_failed_to_unblock_roaming">Échec du déblocage de l\'itinérance: %s</string>
 
     <!-- Captive Portal Error Messages -->

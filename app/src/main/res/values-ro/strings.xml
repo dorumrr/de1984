@@ -184,12 +184,21 @@
     <string name="firewall_multiselect_toast_cannot_select_critical">Pachetele critice/VPN nu pot fi selectate</string>
     <string name="firewall_multiselect_toolbar_button_block">Blochează</string>
     <string name="firewall_multiselect_toolbar_button_allow">Permite</string>
+    <string name="firewall_multiselect_toolbar_button_rules">Modifică regulile</string>
     <string name="firewall_multiselect_dialog_title_block">Blochezi %d aplicații selectate?</string>
     <string name="firewall_multiselect_dialog_title_allow">Permiți %d aplicații selectate?</string>
     <string name="firewall_multiselect_dialog_message">Aceasta va schimba accesul la rețea pentru %d aplicații.</string>
     <string name="firewall_multiselect_dialog_title_results">Rezultate Firewall</string>
     <string name="firewall_multiselect_dialog_message_success_format">✓ %2$s cu succes: %1$d aplicații</string>
     <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d reușite, ✗ %2$d eșuate la %3$s</string>
+
+    <!-- Firewall Multi-Select Bottom Sheet -->
+    <string name="firewall_multiselect_sheet_header_format">%d pachete selectate</string>
+    <string name="firewall_multiselect_sheet_section_network_rules">Reguli de rețea</string>
+    <string name="firewall_multiselect_sheet_state_mixed">Mixt</string>
+    <string name="firewall_multiselect_sheet_quick_actions">Acțiuni rapide</string>
+    <string name="firewall_multiselect_sheet_allow_all">Permite toate rețelele</string>
+    <string name="firewall_multiselect_sheet_block_all">Blochează toate rețelele</string>
 
     <!-- Theme -->
     <string name="theme_light">Temă luminoasă</string>
@@ -710,6 +719,7 @@
     <string name="error_unable_to_allow_network">Nu se poate permite accesul la rețea. Acces root necesar pentru operațiuni Firewall.</string>
     <string name="error_unable_to_block_network">Nu se poate bloca accesul la rețea. Acces root necesar pentru operațiuni Firewall.</string>
     <string name="error_failed_to_block_mobile">Blocarea datelor mobile a eșuat: %s</string>
+    <string name="error_failed_to_block_roaming">Blocarea roaming-ului a eșuat: %s</string>
     <string name="error_failed_to_unblock_roaming">Deblocarea roaming-ului a eșuat: %s</string>
 
     <!-- Captive Portal Error Messages -->

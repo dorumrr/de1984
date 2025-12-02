@@ -273,57 +273,46 @@ class FirewallViewModel(
 
     fun setRoamingBlocking(packageName: String, blocked: Boolean) {
         viewModelScope.launch {
-            // If roaming is being enabled (unblocked), also enable mobile (roaming requires mobile)
-            if (!blocked) {
-                // Optimistically update both roaming and mobile
-                updatePackageInList(packageName) { pkg ->
-                    AppLogger.d(TAG, "setRoamingBlocking(blocked=false): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
-                    val updated = pkg.copy(roamingBlocked = false, mobileBlocked = false)
-                    AppLogger.d(TAG, "setRoamingBlocking(blocked=false): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
-                    updated
+            // Per user preference: "enabling Roaming block should auto-enable Mobile block"
+            // and "roaming requires mobile" so unblocking roaming also unblocks mobile
+            // Both blocking and unblocking affect mobile due to these dependencies
+            updatePackageInList(packageName) { pkg ->
+                AppLogger.d(TAG, "setRoamingBlocking(blocked=$blocked): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
+                val updated = if (blocked) {
+                    // Blocking roaming also blocks mobile (per user preference)
+                    pkg.copy(mobileBlocked = true, roamingBlocked = true)
+                } else {
+                    // Unblocking roaming also unblocks mobile (roaming requires mobile)
+                    pkg.copy(mobileBlocked = false, roamingBlocked = false)
                 }
+                AppLogger.d(TAG, "setRoamingBlocking(blocked=$blocked): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
+                updated
+            }
 
-                // Persist with atomic batch update - only one database transaction, only one notification
-                manageNetworkAccessUseCase.setMobileAndRoaming(packageName, mobileBlocked = false, roamingBlocked = false)
-                    .onSuccess {
-                        // Success - optimistic update already applied, no need to reload
+            // Persist with atomic batch update - always update both mobile and roaming together
+            manageNetworkAccessUseCase.setMobileAndRoaming(packageName, mobileBlocked = blocked, roamingBlocked = blocked)
+                .onSuccess {
+                    // Success - optimistic update already applied, no need to reload
+                }
+                .onFailure { error ->
+                    // Revert on failure by reloading
+                    loadNetworkPackages()
+                    if (superuserBannerState.shouldShowBannerForError(error)) {
+                        superuserBannerState.showSuperuserRequiredBanner()
                     }
-                    .onFailure { error ->
-                        // Revert on failure by reloading
-                        loadNetworkPackages()
-                        if (superuserBannerState.shouldShowBannerForError(error)) {
-                            superuserBannerState.showSuperuserRequiredBanner()
-                        }
-                        _uiState.value = _uiState.value.copy(
-                            error = getApplication<Application>().getString(
-                                R.string.error_failed_to_unblock_roaming,
-                                error.message ?: getApplication<Application>().getString(R.string.error_unknown)
-                            )
+                    val errorMsg = if (blocked) {
+                        getApplication<Application>().getString(
+                            R.string.error_failed_to_block_roaming,
+                            error.message ?: getApplication<Application>().getString(R.string.error_unknown)
+                        )
+                    } else {
+                        getApplication<Application>().getString(
+                            R.string.error_failed_to_unblock_roaming,
+                            error.message ?: getApplication<Application>().getString(R.string.error_unknown)
                         )
                     }
-            } else {
-                // Roaming is being disabled - only update roaming, leave mobile as is
-                updatePackageInList(packageName) { pkg ->
-                    AppLogger.d(TAG, "setRoamingBlocking(blocked=true): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
-                    val updated = pkg.copy(roamingBlocked = blocked)
-                    AppLogger.d(TAG, "setRoamingBlocking(blocked=true): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
-                    updated
+                    _uiState.value = _uiState.value.copy(error = errorMsg)
                 }
-
-                // Then persist to database
-                manageNetworkAccessUseCase.setRoamingBlocking(packageName, blocked)
-                    .onSuccess {
-                        // Success - optimistic update already applied, no need to reload
-                    }
-                    .onFailure { error ->
-                        // Revert on failure by reloading
-                        loadNetworkPackages()
-                        if (superuserBannerState.shouldShowBannerForError(error)) {
-                            superuserBannerState.showSuperuserRequiredBanner()
-                        }
-                        _uiState.value = _uiState.value.copy(error = error.message)
-                    }
-            }
         }
     }
 
@@ -673,6 +662,113 @@ class FirewallViewModel(
 
     fun clearBatchBlockResult() {
         _uiState.value = _uiState.value.copy(batchBlockResult = null)
+    }
+
+    // ========== GRANULAR BATCH OPERATIONS FOR MULTI-SELECT RULES SHEET ==========
+
+    /**
+     * Set WiFi blocking for multiple packages at once.
+     */
+    fun batchSetWifiBlocking(packageNames: List<String>, blocked: Boolean) {
+        viewModelScope.launch {
+            AppLogger.d(TAG, "🔥 batchSetWifiBlocking: Setting WiFi blocked=$blocked for ${packageNames.size} packages")
+            for (packageName in packageNames) {
+                // Optimistically update UI
+                updatePackageInList(packageName) { pkg ->
+                    pkg.copy(wifiBlocked = blocked)
+                }
+                // Persist
+                manageNetworkAccessUseCase.setWifiBlocking(packageName, blocked)
+                    .onFailure { error ->
+                        AppLogger.e(TAG, "🔥 batchSetWifiBlocking: Failed for $packageName: ${error.message}")
+                    }
+            }
+            AppLogger.d(TAG, "🔥 batchSetWifiBlocking: Complete")
+        }
+    }
+
+    /**
+     * Set Mobile blocking for multiple packages at once.
+     * Note: This also handles roaming dependency (blocking mobile blocks roaming too).
+     */
+    fun batchSetMobileBlocking(packageNames: List<String>, blocked: Boolean) {
+        viewModelScope.launch {
+            AppLogger.d(TAG, "🔥 batchSetMobileBlocking: Setting Mobile blocked=$blocked for ${packageNames.size} packages")
+            for (packageName in packageNames) {
+                // Optimistically update UI - if blocking mobile, also block roaming
+                updatePackageInList(packageName) { pkg ->
+                    if (blocked) {
+                        pkg.copy(mobileBlocked = true, roamingBlocked = true)
+                    } else {
+                        pkg.copy(mobileBlocked = false)
+                    }
+                }
+                // Persist - use atomic method for mobile+roaming when blocking
+                if (blocked) {
+                    manageNetworkAccessUseCase.setMobileAndRoaming(packageName, mobileBlocked = true, roamingBlocked = true)
+                        .onFailure { error ->
+                            AppLogger.e(TAG, "🔥 batchSetMobileBlocking: Failed for $packageName: ${error.message}")
+                        }
+                } else {
+                    manageNetworkAccessUseCase.setMobileBlocking(packageName, blocked = false)
+                        .onFailure { error ->
+                            AppLogger.e(TAG, "🔥 batchSetMobileBlocking: Failed for $packageName: ${error.message}")
+                        }
+                }
+            }
+            AppLogger.d(TAG, "🔥 batchSetMobileBlocking: Complete")
+        }
+    }
+
+    /**
+     * Set Roaming blocking for multiple packages at once.
+     * Note: Blocking roaming also blocks mobile (per user preference).
+     * Note: Unblocking roaming also unblocks mobile (roaming requires mobile).
+     */
+    fun batchSetRoamingBlocking(packageNames: List<String>, blocked: Boolean) {
+        viewModelScope.launch {
+            AppLogger.d(TAG, "🔥 batchSetRoamingBlocking: Setting Roaming blocked=$blocked for ${packageNames.size} packages")
+            for (packageName in packageNames) {
+                // Optimistically update UI
+                // Both blocking and unblocking affect mobile due to dependency
+                updatePackageInList(packageName) { pkg ->
+                    if (blocked) {
+                        // Blocking roaming also blocks mobile (per user preference)
+                        pkg.copy(mobileBlocked = true, roamingBlocked = true)
+                    } else {
+                        // Unblocking roaming also unblocks mobile (roaming requires mobile)
+                        pkg.copy(mobileBlocked = false, roamingBlocked = false)
+                    }
+                }
+                // Persist - always use atomic method for mobile+roaming
+                manageNetworkAccessUseCase.setMobileAndRoaming(packageName, mobileBlocked = blocked, roamingBlocked = blocked)
+                    .onFailure { error ->
+                        AppLogger.e(TAG, "🔥 batchSetRoamingBlocking: Failed for $packageName: ${error.message}")
+                    }
+            }
+            AppLogger.d(TAG, "🔥 batchSetRoamingBlocking: Complete")
+        }
+    }
+
+    /**
+     * Set LAN blocking for multiple packages at once.
+     */
+    fun batchSetLanBlocking(packageNames: List<String>, blocked: Boolean) {
+        viewModelScope.launch {
+            AppLogger.d(TAG, "🔥 batchSetLanBlocking: Setting LAN blocked=$blocked for ${packageNames.size} packages")
+            for (packageName in packageNames) {
+                // Optimistically update UI
+                updatePackageInList(packageName) { pkg ->
+                    pkg.copy(lanBlocked = blocked)
+                }
+                // Persist
+                manageNetworkAccessUseCase.setLanBlocking(packageName, blocked)
+                    .onFailure { error ->
+                        AppLogger.e(TAG, "🔥 batchSetLanBlocking: Failed for $packageName: ${error.message}")
+                    }
+            }
+            AppLogger.d(TAG, "🔥 batchSetLanBlocking: Complete")
+        }
     }
 
     class Factory(

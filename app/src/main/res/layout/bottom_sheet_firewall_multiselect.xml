@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Header with Selection Count -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="16dp">
+
+            <ImageView
+                android:id="@+id/multiselect_icon"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:src="@drawable/ic_apps"
+                android:padding="8dp"
+                app:tint="?android:attr/textColorPrimary"
+                android:contentDescription="@string/cd_multiselect_icon" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/multiselect_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/firewall_multiselect_sheet_header_format"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/multiselect_subtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/firewall_multiselect_sheet_section_network_rules"
+                    android:textSize="12sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginTop="0dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/action_sheet_section_network_access"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            android:layout_marginTop="4dp"
+            android:paddingBottom="12dp" />
+
+        <!-- Separator -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginBottom="12dp" />
+
+        <!-- WiFi Toggle -->
+        <include
+            android:id="@+id/wifi_toggle"
+            layout="@layout/network_type_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Mobile Data Toggle -->
+        <include
+            android:id="@+id/mobile_toggle"
+            layout="@layout/network_type_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Roaming Divider -->
+        <View
+            android:id="@+id/roaming_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <!-- Roaming Toggle (only shown if device has cellular) -->
+        <include
+            android:id="@+id/roaming_toggle"
+            layout="@layout/network_type_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+        <!-- LAN Divider -->
+        <View
+            android:id="@+id/lan_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <!-- LAN Toggle (only shown if using iptables backend) -->
+        <include
+            android:id="@+id/lan_toggle"
+            layout="@layout/network_type_toggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+        <!-- Quick Actions Section -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:alpha="0.3"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/firewall_multiselect_sheet_quick_actions"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorSecondary"
+            android:paddingBottom="12dp" />
+
+        <!-- Quick Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/allow_all_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="@string/firewall_multiselect_sheet_allow_all"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                app:icon="@drawable/ic_check"
+                app:iconGravity="textStart" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/block_all_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="@string/firewall_multiselect_sheet_block_all"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                app:icon="@drawable/ic_block"
+                app:iconGravity="textStart" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>
+

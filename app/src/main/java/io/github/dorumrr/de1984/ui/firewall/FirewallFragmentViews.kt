@@ -26,6 +26,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import android.widget.TextView
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
+import io.github.dorumrr.de1984.databinding.BottomSheetFirewallMultiselectBinding
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionGranularBinding
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionSimpleBinding
 import io.github.dorumrr.de1984.databinding.FragmentFirewallBinding
@@ -1273,15 +1274,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             exitSelectionMode()
         }
 
-        binding.blockButton.setOnClickListener {
+        binding.rulesButton.setOnClickListener {
             if (selectedPackages.isNotEmpty()) {
-                showBatchBlockConfirmation()
-            }
-        }
-
-        binding.allowButton.setOnClickListener {
-            if (selectedPackages.isNotEmpty()) {
-                showBatchAllowConfirmation()
+                showMultiSelectRulesSheet()
             }
         }
     }
@@ -1343,64 +1338,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private fun updateSelectionToolbar() {
         val count = selectedPackages.size
         binding.selectionCount.text = getString(R.string.multiselect_toolbar_title_format, count)
-
-        // Update button visibility based on current state filter
-        val currentFilter = viewModel.uiState.value.filterState.networkState
-        when (currentFilter) {
-            Constants.Firewall.STATE_ALLOWED -> {
-                // In Allowed filter, only show Block button
-                binding.blockButton.visibility = View.VISIBLE
-                binding.allowButton.visibility = View.GONE
-            }
-            Constants.Firewall.STATE_BLOCKED -> {
-                // In Blocked filter, only show Allow button
-                binding.blockButton.visibility = View.GONE
-                binding.allowButton.visibility = View.VISIBLE
-            }
-            else -> {
-                // No filter (All) - show both buttons
-                binding.blockButton.visibility = View.VISIBLE
-                binding.allowButton.visibility = View.VISIBLE
-            }
-        }
-    }
-
-    private fun showBatchBlockConfirmation() {
-        val count = selectedPackages.size
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.firewall_multiselect_dialog_title_block, count))
-            .setMessage(getString(R.string.firewall_multiselect_dialog_message, count))
-            .setPositiveButton(getString(R.string.firewall_multiselect_toolbar_button_block)) { _, _ ->
-                performBatchBlock()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
-
-    private fun showBatchAllowConfirmation() {
-        val count = selectedPackages.size
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.firewall_multiselect_dialog_title_allow, count))
-            .setMessage(getString(R.string.firewall_multiselect_dialog_message, count))
-            .setPositiveButton(getString(R.string.firewall_multiselect_toolbar_button_allow)) { _, _ ->
-                performBatchAllow()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
-
-    private fun performBatchBlock() {
-        val packageNames = selectedPackages.toList()
-        AppLogger.d(TAG, "🔘 Performing batch block for ${packageNames.size} packages")
-        exitSelectionMode()
-        viewModel.batchBlockPackages(packageNames)
-    }
-
-    private fun performBatchAllow() {
-        val packageNames = selectedPackages.toList()
-        AppLogger.d(TAG, "🔘 Performing batch allow for ${packageNames.size} packages")
-        exitSelectionMode()
-        viewModel.batchAllowPackages(packageNames)
+        // Rules button is always visible - no need to toggle visibility based on filter
     }
 
     private fun showBatchResultDialog(result: io.github.dorumrr.de1984.presentation.viewmodel.BatchBlockResult) {
@@ -1421,6 +1359,271 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             .setMessage(message)
             .setPositiveButton(android.R.string.ok, null)
             .show()
+    }
+
+    // ========== MULTI-SELECT RULES SHEET ==========
+
+    /**
+     * Represents the aggregated state of a network toggle across multiple selected packages.
+     */
+    private enum class MultiSelectToggleState {
+        ALL_BLOCKED,    // All selected packages have this network blocked
+        ALL_ALLOWED,    // All selected packages have this network allowed
+        MIXED           // Some blocked, some allowed
+    }
+
+    /**
+     * Calculate the aggregated state for a specific network type across selected packages.
+     */
+    private fun calculateToggleState(
+        packages: List<NetworkPackage>,
+        getBlockedState: (NetworkPackage) -> Boolean
+    ): MultiSelectToggleState {
+        if (packages.isEmpty()) return MultiSelectToggleState.ALL_ALLOWED
+
+        val blockedCount = packages.count { getBlockedState(it) }
+        return when {
+            blockedCount == packages.size -> MultiSelectToggleState.ALL_BLOCKED
+            blockedCount == 0 -> MultiSelectToggleState.ALL_ALLOWED
+            else -> MultiSelectToggleState.MIXED
+        }
+    }
+
+    /**
+     * Show the multi-select rules bottom sheet with granular network controls.
+     */
+    private fun showMultiSelectRulesSheet() {
+        val dialog = BottomSheetDialog(requireContext())
+        currentDialog = dialog
+
+        val sheetBinding = BottomSheetFirewallMultiselectBinding.inflate(layoutInflater)
+
+        // Get selected packages from current UI state
+        val allPackages = viewModel.uiState.value.packages
+        val selectedPkgs = allPackages.filter { selectedPackages.contains(it.packageName) }
+
+        if (selectedPkgs.isEmpty()) {
+            dialog.dismiss()
+            return
+        }
+
+        // Setup header
+        sheetBinding.multiselectHeader.text = getString(R.string.firewall_multiselect_sheet_header_format, selectedPkgs.size)
+
+        // Check if device has cellular capability
+        val telephonyManager = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+        val hasCellular = telephonyManager?.phoneType != TelephonyManager.PHONE_TYPE_NONE
+
+        // Check if using iptables backend for LAN toggle
+        val app = requireActivity().application as De1984Application
+        val backendType = app.dependencies.firewallManager.activeBackendType.value
+        val isIptablesBackend = backendType == FirewallBackendType.IPTABLES
+
+        // Calculate initial states
+        val wifiState = calculateToggleState(selectedPkgs) { it.wifiBlocked }
+        val mobileState = calculateToggleState(selectedPkgs) { it.mobileBlocked }
+        val roamingState = calculateToggleState(selectedPkgs) { it.roamingBlocked }
+        val lanState = calculateToggleState(selectedPkgs) { it.lanBlocked }
+
+        // Setup WiFi toggle (initial state only, listener added below)
+        setupMultiSelectToggleInitial(
+            binding = sheetBinding.wifiToggle,
+            label = getString(R.string.firewall_network_label_wifi),
+            state = wifiState
+        )
+
+        // Setup Mobile toggle (initial state only, listener added below)
+        setupMultiSelectToggleInitial(
+            binding = sheetBinding.mobileToggle,
+            label = getString(R.string.firewall_network_label_mobile),
+            state = mobileState
+        )
+
+        // Setup Roaming toggle (only if device has cellular)
+        if (hasCellular) {
+            sheetBinding.roamingDivider.visibility = View.VISIBLE
+            sheetBinding.roamingToggle.root.visibility = View.VISIBLE
+            setupMultiSelectToggleInitial(
+                binding = sheetBinding.roamingToggle,
+                label = getString(R.string.firewall_network_label_roaming),
+                state = roamingState
+            )
+        }
+
+        // Setup LAN toggle (only if using iptables backend)
+        if (isIptablesBackend) {
+            sheetBinding.lanDivider.visibility = View.VISIBLE
+            sheetBinding.lanToggle.root.visibility = View.VISIBLE
+            setupMultiSelectToggleInitial(
+                binding = sheetBinding.lanToggle,
+                label = getString(R.string.firewall_network_label_lan),
+                state = lanState
+            )
+        }
+
+        // Setup Quick Action buttons
+        sheetBinding.allowAllButton.setOnClickListener {
+            viewModel.batchAllowPackages(selectedPackages.toList())
+            dialog.dismiss()
+            exitSelectionMode()
+        }
+
+        sheetBinding.blockAllButton.setOnClickListener {
+            viewModel.batchBlockPackages(selectedPackages.toList())
+            dialog.dismiss()
+            exitSelectionMode()
+        }
+
+        // Flag to prevent infinite recursion when updating toggles programmatically
+        var isUpdatingProgrammatically = false
+
+        // Function to update all toggles based on current package states
+        fun updateTogglesFromPackages(packages: List<NetworkPackage>) {
+            if (packages.isEmpty()) return
+            isUpdatingProgrammatically = true
+
+            val newWifiState = calculateToggleState(packages) { it.wifiBlocked }
+            val newMobileState = calculateToggleState(packages) { it.mobileBlocked }
+            val newRoamingState = calculateToggleState(packages) { it.roamingBlocked }
+            val newLanState = calculateToggleState(packages) { it.lanBlocked }
+
+            // Update WiFi toggle
+            updateMultiSelectToggleState(sheetBinding.wifiToggle, newWifiState)
+
+            // Update Mobile toggle
+            updateMultiSelectToggleState(sheetBinding.mobileToggle, newMobileState)
+
+            // Update Roaming toggle (if visible)
+            if (hasCellular) {
+                updateMultiSelectToggleState(sheetBinding.roamingToggle, newRoamingState)
+            }
+
+            // Update LAN toggle (if visible)
+            if (isIptablesBackend) {
+                updateMultiSelectToggleState(sheetBinding.lanToggle, newLanState)
+            }
+
+            isUpdatingProgrammatically = false
+        }
+
+        // Wrap toggle callbacks to check the flag
+        sheetBinding.wifiToggle.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
+            sheetBinding.wifiToggle.networkTypeSubtitle.visibility = View.GONE
+            updateSwitchColors(sheetBinding.wifiToggle.toggleSwitch, isChecked)
+            viewModel.batchSetWifiBlocking(selectedPackages.toList(), isChecked)
+        }
+
+        sheetBinding.mobileToggle.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
+            sheetBinding.mobileToggle.networkTypeSubtitle.visibility = View.GONE
+            updateSwitchColors(sheetBinding.mobileToggle.toggleSwitch, isChecked)
+            viewModel.batchSetMobileBlocking(selectedPackages.toList(), isChecked)
+        }
+
+        if (hasCellular) {
+            sheetBinding.roamingToggle.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
+                if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
+                sheetBinding.roamingToggle.networkTypeSubtitle.visibility = View.GONE
+                updateSwitchColors(sheetBinding.roamingToggle.toggleSwitch, isChecked)
+                viewModel.batchSetRoamingBlocking(selectedPackages.toList(), isChecked)
+            }
+        }
+
+        if (isIptablesBackend) {
+            sheetBinding.lanToggle.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
+                if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
+                sheetBinding.lanToggle.networkTypeSubtitle.visibility = View.GONE
+                updateSwitchColors(sheetBinding.lanToggle.toggleSwitch, isChecked)
+                viewModel.batchSetLanBlocking(selectedPackages.toList(), isChecked)
+            }
+        }
+
+        // Observe package changes to update UI when ViewModel makes cascading changes
+        val observerJob = viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.uiState.collect { state ->
+                val updatedPkgs = state.packages.filter { selectedPackages.contains(it.packageName) }
+                if (updatedPkgs.isNotEmpty() && !isUpdatingProgrammatically) {
+                    AppLogger.d(TAG, "showMultiSelectRulesSheet: uiState collected - updating ${updatedPkgs.size} packages")
+                    updateTogglesFromPackages(updatedPkgs)
+                }
+            }
+        }
+
+        // Cancel observer when dialog is dismissed
+        dialog.setOnDismissListener {
+            AppLogger.d(TAG, "showMultiSelectRulesSheet: Dialog dismissed, cancelling observer")
+            observerJob.cancel()
+            if (currentDialog == dialog) {
+                currentDialog = null
+            }
+        }
+
+        dialog.setContentView(sheetBinding.root)
+        dialog.show()
+    }
+
+    /**
+     * Update a multi-select toggle's visual state without triggering the listener.
+     */
+    private fun updateMultiSelectToggleState(
+        binding: NetworkTypeToggleBinding,
+        state: MultiSelectToggleState
+    ) {
+        when (state) {
+            MultiSelectToggleState.ALL_BLOCKED -> {
+                binding.toggleSwitch.isChecked = true
+                binding.networkTypeSubtitle.visibility = View.GONE
+                updateSwitchColors(binding.toggleSwitch, true)
+            }
+            MultiSelectToggleState.ALL_ALLOWED -> {
+                binding.toggleSwitch.isChecked = false
+                binding.networkTypeSubtitle.visibility = View.GONE
+                updateSwitchColors(binding.toggleSwitch, false)
+            }
+            MultiSelectToggleState.MIXED -> {
+                binding.toggleSwitch.isChecked = false
+                binding.networkTypeSubtitle.visibility = View.VISIBLE
+                binding.networkTypeSubtitle.text = getString(R.string.firewall_multiselect_sheet_state_mixed)
+                updateSwitchColors(binding.toggleSwitch, false)
+            }
+        }
+    }
+
+    /**
+     * Setup a network toggle for multi-select mode - initial state only (no listener).
+     * Listener is added separately to support the isUpdatingProgrammatically flag.
+     */
+    private fun setupMultiSelectToggleInitial(
+        binding: NetworkTypeToggleBinding,
+        label: String,
+        state: MultiSelectToggleState
+    ) {
+        binding.networkTypeLabel.text = label
+        binding.labelLeft.text = getString(R.string.firewall_state_allowed)
+        binding.labelRight.text = getString(R.string.firewall_state_blocked)
+        binding.toggleSwitch.isEnabled = true
+
+        // Set initial state based on aggregated state
+        when (state) {
+            MultiSelectToggleState.ALL_BLOCKED -> {
+                binding.toggleSwitch.isChecked = true
+                binding.networkTypeSubtitle.visibility = View.GONE
+                updateSwitchColors(binding.toggleSwitch, true)
+            }
+            MultiSelectToggleState.ALL_ALLOWED -> {
+                binding.toggleSwitch.isChecked = false
+                binding.networkTypeSubtitle.visibility = View.GONE
+                updateSwitchColors(binding.toggleSwitch, false)
+            }
+            MultiSelectToggleState.MIXED -> {
+                // For mixed state, show as unchecked (allowed) but with "Mixed" subtitle
+                binding.toggleSwitch.isChecked = false
+                binding.networkTypeSubtitle.visibility = View.VISIBLE
+                binding.networkTypeSubtitle.text = getString(R.string.firewall_multiselect_sheet_state_mixed)
+                updateSwitchColors(binding.toggleSwitch, false)
+            }
+        }
     }
 
     companion object {

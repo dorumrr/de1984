@@ -183,12 +183,21 @@
     <string name="firewall_multiselect_toast_cannot_select_critical">Critical/VPN packages cannot be selected</string>
     <string name="firewall_multiselect_toolbar_button_block">Block</string>
     <string name="firewall_multiselect_toolbar_button_allow">Allow</string>
+    <string name="firewall_multiselect_toolbar_button_rules">Change Rules</string>
     <string name="firewall_multiselect_dialog_title_block">Block %d Selected Apps?</string>
     <string name="firewall_multiselect_dialog_title_allow">Allow %d Selected Apps?</string>
     <string name="firewall_multiselect_dialog_message">This will change network access for %d apps.</string>
     <string name="firewall_multiselect_dialog_title_results">Firewall Results</string>
     <string name="firewall_multiselect_dialog_message_success_format">✓ Successfully %2$s: %1$d apps</string>
     <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d succeeded, ✗ %2$d failed to %3$s</string>
+
+    <!-- Firewall Multi-Select Bottom Sheet -->
+    <string name="firewall_multiselect_sheet_header_format">%d packages selected</string>
+    <string name="firewall_multiselect_sheet_section_network_rules">Network Rules</string>
+    <string name="firewall_multiselect_sheet_state_mixed">Mixed</string>
+    <string name="firewall_multiselect_sheet_quick_actions">Quick Actions</string>
+    <string name="firewall_multiselect_sheet_allow_all">Allow All Networks</string>
+    <string name="firewall_multiselect_sheet_block_all">Block All Networks</string>
 
     <!-- Theme -->
     <string name="theme_light">Light Theme</string>
@@ -237,6 +246,7 @@
     <string name="cd_captive_portal_icon">Captive Portal icon</string>
     <string name="cd_apps_icon">Apps icon</string>
     <string name="cd_permission_status">Permission status</string>
+    <string name="cd_multiselect_icon">Multiple packages selected</string>
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">Late nights for brighter days.\nCreated by Doru Moraru</string>
@@ -714,6 +724,7 @@
     <string name="error_unable_to_allow_network">Unable to allow network access. Root access required for firewall operations.</string>
     <string name="error_unable_to_block_network">Unable to block network access. Root access required for firewall operations.</string>
     <string name="error_failed_to_block_mobile">Failed to block mobile data: %s</string>
+    <string name="error_failed_to_block_roaming">Failed to block roaming: %s</string>
     <string name="error_failed_to_unblock_roaming">Failed to unblock roaming: %s</string>
 
     <!-- Captive Portal Error Messages -->

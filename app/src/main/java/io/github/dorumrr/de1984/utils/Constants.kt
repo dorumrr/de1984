@@ -3,12 +3,6 @@ package io.github.dorumrr.de1984.utils
 object Constants {
 
     object UI {
-        // Bottom Navigation (actually used in MainActivity.kt)
-        const val BOTTOM_NAV_ICON_SIZE_ENLARGED = 27.5f
-        const val BOTTOM_NAV_PADDING_TOP = 12
-        const val BOTTOM_NAV_PADDING_BOTTOM = 3
-        const val BOTTOM_NAV_TEXT_TRANSLATION_Y = -2
-
         // Dropdown behavior
         const val DROPDOWN_DISMISSAL_DELAY_MS = 200L
 

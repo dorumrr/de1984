@@ -57,14 +57,14 @@
         <item name="materialThemeOverlay">@style/ThemeOverlay.De1984.BottomNavigationView</item>
         <item name="android:background">?attr/colorPrimaryContainer</item>
         <item name="elevation">8dp</item>
-        <item name="itemIconSize">22dp</item>
+        <item name="itemIconSize">28dp</item>
         <!-- itemIconTint and itemTextColor are set programmatically in MainActivity -->
         <item name="itemRippleColor">@null</item>
         <item name="itemBackground">@drawable/bottom_nav_item_background</item>
         <item name="labelVisibilityMode">labeled</item>
         <item name="android:minHeight">60dp</item>
         <item name="itemActiveIndicatorStyle">@null</item>
-        <item name="itemPaddingTop">0dp</item>
+        <item name="itemPaddingTop">10dp</item>
         <item name="itemPaddingBottom">0dp</item>
     </style>
 

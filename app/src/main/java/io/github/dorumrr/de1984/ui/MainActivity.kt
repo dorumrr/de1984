@@ -394,9 +394,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.bottomNavigation.selectedItemId = R.id.firewallFragment
-        binding.bottomNavigation.post {
-            customizeBottomNavSpacing()
-        }
 
         // Set icon colors based on dynamic colors setting
         applyBottomNavigationColors()
@@ -454,45 +451,6 @@ class MainActivity : AppCompatActivity() {
         val alphaInt = (alpha * 255).toInt()
         return (color and 0x00FFFFFF) or (alphaInt shl 24)
     }
-
-    private fun customizeBottomNavSpacing() {
-        fun customizeRecursively(view: android.view.View) {
-            if (view.javaClass.simpleName == "BottomNavigationItemView") {
-                val density = resources.displayMetrics.density
-                view.setPadding(
-                    view.paddingLeft,
-                    (Constants.UI.BOTTOM_NAV_PADDING_TOP * density).toInt(),
-                    view.paddingRight,
-                    (Constants.UI.BOTTOM_NAV_PADDING_BOTTOM * density).toInt()
-                )
-            }
-
-            if (view.javaClass.simpleName == "BaselineLayout") {
-                val density = resources.displayMetrics.density
-                view.translationY = Constants.UI.BOTTOM_NAV_TEXT_TRANSLATION_Y * density
-            }
-
-            if (view is android.widget.ImageView && view.parent?.javaClass?.simpleName == "FrameLayout") {
-                val density = resources.displayMetrics.density
-                val newSize = (Constants.UI.BOTTOM_NAV_ICON_SIZE_ENLARGED * density).toInt()
-                val params = view.layoutParams
-                params.width = newSize
-                params.height = newSize
-                view.layoutParams = params
-            }
-
-            if (view is android.view.ViewGroup) {
-                for (i in 0 until view.childCount) {
-                    customizeRecursively(view.getChildAt(i))
-                }
-            }
-        }
-
-        customizeRecursively(binding.bottomNavigation)
-    }
-
-
-
 
 
     private fun loadFragment(tab: Tab) {

@@ -32,6 +32,10 @@ class ShizukuManager(private val context: Context) {
     private var hasCheckedOnce = false
     private var listenersRegistered = false
 
+    // Track if SUI (Magisk-based Shizuku) is available
+    // SUI doesn't install a separate package - it provides Shizuku API through Magisk
+    private var isSuiAvailable = false
+
     // Cache the reflection method to avoid repeated lookups
     // This is accessed via Shizuku.newProcess() which is private, so we use reflection
     private val newProcessMethod by lazy {
@@ -138,48 +142,65 @@ class ShizukuManager(private val context: Context) {
 
     private suspend fun checkShizukuStatusInternal(): ShizukuStatus = withContext(Dispatchers.IO) {
         try {
-            AppLogger.d(TAG, "Checking if Shizuku is installed...")
-            // Check if Shizuku is installed
+            val source = if (isSuiAvailable) "SUI (Magisk)" else "Shizuku"
+            AppLogger.d(TAG, "Checking if $source is installed... (isSuiAvailable=$isSuiAvailable)")
+
+            // Check if Shizuku/SUI is installed
             val installed = isShizukuInstalled()
             if (!installed) {
-                AppLogger.d(TAG, "Shizuku is NOT_INSTALLED")
+                AppLogger.d(TAG, "$source is NOT_INSTALLED")
                 return@withContext ShizukuStatus.NOT_INSTALLED
             }
 
-            AppLogger.d(TAG, "Shizuku is installed, checking if running...")
-            // Check if Shizuku is running
+            AppLogger.d(TAG, "$source is installed, checking if service is running...")
+            // Check if Shizuku service is running (works for both SUI and standalone Shizuku)
             val running = isShizukuRunning()
             if (!running) {
-                AppLogger.d(TAG, "Shizuku is INSTALLED_NOT_RUNNING")
+                AppLogger.d(TAG, "$source is INSTALLED_NOT_RUNNING (binder not responding)")
                 return@withContext ShizukuStatus.INSTALLED_NOT_RUNNING
             }
 
-            AppLogger.d(TAG, "Shizuku is running, checking permission...")
+            AppLogger.d(TAG, "$source service is running, checking permission...")
             // Check permission
             val hasPermission = checkShizukuPermissionSync()
             if (!hasPermission) {
-                AppLogger.d(TAG, "Shizuku is RUNNING_NO_PERMISSION")
+                AppLogger.d(TAG, "$source is RUNNING_NO_PERMISSION")
                 return@withContext ShizukuStatus.RUNNING_NO_PERMISSION
             }
 
-            AppLogger.d(TAG, "Shizuku is RUNNING_WITH_PERMISSION")
+            AppLogger.d(TAG, "$source is RUNNING_WITH_PERMISSION ✅")
             ShizukuStatus.RUNNING_WITH_PERMISSION
         } catch (e: Exception) {
-            AppLogger.e(TAG, "Exception during Shizuku check: ${e.message}", e)
+            AppLogger.e(TAG, "Exception during Shizuku/SUI check: ${e.message}", e)
             ShizukuStatus.NOT_INSTALLED
         }
     }
 
     /**
-     * Check if Shizuku app is installed
+     * Check if Shizuku/SUI is installed
+     *
+     * Important: SUI (Magisk-based Shizuku) doesn't install a separate package.
+     * It provides the Shizuku API through Magisk modules. So we need to check:
+     * 1. If SUI was successfully initialized (isSuiAvailable), OR
+     * 2. If the standalone Shizuku app package is installed
      */
     fun isShizukuInstalled(): Boolean {
+        // If SUI is available, Shizuku API is available without a separate package
+        if (isSuiAvailable) {
+            AppLogger.d(TAG, "isShizukuInstalled: SUI is available (no package needed)")
+            return true
+        }
+
+        // Check for standalone Shizuku app
         return try {
             context.packageManager.getPackageInfo(SHIZUKU_PACKAGE_NAME, 0)
+            AppLogger.d(TAG, "isShizukuInstalled: Standalone Shizuku package found")
             true
         } catch (e: PackageManager.NameNotFoundException) {
+            AppLogger.d(TAG, "isShizukuInstalled: No Shizuku package and no SUI")
             false
         } catch (e: Exception) {
+            AppLogger.d(TAG, "isShizukuInstalled: Error checking package: ${e.message}")
             false
         }
     }
@@ -339,14 +360,20 @@ class ShizukuManager(private val context: Context) {
             // Initialize Sui if available (required for SUI support)
             // This must be called before any Shizuku API usage when SUI is installed
             // Returns true if SUI is available, false otherwise (no exception thrown)
+            //
+            // IMPORTANT: SUI (Magisk-based Shizuku) doesn't install a separate package.
+            // When Sui.init() returns true, we must track this to bypass package installation checks.
             try {
-                if (Sui.init(context.packageName)) {
-                    AppLogger.d(TAG, "✅ Sui initialized successfully - SUI is available")
+                isSuiAvailable = Sui.init(context.packageName)
+                if (isSuiAvailable) {
+                    AppLogger.d(TAG, "✅ Sui initialized successfully - SUI is available (Magisk module)")
+                    AppLogger.d(TAG, "   SUI provides Shizuku API without separate package installation")
                 } else {
-                    AppLogger.d(TAG, "ℹ️ Sui not available - will use Shizuku or root")
+                    AppLogger.d(TAG, "ℹ️ Sui not available - will check for standalone Shizuku or root")
                 }
             } catch (e: Exception) {
                 AppLogger.d(TAG, "ℹ️ Sui initialization failed (expected if SUI not installed): ${e.message}")
+                isSuiAvailable = false
             }
 
             AppLogger.d(TAG, "🔧 Registering Shizuku listeners")

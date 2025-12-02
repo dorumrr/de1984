@@ -82,6 +82,22 @@ class ShizukuManager(private val context: Context) {
         // Shizuku binder received, check status
         AppLogger.d(TAG, "🔧 SYSTEM EVENT: Shizuku binder received (Shizuku started)")
 
+        // Per @embeddedtofu suggestion, re-check SUI availability on reconnection
+        // This handles the case where SUI module was enabled/disabled since app start
+        // Pattern: Sui.init() initializes, Sui.isSui() confirms it's actually SUI.
+        try {
+            val suiInitResult = Sui.init(context.packageName)
+            val previousSuiState = isSuiAvailable
+            isSuiAvailable = suiInitResult && Sui.isSui()
+            if (isSuiAvailable != previousSuiState) {
+                AppLogger.d(TAG, "🔧 SUI availability changed: $previousSuiState → $isSuiAvailable")
+            }
+            AppLogger.d(TAG, "🔧 SUI check on reconnect: init=$suiInitResult, isSui=${if (suiInitResult) Sui.isSui() else "N/A"}, isSuiAvailable=$isSuiAvailable")
+        } catch (e: Exception) {
+            AppLogger.d(TAG, "🔧 SUI check failed on reconnect (expected if not installed): ${e.message}")
+            isSuiAvailable = false
+        }
+
         // Update Shizuku status
         checkShizukuStatusSync()
 

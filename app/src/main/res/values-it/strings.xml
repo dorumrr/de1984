@@ -53,6 +53,22 @@
     <string name="dialog_vpn_warning_title">ATTENZIONE: Una VPN è attiva!</string>
     <string name="dialog_vpn_warning_message">Consenti l’app VPN nel firewall per evitare problemi di connessione.</string>
 
+    <!-- Quick Toggle Dialogs -->
+    <string name="dialog_quick_toggle_block_title">Bloccare %1$s?</string>
+    <string name="dialog_quick_toggle_allow_title">Consentire %1$s?</string>
+    <string name="dialog_quick_toggle_message_wifi">Questo %1$s l\'accesso WiFi per %2$s</string>
+    <string name="dialog_quick_toggle_message_mobile">Questo %1$s l\'accesso dati mobili per %2$s</string>
+    <string name="dialog_quick_toggle_message_roaming">Questo %1$s l\'accesso roaming per %2$s</string>
+    <string name="dialog_quick_toggle_action_block">bloccherà</string>
+    <string name="dialog_quick_toggle_action_allow">consentirà</string>
+    <string name="snackbar_wifi_blocked">WiFi bloccato per %s</string>
+    <string name="snackbar_wifi_allowed">WiFi consentito per %s</string>
+    <string name="snackbar_mobile_blocked">Dati mobili bloccati per %s</string>
+    <string name="snackbar_mobile_allowed">Dati mobili consentiti per %s</string>
+    <string name="snackbar_roaming_blocked">Roaming bloccato per %s</string>
+    <string name="snackbar_roaming_allowed">Roaming consentito per %s</string>
+    <string name="snackbar_undo">Annulla</string>
+
     <string name="firewall_system_package_warning">⚠️ Pacchetto di sistema</string>
 
     <!-- Package Management -->
@@ -411,6 +427,9 @@
 
     <string name="settings_show_firewall_prompt_title">Mostra Prompt di Avvio Firewall</string>
     <string name="settings_show_firewall_prompt_description">Mostra un avviso per avviare il firewall quando l’app si apre</string>
+
+    <string name="settings_confirm_rule_changes_title">Conferma Modifiche Regole</string>
+    <string name="settings_confirm_rule_changes_description">Mostra una finestra di conferma quando tocchi le icone di rete per cambiare le regole</string>
 
     <string name="settings_dynamic_color_title">Usa Colori Dinamici</string>
     <string name="settings_dynamic_color_description">Adatta i colori dell’app al tuo wallpaper (Android 12+)</string>

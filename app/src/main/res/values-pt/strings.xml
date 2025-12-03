@@ -53,6 +53,22 @@
     <string name="dialog_vpn_warning_title">AVISO: Uma VPN está atualmente ativa!</string>
     <string name="dialog_vpn_warning_message">Por favor, permita seu app VPN no firewall para evitar problemas de conectividade.</string>
 
+    <!-- Quick Toggle Dialogs -->
+    <string name="dialog_quick_toggle_block_title">Bloquear %1$s?</string>
+    <string name="dialog_quick_toggle_allow_title">Permitir %1$s?</string>
+    <string name="dialog_quick_toggle_message_wifi">Isto vai %1$s o acesso WiFi para %2$s</string>
+    <string name="dialog_quick_toggle_message_mobile">Isto vai %1$s o acesso de dados móveis para %2$s</string>
+    <string name="dialog_quick_toggle_message_roaming">Isto vai %1$s o acesso de roaming para %2$s</string>
+    <string name="dialog_quick_toggle_action_block">bloquear</string>
+    <string name="dialog_quick_toggle_action_allow">permitir</string>
+    <string name="snackbar_wifi_blocked">WiFi bloqueado para %s</string>
+    <string name="snackbar_wifi_allowed">WiFi permitido para %s</string>
+    <string name="snackbar_mobile_blocked">Dados móveis bloqueados para %s</string>
+    <string name="snackbar_mobile_allowed">Dados móveis permitidos para %s</string>
+    <string name="snackbar_roaming_blocked">Roaming bloqueado para %s</string>
+    <string name="snackbar_roaming_allowed">Roaming permitido para %s</string>
+    <string name="snackbar_undo">Desfazer</string>
+
     <string name="firewall_system_package_warning">⚠️ Aviso de Pacote do Sistema</string>
 
     <!-- Package Management -->
@@ -411,6 +427,9 @@
 
     <string name="settings_show_firewall_prompt_title">Mostrar Prompt de Iniciar Firewall</string>
     <string name="settings_show_firewall_prompt_description">Mostrar um prompt para iniciar o firewall quando o app abre e o firewall está inativo</string>
+
+    <string name="settings_confirm_rule_changes_title">Confirmar Alterações de Regras</string>
+    <string name="settings_confirm_rule_changes_description">Mostrar diálogo de confirmação ao tocar nos ícones de rede para alternar regras</string>
 
     <string name="settings_dynamic_color_title">Usar Cor Dinâmica</string>
     <string name="settings_dynamic_color_description">Adaptar cores do app para combinar com o papel de parede do seu dispositivo (Android 12+). Requer reiniciar o app.</string>

@@ -54,8 +54,24 @@
     <string name="dialog_vpn_warning_title">ATENȚIE: Un VPN este activ!</string>
     <string name="dialog_vpn_warning_message">Te rog permite aplicația VPN în firewall pentru a evita probleme de conectivitate.</string>
 
+    <!-- Quick Toggle Dialogs -->
+    <string name="dialog_quick_toggle_block_title">Blochezi %1$s?</string>
+    <string name="dialog_quick_toggle_allow_title">Permiți %1$s?</string>
+    <string name="dialog_quick_toggle_message_wifi">Aceasta va %1$s accesul WiFi pentru %2$s</string>
+    <string name="dialog_quick_toggle_message_mobile">Aceasta va %1$s accesul la date mobile pentru %2$s</string>
+    <string name="dialog_quick_toggle_message_roaming">Aceasta va %1$s accesul la roaming pentru %2$s</string>
+    <string name="dialog_quick_toggle_action_block">bloca</string>
+    <string name="dialog_quick_toggle_action_allow">permite</string>
+    <string name="snackbar_wifi_blocked">WiFi blocat pentru %s</string>
+    <string name="snackbar_wifi_allowed">WiFi permis pentru %s</string>
+    <string name="snackbar_mobile_blocked">Date mobile blocate pentru %s</string>
+    <string name="snackbar_mobile_allowed">Date mobile permise pentru %s</string>
+    <string name="snackbar_roaming_blocked">Roaming blocat pentru %s</string>
+    <string name="snackbar_roaming_allowed">Roaming permis pentru %s</string>
+    <string name="snackbar_undo">Anulează</string>
+
     <string name="firewall_system_package_warning">⚠️ Avertisment Pachet de Sistem</string>
-    
+
     <!-- Package Management -->
     <string name="packages_title">Gestionare Pachete</string>
     <string name="packages_search_hint">Caută pachete…</string>
@@ -413,6 +429,9 @@
 
     <string name="settings_show_firewall_prompt_title">Arată promptul Pornire Firewall</string>
     <string name="settings_show_firewall_prompt_description">Arată un prompt pentru a porni firewall-ul când aplicația se deschide și firewall-ul e inactiv</string>
+
+    <string name="settings_confirm_rule_changes_title">Confirmă Modificările Regulilor</string>
+    <string name="settings_confirm_rule_changes_description">Arată un dialog de confirmare când atingi pictogramele de rețea pentru a comuta regulile</string>
 
     <string name="settings_dynamic_color_title">Folosește culoti dinamice</string>
     <string name="settings_dynamic_color_description">Adaptează culorile aplicației la fundalul dispozitivului (Android 12+). Necesită repornirea aplicației.</string>

@@ -53,6 +53,22 @@
     <string name="dialog_vpn_warning_title">WARNING: A VPN is currently active!</string>
     <string name="dialog_vpn_warning_message">Please allow your VPN app in the firewall to avoid connectivity issues.</string>
 
+    <!-- Quick Toggle Dialogs -->
+    <string name="dialog_quick_toggle_block_title">Block %1$s?</string>
+    <string name="dialog_quick_toggle_allow_title">Allow %1$s?</string>
+    <string name="dialog_quick_toggle_message_wifi">This will %1$s WiFi access for %2$s</string>
+    <string name="dialog_quick_toggle_message_mobile">This will %1$s mobile data access for %2$s</string>
+    <string name="dialog_quick_toggle_message_roaming">This will %1$s roaming access for %2$s</string>
+    <string name="dialog_quick_toggle_action_block">block</string>
+    <string name="dialog_quick_toggle_action_allow">allow</string>
+    <string name="snackbar_wifi_blocked">WiFi blocked for %s</string>
+    <string name="snackbar_wifi_allowed">WiFi allowed for %s</string>
+    <string name="snackbar_mobile_blocked">Mobile blocked for %s</string>
+    <string name="snackbar_mobile_allowed">Mobile allowed for %s</string>
+    <string name="snackbar_roaming_blocked">Roaming blocked for %s</string>
+    <string name="snackbar_roaming_allowed">Roaming allowed for %s</string>
+    <string name="snackbar_undo">Undo</string>
+
     <string name="firewall_system_package_warning">⚠️ System Package Warning</string>
 
     <!-- Package Management -->
@@ -412,6 +428,9 @@
 
     <string name="settings_show_firewall_prompt_title">Show Firewall Start Prompt</string>
     <string name="settings_show_firewall_prompt_description">Show a prompt to start the firewall when the app opens and firewall is inactive</string>
+
+    <string name="settings_confirm_rule_changes_title">Confirm Rule Changes</string>
+    <string name="settings_confirm_rule_changes_description">Show confirmation dialog when tapping network icons to toggle rules</string>
 
     <string name="settings_dynamic_color_title">Use Dynamic Color</string>
     <string name="settings_dynamic_color_description">Adapt app colors to match your device wallpaper (Android 12+). Requires app restart.</string>

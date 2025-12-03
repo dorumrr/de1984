@@ -176,6 +176,7 @@ class SettingsViewModel(
                 allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
                 allowCriticalPackageFirewall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL),
                 showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT),
+                confirmRuleChanges = prefs.getBoolean(Constants.Settings.KEY_CONFIRM_RULE_CHANGES, Constants.Settings.DEFAULT_CONFIRM_RULE_CHANGES),
                 useDynamicColors = prefs.getBoolean(Constants.Settings.KEY_USE_DYNAMIC_COLORS, Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS)
             )
         }
@@ -400,6 +401,11 @@ class SettingsViewModel(
     fun setShowFirewallStartPrompt(show: Boolean) {
         _uiState.value = _uiState.value.copy(showFirewallStartPrompt = show)
         saveSetting(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, show)
+    }
+
+    fun setConfirmRuleChanges(confirm: Boolean) {
+        _uiState.value = _uiState.value.copy(confirmRuleChanges = confirm)
+        saveSetting(Constants.Settings.KEY_CONFIRM_RULE_CHANGES, confirm)
     }
 
     fun setUseDynamicColors(enabled: Boolean, showRestartDialog: Boolean = false) {
@@ -1228,6 +1234,7 @@ data class SettingsUiState(
     val allowCriticalPackageUninstall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL,
     val allowCriticalPackageFirewall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL,
     val showFirewallStartPrompt: Boolean = Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT,
+    val confirmRuleChanges: Boolean = Constants.Settings.DEFAULT_CONFIRM_RULE_CHANGES,
     val useDynamicColors: Boolean = Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS,
     val appLanguage: String = Constants.Settings.DEFAULT_APP_LANGUAGE,
 

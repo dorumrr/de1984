@@ -485,6 +485,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             viewModel.setShowFirewallStartPrompt(isChecked)
         }
 
+        binding.confirmRuleChangesSwitch.setOnCheckedChangeListener(null)
+        binding.confirmRuleChangesSwitch.isChecked = state.confirmRuleChanges
+        binding.confirmRuleChangesSwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setConfirmRuleChanges(isChecked)
+        }
+
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener(null)
         binding.newAppNotificationsSwitch.isChecked = state.newAppNotifications
         binding.newAppNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->

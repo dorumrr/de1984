@@ -53,6 +53,22 @@
     <string name="dialog_vpn_warning_title">ATTENTION: Un VPN est actuellement actif!</string>
     <string name="dialog_vpn_warning_message">Veuillez autoriser votre application VPN dans le pare-feu pour éviter des problèmes de connectivité.</string>
 
+    <!-- Quick Toggle Dialogs -->
+    <string name="dialog_quick_toggle_block_title">Bloquer %1$s?</string>
+    <string name="dialog_quick_toggle_allow_title">Autoriser %1$s?</string>
+    <string name="dialog_quick_toggle_message_wifi">Cela va %1$s l\'accès WiFi pour %2$s</string>
+    <string name="dialog_quick_toggle_message_mobile">Cela va %1$s l\'accès données mobiles pour %2$s</string>
+    <string name="dialog_quick_toggle_message_roaming">Cela va %1$s l\'accès itinérance pour %2$s</string>
+    <string name="dialog_quick_toggle_action_block">bloquer</string>
+    <string name="dialog_quick_toggle_action_allow">autoriser</string>
+    <string name="snackbar_wifi_blocked">WiFi bloqué pour %s</string>
+    <string name="snackbar_wifi_allowed">WiFi autorisé pour %s</string>
+    <string name="snackbar_mobile_blocked">Données mobiles bloquées pour %s</string>
+    <string name="snackbar_mobile_allowed">Données mobiles autorisées pour %s</string>
+    <string name="snackbar_roaming_blocked">Itinérance bloquée pour %s</string>
+    <string name="snackbar_roaming_allowed">Itinérance autorisée pour %s</string>
+    <string name="snackbar_undo">Annuler</string>
+
     <string name="firewall_system_package_warning">⚠️ Avertissement paquet système</string>
 
     <!-- Package Management -->
@@ -411,6 +427,9 @@
 
     <string name="settings_show_firewall_prompt_title">Afficher l\'invite de démarrage du pare-feu</string>
     <string name="settings_show_firewall_prompt_description">Afficher une invite pour démarrer le pare-feu à l\'ouverture de l\'application si le pare-feu est inactif</string>
+
+    <string name="settings_confirm_rule_changes_title">Confirmer les changements de règles</string>
+    <string name="settings_confirm_rule_changes_description">Afficher une boîte de dialogue de confirmation lors du tapotement sur les icônes réseau pour basculer les règles</string>
 
     <string name="settings_dynamic_color_title">Utiliser la couleur dynamique</string>
     <string name="settings_dynamic_color_description">Adapter les couleurs de l\'application au fond d\'écran de votre appareil (Android 12+). Nécessite le redémarrage de l\'application.</string>

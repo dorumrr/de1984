@@ -72,45 +72,62 @@
 
     </HorizontalScrollView>
 
-    <!-- Search Box -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/search_layout"
+    <!-- Search Box with Counter -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginTop="1dp"
-        android:layout_marginBottom="9dp"
-        android:hint="@string/packages_search_hint"
-        app:startIconDrawable="@android:drawable/ic_menu_search"
-        app:endIconMode="custom"
-        app:endIconDrawable="@drawable/ic_clear_search"
-        app:suffixText=""
-        app:suffixTextColor="?android:attr/textColorHint"
-        app:boxBackgroundMode="outline"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
-        app:hintTextAppearance="@style/TextAppearance.Material3.BodySmall"
-        app:hintEnabled="false"
-        app:expandedHintEnabled="false"
-        app:hintAnimationEnabled="false"
-        style="@style/Widget.De1984.TextInputLayout.Compact">
+        android:layout_marginBottom="9dp">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/search_input"
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/search_layout"
             android:layout_width="match_parent"
-            android:layout_height="41dp"
+            android:layout_height="wrap_content"
             android:hint="@string/packages_search_hint"
-            android:inputType="text"
-            android:maxLines="1"
-            android:textSize="14sp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:imeOptions="actionSearch" />
+            app:startIconDrawable="@android:drawable/ic_menu_search"
+            app:endIconMode="custom"
+            app:endIconDrawable="@drawable/ic_clear_search"
+            app:boxBackgroundMode="outline"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:hintTextAppearance="@style/TextAppearance.Material3.BodySmall"
+            app:hintEnabled="false"
+            app:expandedHintEnabled="false"
+            app:hintAnimationEnabled="false"
+            style="@style/Widget.De1984.TextInputLayout.Compact">
 
-    </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/search_input"
+                android:layout_width="match_parent"
+                android:layout_height="41dp"
+                android:hint="@string/packages_search_hint"
+                android:inputType="text"
+                android:maxLines="1"
+                android:textSize="14sp"
+                android:gravity="center_vertical"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp"
+                android:paddingEnd="100dp"
+                android:imeOptions="actionSearch" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Package Counter - overlaid on the right side of search box -->
+        <TextView
+            android:id="@+id/package_counter"
+            android:layout_width="wrap_content"
+            android:layout_height="41dp"
+            android:layout_gravity="end|center_vertical"
+            android:gravity="center_vertical"
+            android:paddingEnd="40dp"
+            android:textSize="14sp"
+            android:textColor="?android:attr/textColorHint" />
+
+    </FrameLayout>
 
     <!-- Packages RecyclerView - Full Width, No Container -->
     <FrameLayout

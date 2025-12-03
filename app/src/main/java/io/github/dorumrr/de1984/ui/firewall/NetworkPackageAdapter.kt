@@ -22,13 +22,21 @@ import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
 
 /**
+ * Network type for quick toggle
+ */
+enum class NetworkType {
+    WIFI, MOBILE, ROAMING
+}
+
+/**
  * Adapter for displaying network packages in Firewall screen
  * Reusable and optimized with DiffUtil
  */
 class NetworkPackageAdapter(
     private val showIcons: Boolean,
     private val onPackageClick: (NetworkPackage) -> Unit,
-    private val onPackageLongClick: (NetworkPackage) -> Boolean = { false }
+    private val onPackageLongClick: (NetworkPackage) -> Boolean = { false },
+    private val onQuickToggle: ((NetworkPackage, NetworkType) -> Unit)? = null
 ) : ListAdapter<NetworkPackage, NetworkPackageAdapter.NetworkPackageViewHolder>(NetworkPackageDiffCallback()) {
 
     companion object {
@@ -51,7 +59,8 @@ class NetworkPackageAdapter(
             onPackageLongClick,
             ::isPackageSelected,
             { pkg -> canSelectPackage(pkg, context) },
-            ::togglePackageSelection
+            ::togglePackageSelection,
+            onQuickToggle
         )
     }
 
@@ -150,7 +159,8 @@ class NetworkPackageAdapter(
         private val onPackageLongClick: (NetworkPackage) -> Boolean,
         private val isPackageSelected: (String) -> Boolean,
         private val canSelectPackage: (NetworkPackage) -> Boolean,
-        private val togglePackageSelection: (NetworkPackage, Context) -> Unit
+        private val togglePackageSelection: (NetworkPackage, Context) -> Unit,
+        private val onQuickToggle: ((NetworkPackage, NetworkType) -> Unit)?
     ) : RecyclerView.ViewHolder(itemView) {
 
         private val selectionCheckbox: CheckBox = itemView.findViewById(R.id.selection_checkbox)
@@ -160,8 +170,10 @@ class NetworkPackageAdapter(
         private val systemCriticalBadge: TextView = itemView.findViewById(R.id.system_critical_badge)
         private val vpnAppBadge: TextView = itemView.findViewById(R.id.vpn_app_badge)
         private val noInternetBadge: TextView = itemView.findViewById(R.id.no_internet_badge)
+        private val wifiContainer: View = itemView.findViewById(R.id.wifi_container)
         private val wifiIcon: ImageView = itemView.findViewById(R.id.wifi_icon)
         private val wifiBlockedOverlay: ImageView = itemView.findViewById(R.id.wifi_blocked_overlay)
+        private val mobileContainer: View = itemView.findViewById(R.id.mobile_container)
         private val mobileIcon: ImageView = itemView.findViewById(R.id.mobile_icon)
         private val mobileBlockedOverlay: ImageView = itemView.findViewById(R.id.mobile_blocked_overlay)
         private val roamingContainer: View = itemView.findViewById(R.id.roaming_container)
@@ -268,6 +280,35 @@ class NetworkPackageAdapter(
             } else {
                 // Hide roaming icon on WiFi-only devices
                 roamingContainer.visibility = View.GONE
+            }
+
+            // Setup quick toggle click listeners for network icons
+            // Quick toggle is disabled for critical/VPN packages (unless setting allows)
+            // and disabled in selection mode
+            val canQuickToggle = onQuickToggle != null && !shouldDim && !isSelectionMode
+
+            wifiContainer.setOnClickListener {
+                if (canQuickToggle) {
+                    currentPackage?.let { pkg -> onQuickToggle?.invoke(pkg, NetworkType.WIFI) }
+                }
+            }
+            wifiContainer.isClickable = canQuickToggle
+
+            mobileContainer.setOnClickListener {
+                if (canQuickToggle) {
+                    currentPackage?.let { pkg -> onQuickToggle?.invoke(pkg, NetworkType.MOBILE) }
+                }
+            }
+            mobileContainer.isClickable = canQuickToggle
+
+            roamingContainer.setOnClickListener {
+                if (canQuickToggle && hasCellular) {
+                    currentPackage?.let { pkg -> onQuickToggle?.invoke(pkg, NetworkType.ROAMING) }
+                }
+            }
+            // Roaming container clickable only if device has cellular and quick toggle allowed
+            if (hasCellular) {
+                roamingContainer.isClickable = canQuickToggle
             }
 
             // Set click listener

@@ -189,6 +189,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             },
             onPackageLongClick = { pkg ->
                 onPackageLongClick(pkg)
+            },
+            onQuickToggle = { pkg, networkType ->
+                handleQuickToggle(pkg, networkType)
             }
         )
 
@@ -427,6 +430,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                         },
                         onPackageLongClick = { pkg ->
                             onPackageLongClick(pkg)
+                        },
+                        onQuickToggle = { pkg, networkType ->
+                            handleQuickToggle(pkg, networkType)
                         }
                     )
 
@@ -512,7 +518,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Update package count in search field
         // Hide count if 0 results AND no search query (empty state)
         val count = displayedPackages.size
-        binding.searchLayout.suffixText = if (count == 0 && state.searchQuery.isBlank()) {
+        binding.packageCounter.text = if (count == 0 && state.searchQuery.isBlank()) {
             ""
         } else {
             resources.getQuantityString(
@@ -1624,6 +1630,138 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 updateSwitchColors(binding.toggleSwitch, false)
             }
         }
+    }
+
+    /**
+     * Handle quick toggle on network icons
+     * Shows confirmation dialog or executes toggle with snackbar based on settings
+     */
+    private fun handleQuickToggle(pkg: NetworkPackage, networkType: NetworkType) {
+        val prefs = requireContext().getSharedPreferences(
+            Constants.Settings.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        val confirmRuleChanges = prefs.getBoolean(
+            Constants.Settings.KEY_CONFIRM_RULE_CHANGES,
+            Constants.Settings.DEFAULT_CONFIRM_RULE_CHANGES
+        )
+
+        // Determine current state and new state
+        val isCurrentlyBlocked = when (networkType) {
+            NetworkType.WIFI -> pkg.wifiBlocked
+            NetworkType.MOBILE -> pkg.mobileBlocked
+            NetworkType.ROAMING -> pkg.roamingBlocked
+        }
+        val willBlock = !isCurrentlyBlocked
+
+        if (confirmRuleChanges) {
+            showQuickToggleConfirmationDialog(pkg, networkType, willBlock)
+        } else {
+            executeQuickToggle(pkg, networkType, willBlock, showSnackbar = true)
+        }
+    }
+
+    /**
+     * Show confirmation dialog for quick toggle
+     */
+    private fun showQuickToggleConfirmationDialog(
+        pkg: NetworkPackage,
+        networkType: NetworkType,
+        willBlock: Boolean
+    ) {
+        // Use user-friendly network type names for dialog title
+        val networkTypeName = when (networkType) {
+            NetworkType.WIFI -> getString(R.string.firewall_network_label_wifi)
+            NetworkType.MOBILE -> getString(R.string.firewall_network_label_mobile)
+            NetworkType.ROAMING -> getString(R.string.firewall_network_label_roaming)
+        }
+        val title = if (willBlock) {
+            getString(R.string.dialog_quick_toggle_block_title, networkTypeName)
+        } else {
+            getString(R.string.dialog_quick_toggle_allow_title, networkTypeName)
+        }
+
+        val action = if (willBlock) {
+            getString(R.string.dialog_quick_toggle_action_block)
+        } else {
+            getString(R.string.dialog_quick_toggle_action_allow)
+        }
+
+        val message = when (networkType) {
+            NetworkType.WIFI -> getString(R.string.dialog_quick_toggle_message_wifi, action, pkg.name)
+            NetworkType.MOBILE -> getString(R.string.dialog_quick_toggle_message_mobile, action, pkg.name)
+            NetworkType.ROAMING -> getString(R.string.dialog_quick_toggle_message_roaming, action, pkg.name)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                executeQuickToggle(pkg, networkType, willBlock, showSnackbar = false)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /**
+     * Execute the quick toggle action
+     */
+    private fun executeQuickToggle(
+        pkg: NetworkPackage,
+        networkType: NetworkType,
+        willBlock: Boolean,
+        showSnackbar: Boolean
+    ) {
+        AppLogger.d(TAG, "🔘 QUICK TOGGLE: ${networkType.name} for ${pkg.packageName} - willBlock: $willBlock")
+
+        when (networkType) {
+            NetworkType.WIFI -> viewModel.setWifiBlocking(pkg.packageName, willBlock)
+            NetworkType.MOBILE -> viewModel.setMobileBlocking(pkg.packageName, willBlock)
+            NetworkType.ROAMING -> viewModel.setRoamingBlocking(pkg.packageName, willBlock)
+        }
+
+        if (showSnackbar) {
+            showQuickToggleSnackbar(pkg, networkType, willBlock)
+        }
+    }
+
+    /**
+     * Show snackbar with undo option after quick toggle
+     */
+    private fun showQuickToggleSnackbar(
+        pkg: NetworkPackage,
+        networkType: NetworkType,
+        wasBlocked: Boolean
+    ) {
+        val message = when (networkType) {
+            NetworkType.WIFI -> if (wasBlocked) {
+                getString(R.string.snackbar_wifi_blocked, pkg.name)
+            } else {
+                getString(R.string.snackbar_wifi_allowed, pkg.name)
+            }
+            NetworkType.MOBILE -> if (wasBlocked) {
+                getString(R.string.snackbar_mobile_blocked, pkg.name)
+            } else {
+                getString(R.string.snackbar_mobile_allowed, pkg.name)
+            }
+            NetworkType.ROAMING -> if (wasBlocked) {
+                getString(R.string.snackbar_roaming_blocked, pkg.name)
+            } else {
+                getString(R.string.snackbar_roaming_allowed, pkg.name)
+            }
+        }
+
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG)
+            .setAction(getString(R.string.snackbar_undo)) {
+                // Undo: reverse the action
+                AppLogger.d(TAG, "🔄 UNDO QUICK TOGGLE: ${networkType.name} for ${pkg.packageName}")
+                when (networkType) {
+                    NetworkType.WIFI -> viewModel.setWifiBlocking(pkg.packageName, !wasBlocked)
+                    NetworkType.MOBILE -> viewModel.setMobileBlocking(pkg.packageName, !wasBlocked)
+                    NetworkType.ROAMING -> viewModel.setRoamingBlocking(pkg.packageName, !wasBlocked)
+                }
+            }
+            .show()
     }
 
     companion object {

@@ -140,68 +140,83 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- WiFi Icon with overlay -->
+                <!-- WiFi Icon with overlay - clickable for quick toggle -->
                 <FrameLayout
-                    android:layout_width="20dp"
-                    android:layout_height="20dp">
+                    android:id="@+id/wifi_container"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
                         android:id="@+id/wifi_icon"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
                         android:src="@drawable/ic_wifi"
                         android:contentDescription="@string/cd_wifi_status" />
 
                     <ImageView
                         android:id="@+id/wifi_blocked_overlay"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
                         android:src="@drawable/ic_blocked_overlay"
                         android:visibility="gone"
                         android:contentDescription="@string/cd_wifi_blocked" />
                 </FrameLayout>
 
-                <!-- Mobile Icon with overlay -->
+                <!-- Mobile Icon with overlay - clickable for quick toggle -->
                 <FrameLayout
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_marginStart="6dp">
+                    android:id="@+id/mobile_container"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
                         android:id="@+id/mobile_icon"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
                         android:src="@drawable/ic_mobile"
                         android:contentDescription="@string/cd_mobile_data_status" />
 
                     <ImageView
                         android:id="@+id/mobile_blocked_overlay"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
                         android:src="@drawable/ic_blocked_overlay"
                         android:visibility="gone"
                         android:contentDescription="@string/cd_mobile_blocked" />
                 </FrameLayout>
 
-                <!-- Roaming Icon with overlay (conditionally visible) -->
+                <!-- Roaming Icon with overlay (conditionally visible) - clickable for quick toggle -->
                 <FrameLayout
                     android:id="@+id/roaming_container"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_marginStart="6dp"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:visibility="gone">
 
                     <ImageView
                         android:id="@+id/roaming_icon"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
                         android:src="@drawable/ic_roaming"
                         android:contentDescription="@string/cd_roaming_status" />
 
                     <ImageView
                         android:id="@+id/roaming_blocked_overlay"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
                         android:src="@drawable/ic_blocked_overlay"
                         android:visibility="gone"
                         android:contentDescription="@string/cd_roaming_blocked" />

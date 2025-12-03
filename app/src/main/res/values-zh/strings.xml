@@ -53,6 +53,22 @@
     <string name="dialog_vpn_warning_title">警告：当前有 VPN 处于活动状态！</string>
     <string name="dialog_vpn_warning_message">请在防火墙中允许您的 VPN 应用以避免连接问题。</string>
 
+    <!-- Quick Toggle Dialogs -->
+    <string name="dialog_quick_toggle_block_title">阻止 %1$s？</string>
+    <string name="dialog_quick_toggle_allow_title">允许 %1$s？</string>
+    <string name="dialog_quick_toggle_message_wifi">这将%1$s %2$s 的 WiFi 访问</string>
+    <string name="dialog_quick_toggle_message_mobile">这将%1$s %2$s 的移动数据访问</string>
+    <string name="dialog_quick_toggle_message_roaming">这将%1$s %2$s 的漫游访问</string>
+    <string name="dialog_quick_toggle_action_block">阻止</string>
+    <string name="dialog_quick_toggle_action_allow">允许</string>
+    <string name="snackbar_wifi_blocked">已阻止 %s 的 WiFi</string>
+    <string name="snackbar_wifi_allowed">已允许 %s 的 WiFi</string>
+    <string name="snackbar_mobile_blocked">已阻止 %s 的移动数据</string>
+    <string name="snackbar_mobile_allowed">已允许 %s 的移动数据</string>
+    <string name="snackbar_roaming_blocked">已阻止 %s 的漫游</string>
+    <string name="snackbar_roaming_allowed">已允许 %s 的漫游</string>
+    <string name="snackbar_undo">撤销</string>
+
     <string name="firewall_system_package_warning">⚠️ 系统软件包警告</string>
 
     <!-- Package Management -->
@@ -421,6 +437,9 @@
 
     <string name="settings_show_firewall_prompt_title">显示防火墙启动提示</string>
     <string name="settings_show_firewall_prompt_description">当应用打开且防火墙未激活时显示启动防火墙的提示</string>
+
+    <string name="settings_confirm_rule_changes_title">确认规则更改</string>
+    <string name="settings_confirm_rule_changes_description">点击网络图标切换规则时显示确认对话框</string>
 
     <string name="settings_dynamic_color_title">使用动态颜色</string>
     <string name="settings_dynamic_color_description">调整应用颜色以匹配您的设备壁纸（Android 12+）。需要重新启动应用。</string>

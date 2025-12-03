@@ -39,7 +39,7 @@
 
     <!-- Compact TextInputLayout for search boxes -->
     <style name="Widget.De1984.TextInputLayout.Compact" parent="Widget.Material3.TextInputLayout.OutlinedBox">
-        <item name="boxCollapsedPaddingTop">8dp</item>
+        <item name="boxCollapsedPaddingTop">0dp</item>
         <item name="android:paddingTop">0dp</item>
         <item name="android:paddingBottom">0dp</item>
         <item name="suffixTextAppearance">@style/TextAppearance.De1984.SuffixText</item>
@@ -47,9 +47,11 @@
         <item name="boxStrokeColor">@color/search_box_stroke</item>
     </style>
 
-    <!-- Text appearance for suffix text in search boxes -->
+    <!-- Text appearance for suffix text in search boxes - match hint text size -->
     <style name="TextAppearance.De1984.SuffixText" parent="TextAppearance.Material3.BodySmall">
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:letterSpacing">0</item>
     </style>
 
     <!-- Material Design 3 Bottom Navigation -->

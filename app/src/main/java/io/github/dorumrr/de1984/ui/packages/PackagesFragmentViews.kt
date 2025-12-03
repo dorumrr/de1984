@@ -520,7 +520,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         // Update package count in search field
         // Hide count if 0 results AND no search query (empty state)
         val count = displayedPackages.size
-        binding.searchLayout.suffixText = if (count == 0 && state.searchQuery.isBlank()) {
+        binding.packageCounter.text = if (count == 0 && state.searchQuery.isBlank()) {
             ""
         } else {
             resources.getQuantityString(

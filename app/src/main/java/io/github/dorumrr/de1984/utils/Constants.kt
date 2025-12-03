@@ -102,6 +102,7 @@ object Constants {
         const val KEY_SHOW_FIREWALL_START_PROMPT = "show_firewall_start_prompt"
         const val KEY_USE_DYNAMIC_COLORS = "use_dynamic_colors"
         const val KEY_APP_LANGUAGE = "app_language"
+        const val KEY_CONFIRM_RULE_CHANGES = "confirm_rule_changes"
 
         const val POLICY_BLOCK_ALL = "block_all"
         const val POLICY_ALLOW_ALL = "allow_all"
@@ -129,6 +130,7 @@ object Constants {
         const val DEFAULT_SHOW_FIREWALL_START_PROMPT = true
         const val DEFAULT_USE_DYNAMIC_COLORS = false
         const val DEFAULT_APP_LANGUAGE = LANGUAGE_SYSTEM_DEFAULT
+        const val DEFAULT_CONFIRM_RULE_CHANGES = true
 
     }
 

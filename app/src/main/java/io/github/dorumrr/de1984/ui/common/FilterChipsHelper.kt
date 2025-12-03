@@ -168,7 +168,10 @@ object FilterChipsHelper {
             chipGroup.addView(chip)
         }
 
-        // Add profile filters (single selection - radio button behavior)
+        // Add profile filters (single selection with deselect-to-default behavior)
+        // First filter in the list is the default (typically "All Profiles")
+        val defaultProfileFilter = profileFilters.firstOrNull() ?: ""
+
         profileFilters.forEach { filter ->
             val chip = createFilterChip(chipGroup, filter, filter == selectedProfileFilter)
             chip.tag = "profile:$filter" // Tag to identify chip type
@@ -178,11 +181,10 @@ object FilterChipsHelper {
                     return@setOnCheckedChangeListener
                 }
 
+                val clickedFilter = chip.tag.toString().removePrefix("profile:")
+
                 if (isChecked) {
                     // When a profile chip is checked, uncheck all other profile chips
-                    val clickedFilter = chip.tag.toString().removePrefix("profile:")
-
-                    // Use programmatic flag to prevent recursion
                     isUpdatingProgrammatically = true
 
                     // Uncheck other profile chips
@@ -200,10 +202,32 @@ object FilterChipsHelper {
                     // Notify the callback
                     onProfileFilterSelected(clickedFilter)
                 } else {
-                    // Prevent unchecking - at least one profile must be selected
-                    isUpdatingProgrammatically = true
-                    chip.isChecked = true
-                    isUpdatingProgrammatically = false
+                    // When unchecking: if it's the default filter, keep it checked
+                    // Otherwise, deselect and select the default filter
+                    if (clickedFilter == defaultProfileFilter) {
+                        // Can't uncheck the default - keep it selected
+                        isUpdatingProgrammatically = true
+                        chip.isChecked = true
+                        isUpdatingProgrammatically = false
+                    } else {
+                        // Deselect this chip and select the default
+                        isUpdatingProgrammatically = true
+
+                        // Find and check the default chip
+                        for (i in 0 until chipGroup.childCount) {
+                            val otherChip = chipGroup.getChildAt(i) as? Chip
+                            if (otherChip != null &&
+                                otherChip.tag.toString() == "profile:$defaultProfileFilter") {
+                                otherChip.isChecked = true
+                                break
+                            }
+                        }
+
+                        isUpdatingProgrammatically = false
+
+                        // Notify with default filter
+                        onProfileFilterSelected(defaultProfileFilter)
+                    }
                 }
             }
             chipGroup.addView(chip)

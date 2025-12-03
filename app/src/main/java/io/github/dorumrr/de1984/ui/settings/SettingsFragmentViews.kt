@@ -108,7 +108,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
     // Activity result launcher for VPN permission
     private val vpnPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { result ->
+    ) { _ ->
         // Check if permission was granted by trying to prepare again
         val prepareIntent = android.net.VpnService.prepare(requireContext())
         if (prepareIntent == null) {

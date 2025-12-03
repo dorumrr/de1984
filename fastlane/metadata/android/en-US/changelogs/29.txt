@@ -1,0 +1,4 @@
+- Implement multi-select granular rules functionality for Firewall controls
+- implemented ability to allow toggling connections directly by tapping icons
+- Enhanced Shizuku integration with SUI support and improved logging
+- Fixed the bottom navigation shift

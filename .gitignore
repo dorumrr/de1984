@@ -1,6 +1,6 @@
 docs
 llm_docs
-RULES.*
+RULES.md
 .idea
 
 # Built application files

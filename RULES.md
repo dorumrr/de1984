@@ -135,88 +135,6 @@ Use this scale to assess your confidence before proceeding:
 
 ---
 
-## 📚 Documentation (Mandatory for ALL Tasks)
-
-> **Universal Principle** - Adapt file location to your project structure
-
-**Principle**: Document significant changes to help future developers (including LLMs) understand the codebase evolution.
-
-### Documentation File Location
-
-**File**: `llm_docs/YYYYMMDDHHMMSS-descriptive-kebab-case.md`
-
-**Example**: `llm_docs/20241102143022-vpn-backend-atomic-switching.md`
-
-### Documentation Template
-
-```markdown
-# [Feature/Fix Name]
-**Date:** YYYY-MM-DD HH:MM:SS | **Status:** ✅ Complete / 🚧 In Progress / ❌ Failed
-
-## Summary
-2-3 sentences describing what was done and why.
-
-## Problem/Context
-What issue, need, or motivation led to this change?
-
-## Solution
-High-level approach implemented. Key decisions and trade-offs.
-
-## Changes
-- **Created:** `path/to/file.kt` - Purpose and functionality
-- **Updated:** `path/to/file.kt` - What changed and why
-- **Deleted:** `path/to/file.kt` - Removal reason
-
-## Impact
-- **Performance**: Before → After (with measurements if applicable)
-- **User benefits**: How this improves user experience
-- **Technical improvements**: Code quality, maintainability, architecture
-- **Security**: Any security implications or improvements
-
-## Testing
-- Tested on Android versions: API 21, 26, 29, 34
-- Tested in light/dark mode: ✅
-- Performance verified: ✅ (if applicable)
-- Security verified: ✅ (if applicable)
-```
-
-### When to Document
-
-**ALWAYS document**:
-- ✅ Major features (new screens, new backends, new functionality)
-- ✅ Architectural changes (new patterns, refactoring, module changes)
-- ✅ Performance optimizations (with before/after measurements)
-- ✅ Bug fixes taking >30 minutes (complex issues, security fixes)
-- ✅ Decisions with trade-offs (why we chose approach A over B)
-- ✅ Code quality improvements affecting >5 files
-- ✅ Database migrations (schema changes, data migrations)
-- ✅ Security changes (permission handling, backend switching, atomic transitions)
-
-**DON'T document**:
-- ❌ Typo fixes (one-line changes)
-- ❌ Formatting changes (whitespace, indentation)
-- ❌ Routine dependency bumps (unless breaking changes)
-- ❌ Minor UI text changes (button labels, strings)
-
-### Documentation Retention
-
-**Keep for 6-12 months** in `llm_docs/`:
-- Recent features and fixes
-- Active development documentation
-- Ongoing architectural decisions
-
-**Move to `llm_docs/archive/`** (organized by category):
-- Important historical decisions
-- Major architectural changes
-- Security-critical implementations
-
-**Delete after 6 months**:
-- Trivial changes
-- Superseded implementations
-- Outdated approaches
-
----
-
 ## 🤖 LLM Optimization
 
 > **Universal Principle** - Applicable to all projects using LLM-assisted development
@@ -230,7 +148,6 @@ High-level approach implemented. Key decisions and trade-offs.
 - Self-documenting code (meaningful names, clear logic)
 - Centralized constants (`Constants.kt`)
 - Consistent patterns (MVVM, Repository, StateFlow)
-- Comprehensive documentation in `llm_docs/`
 
 **Suggest optimizations** to minimize token consumption:
 - Offer suggestions, **NEVER implement without approval**
@@ -309,8 +226,7 @@ io.github.dorumrr.de1984/
 ```
 
 **Documentation organization**:
-- **Root**: README.md, RULES.md, PRD.md, FIREWALL.md, RELEASE_SIGNING_GUIDE.md
-- **llm_docs/**: Task documentation (timestamped markdown files)
+- **Root**: README.md, RULES.md, PRD.md, FIREWALL.md
 
 **Architecture**: MVVM + Repository + Manual DI (ServiceLocator)
 

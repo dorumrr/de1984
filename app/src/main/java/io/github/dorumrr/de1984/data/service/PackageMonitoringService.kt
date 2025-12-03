@@ -7,7 +7,9 @@ import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
 import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
 import io.github.dorumrr.de1984.domain.usecase.HandleNewAppInstallUseCase
+import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.*
 
@@ -22,7 +24,8 @@ class PackageMonitoringService : Service() {
     
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var monitoringJob: Job? = null
-    private var lastKnownPackages: Set<String> = emptySet()
+    // Track packages by (packageName, userId) for multi-user support
+    private var lastKnownPackages: Set<Pair<String, Int>> = emptySet()
     
     companion object {
         private const val TAG = "PackageMonitoringService"
@@ -100,44 +103,90 @@ class PackageMonitoringService : Service() {
             Constants.Settings.KEY_NEW_APP_NOTIFICATIONS,
             Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS
         )
-        
+
         if (!notificationsEnabled) {
             return
         }
-        
+
         val currentPackages = getCurrentInstalledPackages()
         val newPackages = currentPackages - lastKnownPackages
-        
+
         if (newPackages.isNotEmpty()) {
-            newPackages.forEach { packageName ->
-                processNewPackage(packageName)
+            AppLogger.d(TAG, "📦 Detected ${newPackages.size} new packages")
+            newPackages.forEach { (packageName, userId) ->
+                processNewPackage(packageName, userId)
             }
             lastKnownPackages = currentPackages
         }
     }
-    
-    private fun getCurrentInstalledPackages(): Set<String> {
+
+    /**
+     * Get all installed packages across all user profiles.
+     * Returns Set of (packageName, userId) pairs.
+     */
+    private fun getCurrentInstalledPackages(): Set<Pair<String, Int>> {
         return try {
-            packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
-                .filter { packageInfo ->
-                    packageInfo.requestedPermissions?.contains(android.Manifest.permission.INTERNET) == true &&
-                    packageInfo.applicationInfo?.let { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 } == true
-                }
-                .map { it.packageName }
-                .toSet()
+            val result = mutableSetOf<Pair<String, Int>>()
+            val userProfiles = HiddenApiHelper.getUsers(this)
+
+            for (profile in userProfiles) {
+                val packages = HiddenApiHelper.getInstalledApplicationsAsUser(
+                    this,
+                    PackageManager.GET_META_DATA,
+                    profile.userId
+                )
+
+                packages
+                    .filter { appInfo ->
+                        // Only track user apps with internet permission
+                        (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 &&
+                        hasInternetPermission(appInfo.packageName, profile.userId)
+                    }
+                    .forEach { appInfo ->
+                        result.add(appInfo.packageName to profile.userId)
+                    }
+            }
+
+            result
         } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to get installed packages: ${e.message}", e)
             emptySet()
         }
     }
-    
-    private suspend fun processNewPackage(packageName: String) {
+
+    private fun hasInternetPermission(packageName: String, userId: Int = 0): Boolean {
+        return try {
+            val packageInfo = HiddenApiHelper.getPackageInfoAsUser(
+                this, packageName, PackageManager.GET_PERMISSIONS, userId
+            ) ?: return false
+            packageInfo.requestedPermissions?.contains(android.Manifest.permission.INTERNET) == true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private suspend fun processNewPackage(packageName: String, userId: Int) {
         try {
-            handleNewAppInstallUseCase.execute(packageName)
+            // Calculate UID for the use case: userId * 100000 + appId
+            // Use HiddenApiHelper for multi-user support - work profile apps need userId to be queried
+            val appInfo = try {
+                io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                    this, packageName, 0, userId
+                )
+            } catch (e: Exception) {
+                null
+            }
+            val appId = appInfo?.uid?.rem(100000) ?: 0
+            val uid = userId * 100000 + appId
+
+            AppLogger.d(TAG, "📦 Processing new package: $packageName (userId=$userId, uid=$uid)")
+
+            handleNewAppInstallUseCase.execute(packageName, uid)
                 .onSuccess {
                     newAppNotificationManager.showNewAppNotification(packageName)
                 }
         } catch (e: Exception) {
-            // Error processing new package
+            AppLogger.e(TAG, "Error processing new package $packageName: ${e.message}", e)
         }
     }
 }

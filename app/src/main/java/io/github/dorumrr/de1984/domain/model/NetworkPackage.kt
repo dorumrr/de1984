@@ -1,7 +1,18 @@
 package io.github.dorumrr.de1984.domain.model
 
+/**
+ * Domain model for network/firewall package display.
+ *
+ * @property packageName The package name of the app
+ * @property userId Android user profile ID (0 = personal, 10+ = work/clone profiles)
+ * @property uid Absolute UID: userId * 100000 + appId
+ */
 data class NetworkPackage(
     val packageName: String,
+    /** Android user profile ID (0 = personal, 10+ = work/clone profiles) */
+    val userId: Int = 0,
+    /** Absolute UID: userId * 100000 + appId */
+    val uid: Int = 0,
     val name: String,
     val icon: String,
     val isEnabled: Boolean,
@@ -18,7 +29,11 @@ data class NetworkPackage(
     val installTime: Long? = null,
     val updateTime: Long? = null,
     val isSystemCritical: Boolean = false,
-    val isVpnApp: Boolean = false
+    val isVpnApp: Boolean = false,
+    /** True if this package belongs to a work profile (managed profile) */
+    val isWorkProfile: Boolean = false,
+    /** True if this package belongs to a clone profile */
+    val isCloneProfile: Boolean = false
 ) {
     val isNetworkAllowed: Boolean
         get() = !isNetworkBlocked
@@ -49,6 +64,9 @@ data class NetworkPackage(
         get() = networkPermissions.any { permission ->
             io.github.dorumrr.de1984.utils.Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
         }
+
+    /** Get the unique identifier for this package */
+    val id: PackageId get() = PackageId(packageName, userId)
 }
 
 enum class NetworkAccessState {
@@ -60,5 +78,6 @@ enum class NetworkAccessState {
 data class FirewallFilterState(
     val packageType: String = "All",
     val networkState: String? = null,  // "Allowed" or "Blocked" only
-    val internetOnly: Boolean = true   // Independent permission filter
+    val internetOnly: Boolean = true,  // Independent permission filter
+    val profileFilter: String = "All"  // "All", "Personal", "Work", "Clone"
 )

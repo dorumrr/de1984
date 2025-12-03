@@ -82,7 +82,15 @@
     <string name="packages_filter_disabled">Dezactivate</string>
     <string name="packages_filter_threats">Amenințări</string>
     <string name="packages_empty_state_no_uninstalled">Nicio aplicație de sistem dezinstalată</string>
-    
+
+    <!-- Profile Filters (Multi-user/Work Profile Support) -->
+    <string name="filter_profile_all">Toate profilurile</string>
+    <string name="filter_profile_personal">Personal</string>
+    <string name="filter_profile_work">Serviciu</string>
+    <string name="filter_profile_clone">Clonă</string>
+    <string name="badge_work_profile">Serviciu</string>
+    <string name="badge_clone_profile">Clonă</string>
+
     <!-- Package Status -->
     <string name="status_enabled">Activat</string>
     <string name="status_disabled">Dezactivat</string>

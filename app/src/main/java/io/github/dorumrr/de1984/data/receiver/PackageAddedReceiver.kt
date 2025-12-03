@@ -27,7 +27,12 @@ class PackageAddedReceiver : BroadcastReceiver() {
             val handleNewAppInstallUseCase = app.dependencies.provideHandleNewAppInstallUseCase()
             val newAppNotificationManager = app.dependencies.newAppNotificationManager
 
-            val packageName = validateAndExtractPackageName(context, intent)
+            // Extract UID from intent FIRST for multi-user support
+            // UID format: userId * 100000 + appId
+            val uid = intent?.getIntExtra(Intent.EXTRA_UID, -1)?.takeIf { it >= 0 }
+            val userId = uid?.let { it / 100000 } ?: 0
+
+            val packageName = validateAndExtractPackageName(context, intent, userId)
             if (packageName == null) {
                 return
             }
@@ -42,7 +47,7 @@ class PackageAddedReceiver : BroadcastReceiver() {
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             scope.launch {
                 try {
-                    handleNewAppInstallUseCase.execute(packageName)
+                    handleNewAppInstallUseCase.execute(packageName, uid)
                         .onSuccess {
                             newAppNotificationManager.showNewAppNotification(packageName)
                         }
@@ -59,44 +64,50 @@ class PackageAddedReceiver : BroadcastReceiver() {
         }
     }
     
-    private fun validateAndExtractPackageName(context: Context, intent: Intent?): String? {
+    private fun validateAndExtractPackageName(context: Context, intent: Intent?, userId: Int): String? {
         if (intent?.action != Intent.ACTION_PACKAGE_ADDED) {
             return null
         }
-        
+
         val data = intent.data
         if (data == null || data.scheme != "package") {
             return null
         }
-        
+
         val packageName = data.schemeSpecificPart
         if (packageName.isNullOrBlank()) {
             return null
         }
-        
+
         if (!packageName.contains(".")) {
             return null
         }
-        
+
         if (Constants.App.isOwnApp(packageName)) {
             return null
         }
-        
-        if (!isValidPackage(context, packageName)) {
+
+        if (!isValidPackage(context, packageName, userId)) {
             return null
         }
-        
+
         val isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
         if (isReplacing) {
             return null
         }
-        
+
         return packageName
     }
-    
-    private fun isValidPackage(context: Context, packageName: String): Boolean {
+
+    /**
+     * Check if package exists using HiddenApiHelper for multi-user support.
+     * Work profile apps are only visible when queried with the correct userId.
+     */
+    private fun isValidPackage(context: Context, packageName: String, userId: Int): Boolean {
         return try {
-            context.packageManager.getApplicationInfo(packageName, 0)
+            io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                context, packageName, 0, userId
+            )
             true
         } catch (e: Exception) {
             false

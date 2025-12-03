@@ -674,26 +674,32 @@ class MainActivity : AppCompatActivity() {
     /**
      * Navigate to Firewall screen and open dialog for specific app.
      * Used for cross-navigation from notifications and other screens.
+     *
+     * @param packageName The package name of the app
+     * @param userId Android user profile ID (0 = personal, 10+ = work/clone profiles)
      */
-    fun navigateToFirewallWithApp(packageName: String) {
-        AppLogger.d(TAG, "🔘 USER ACTION: Navigate to Firewall with app: $packageName")
+    fun navigateToFirewallWithApp(packageName: String, userId: Int = 0) {
+        AppLogger.d(TAG, "🔘 USER ACTION: Navigate to Firewall with app: $packageName (userId=$userId)")
         loadFragment(Tab.FIREWALL)
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
-            firewallFragment?.openAppDialog(packageName)
+            firewallFragment?.openAppDialog(packageName, userId)
         }, 100)
     }
 
     /**
      * Navigate to Packages screen and open dialog for specific app.
      * Used for cross-navigation from Firewall screen.
+     *
+     * @param packageName The package name of the app
+     * @param userId Android user profile ID (0 = personal, 10+ = work/clone profiles)
      */
-    fun navigateToPackagesWithApp(packageName: String) {
-        AppLogger.d(TAG, "🔘 USER ACTION: Navigate to Packages with app: $packageName")
+    fun navigateToPackagesWithApp(packageName: String, userId: Int = 0) {
+        AppLogger.d(TAG, "🔘 USER ACTION: Navigate to Packages with app: $packageName (userId=$userId)")
         loadFragment(Tab.APPS)
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
-            packagesFragment?.openAppDialog(packageName)
+            packagesFragment?.openAppDialog(packageName, userId)
         }, 100)
     }
 

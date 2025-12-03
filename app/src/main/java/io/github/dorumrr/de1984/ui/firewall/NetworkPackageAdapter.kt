@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
+import io.github.dorumrr.de1984.domain.model.PackageId
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
@@ -44,8 +45,8 @@ class NetworkPackageAdapter(
     }
 
     private var isSelectionMode = false
-    private val selectedPackages = mutableSetOf<String>()
-    private var onSelectionChanged: ((Set<String>) -> Unit)? = null
+    private val selectedPackages = mutableSetOf<PackageId>()
+    private var onSelectionChanged: ((Set<PackageId>) -> Unit)? = null
     private var onSelectionLimitReached: (() -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NetworkPackageViewHolder {
@@ -82,11 +83,11 @@ class NetworkPackageAdapter(
         }
     }
 
-    fun setOnSelectionChangedListener(listener: (Set<String>) -> Unit) {
+    fun setOnSelectionChangedListener(listener: (Set<PackageId>) -> Unit) {
         onSelectionChanged = listener
     }
 
-    fun getSelectedPackages(): Set<String> = selectedPackages.toSet()
+    fun getSelectedPackages(): Set<PackageId> = selectedPackages.toSet()
 
     fun clearSelection() {
         selectedPackages.clear()
@@ -97,10 +98,10 @@ class NetworkPackageAdapter(
     /**
      * Programmatically select a package (used when entering selection mode via long press)
      */
-    fun selectPackage(packageName: String) {
-        if (!selectedPackages.contains(packageName) &&
+    fun selectPackage(packageId: PackageId) {
+        if (!selectedPackages.contains(packageId) &&
             selectedPackages.size < Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
-            selectedPackages.add(packageName)
+            selectedPackages.add(packageId)
             onSelectionChanged?.invoke(selectedPackages)
             notifyDataSetChanged()
         }
@@ -124,8 +125,8 @@ class NetworkPackageAdapter(
         return true
     }
 
-    private fun isPackageSelected(packageName: String): Boolean {
-        return selectedPackages.contains(packageName)
+    private fun isPackageSelected(packageId: PackageId): Boolean {
+        return selectedPackages.contains(packageId)
     }
 
     private fun togglePackageSelection(pkg: NetworkPackage, context: Context) {
@@ -139,14 +140,15 @@ class NetworkPackageAdapter(
             return
         }
 
-        if (selectedPackages.contains(pkg.packageName)) {
-            selectedPackages.remove(pkg.packageName)
+        val packageId = pkg.id
+        if (selectedPackages.contains(packageId)) {
+            selectedPackages.remove(packageId)
         } else {
             if (selectedPackages.size >= Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
                 onSelectionLimitReached?.invoke()
                 return
             }
-            selectedPackages.add(pkg.packageName)
+            selectedPackages.add(packageId)
         }
         onSelectionChanged?.invoke(selectedPackages)
         notifyDataSetChanged()
@@ -157,7 +159,7 @@ class NetworkPackageAdapter(
         private val showIcons: Boolean,
         private val onPackageClick: (NetworkPackage) -> Unit,
         private val onPackageLongClick: (NetworkPackage) -> Boolean,
-        private val isPackageSelected: (String) -> Boolean,
+        private val isPackageSelected: (PackageId) -> Boolean,
         private val canSelectPackage: (NetworkPackage) -> Boolean,
         private val togglePackageSelection: (NetworkPackage, Context) -> Unit,
         private val onQuickToggle: ((NetworkPackage, NetworkType) -> Unit)?
@@ -170,6 +172,7 @@ class NetworkPackageAdapter(
         private val systemCriticalBadge: TextView = itemView.findViewById(R.id.system_critical_badge)
         private val vpnAppBadge: TextView = itemView.findViewById(R.id.vpn_app_badge)
         private val noInternetBadge: TextView = itemView.findViewById(R.id.no_internet_badge)
+        private val profileBadge: TextView = itemView.findViewById(R.id.profile_badge)
         private val wifiContainer: View = itemView.findViewById(R.id.wifi_container)
         private val wifiIcon: ImageView = itemView.findViewById(R.id.wifi_icon)
         private val wifiBlockedOverlay: ImageView = itemView.findViewById(R.id.wifi_blocked_overlay)
@@ -207,6 +210,24 @@ class NetworkPackageAdapter(
             // Show/hide no internet permission badge
             noInternetBadge.visibility = if (!pkg.hasInternetPermission) View.VISIBLE else View.GONE
 
+            // Show/hide profile badge for non-personal profiles (Work/Clone)
+            when {
+                pkg.userId >= 10 && pkg.userId < 100 -> {
+                    // Work profile (typically userId 10-99)
+                    profileBadge.text = itemView.context.getString(R.string.badge_work_profile)
+                    profileBadge.visibility = View.VISIBLE
+                }
+                pkg.userId >= 100 -> {
+                    // Clone profile (typically userId 100+)
+                    profileBadge.text = itemView.context.getString(R.string.badge_clone_profile)
+                    profileBadge.visibility = View.VISIBLE
+                }
+                else -> {
+                    // Personal profile (userId 0)
+                    profileBadge.visibility = View.GONE
+                }
+            }
+
             // Dim the entire item if system critical or VPN app (unless setting is enabled)
             val prefs = itemView.context.getSharedPreferences(
                 Constants.Settings.PREFS_NAME,
@@ -222,7 +243,7 @@ class NetworkPackageAdapter(
             // Selection mode UI
             if (isSelectionMode) {
                 selectionCheckbox.visibility = View.VISIBLE
-                val isSelected = isPackageSelected(pkg.packageName)
+                val isSelected = isPackageSelected(pkg.id)
                 selectionCheckbox.isChecked = isSelected
 
                 // Dim checkbox for non-selectable packages
@@ -232,14 +253,20 @@ class NetworkPackageAdapter(
                 selectionCheckbox.visibility = View.GONE
             }
 
-            // Set app icon
+            // Set app icon (use HiddenApiHelper for multi-user support)
             if (showIcons) {
                 appIcon.visibility = View.VISIBLE
                 try {
                     val pm = itemView.context.packageManager
-                    val appInfo = pm.getApplicationInfo(pkg.packageName, 0)
-                    val icon = pm.getApplicationIcon(appInfo)
-                    appIcon.setImageDrawable(icon)
+                    val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                        itemView.context, pkg.packageName, 0, pkg.userId
+                    )
+                    if (appInfo != null) {
+                        val icon = pm.getApplicationIcon(appInfo)
+                        appIcon.setImageDrawable(icon)
+                    } else {
+                        appIcon.setImageResource(R.drawable.de1984_icon)
+                    }
                 } catch (e: Exception) {
                     appIcon.setImageResource(R.drawable.de1984_icon)
                 }
@@ -333,7 +360,8 @@ class NetworkPackageAdapter(
 
     class NetworkPackageDiffCallback : DiffUtil.ItemCallback<NetworkPackage>() {
         override fun areItemsTheSame(oldItem: NetworkPackage, newItem: NetworkPackage): Boolean {
-            return oldItem.packageName == newItem.packageName
+            // Compare by both packageName and userId for multi-user support
+            return oldItem.packageName == newItem.packageName && oldItem.userId == newItem.userId
         }
 
         override fun areContentsTheSame(oldItem: NetworkPackage, newItem: NetworkPackage): Boolean {

@@ -189,27 +189,32 @@ class ConnectivityManagerFirewallBackend(
             var errorCount = 0
             var skippedCount = 0
 
-            // Create a map of rules by package name for quick lookup
-            val rulesByPackage = rules.filter { it.enabled }.associateBy { it.packageName }
+            // Create a map of rules by (packageName, userId) for quick lookup
+            val rulesByPackageAndUser = rules.filter { it.enabled }.associateBy { "${it.packageName}:${it.userId}" }
 
-            // Get all installed packages with network permissions
-            val packageManager = context.packageManager
-            val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { appInfo ->
-                    try {
-                        val packageInfo = packageManager.getPackageInfo(
-                            appInfo.packageName,
-                            PackageManager.GET_PERMISSIONS
-                        )
-                        packageInfo.requestedPermissions?.any { permission ->
-                            Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
-                        } ?: false
-                    } catch (e: Exception) {
-                        false
-                    }
+            // Get all installed packages with network permissions from ALL user profiles
+            val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
+            val allPackages = userProfiles.flatMap { profile ->
+                io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledApplicationsAsUser(
+                    context, PackageManager.GET_META_DATA, profile.userId
+                ).map { appInfo -> appInfo to profile.userId }
+            }.filter { (appInfo, userId) ->
+                try {
+                    val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                        context,
+                        appInfo.packageName,
+                        PackageManager.GET_PERMISSIONS,
+                        userId
+                    )
+                    packageInfo?.requestedPermissions?.any { permission ->
+                        Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
+                    } ?: false
+                } catch (e: Exception) {
+                    false
                 }
+            }.map { (appInfo, _) -> appInfo }
 
-            AppLogger.d(TAG, "Found ${allPackages.size} packages with network permissions")
+            AppLogger.d(TAG, "Found ${allPackages.size} packages with network permissions across ${userProfiles.size} profiles")
 
             // Calculate desired policies for all packages
             val desiredPolicies = mutableMapOf<String, Boolean>()  // packageName -> shouldBlock
@@ -233,9 +238,15 @@ class ConnectivityManagerFirewallBackend(
             }
 
             // First pass: Calculate what the policy should be for each package
+            // NOTE: ConnectivityManager backend has limited multi-user support because
+            // "cmd connectivity set-package-networking-enabled" operates on package names
+            // in the current user context. Work profile apps may not be blocked correctly.
+            // For full multi-user support, use iptables backend (root) or NetworkPolicyManager.
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
                 val uid = appInfo.uid
+                // Derive userId from UID for rule lookup
+                val userId = uid / 100000
 
                 // Never block system-critical packages - always allow (unless setting is enabled)
                 if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
@@ -249,7 +260,8 @@ class ConnectivityManagerFirewallBackend(
                     return@forEach
                 }
 
-                val rule = rulesByPackage[packageName]
+                // Look up rule by (packageName, userId) composite key
+                val rule = rulesByPackageAndUser["$packageName:$userId"]
 
                 val shouldBlock = if (rule != null) {
                     // Has explicit rule - use it
@@ -282,6 +294,7 @@ class ConnectivityManagerFirewallBackend(
 
             // Second pass: Only apply changes for packages whose policy changed
             // This drastically reduces shell command execution (memory leak fix)
+            // NOTE: This only affects user 0 packages due to ConnectivityManager limitations
             desiredPolicies.forEach { (packageName, shouldBlock) ->
                 val currentPolicy = appliedPolicies[packageName]
 
@@ -301,8 +314,7 @@ class ConnectivityManagerFirewallBackend(
                     if (exitCode == 0) {
                         appliedCount++
                         appliedPolicies[packageName] = shouldBlock  // Track applied policy
-                        val rule = rulesByPackage[packageName]
-                        val ruleStatus = if (rule != null) "has rule" else "no rule (default policy)"
+                        val ruleStatus = if (rulesByPackageAndUser.keys.any { it.startsWith("$packageName:") }) "has rule" else "no rule (default policy)"
                         AppLogger.d(TAG, "Applied policy for $packageName ($ruleStatus): " +
                                 "policy=${if (shouldBlock) "BLOCK (all networks)" else "ALLOW"}")
                     } else {
@@ -418,12 +430,14 @@ class ConnectivityManagerFirewallBackend(
      * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
      * This is a service permission that protects the VPN service from being bound by unauthorized apps.
      */
-    private fun hasVpnService(packageName: String): Boolean {
+    private fun hasVpnService(packageName: String, userId: Int = 0): Boolean {
         return try {
-            val packageInfo = context.packageManager.getPackageInfo(
+            val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                context,
                 packageName,
-                PackageManager.GET_SERVICES
-            )
+                PackageManager.GET_SERVICES,
+                userId
+            ) ?: return false
 
             // Check if any service has BIND_VPN_SERVICE permission
             packageInfo.services?.any { serviceInfo ->

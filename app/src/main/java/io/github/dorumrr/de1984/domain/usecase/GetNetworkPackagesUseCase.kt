@@ -50,9 +50,20 @@ class GetNetworkPackagesUseCase constructor(
             else -> invoke()   // Default to all packages
         }
 
-        // Step 2: Apply network state filter (Allowed or Blocked) if selected
+        // Step 2: Apply profile filter (All, Personal, Work, Clone)
+        val profileFilteredFlow = baseFlow.map { packages ->
+            when (filterState.profileFilter.lowercase()) {
+                "personal" -> packages.filter { !it.isWorkProfile && !it.isCloneProfile }
+                "work" -> packages.filter { it.isWorkProfile }
+                "clone" -> packages.filter { it.isCloneProfile }
+                "all" -> packages
+                else -> packages
+            }
+        }
+
+        // Step 3: Apply network state filter (Allowed or Blocked) if selected
         val stateFilteredFlow = if (filterState.networkState != null) {
-            baseFlow.map { packages ->
+            profileFilteredFlow.map { packages ->
                 when (filterState.networkState.lowercase()) {
                     // "Allowed" filter: Show apps that are allowed on ANY network
                     // This includes fully allowed apps AND partially blocked apps (allowed on some networks)
@@ -68,10 +79,10 @@ class GetNetworkPackagesUseCase constructor(
                 }
             }
         } else {
-            baseFlow
+            profileFilteredFlow
         }
 
-        // Step 3: Apply Internet Only permission filter if enabled
+        // Step 4: Apply Internet Only permission filter if enabled
         return if (filterState.internetOnly) {
             stateFilteredFlow.map { packages ->
                 packages.filter { pkg -> pkg.hasInternetPermission }

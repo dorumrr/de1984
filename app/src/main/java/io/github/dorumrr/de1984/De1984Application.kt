@@ -7,6 +7,7 @@ import com.google.android.material.color.DynamicColors
 import com.topjohnwu.superuser.Shell
 import io.github.dorumrr.de1984.data.firewall.ConnectivityManagerFirewallBackend
 import io.github.dorumrr.de1984.data.firewall.IptablesFirewallBackend
+import io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
 import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +45,10 @@ class De1984Application : Application() {
         AppLogger.init(this)
         AppLogger.i(TAG, "Application starting")
 
+        // Initialize HiddenApiBypass for multi-user/work profile support
+        // Must be done early, before any hidden API calls
+        HiddenApiHelper.initialize()
+
         // Apply dynamic colors if enabled
         applyDynamicColorsIfEnabled()
 
@@ -55,7 +60,7 @@ class De1984Application : Application() {
 
         // Clean up orphaned firewall rules if app was killed while privileged backends were running
         cleanupOrphanedFirewallRules()
-        
+
         AppLogger.i(TAG, "Application initialized")
     }
 

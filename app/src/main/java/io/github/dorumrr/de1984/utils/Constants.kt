@@ -43,6 +43,7 @@ object Constants {
 
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled", "Uninstalled")
+        val PROFILE_FILTERS = listOf("All", "Personal", "Work", "Clone")
 
         const val ANDROID_PACKAGE_PREFIX = "com.android"
         const val GOOGLE_PACKAGE_PREFIX = "com.google"
@@ -241,6 +242,7 @@ object Constants {
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val NETWORK_STATE_FILTERS = listOf("Allowed", "Blocked")
         val PERMISSION_FILTERS = listOf("Internet")
+        val PROFILE_FILTERS = listOf("All", "Personal", "Work", "Clone")
 
         val NETWORK_PERMISSIONS = listOf(
             "android.permission.INTERNET",

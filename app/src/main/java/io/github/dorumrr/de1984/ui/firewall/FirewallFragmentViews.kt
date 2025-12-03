@@ -33,6 +33,7 @@ import io.github.dorumrr.de1984.databinding.FragmentFirewallBinding
 import io.github.dorumrr.de1984.databinding.NetworkTypeToggleBinding
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
+import io.github.dorumrr.de1984.domain.model.PackageId
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.ui.base.BaseFragment
@@ -88,6 +89,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private var currentTypeFilter: String? = null
     private var currentStateFilter: String? = null
     private var currentPermissionFilter: Boolean = false
+    private var currentProfileFilter: String? = null
 
     // Track previous policy to detect changes across lifecycle events
     private var previousObservedPolicy: String? = null
@@ -96,11 +98,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     // Dialog tracking to prevent multiple dialogs from stacking
     private var currentDialog: BottomSheetDialog? = null
     private var dialogOpenTimestamp: Long = 0
-    private var pendingDialogPackageName: String? = null  // Track which package we're waiting to show
+    private var pendingDialogPackageId: PackageId? = null  // Track which package we're waiting to show
 
     // Selection mode state
     private var isSelectionMode = false
-    private val selectedPackages = mutableSetOf<String>()
+    private val selectedPackages = mutableSetOf<PackageId>()
     private var backPressedCallback: OnBackPressedCallback? = null
 
     override fun getViewBinding(
@@ -235,20 +237,29 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val permissionFilters = listOf(
             getString(io.github.dorumrr.de1984.R.string.firewall_state_internet)
         )
+        val profileFilters = listOf(
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_all),
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_personal),
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_work),
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_clone)
+        )
 
         // Initial setup - only called once
         currentTypeFilter = getString(io.github.dorumrr.de1984.R.string.packages_filter_all)
         currentStateFilter = null
         currentPermissionFilter = true
+        currentProfileFilter = getString(io.github.dorumrr.de1984.R.string.filter_profile_all)
 
         FilterChipsHelper.setupMultiSelectFilterChips(
             chipGroup = binding.filterChips,
             typeFilters = packageTypeFilters,
             stateFilters = networkStateFilters,
             permissionFilters = permissionFilters,
+            profileFilters = profileFilters,
             selectedTypeFilter = currentTypeFilter,
             selectedStateFilter = currentStateFilter,
             selectedPermissionFilter = currentPermissionFilter,
+            selectedProfileFilter = currentProfileFilter,
             onTypeFilterSelected = { filter ->
                 if (filter != currentTypeFilter) {
                     AppLogger.d(TAG, "🔘 USER ACTION: Package type filter changed: $filter")
@@ -279,6 +290,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     AppLogger.d(TAG, "🔘 USER ACTION: Internet-only filter changed: $enabled")
                     currentPermissionFilter = enabled
                     viewModel.setInternetOnlyFilter(enabled)
+                }
+            },
+            onProfileFilterSelected = { filter ->
+                if (filter != currentProfileFilter) {
+                    AppLogger.d(TAG, "🔘 USER ACTION: Profile filter changed: $filter")
+                    currentProfileFilter = filter
+                    // Map translated string to internal constant
+                    val internalFilter = mapProfileFilterToInternal(filter)
+                    viewModel.setProfileFilter(internalFilter)
                 }
             }
         )
@@ -373,29 +393,34 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private fun updateFilterChips(
         packageTypeFilter: String,
         networkStateFilter: String?,
-        internetOnlyFilter: Boolean
+        internetOnlyFilter: Boolean,
+        profileFilter: String
     ) {
         // Map internal constants to translated strings
         val translatedTypeFilter = mapInternalToTypeFilter(packageTypeFilter)
         val translatedStateFilter = networkStateFilter?.let { mapInternalToStateFilter(it) }
+        val translatedProfileFilter = mapInternalToProfileFilter(profileFilter)
 
         // Only update if filters have changed
         if (translatedTypeFilter == currentTypeFilter &&
             translatedStateFilter == currentStateFilter &&
-            internetOnlyFilter == currentPermissionFilter) {
+            internetOnlyFilter == currentPermissionFilter &&
+            translatedProfileFilter == currentProfileFilter) {
             return
         }
 
         currentTypeFilter = translatedTypeFilter
         currentStateFilter = translatedStateFilter
         currentPermissionFilter = internetOnlyFilter
+        currentProfileFilter = translatedProfileFilter
 
         // Update chip selection without recreating or triggering listeners
         FilterChipsHelper.updateMultiSelectFilterChips(
             chipGroup = binding.filterChips,
             selectedTypeFilter = translatedTypeFilter,
             selectedStateFilter = translatedStateFilter,
-            selectedPermissionFilter = internetOnlyFilter
+            selectedPermissionFilter = internetOnlyFilter,
+            selectedProfileFilter = translatedProfileFilter
         )
     }
 
@@ -496,7 +521,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         updateFilterChips(
             packageTypeFilter = state.filterState.packageType,
             networkStateFilter = state.filterState.networkState,
-            internetOnlyFilter = state.filterState.internetOnly
+            internetOnlyFilter = state.filterState.internetOnly,
+            profileFilter = state.filterState.profileFilter
         )
 
         // Handle batch operation results
@@ -545,10 +571,13 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     // DO NOT REMOVE: This method is called from MainActivity for cross-navigation
     // ============================================================================
     /**
-     * Open the firewall dialog for a specific app by package name.
+     * Open the firewall dialog for a specific app by package name and user ID.
      * Used for cross-navigation from other screens.
+     *
+     * @param packageName The package name of the app
+     * @param userId Android user profile ID (0 = personal, 10+ = work/clone profiles)
      */
-    fun openAppDialog(packageName: String) {
+    fun openAppDialog(packageName: String, userId: Int = 0) {
         // Prevent multiple dialogs from stacking
         if (currentDialog?.isShowing == true) {
             AppLogger.w(TAG, "[FIREWALL] Dialog already open, dismissing before opening new one")
@@ -556,16 +585,20 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             currentDialog = null
         }
 
-        // Find the package in the current list
-        val pkg = viewModel.uiState.value.packages.find { it.packageName == packageName }
+        // Find the package in the current list (match both packageName and userId)
+        val pkg = viewModel.uiState.value.packages.find {
+            it.packageName == packageName && it.userId == userId
+        }
+
+        val targetPackageId = PackageId(packageName, userId)
 
         if (pkg != null) {
-            pendingDialogPackageName = null
+            pendingDialogPackageId = null
             scrollToPackage(packageName)
             showPackageActionSheet(pkg)
         } else {
             // Package not in filtered list - need to load it and possibly change filter
-            pendingDialogPackageName = packageName
+            pendingDialogPackageId = targetPackageId
 
             // Package not in filtered list - try to get it directly from repository
             lifecycleScope.launch {
@@ -573,11 +606,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     // Get package from repository (bypasses filter)
                     val app = requireActivity().application as De1984Application
                     val networkPackageRepository = app.dependencies.networkPackageRepository
-                    val result = networkPackageRepository.getNetworkPackage(packageName)
+                    val result = networkPackageRepository.getNetworkPackage(packageName, userId)
 
                     result.onSuccess { foundPkg ->
                         // Check if this request is still valid
-                        if (pendingDialogPackageName != packageName) {
+                        if (pendingDialogPackageId != targetPackageId) {
                             return@onSuccess
                         }
 
@@ -588,13 +621,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                         if (currentFilter.equals(packageType, ignoreCase = true)) {
                             // Filter already matches - just wait for data to load
                             viewModel.uiState.collect { state ->
-                                if (pendingDialogPackageName != packageName) {
+                                if (pendingDialogPackageId != targetPackageId) {
                                     return@collect
                                 }
 
-                                val foundPackage = state.packages.find { it.packageName == packageName }
+                                val foundPackage = state.packages.find {
+                                    it.packageName == packageName && it.userId == userId
+                                }
                                 if (foundPackage != null) {
-                                    pendingDialogPackageName = null
+                                    pendingDialogPackageId = null
                                     scrollToPackage(packageName)
                                     showPackageActionSheet(foundPackage)
                                     return@collect
@@ -606,14 +641,16 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
                             // Wait for filter change and data load
                             viewModel.uiState.collect { state ->
-                                if (pendingDialogPackageName != packageName) {
+                                if (pendingDialogPackageId != targetPackageId) {
                                     return@collect
                                 }
 
                                 if (state.filterState.packageType.equals(packageType, ignoreCase = true) && !state.isLoading) {
-                                    val foundPackage = state.packages.find { it.packageName == packageName }
+                                    val foundPackage = state.packages.find {
+                                        it.packageName == packageName && it.userId == userId
+                                    }
                                     if (foundPackage != null) {
-                                        pendingDialogPackageName = null
+                                        pendingDialogPackageId = null
                                         scrollToPackage(packageName)
                                         showPackageActionSheet(foundPackage)
                                         return@collect
@@ -623,14 +660,14 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                         }
                     }.onFailure { error ->
                         AppLogger.e(TAG, "Failed to load package for dialog: ${error.message}")
-                        if (pendingDialogPackageName == packageName) {
-                            pendingDialogPackageName = null
+                        if (pendingDialogPackageId == targetPackageId) {
+                            pendingDialogPackageId = null
                         }
                     }
                 } catch (e: Exception) {
                     AppLogger.e(TAG, "Exception opening dialog: ${e.message}")
-                    if (pendingDialogPackageName == packageName) {
-                        pendingDialogPackageName = null
+                    if (pendingDialogPackageId == targetPackageId) {
+                        pendingDialogPackageId = null
                     }
                 }
             }
@@ -663,12 +700,18 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val telephonyManager = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
         val hasCellular = telephonyManager?.phoneType != TelephonyManager.PHONE_TYPE_NONE
 
-        // Setup header
+        // Setup header (use HiddenApiHelper for multi-user support)
         try {
             val pm = requireContext().packageManager
-            val appInfo = pm.getApplicationInfo(pkg.packageName, 0)
-            val icon = pm.getApplicationIcon(appInfo)
-            binding.actionSheetAppIcon.setImageDrawable(icon)
+            val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                requireContext(), pkg.packageName, 0, pkg.userId
+            )
+            if (appInfo != null) {
+                val icon = pm.getApplicationIcon(appInfo)
+                binding.actionSheetAppIcon.setImageDrawable(icon)
+            } else {
+                binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
+            }
         } catch (e: Exception) {
             binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
         }
@@ -752,7 +795,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                         onToggle = { isChecked ->
                             if (isUpdatingProgrammatically) return@setupNetworkToggle
                             AppLogger.d(TAG, "updateTogglesFromPackage: Background toggle clicked - isChecked=$isChecked, setting backgroundBlocked=${!isChecked}")
-                            viewModel.setBackgroundBlocking(currentPkg.packageName, !isChecked)
+                            viewModel.setBackgroundBlocking(currentPkg.packageName, currentPkg.userId, !isChecked)
                         }
                     )
                 } else {
@@ -823,7 +866,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
                 AppLogger.d(TAG, "🔘 USER ACTION: WiFi toggle changed for ${pkg.packageName} - blocked: $blocked")
-                viewModel.setWifiBlocking(pkg.packageName, blocked)
+                viewModel.setWifiBlocking(pkg.packageName, pkg.userId, blocked)
             }
         )
 
@@ -838,7 +881,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 AppLogger.d(TAG, "🔘 USER ACTION: Mobile toggle changed for ${pkg.packageName} - blocked: $blocked")
 
                 // ViewModel handles mobile+roaming dependency atomically
-                viewModel.setMobileBlocking(pkg.packageName, blocked)
+                viewModel.setMobileBlocking(pkg.packageName, pkg.userId, blocked)
             }
         )
 
@@ -854,7 +897,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     AppLogger.d(TAG, "🔘 USER ACTION: Roaming toggle changed for ${pkg.packageName} - blocked: $blocked")
 
                     // ViewModel handles mobile+roaming dependency atomically
-                    viewModel.setRoamingBlocking(pkg.packageName, blocked)
+                    viewModel.setRoamingBlocking(pkg.packageName, pkg.userId, blocked)
                 }
             )
         }
@@ -882,7 +925,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             enabled = isIptablesBackend && (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
-                viewModel.setLanBlocking(pkg.packageName, blocked)
+                viewModel.setLanBlocking(pkg.packageName, pkg.userId, blocked)
             }
         )
 
@@ -940,7 +983,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     if (isUpdatingProgrammatically) return@setupNetworkToggle
                     // isChecked=true means switch is ON, which means "allowed" for this toggle
                     // So we need to set backgroundBlocked to the opposite: !isChecked
-                    viewModel.setBackgroundBlocking(pkg.packageName, !isChecked)
+                    viewModel.setBackgroundBlocking(pkg.packageName, pkg.userId, !isChecked)
                 }
             )
         } else {
@@ -971,7 +1014,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Cross-navigation action to Packages screen
         binding.manageAppAction.setOnClickListener {
             dialog.dismiss()
-            (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToPackagesWithApp(pkg.packageName)
+            (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToPackagesWithApp(pkg.packageName, pkg.userId)
         }
 
         dialog.setContentView(binding.root)
@@ -989,12 +1032,18 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private fun showSimpleControlSheet(dialog: BottomSheetDialog, pkg: NetworkPackage) {
         val binding = BottomSheetPackageActionSimpleBinding.inflate(layoutInflater)
 
-        // Setup header
+        // Setup header (use HiddenApiHelper for multi-user support)
         try {
             val pm = requireContext().packageManager
-            val appInfo = pm.getApplicationInfo(pkg.packageName, 0)
-            val icon = pm.getApplicationIcon(appInfo)
-            binding.actionSheetAppIcon.setImageDrawable(icon)
+            val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                requireContext(), pkg.packageName, 0, pkg.userId
+            )
+            if (appInfo != null) {
+                val icon = pm.getApplicationIcon(appInfo)
+                binding.actionSheetAppIcon.setImageDrawable(icon)
+            } else {
+                binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
+            }
         } catch (e: Exception) {
             binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
         }
@@ -1091,7 +1140,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 
                 // Block/unblock ALL networks at once atomically - prevents race conditions
-                viewModel.setAllNetworkBlocking(pkg.packageName, blocked)
+                viewModel.setAllNetworkBlocking(pkg.packageName, pkg.userId, blocked)
             }
         )
         // Show "WiFi, Mobile, Roaming" subtitle under Internet Access
@@ -1114,7 +1163,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Cross-navigation action to Packages screen
         binding.manageAppAction.setOnClickListener {
             dialog.dismiss()
-            (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToPackagesWithApp(pkg.packageName)
+            (requireActivity() as? io.github.dorumrr.de1984.ui.MainActivity)?.navigateToPackagesWithApp(pkg.packageName, pkg.userId)
         }
 
         dialog.setContentView(binding.root)
@@ -1258,6 +1307,32 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     /**
+     * Map translated profile filter string to internal constant
+     */
+    private fun mapProfileFilterToInternal(translatedFilter: String): String {
+        return when (translatedFilter) {
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_all) -> "All"
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_personal) -> "Personal"
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_work) -> "Work"
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_clone) -> "Clone"
+            else -> "All" // Default fallback
+        }
+    }
+
+    /**
+     * Map internal constant to translated profile filter string
+     */
+    private fun mapInternalToProfileFilter(internalFilter: String): String {
+        return when (internalFilter) {
+            "All" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_all)
+            "Personal" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_personal)
+            "Work" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_work)
+            "Clone" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_clone)
+            else -> getString(io.github.dorumrr.de1984.R.string.filter_profile_all) // Default fallback
+        }
+    }
+
+    /**
      * Show snackbar informing user that package is protected.
      * Provides action button to navigate to Settings.
      */
@@ -1319,7 +1394,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
 
         // Select the long-pressed package
-        adapter.selectPackage(pkg.packageName)
+        adapter.selectPackage(pkg.id)
         return true
     }
 
@@ -1406,7 +1481,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         // Get selected packages from current UI state
         val allPackages = viewModel.uiState.value.packages
-        val selectedPkgs = allPackages.filter { selectedPackages.contains(it.packageName) }
+        val selectedPkgs = allPackages.filter { selectedPackages.contains(it.id) }
 
         if (selectedPkgs.isEmpty()) {
             dialog.dismiss()
@@ -1512,19 +1587,24 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             isUpdatingProgrammatically = false
         }
 
+        // Helper to convert selected PackageIds to pairs with userId
+        fun getSelectedPackagePairs(): List<Pair<String, Int>> {
+            return selectedPackages.map { it.packageName to it.userId }
+        }
+
         // Wrap toggle callbacks to check the flag
         sheetBinding.wifiToggle.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
             sheetBinding.wifiToggle.networkTypeSubtitle.visibility = View.GONE
             updateSwitchColors(sheetBinding.wifiToggle.toggleSwitch, isChecked)
-            viewModel.batchSetWifiBlocking(selectedPackages.toList(), isChecked)
+            viewModel.batchSetWifiBlocking(getSelectedPackagePairs(), isChecked)
         }
 
         sheetBinding.mobileToggle.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
             sheetBinding.mobileToggle.networkTypeSubtitle.visibility = View.GONE
             updateSwitchColors(sheetBinding.mobileToggle.toggleSwitch, isChecked)
-            viewModel.batchSetMobileBlocking(selectedPackages.toList(), isChecked)
+            viewModel.batchSetMobileBlocking(getSelectedPackagePairs(), isChecked)
         }
 
         if (hasCellular) {
@@ -1532,7 +1612,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
                 sheetBinding.roamingToggle.networkTypeSubtitle.visibility = View.GONE
                 updateSwitchColors(sheetBinding.roamingToggle.toggleSwitch, isChecked)
-                viewModel.batchSetRoamingBlocking(selectedPackages.toList(), isChecked)
+                viewModel.batchSetRoamingBlocking(getSelectedPackagePairs(), isChecked)
             }
         }
 
@@ -1541,14 +1621,14 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
                 sheetBinding.lanToggle.networkTypeSubtitle.visibility = View.GONE
                 updateSwitchColors(sheetBinding.lanToggle.toggleSwitch, isChecked)
-                viewModel.batchSetLanBlocking(selectedPackages.toList(), isChecked)
+                viewModel.batchSetLanBlocking(getSelectedPackagePairs(), isChecked)
             }
         }
 
         // Observe package changes to update UI when ViewModel makes cascading changes
         val observerJob = viewLifecycleOwner.lifecycleScope.launch {
             viewModel.uiState.collect { state ->
-                val updatedPkgs = state.packages.filter { selectedPackages.contains(it.packageName) }
+                val updatedPkgs = state.packages.filter { selectedPackages.contains(it.id) }
                 if (updatedPkgs.isNotEmpty() && !isUpdatingProgrammatically) {
                     AppLogger.d(TAG, "showMultiSelectRulesSheet: uiState collected - updating ${updatedPkgs.size} packages")
                     updateTogglesFromPackages(updatedPkgs)
@@ -1715,9 +1795,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         AppLogger.d(TAG, "🔘 QUICK TOGGLE: ${networkType.name} for ${pkg.packageName} - willBlock: $willBlock")
 
         when (networkType) {
-            NetworkType.WIFI -> viewModel.setWifiBlocking(pkg.packageName, willBlock)
-            NetworkType.MOBILE -> viewModel.setMobileBlocking(pkg.packageName, willBlock)
-            NetworkType.ROAMING -> viewModel.setRoamingBlocking(pkg.packageName, willBlock)
+            NetworkType.WIFI -> viewModel.setWifiBlocking(pkg.packageName, pkg.userId, willBlock)
+            NetworkType.MOBILE -> viewModel.setMobileBlocking(pkg.packageName, pkg.userId, willBlock)
+            NetworkType.ROAMING -> viewModel.setRoamingBlocking(pkg.packageName, pkg.userId, willBlock)
         }
 
         if (showSnackbar) {
@@ -1756,9 +1836,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 // Undo: reverse the action
                 AppLogger.d(TAG, "🔄 UNDO QUICK TOGGLE: ${networkType.name} for ${pkg.packageName}")
                 when (networkType) {
-                    NetworkType.WIFI -> viewModel.setWifiBlocking(pkg.packageName, !wasBlocked)
-                    NetworkType.MOBILE -> viewModel.setMobileBlocking(pkg.packageName, !wasBlocked)
-                    NetworkType.ROAMING -> viewModel.setRoamingBlocking(pkg.packageName, !wasBlocked)
+                    NetworkType.WIFI -> viewModel.setWifiBlocking(pkg.packageName, pkg.userId, !wasBlocked)
+                    NetworkType.MOBILE -> viewModel.setMobileBlocking(pkg.packageName, pkg.userId, !wasBlocked)
+                    NetworkType.ROAMING -> viewModel.setRoamingBlocking(pkg.packageName, pkg.userId, !wasBlocked)
                 }
             }
             .show()

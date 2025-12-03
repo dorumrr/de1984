@@ -33,8 +33,8 @@ android {
         minSdk = 26
         targetSdk = 34
 
-        versionCode = 20
-        versionName = "2.5.0"
+        versionCode = 30
+        versionName = "2.5.1"
 
         // Specify supported languages (reduces APK size by excluding unused translations)
         resourceConfigurations += listOf("en", "ro", "pt", "zh", "it", "fr")
@@ -182,4 +182,7 @@ dependencies {
 
     // JSON serialization for backup/restore
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
+    // HiddenApiBypass for multi-user/work profile support
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:4.3")
 }

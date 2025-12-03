@@ -869,8 +869,11 @@ class SettingsViewModel(
                 val installedPackages = packageRepository.getPackages().first()
                 val installedPackageNames = installedPackages.map { it.packageName }.toSet()
 
-                val packagesToUninstall = packageNames.filter { it in installedPackageNames }
+                val packagesToUninstallNames = packageNames.filter { it in installedPackageNames }
                 val packagesNotFound = packageNames.filter { it !in installedPackageNames }
+
+                // Convert to Pair<packageName, userId> - default to userId=0 (personal profile) for imports
+                val packagesToUninstall = packagesToUninstallNames.map { it to 0 }
 
                 AppLogger.d(TAG, "📥 IMPORT: Validation - ${packagesToUninstall.size} found, ${packagesNotFound.size} not found")
 
@@ -1288,7 +1291,7 @@ data class SystemInfo(
 
 data class ImportUninstalledPreview(
     val totalPackages: Int,
-    val packagesToUninstall: List<String>,
+    val packagesToUninstall: List<Pair<String, Int>>,  // Pair<packageName, userId>
     val packagesNotFound: List<String>
 )
 

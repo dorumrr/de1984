@@ -31,11 +31,23 @@ object PackageUtils {
         }
     }
     
-    fun getPackageIcon(context: Context, packageName: String): Drawable? {
+    /**
+     * Get package icon with multi-user support.
+     * @param userId The user ID (0 for personal profile, 10+ for work/clone profiles)
+     */
+    fun getPackageIcon(context: Context, packageName: String, userId: Int = 0): Drawable? {
         return try {
             val packageManager = context.packageManager
-            packageManager.getApplicationIcon(packageName)
-        } catch (e: PackageManager.NameNotFoundException) {
+            // Use HiddenApiHelper for multi-user support
+            val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                context, packageName, 0, userId
+            )
+            if (appInfo != null) {
+                packageManager.getApplicationIcon(appInfo)
+            } else {
+                ContextCompat.getDrawable(context, android.R.drawable.sym_def_app_icon)
+            }
+        } catch (e: Exception) {
             ContextCompat.getDrawable(context, android.R.drawable.sym_def_app_icon)
         }
     }

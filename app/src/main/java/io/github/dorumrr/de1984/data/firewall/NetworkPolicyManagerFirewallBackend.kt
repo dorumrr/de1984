@@ -226,24 +226,29 @@ class NetworkPolicyManagerFirewallBackend(
             // Create a map of rules by UID for quick lookup
             val rulesByUid = rules.filter { it.enabled }.groupBy { it.uid }
 
-            // Get all installed packages with network permissions
-            val packageManager = context.packageManager
-            val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { appInfo ->
-                    try {
-                        val packageInfo = packageManager.getPackageInfo(
-                            appInfo.packageName,
-                            PackageManager.GET_PERMISSIONS
-                        )
-                        packageInfo.requestedPermissions?.any { permission ->
-                            Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
-                        } ?: false
-                    } catch (e: Exception) {
-                        false
-                    }
+            // Get all installed packages with network permissions from ALL user profiles
+            val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
+            val allPackages = userProfiles.flatMap { profile ->
+                io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledApplicationsAsUser(
+                    context, PackageManager.GET_META_DATA, profile.userId
+                ).map { appInfo -> appInfo to profile.userId }
+            }.filter { (appInfo, userId) ->
+                try {
+                    val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                        context,
+                        appInfo.packageName,
+                        PackageManager.GET_PERMISSIONS,
+                        userId
+                    )
+                    packageInfo?.requestedPermissions?.any { permission ->
+                        Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
+                    } ?: false
+                } catch (e: Exception) {
+                    false
                 }
+            }.map { (appInfo, _) -> appInfo }
 
-            AppLogger.d(TAG, "Found ${allPackages.size} packages with network permissions")
+            AppLogger.d(TAG, "Found ${allPackages.size} packages with network permissions across ${userProfiles.size} profiles")
 
             // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
             // This is needed because we block by UID, not by package - so if ANY package
@@ -593,12 +598,14 @@ class NetworkPolicyManagerFirewallBackend(
      * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
      * This is a service permission that protects the VPN service from being bound by unauthorized apps.
      */
-    private fun hasVpnService(packageName: String): Boolean {
+    private fun hasVpnService(packageName: String, userId: Int = 0): Boolean {
         return try {
-            val packageInfo = context.packageManager.getPackageInfo(
+            val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                context,
                 packageName,
-                PackageManager.GET_SERVICES
-            )
+                PackageManager.GET_SERVICES,
+                userId
+            ) ?: return false
 
             // Check if any service has BIND_VPN_SERVICE permission
             packageInfo.services?.any { serviceInfo ->

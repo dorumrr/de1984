@@ -118,15 +118,25 @@ class PackagesViewModel(
         loadPackages()
     }
 
-    fun setPackageEnabled(packageName: String, enabled: Boolean) {
+    fun setProfileFilter(profileFilter: String) {
+        val currentFilterState = _uiState.value.filterState
+        val newFilterState = currentFilterState.copy(
+            profileFilter = profileFilter
+            // All other filters are preserved
+        )
+        pendingFilterState = newFilterState
+        loadPackages()
+    }
+
+    fun setPackageEnabled(packageName: String, userId: Int = 0, enabled: Boolean) {
         viewModelScope.launch {
             // Optimistically update UI first
-            updatePackageInList(packageName) { pkg ->
+            updatePackageInList(packageName, userId) { pkg ->
                 pkg.copy(isEnabled = enabled)
             }
 
             // Then persist to system
-            managePackageUseCase.setPackageEnabled(packageName, enabled)
+            managePackageUseCase.setPackageEnabled(packageName, userId, enabled)
                 .onSuccess {
                     // Success - optimistic update already applied, no need to reload
                 }
@@ -141,14 +151,14 @@ class PackagesViewModel(
         }
     }
 
-    fun uninstallPackage(packageName: String, appName: String) {
+    fun uninstallPackage(packageName: String, userId: Int = 0, appName: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoadingData = true,
                 isRenderingUI = false
             )
 
-            managePackageUseCase.uninstallPackage(packageName)
+            managePackageUseCase.uninstallPackage(packageName, userId)
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         uninstallSuccess = "$appName uninstalled"
@@ -169,7 +179,11 @@ class PackagesViewModel(
         }
     }
 
-    fun uninstallMultiplePackages(packageNames: List<String>): Job {
+    /**
+     * Uninstall multiple packages at once.
+     * @param packages List of Pair(packageName, userId)
+     */
+    fun uninstallMultiplePackages(packages: List<Pair<String, Int>>): Job {
         return viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoadingData = true,
@@ -177,7 +191,7 @@ class PackagesViewModel(
             )
 
             // Call the batch uninstall use case
-            managePackageUseCase.uninstallMultiplePackages(packageNames)
+            managePackageUseCase.uninstallMultiplePackages(packages)
                 .onSuccess { result ->
                     // Reload packages to reflect changes
                     loadPackages()
@@ -207,14 +221,14 @@ class PackagesViewModel(
         _uiState.value = _uiState.value.copy(batchUninstallResult = null)
     }
 
-    fun reinstallPackage(packageName: String, appName: String) {
+    fun reinstallPackage(packageName: String, userId: Int = 0, appName: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoadingData = true,
                 isRenderingUI = false
             )
 
-            managePackageUseCase.reinstallPackage(packageName)
+            managePackageUseCase.reinstallPackage(packageName, userId)
                 .onSuccess {
                     _uiState.value = _uiState.value.copy(
                         reinstallSuccess = "$appName reinstalled"
@@ -235,14 +249,18 @@ class PackagesViewModel(
         }
     }
 
-    fun reinstallMultiplePackages(packageNames: List<String>): Job {
+    /**
+     * Reinstall multiple packages at once.
+     * @param packages List of Pair(packageName, userId)
+     */
+    fun reinstallMultiplePackages(packages: List<Pair<String, Int>>): Job {
         return viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoadingData = true,
                 isRenderingUI = false
             )
 
-            managePackageUseCase.reinstallMultiplePackages(packageNames)
+            managePackageUseCase.reinstallMultiplePackages(packages)
                 .onSuccess { result ->
                     _uiState.value = _uiState.value.copy(
                         batchReinstallResult = result
@@ -304,10 +322,10 @@ class PackagesViewModel(
         _uiState.value = _uiState.value.copy(searchQuery = query)
     }
 
-    private fun updatePackageInList(packageName: String, transform: (Package) -> Package) {
+    private fun updatePackageInList(packageName: String, userId: Int = 0, transform: (Package) -> Package) {
         val currentPackages = _uiState.value.packages
         val updatedPackages = currentPackages.map { pkg ->
-            if (pkg.packageName == packageName) {
+            if (pkg.packageName == packageName && pkg.userId == userId) {
                 transform(pkg)
             } else {
                 pkg
@@ -341,7 +359,8 @@ class PackagesViewModel(
 
 data class PackageFilterState(
     val packageType: String = "All",
-    val packageState: String? = null
+    val packageState: String? = null,
+    val profileFilter: String = "All"  // "All", "Personal", "Work", "Clone"
 )
 
 data class PackagesUiState(

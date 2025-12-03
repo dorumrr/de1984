@@ -82,6 +82,14 @@
     <string name="packages_filter_threats">威胁</string>
     <string name="packages_empty_state_no_uninstalled">没有已卸载的系统应用</string>
 
+    <!-- Profile Filters (Multi-user/Work Profile Support) -->
+    <string name="filter_profile_all">所有配置文件</string>
+    <string name="filter_profile_personal">个人</string>
+    <string name="filter_profile_work">工作</string>
+    <string name="filter_profile_clone">克隆</string>
+    <string name="badge_work_profile">工作</string>
+    <string name="badge_clone_profile">克隆</string>
+
     <!-- Package Status -->
     <string name="status_enabled">已启用</string>
     <string name="status_disabled">已禁用</string>

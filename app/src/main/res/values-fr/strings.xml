@@ -82,6 +82,14 @@
     <string name="packages_filter_threats">Menaces</string>
     <string name="packages_empty_state_no_uninstalled">Aucune application système désinstallée</string>
 
+    <!-- Profile Filters (Multi-user/Work Profile Support) -->
+    <string name="filter_profile_all">Tous les profils</string>
+    <string name="filter_profile_personal">Personnel</string>
+    <string name="filter_profile_work">Travail</string>
+    <string name="filter_profile_clone">Clone</string>
+    <string name="badge_work_profile">Travail</string>
+    <string name="badge_clone_profile">Clone</string>
+
     <!-- Package Status -->
     <string name="status_enabled">Activé</string>
     <string name="status_disabled">Désactivé</string>

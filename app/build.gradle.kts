@@ -33,7 +33,7 @@ android {
         minSdk = 26
         targetSdk = 34
 
-        versionCode = 20
+        versionCode = 29
         versionName = "2.5.0"
 
         // Specify supported languages (reduces APK size by excluding unused translations)

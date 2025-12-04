@@ -3,6 +3,7 @@ package io.github.dorumrr.de1984.data.datasource
 import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import io.github.dorumrr.de1984.utils.AppLogger
@@ -15,6 +16,8 @@ import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageSafetyLoader
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -28,6 +31,20 @@ private data class BlockingState(
     val roamingBlocked: Boolean,
     val backgroundBlocked: Boolean,
     val lanBlocked: Boolean
+)
+
+/**
+ * Cached package metadata retrieved in a single system call.
+ * This eliminates redundant calls to getPackageInfoAsUser() for each field.
+ */
+private data class PackageMetadata(
+    val permissions: List<String>,
+    val isVpnApp: Boolean,
+    val versionName: String?,
+    val versionCode: Long?,
+    val installTime: Long?,
+    val updateTime: Long?,
+    val hasNetworkAccess: Boolean
 )
 
 class AndroidPackageDataSource(
@@ -76,97 +93,107 @@ class AndroidPackageDataSource(
 
                     AppLogger.d(TAG, "📦 User ${profile.userId} (${profile.displayName}): ${installedPackages.size} packages")
 
-                    for (appInfo in installedPackages) {
-                        if (Constants.App.isOwnApp(appInfo.packageName)) continue
+                    // OPTIMIZATION: Process packages in parallel chunks for better performance
+                    // Using chunked processing to balance parallelism with memory usage
+                    val chunkSize = 25 // Process 25 packages concurrently
+                    val packageChunks = installedPackages
+                        .filter { !Constants.App.isOwnApp(it.packageName) }
+                        .chunked(chunkSize)
 
-                        val ruleKey = "${appInfo.packageName}:${profile.userId}"
-                        val rule = rulesByKey[ruleKey]
-                        val permissions = getAppPermissions(appInfo.packageName, profile.userId)
-                        val isVpnApp = hasVpnService(appInfo.packageName, profile.userId)
+                    for (chunk in packageChunks) {
+                        val chunkResults = chunk.map { appInfo ->
+                            async {
+                                val ruleKey = "${appInfo.packageName}:${profile.userId}"
+                                val rule = rulesByKey[ruleKey]
 
-                        // Calculate absolute UID for multi-user support
-                        // appInfo.uid from getInstalledApplicationsAsUser already includes the user ID
-                        // For user 0: uid = appId (e.g., 10123)
-                        // For user 10 (work profile): uid = 10 * 100000 + appId (e.g., 1000123)
-                        val absoluteUid = appInfo.uid
+                                // OPTIMIZATION: Single batch call instead of 7 separate calls
+                                // This reduces ~1400+ system calls to ~200 for typical device
+                                val metadata = getPackageMetadataBatch(appInfo.packageName, profile.userId)
 
-                        // Debug logging for VPN apps
-                        if (isVpnApp) {
-                            AppLogger.d(TAG, "🔍 VPN APP DETECTED: ${appInfo.packageName} (user ${profile.userId}), hasRule=${rule != null}")
-                        }
+                                // Calculate absolute UID for multi-user support
+                                val absoluteUid = appInfo.uid
 
-                        val isCriticalPackage = Constants.Firewall.isSystemCritical(appInfo.packageName) || isVpnApp
+                                // Debug logging for VPN apps
+                                if (metadata.isVpnApp) {
+                                    AppLogger.d(TAG, "🔍 VPN APP DETECTED: ${appInfo.packageName} (user ${profile.userId}), hasRule=${rule != null}")
+                                }
 
-                        val blockingState = if (isCriticalPackage && !allowCritical) {
-                            BlockingState(
-                                isNetworkBlocked = false,
-                                wifiBlocked = false,
-                                mobileBlocked = false,
-                                roamingBlocked = false,
-                                backgroundBlocked = false,
-                                lanBlocked = false
-                            )
-                        } else if (rule != null && rule.enabled) {
-                            BlockingState(
-                                isNetworkBlocked = rule.wifiBlocked || rule.mobileBlocked,
-                                wifiBlocked = rule.wifiBlocked,
-                                mobileBlocked = rule.mobileBlocked,
-                                roamingBlocked = rule.blockWhenRoaming,
-                                backgroundBlocked = rule.blockWhenBackground,
-                                lanBlocked = rule.lanBlocked
-                            )
-                        } else if (isCriticalPackage && allowCritical) {
-                            BlockingState(
-                                isNetworkBlocked = false,
-                                wifiBlocked = false,
-                                mobileBlocked = false,
-                                roamingBlocked = false,
-                                backgroundBlocked = false,
-                                lanBlocked = false
-                            )
-                        } else {
-                            BlockingState(
-                                isNetworkBlocked = isBlockAllDefault,
-                                wifiBlocked = isBlockAllDefault,
-                                mobileBlocked = isBlockAllDefault,
-                                roamingBlocked = isBlockAllDefault,
-                                backgroundBlocked = false,
-                                lanBlocked = isBlockAllDefault
-                            )
-                        }
+                                val isCriticalPackage = Constants.Firewall.isSystemCritical(appInfo.packageName) || metadata.isVpnApp
 
-                        // Load safety data for this package
-                        val criticality = PackageSafetyLoader.getCriticality(context, appInfo.packageName)
-                        val category = PackageSafetyLoader.getCategory(context, appInfo.packageName)
-                        val affects = PackageSafetyLoader.getAffects(context, appInfo.packageName)
+                                val blockingState = if (isCriticalPackage && !allowCritical) {
+                                    BlockingState(
+                                        isNetworkBlocked = false,
+                                        wifiBlocked = false,
+                                        mobileBlocked = false,
+                                        roamingBlocked = false,
+                                        backgroundBlocked = false,
+                                        lanBlocked = false
+                                    )
+                                } else if (rule != null && rule.enabled) {
+                                    BlockingState(
+                                        isNetworkBlocked = rule.wifiBlocked || rule.mobileBlocked,
+                                        wifiBlocked = rule.wifiBlocked,
+                                        mobileBlocked = rule.mobileBlocked,
+                                        roamingBlocked = rule.blockWhenRoaming,
+                                        backgroundBlocked = rule.blockWhenBackground,
+                                        lanBlocked = rule.lanBlocked
+                                    )
+                                } else if (isCriticalPackage && allowCritical) {
+                                    BlockingState(
+                                        isNetworkBlocked = false,
+                                        wifiBlocked = false,
+                                        mobileBlocked = false,
+                                        roamingBlocked = false,
+                                        backgroundBlocked = false,
+                                        lanBlocked = false
+                                    )
+                                } else {
+                                    BlockingState(
+                                        isNetworkBlocked = isBlockAllDefault,
+                                        wifiBlocked = isBlockAllDefault,
+                                        mobileBlocked = isBlockAllDefault,
+                                        roamingBlocked = isBlockAllDefault,
+                                        backgroundBlocked = false,
+                                        lanBlocked = isBlockAllDefault
+                                    )
+                                }
 
-                        allPackages.add(PackageEntity(
-                            packageName = appInfo.packageName,
-                            userId = profile.userId,
-                            uid = absoluteUid,
-                            name = getAppName(appInfo),
-                            icon = getAppIconEmoji(appInfo),
-                            isEnabled = appInfo.enabled,
-                            type = if (isSystemApp(appInfo)) Constants.Packages.TYPE_SYSTEM else Constants.Packages.TYPE_USER,
-                            versionName = getVersionName(appInfo.packageName, profile.userId),
-                            versionCode = getVersionCode(appInfo.packageName, profile.userId),
-                            installTime = getInstallTime(appInfo.packageName, profile.userId),
-                            updateTime = getUpdateTime(appInfo.packageName, profile.userId),
-                            permissions = permissions,
-                            hasNetworkAccess = hasNetworkPermissions(appInfo.packageName, profile.userId),
-                            isNetworkBlocked = blockingState.isNetworkBlocked,
-                            wifiBlocked = blockingState.wifiBlocked,
-                            mobileBlocked = blockingState.mobileBlocked,
-                            roamingBlocked = blockingState.roamingBlocked,
-                            backgroundBlocked = blockingState.backgroundBlocked,
-                            lanBlocked = blockingState.lanBlocked,
-                            isVpnApp = isVpnApp,
-                            criticality = criticality,
-                            category = category,
-                            affects = affects,
-                            isWorkProfile = profile.isWorkProfile,
-                            isCloneProfile = profile.isCloneProfile
-                        ))
+                                // Load safety data for this package (already cached after first load)
+                                val criticality = PackageSafetyLoader.getCriticality(context, appInfo.packageName)
+                                val category = PackageSafetyLoader.getCategory(context, appInfo.packageName)
+                                val affects = PackageSafetyLoader.getAffects(context, appInfo.packageName)
+
+                                PackageEntity(
+                                    packageName = appInfo.packageName,
+                                    userId = profile.userId,
+                                    uid = absoluteUid,
+                                    name = getAppName(appInfo),
+                                    icon = getAppIconEmoji(appInfo),
+                                    isEnabled = appInfo.enabled,
+                                    type = if (isSystemApp(appInfo)) Constants.Packages.TYPE_SYSTEM else Constants.Packages.TYPE_USER,
+                                    versionName = metadata.versionName,
+                                    versionCode = metadata.versionCode,
+                                    installTime = metadata.installTime,
+                                    updateTime = metadata.updateTime,
+                                    permissions = metadata.permissions,
+                                    hasNetworkAccess = metadata.hasNetworkAccess,
+                                    isNetworkBlocked = blockingState.isNetworkBlocked,
+                                    wifiBlocked = blockingState.wifiBlocked,
+                                    mobileBlocked = blockingState.mobileBlocked,
+                                    roamingBlocked = blockingState.roamingBlocked,
+                                    backgroundBlocked = blockingState.backgroundBlocked,
+                                    lanBlocked = blockingState.lanBlocked,
+                                    isVpnApp = metadata.isVpnApp,
+                                    criticality = criticality,
+                                    category = category,
+                                    affects = affects,
+                                    isWorkProfile = profile.isWorkProfile,
+                                    isCloneProfile = profile.isCloneProfile
+                                )
+                            }
+                        }.awaitAll()
+
+                        allPackages.addAll(chunkResults)
                     }
                 }
 
@@ -654,6 +681,84 @@ class AndroidPackageDataSource(
     
     private fun isSystemApp(appInfo: ApplicationInfo): Boolean {
         return (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+    }
+
+    /**
+     * Get all package metadata in a SINGLE system call instead of 7 separate calls.
+     * This is a major performance optimization - reduces ~1400+ calls to ~200 calls
+     * for a typical device with 200 packages.
+     *
+     * Combined flags: GET_PERMISSIONS | GET_SERVICES
+     * - GET_PERMISSIONS: for requestedPermissions (used for hasNetworkAccess)
+     * - GET_SERVICES: for services (used for VPN detection)
+     */
+    private fun getPackageMetadataBatch(packageName: String, userId: Int): PackageMetadata {
+        return try {
+            // Single call with combined flags to get all needed info
+            val packageInfo = HiddenApiHelper.getPackageInfoAsUser(
+                context,
+                packageName,
+                PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
+                userId
+            )
+
+            if (packageInfo == null) {
+                // Return default metadata if package info unavailable
+                return PackageMetadata(
+                    permissions = emptyList(),
+                    isVpnApp = false,
+                    versionName = null,
+                    versionCode = null,
+                    installTime = null,
+                    updateTime = null,
+                    hasNetworkAccess = false
+                )
+            }
+
+            // Extract all data from the single PackageInfo result
+            val permissions = packageInfo.requestedPermissions?.toList() ?: emptyList()
+
+            // Check for VPN service
+            val isVpnApp = packageInfo.services?.any { serviceInfo ->
+                serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION
+            } ?: false
+
+            // Check for network permissions
+            val hasNetworkAccess = permissions.any { permission ->
+                permission == "android.permission.INTERNET" ||
+                permission == "android.permission.ACCESS_NETWORK_STATE" ||
+                permission == "android.permission.ACCESS_WIFI_STATE"
+            }
+
+            // Version info
+            val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
+
+            PackageMetadata(
+                permissions = permissions,
+                isVpnApp = isVpnApp,
+                versionName = packageInfo.versionName,
+                versionCode = versionCode,
+                installTime = packageInfo.firstInstallTime,
+                updateTime = packageInfo.lastUpdateTime,
+                hasNetworkAccess = hasNetworkAccess
+            )
+        } catch (e: Exception) {
+            AppLogger.d(TAG, "Failed to get metadata for $packageName: ${e.message}")
+            PackageMetadata(
+                permissions = emptyList(),
+                isVpnApp = false,
+                versionName = null,
+                versionCode = null,
+                installTime = null,
+                updateTime = null,
+                hasNetworkAccess = false
+            )
+        }
     }
     
     private fun getVersionName(packageName: String, userId: Int = 0): String? {
@@ -1189,4 +1294,3 @@ class AndroidPackageDataSource(
         }
     }
 }
-

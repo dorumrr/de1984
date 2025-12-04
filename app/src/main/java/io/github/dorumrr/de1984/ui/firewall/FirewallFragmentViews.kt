@@ -91,6 +91,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private var currentPermissionFilter: Boolean = false
     private var currentProfileFilter: String? = null
 
+    // Track profile availability for dynamic filter chip visibility
+    private var lastHasWorkProfile: Boolean? = null
+    private var lastHasCloneProfile: Boolean? = null
+
     // Track previous policy to detect changes across lifecycle events
     private var previousObservedPolicy: String? = null
     private var lastSubmittedPackages: List<NetworkPackage> = emptyList()
@@ -224,6 +228,21 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private fun setupFilterChips() {
+        // Initial setup - only called once
+        currentTypeFilter = getString(io.github.dorumrr.de1984.R.string.packages_filter_all)
+        currentStateFilter = null
+        currentPermissionFilter = true
+        currentProfileFilter = getString(io.github.dorumrr.de1984.R.string.filter_profile_all)
+
+        // Build chips with initial profile availability (false, false - will be updated by updateUI)
+        rebuildFilterChips(hasWorkProfile = false, hasCloneProfile = false)
+    }
+
+    /**
+     * Rebuild filter chips based on profile availability.
+     * Only shows Work/Clone chips if those profiles have packages.
+     */
+    private fun rebuildFilterChips(hasWorkProfile: Boolean, hasCloneProfile: Boolean) {
         // Get translated filter strings
         val packageTypeFilters = listOf(
             getString(io.github.dorumrr.de1984.R.string.packages_filter_all),
@@ -237,18 +256,29 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val permissionFilters = listOf(
             getString(io.github.dorumrr.de1984.R.string.firewall_state_internet)
         )
-        val profileFilters = listOf(
-            getString(io.github.dorumrr.de1984.R.string.filter_profile_all),
-            getString(io.github.dorumrr.de1984.R.string.filter_profile_personal),
-            getString(io.github.dorumrr.de1984.R.string.filter_profile_work),
-            getString(io.github.dorumrr.de1984.R.string.filter_profile_clone)
-        )
 
-        // Initial setup - only called once
-        currentTypeFilter = getString(io.github.dorumrr.de1984.R.string.packages_filter_all)
-        currentStateFilter = null
-        currentPermissionFilter = true
-        currentProfileFilter = getString(io.github.dorumrr.de1984.R.string.filter_profile_all)
+        // Build profile filters dynamically - only show profiles that have packages
+        val profileFilters = mutableListOf<String>()
+        // Always show "All Profiles" if we have any non-personal profiles
+        if (hasWorkProfile || hasCloneProfile) {
+            profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_all))
+            profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_personal))
+        }
+        if (hasWorkProfile) {
+            profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_work))
+        }
+        if (hasCloneProfile) {
+            profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_clone))
+        }
+
+        // If current profile filter is no longer available, reset to "All" or null
+        if (currentProfileFilter != null && !profileFilters.contains(currentProfileFilter)) {
+            currentProfileFilter = profileFilters.firstOrNull()
+            // Also update viewModel if filter was reset
+            if (currentProfileFilter != null) {
+                viewModel.setProfileFilter(mapProfileFilterToInternal(currentProfileFilter!!))
+            }
+        }
 
         FilterChipsHelper.setupMultiSelectFilterChips(
             chipGroup = binding.filterChips,
@@ -517,7 +547,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding.emptyState.visibility = View.GONE
         }
 
-        // Update filter chips
+        // Check if profile availability changed - rebuild chips if so
+        if (lastHasWorkProfile != state.hasWorkProfile || lastHasCloneProfile != state.hasCloneProfile) {
+            lastHasWorkProfile = state.hasWorkProfile
+            lastHasCloneProfile = state.hasCloneProfile
+            AppLogger.d(TAG, "Profile availability changed: hasWork=${state.hasWorkProfile}, hasClone=${state.hasCloneProfile}")
+            rebuildFilterChips(state.hasWorkProfile, state.hasCloneProfile)
+        }
+
+        // Update filter chips selection
         updateFilterChips(
             packageTypeFilter = state.filterState.packageType,
             networkStateFilter = state.filterState.networkState,

@@ -44,8 +44,9 @@ class PackageAddedReceiver : BroadcastReceiver() {
             // Use goAsync() to keep receiver alive while coroutine runs
             val pendingResult = goAsync()
 
-            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-            scope.launch {
+            // Use app's coroutine scope instead of creating orphaned scope
+            // This ensures proper cancellation and resource cleanup
+            app.dependencies.applicationScope.launch(Dispatchers.IO) {
                 try {
                     handleNewAppInstallUseCase.execute(packageName, uid)
                         .onSuccess {

@@ -69,8 +69,8 @@ class De1984Application : Application() {
      * This prevents apps from remaining blocked after app crash/kill.
      */
     private fun cleanupOrphanedFirewallRules() {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        scope.launch {
+        // Use application scope for cleanup - this is an app-level operation
+        dependencies.applicationScope.launch(Dispatchers.IO) {
             try {
                 val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, MODE_PRIVATE)
                 val wasFirewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)

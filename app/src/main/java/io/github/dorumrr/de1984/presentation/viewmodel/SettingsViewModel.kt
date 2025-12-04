@@ -104,7 +104,7 @@ class SettingsViewModel(
     val activeBackendType: StateFlow<FirewallBackendType?> = firewallManager.activeBackendType
 
 
-    
+
     init {
         // Note: Settings are loaded synchronously in loadInitialSettings() to avoid
         // emitting default values first, which would cause observers to see a "change"
@@ -114,6 +114,7 @@ class SettingsViewModel(
         requestShizukuPermission()
 
         // Observe root/Shizuku status changes and re-check boot protection availability
+        // These use viewModelScope which automatically cancels when ViewModel is cleared
         viewModelScope.launch {
             rootStatus.collect {
                 AppLogger.d(TAG, "Root status changed: $it, re-checking boot protection availability")
@@ -131,7 +132,7 @@ class SettingsViewModel(
                 updateCaptivePortalPrivileges()
             }
         }
-        
+
         // Observe firewall mode changes from FirewallManager
         // This updates UI when mode changes due to VPN conflict or privilege change
         viewModelScope.launch {
@@ -143,6 +144,11 @@ class SettingsViewModel(
                 }
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        AppLogger.d(TAG, "SettingsViewModel cleared - all coroutines will be cancelled")
     }
 
     /**

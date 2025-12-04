@@ -28,6 +28,9 @@ import io.github.dorumrr.de1984.domain.repository.NetworkPackageRepository
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
 import io.github.dorumrr.de1984.domain.usecase.*
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * ServiceLocator for managing application dependencies.
@@ -55,6 +58,17 @@ class De1984Dependencies(private val context: Context) {
             )
         }
     }
+
+    // =============================================================================================
+    // Application Scope
+    // =============================================================================================
+
+    /**
+     * Application-level coroutine scope that lives for the entire application process.
+     * Use this for long-running operations that should survive beyond single components.
+     * Automatically cancels when the application process is killed by Android.
+     */
+    val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // =============================================================================================
     // Database

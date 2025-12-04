@@ -81,11 +81,14 @@ object HiddenApiHelper {
     fun getUsers(context: Context): List<UserProfile> {
         if (!initialized) initialize()
 
+        AppLogger.i(TAG, "🔍 MULTI-USER: Starting user profile detection...")
+
         // Strategy 1: Use public API UserManager.getUserProfiles() (Android 5.0+)
         // This returns profiles associated with the current user without special permissions
         try {
             val userManager = context.getSystemService(Context.USER_SERVICE) as android.os.UserManager
             val profiles = userManager.userProfiles
+            AppLogger.d(TAG, "🔍 MULTI-USER: UserManager.getUserProfiles() returned ${profiles.size} handles")
 
             if (profiles.isNotEmpty()) {
                 val userProfiles = profiles.mapNotNull { userHandle ->
@@ -110,7 +113,9 @@ object HiddenApiHelper {
                             else -> "User $userId"
                         }
 
-                        UserProfile(userId, name, isWorkProfile, isCloneProfile)
+                        val profile = UserProfile(userId, name, isWorkProfile, isCloneProfile)
+                        AppLogger.d(TAG, "🔍 MULTI-USER: Detected profile: userId=$userId, name=$name, isWork=$isWorkProfile, isClone=$isCloneProfile")
+                        profile
                     } catch (e: Exception) {
                         AppLogger.w(TAG, "Failed to parse UserHandle: ${e.message}")
                         null
@@ -118,7 +123,7 @@ object HiddenApiHelper {
                 }
 
                 if (userProfiles.isNotEmpty()) {
-                    AppLogger.i(TAG, "✅ Found ${userProfiles.size} user profiles via getUserProfiles(): ${userProfiles.map { "${it.userId}:${it.displayName}" }}")
+                    AppLogger.i(TAG, "✅ MULTI-USER: Found ${userProfiles.size} user profiles via getUserProfiles(): ${userProfiles.map { "${it.userId}:${it.displayName}(work=${it.isWorkProfile},clone=${it.isCloneProfile})" }}")
                     return userProfiles
                 }
             }

@@ -84,6 +84,12 @@ class AndroidPackageDataSource(
                 // Collect packages from all user profiles
                 val allPackages = mutableListOf<PackageEntity>()
 
+                // Log profile summary for debugging
+                AppLogger.i(TAG, "📱 MULTI-USER SUMMARY: ${userProfiles.size} profiles detected:")
+                for (profile in userProfiles) {
+                    AppLogger.i(TAG, "   → userId=${profile.userId}, name=${profile.displayName}, isWork=${profile.isWorkProfile}, isClone=${profile.isCloneProfile}")
+                }
+
                 for (profile in userProfiles) {
                     val installedPackages = HiddenApiHelper.getInstalledApplicationsAsUser(
                         context,
@@ -92,6 +98,12 @@ class AndroidPackageDataSource(
                     )
 
                     AppLogger.d(TAG, "📦 User ${profile.userId} (${profile.displayName}): ${installedPackages.size} packages")
+
+                    // Log first few apps from each non-personal profile for debugging
+                    if (profile.userId != 0 && installedPackages.isNotEmpty()) {
+                        val sampleApps = installedPackages.take(5).map { it.packageName }
+                        AppLogger.i(TAG, "📦 MULTI-USER: Sample apps from ${profile.displayName} profile: $sampleApps")
+                    }
 
                     // OPTIMIZATION: Process packages in parallel chunks for better performance
                     // Using chunked processing to balance parallelism with memory usage
@@ -195,6 +207,22 @@ class AndroidPackageDataSource(
 
                         allPackages.addAll(chunkResults)
                     }
+                }
+
+                // Log final summary for debugging
+                val personalCount = allPackages.count { !it.isWorkProfile && !it.isCloneProfile }
+                val workCount = allPackages.count { it.isWorkProfile }
+                val cloneCount = allPackages.count { it.isCloneProfile }
+                AppLogger.i(TAG, "📊 MULTI-USER FINAL: Total ${allPackages.size} packages (Personal: $personalCount, Work: $workCount, Clone: $cloneCount)")
+
+                // Log some work/clone profile apps for verification
+                val workApps = allPackages.filter { it.isWorkProfile }.take(5).map { it.packageName }
+                val cloneApps = allPackages.filter { it.isCloneProfile }.take(5).map { it.packageName }
+                if (workApps.isNotEmpty()) {
+                    AppLogger.i(TAG, "📊 MULTI-USER: Work profile apps sample: $workApps")
+                }
+                if (cloneApps.isNotEmpty()) {
+                    AppLogger.i(TAG, "📊 MULTI-USER: Clone profile apps sample: $cloneApps")
                 }
 
                 allPackages.sortedBy { it.name.lowercase() }

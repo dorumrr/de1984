@@ -73,6 +73,16 @@ class PrivilegedFirewallService : Service() {
             if (intent?.action == "io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED") {
                 AppLogger.d(TAG, "🔥 [TIMING] Broadcast RECEIVED: timestamp=${System.currentTimeMillis()}")
                 if (isServiceActive) {
+                    // Clear backend cache to force re-evaluation of all packages
+                    // This ensures rule changes take effect immediately without restart
+                    val backend = currentBackend
+                    if (backend is ConnectivityManagerFirewallBackend) {
+                        backend.clearAppliedPoliciesCache()
+                        AppLogger.d(TAG, "Cleared ConnectivityManager cache on rule change")
+                    } else if (backend is NetworkPolicyManagerFirewallBackend) {
+                        backend.clearAppliedPoliciesCache()
+                        AppLogger.d(TAG, "Cleared NetworkPolicyManager cache on rule change")
+                    }
                     scheduleRuleApplication("broadcast")
                 }
             }

@@ -266,11 +266,15 @@ class ConnectivityManagerFirewallBackend(
                 val shouldBlock = if (rule != null) {
                     // Has explicit rule - use it
                     // Per FIREWALL.md lines 220-230: ConnectivityManager is all-or-nothing
-                    when {
+                    val result = when {
                         !screenOn && rule.blockWhenBackground -> true
                         rule.isBlockedOn(networkType) -> true
                         else -> false
                     }
+                    // Debug log for packages with rules
+                    AppLogger.d(TAG, "🔍 [RULE DEBUG] $packageName: found rule wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, " +
+                            "isBlockedOn($networkType)=${rule.isBlockedOn(networkType)} → shouldBlock=$result")
+                    result
                 } else {
                     // No rule - apply default policy
                     // Per FIREWALL.md lines 220-230:
@@ -295,14 +299,22 @@ class ConnectivityManagerFirewallBackend(
             // Second pass: Only apply changes for packages whose policy changed
             // This drastically reduces shell command execution (memory leak fix)
             // NOTE: This only affects user 0 packages due to ConnectivityManager limitations
+            AppLogger.d(TAG, "🔍 [CACHE DEBUG] appliedPolicies cache size: ${appliedPolicies.size}, desiredPolicies size: ${desiredPolicies.size}")
             desiredPolicies.forEach { (packageName, shouldBlock) ->
                 val currentPolicy = appliedPolicies[packageName]
 
                 // Skip if policy hasn't changed
                 if (currentPolicy == shouldBlock) {
                     skippedCount++
+                    // Log skipped packages that have explicit rules (these are the ones we care about)
+                    if (rulesByPackageAndUser.keys.any { it.startsWith("$packageName:") }) {
+                        AppLogger.d(TAG, "🔍 [CACHE DEBUG] SKIPPED $packageName: currentPolicy=$currentPolicy, shouldBlock=$shouldBlock (has rule)")
+                    }
                     return@forEach
                 }
+                
+                // Log when we're about to apply a change
+                AppLogger.d(TAG, "🔍 [CACHE DEBUG] APPLYING $packageName: currentPolicy=$currentPolicy → shouldBlock=$shouldBlock")
 
                 try {
                     // Set package networking enabled/disabled using shell command

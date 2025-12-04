@@ -97,19 +97,23 @@ object HiddenApiHelper {
                         val getIdentifierMethod = userHandle.javaClass.getMethod("getIdentifier")
                         val userId = getIdentifierMethod.invoke(userHandle) as Int
 
-                        // Determine profile type based on userId and serial
+                        // Determine profile type based on userId
                         // userId 0 is always the primary user
-                        // Work profiles typically have userId 10+ and are managed profiles
+                        // Work profiles are detected via isManagedProfile()
                         val isWorkProfile = userId > 0 && userManager.isManagedProfile(userId)
 
-                        // Clone profiles are a newer feature (Android 12+)
-                        // They're typically userId 150+ or detected via flags
-                        val isCloneProfile = userId >= 100 && !isWorkProfile
+                        // Clone profiles only exist on Android 12+ (API 31)
+                        // IMPORTANT: getUserProfiles() doesn't provide flags, so we can't 
+                        // reliably detect clone profiles here. Strategy 2 (getUsers with flags)
+                        // should be used for accurate clone detection. We conservatively
+                        // set this to false to avoid misclassifying secondary users or
+                        // Shelter/Island profiles as clones.
+                        val isCloneProfile = false
 
                         val name = when {
                             userId == 0 -> "Personal"
                             isWorkProfile -> "Work"
-                            isCloneProfile -> "Clone"
+                            // Note: Clone detection happens via Strategy 2 if available
                             else -> "User $userId"
                         }
 
@@ -151,10 +155,12 @@ object HiddenApiHelper {
                             val name = nameField.get(userInfo) as? String
                             val flags = flagsField.getInt(userInfo)
 
-                            // FLAG_MANAGED_PROFILE = 0x20 (work profile)
-                            // FLAG_CLONE_PROFILE = 0x40000000 (clone profile, Android 12+)
+                            // FLAG_MANAGED_PROFILE = 0x20 (work profile, available since Android 5.0)
+                            // FLAG_CLONE_PROFILE = 0x40000000 (clone profile, Android 12+ / API 31+)
+                            // Note: Before Android 12, clone profiles don't exist, so the flag will never be set
                             val isWorkProfile = (flags and 0x20) != 0
-                            val isCloneProfile = (flags and 0x40000000) != 0
+                            val isCloneProfile = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && 
+                                                 (flags and 0x40000000) != 0
 
                             UserProfile(id, name, isWorkProfile, isCloneProfile)
                         } catch (e: Exception) {
@@ -188,17 +194,29 @@ object HiddenApiHelper {
             val method = this.javaClass.getMethod("isManagedProfile", Int::class.javaPrimitiveType)
             method.invoke(this, userId) as? Boolean ?: false
         } catch (e: Exception) {
-            // Fallback: check if the default isManagedProfile() is true for profiles other than 0
+            // Fallback: check if the default isManagedProfile() is true for the current user
             try {
-                // For the current user, check isManagedProfile()
-                if (android.os.Process.myUserHandle().hashCode() == userId) {
-                    this.isManagedProfile
+                // Get the current user's ID via reflection (same pattern used in Strategy 1)
+                val myUserHandle = android.os.Process.myUserHandle()
+                val getIdentifierMethod = myUserHandle.javaClass.getMethod("getIdentifier")
+                val myUserId = getIdentifierMethod.invoke(myUserHandle) as Int
+                
+                // For the current user, use the public isManagedProfile() API (API 30+)
+                if (myUserId == userId) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        this.isManagedProfile
+                    } else {
+                        // Before API 30, we can't reliably determine this
+                        // Return false to avoid false positives
+                        false
+                    }
                 } else {
-                    // Conservative guess: user IDs 10-99 are typically work profiles
-                    userId in 10..99
+                    // For other users, we can't determine without hidden API access
+                    // Return false to avoid misclassifying users as work profiles
+                    false
                 }
             } catch (e2: Exception) {
-                userId in 10..99
+                false
             }
         }
     }

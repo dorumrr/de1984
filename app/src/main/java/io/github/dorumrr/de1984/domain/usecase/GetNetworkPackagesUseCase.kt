@@ -113,25 +113,4 @@ class GetNetworkPackagesUseCase constructor(
             }
         }
     }
-
-    /**
-     * Returns info about which profiles have packages installed.
-     * Used to conditionally show profile filter chips.
-     */
-    fun getAvailableProfiles(): Flow<AvailableProfiles> {
-        return invoke().map { packages ->
-            AvailableProfiles(
-                hasWorkProfile = packages.any { it.isWorkProfile },
-                hasCloneProfile = packages.any { it.isCloneProfile }
-            )
-        }
-    }
 }
-
-/**
- * Data class representing which profiles have packages on the device.
- */
-data class AvailableProfiles(
-    val hasWorkProfile: Boolean,
-    val hasCloneProfile: Boolean
-)

@@ -63,8 +63,41 @@ class SettingsViewModel(
         private const val TAG = "SettingsViewModel"
     }
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(loadInitialSettings())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    /**
+     * Load initial settings synchronously to avoid emitting default values first.
+     * This prevents observers from seeing a "change" when the actual values are loaded.
+     */
+    private fun loadInitialSettings(): SettingsUiState {
+        val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
+        val firewallModeString = prefs.getString(
+            Constants.Settings.KEY_FIREWALL_MODE,
+            Constants.Settings.DEFAULT_FIREWALL_MODE
+        ) ?: Constants.Settings.DEFAULT_FIREWALL_MODE
+
+        return SettingsUiState(
+            autoRefresh = prefs.getBoolean("auto_refresh", true),
+            showSystemApps = prefs.getBoolean("show_system_apps", false),
+            darkTheme = prefs.getBoolean("dark_theme", false),
+            refreshInterval = prefs.getInt("refresh_interval", 30),
+            showAppIcons = prefs.getBoolean(Constants.Settings.KEY_SHOW_APP_ICONS, Constants.Settings.DEFAULT_SHOW_APP_ICONS),
+            defaultFirewallPolicy = prefs.getString(
+                Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
+                Constants.Settings.DEFAULT_FIREWALL_POLICY
+            ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY,
+            newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS),
+            bootProtection = prefs.getBoolean(Constants.Settings.KEY_BOOT_PROTECTION, Constants.Settings.DEFAULT_BOOT_PROTECTION),
+            appLanguage = prefs.getString(Constants.Settings.KEY_APP_LANGUAGE, Constants.Settings.DEFAULT_APP_LANGUAGE) ?: Constants.Settings.DEFAULT_APP_LANGUAGE,
+            firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO,
+            allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
+            allowCriticalPackageFirewall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL),
+            showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT),
+            confirmRuleChanges = prefs.getBoolean(Constants.Settings.KEY_CONFIRM_RULE_CHANGES, Constants.Settings.DEFAULT_CONFIRM_RULE_CHANGES),
+            useDynamicColors = prefs.getBoolean(Constants.Settings.KEY_USE_DYNAMIC_COLORS, Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS)
+        )
+    }
 
     val rootStatus: StateFlow<RootStatus> = rootManager.rootStatus
     val shizukuStatus: StateFlow<ShizukuStatus> = shizukuManager.shizukuStatus
@@ -73,7 +106,8 @@ class SettingsViewModel(
 
     
     init {
-        loadSettings()
+        // Note: Settings are loaded synchronously in loadInitialSettings() to avoid
+        // emitting default values first, which would cause observers to see a "change"
         loadSystemInfo()
         cleanupOrphanedPreferences()
         requestRootPermission()
@@ -149,39 +183,7 @@ class SettingsViewModel(
     fun grantShizukuPermission() {
         shizukuManager.requestShizukuPermission()
     }
-    
-    private fun loadSettings() {
-        viewModelScope.launch {
-            val prefs = context.getSharedPreferences("de1984_prefs", Context.MODE_PRIVATE)
 
-            val firewallModeString = prefs.getString(
-                Constants.Settings.KEY_FIREWALL_MODE,
-                Constants.Settings.DEFAULT_FIREWALL_MODE
-            ) ?: Constants.Settings.DEFAULT_FIREWALL_MODE
-
-            _uiState.value = _uiState.value.copy(
-                autoRefresh = prefs.getBoolean("auto_refresh", true),
-                showSystemApps = prefs.getBoolean("show_system_apps", false),
-                darkTheme = prefs.getBoolean("dark_theme", false),
-                refreshInterval = prefs.getInt("refresh_interval", 30),
-                showAppIcons = prefs.getBoolean(Constants.Settings.KEY_SHOW_APP_ICONS, Constants.Settings.DEFAULT_SHOW_APP_ICONS),
-                defaultFirewallPolicy = prefs.getString(
-                    Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
-                    Constants.Settings.DEFAULT_FIREWALL_POLICY
-                ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY,
-                newAppNotifications = prefs.getBoolean(Constants.Settings.KEY_NEW_APP_NOTIFICATIONS, Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS),
-                bootProtection = prefs.getBoolean(Constants.Settings.KEY_BOOT_PROTECTION, Constants.Settings.DEFAULT_BOOT_PROTECTION),
-                appLanguage = prefs.getString(Constants.Settings.KEY_APP_LANGUAGE, Constants.Settings.DEFAULT_APP_LANGUAGE) ?: Constants.Settings.DEFAULT_APP_LANGUAGE,
-                firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO,
-                allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
-                allowCriticalPackageFirewall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL),
-                showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT),
-                confirmRuleChanges = prefs.getBoolean(Constants.Settings.KEY_CONFIRM_RULE_CHANGES, Constants.Settings.DEFAULT_CONFIRM_RULE_CHANGES),
-                useDynamicColors = prefs.getBoolean(Constants.Settings.KEY_USE_DYNAMIC_COLORS, Constants.Settings.DEFAULT_USE_DYNAMIC_COLORS)
-            )
-        }
-    }
-    
     private fun loadSystemInfo() {
         viewModelScope.launch {
             val systemCapabilities = permissionManager.getSystemCapabilities()

@@ -458,58 +458,53 @@ class MainActivity : AppCompatActivity() {
         currentTab = tab
 
         supportFragmentManager.commit {
-            // Get or create cached fragments - check FragmentManager first to avoid duplicates
-            val firewall = firewallFragment
-                ?: (supportFragmentManager.findFragmentByTag("FIREWALL") as? FirewallFragmentViews)?.also {
-                    firewallFragment = it
-                    AppLogger.d(TAG, "loadFragment: Found existing Firewall fragment in FragmentManager")
-                }
-                ?: FirewallFragmentViews().also {
-                    firewallFragment = it
-                    add(R.id.fragment_container, it, "FIREWALL")
-                    AppLogger.d(TAG, "loadFragment: Created new Firewall fragment")
-                }
+            // Hide all existing fragments first
+            firewallFragment?.let { hide(it) }
+            packagesFragment?.let { hide(it) }
+            settingsFragment?.let { hide(it) }
 
-            val packages = packagesFragment
-                ?: (supportFragmentManager.findFragmentByTag("APPS") as? PackagesFragmentViews)?.also {
-                    packagesFragment = it
-                    AppLogger.d(TAG, "loadFragment: Found existing Packages fragment in FragmentManager")
-                }
-                ?: PackagesFragmentViews().also {
-                    packagesFragment = it
-                    add(R.id.fragment_container, it, "APPS")
-                    AppLogger.d(TAG, "loadFragment: Created new Packages fragment")
-                }
-
-            val settings = settingsFragment
-                ?: (supportFragmentManager.findFragmentByTag("SETTINGS") as? SettingsFragmentViews)?.also {
-                    settingsFragment = it
-                    AppLogger.d(TAG, "loadFragment: Found existing Settings fragment in FragmentManager")
-                }
-                ?: SettingsFragmentViews().also {
-                    settingsFragment = it
-                    add(R.id.fragment_container, it, "SETTINGS")
-                    AppLogger.d(TAG, "loadFragment: Created new Settings fragment")
-                }
-
-            // Hide all fragments
-            hide(firewall)
-            hide(packages)
-            hide(settings)
-            AppLogger.d(TAG, "loadFragment: Hidden all fragments")
-
-            // Show the selected fragment
+            // Get or create only the fragment being shown (lazy creation)
             when (tab) {
                 Tab.FIREWALL -> {
-                    show(firewall)
+                    val fragment = firewallFragment
+                        ?: (supportFragmentManager.findFragmentByTag("FIREWALL") as? FirewallFragmentViews)?.also {
+                            firewallFragment = it
+                            AppLogger.d(TAG, "loadFragment: Found existing Firewall fragment in FragmentManager")
+                        }
+                        ?: FirewallFragmentViews().also {
+                            firewallFragment = it
+                            add(R.id.fragment_container, it, "FIREWALL")
+                            AppLogger.d(TAG, "loadFragment: Created new Firewall fragment")
+                        }
+                    show(fragment)
                     AppLogger.d(TAG, "loadFragment: Showing Firewall fragment")
                 }
                 Tab.APPS -> {
-                    show(packages)
+                    val fragment = packagesFragment
+                        ?: (supportFragmentManager.findFragmentByTag("APPS") as? PackagesFragmentViews)?.also {
+                            packagesFragment = it
+                            AppLogger.d(TAG, "loadFragment: Found existing Packages fragment in FragmentManager")
+                        }
+                        ?: PackagesFragmentViews().also {
+                            packagesFragment = it
+                            add(R.id.fragment_container, it, "APPS")
+                            AppLogger.d(TAG, "loadFragment: Created new Packages fragment")
+                        }
+                    show(fragment)
                     AppLogger.d(TAG, "loadFragment: Showing Packages fragment")
                 }
                 Tab.SETTINGS -> {
-                    show(settings)
+                    val fragment = settingsFragment
+                        ?: (supportFragmentManager.findFragmentByTag("SETTINGS") as? SettingsFragmentViews)?.also {
+                            settingsFragment = it
+                            AppLogger.d(TAG, "loadFragment: Found existing Settings fragment in FragmentManager")
+                        }
+                        ?: SettingsFragmentViews().also {
+                            settingsFragment = it
+                            add(R.id.fragment_container, it, "SETTINGS")
+                            AppLogger.d(TAG, "loadFragment: Created new Settings fragment")
+                        }
+                    show(fragment)
                     AppLogger.d(TAG, "loadFragment: Showing Settings fragment")
                 }
             }

@@ -71,23 +71,10 @@ class FirewallViewModel(
     init {
         loadNetworkPackages()
         observeFirewallState()
-        loadAvailableProfiles()
-
         loadDefaultPolicy()
         // NOTE: Privilege monitoring for automatic backend switching is now handled
         // at the application level in FirewallManager, not in the ViewModel.
         // This ensures automatic switching works even when the app is not open.
-    }
-
-    private fun loadAvailableProfiles() {
-        getNetworkPackagesUseCase.getAvailableProfiles()
-            .onEach { profiles ->
-                _uiState.value = _uiState.value.copy(
-                    hasWorkProfile = profiles.hasWorkProfile,
-                    hasCloneProfile = profiles.hasCloneProfile
-                )
-            }
-            .launchIn(viewModelScope)
     }
 
     private fun loadDefaultPolicy() {
@@ -153,11 +140,17 @@ class FirewallViewModel(
             }
             .onEach { packages ->
                 // Filter state was already updated when we started loading
+                // Derive profile availability from loaded packages (avoids separate query)
+                val hasWorkProfile = packages.any { it.isWorkProfile }
+                val hasCloneProfile = packages.any { it.isCloneProfile }
+
                 _uiState.value = _uiState.value.copy(
                     packages = packages,
                     isLoadingData = false,
                     isRenderingUI = true,
-                    error = null
+                    error = null,
+                    hasWorkProfile = hasWorkProfile,
+                    hasCloneProfile = hasCloneProfile
                 )
             }
             .launchIn(viewModelScope)

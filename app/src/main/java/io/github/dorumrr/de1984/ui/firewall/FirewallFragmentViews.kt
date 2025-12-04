@@ -14,7 +14,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -57,7 +56,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
     private val TAG = "FirewallFragmentViews"
 
-    private val viewModel: FirewallViewModel by viewModels {
+    private val viewModel: FirewallViewModel by activityViewModels {
         val app = requireActivity().application as De1984Application
         FirewallViewModel.Factory(
             app,
@@ -161,10 +160,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         observeUiState()
         observeSettingsState()
-
-        // Refresh default policy on start
-        // Note: Don't load packages here - let ViewModel's init{} handle first load
-        viewModel.refreshDefaultPolicy()
+        // Note: ViewModel's init{} handles first load - no need to refresh here
     }
 
     override fun onHiddenChanged(hidden: Boolean) {

@@ -1,6 +1,8 @@
 package io.github.dorumrr.de1984.ui.packages
 
+import android.graphics.drawable.Drawable
 import android.util.Log
+import android.util.LruCache
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +18,10 @@ import io.github.dorumrr.de1984.domain.model.PackageId
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PackageAdapter(
     private var showIcons: Boolean,
@@ -25,12 +31,23 @@ class PackageAdapter(
 
     companion object {
         private const val TAG = "PackageAdapter"
+        private const val ICON_CACHE_SIZE = 100 // Cache up to 100 app icons
     }
 
     private var isSelectionMode = false
     private val selectedPackages = mutableSetOf<PackageId>()
     private var onSelectionChanged: ((Set<PackageId>) -> Unit)? = null
     private var onSelectionLimitReached: (() -> Unit)? = null
+
+    // Performance optimization: cache app icons to avoid repeated I/O during scrolling
+    private val iconCache = LruCache<String, Drawable>(ICON_CACHE_SIZE)
+
+    /**
+     * Clear the icon cache. Call when memory is low or when the list changes significantly.
+     */
+    fun clearIconCache() {
+        iconCache.evictAll()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PackageViewHolder {
         val binding = ItemPackageBinding.inflate(
@@ -44,7 +61,8 @@ class PackageAdapter(
             onPackageLongClick,
             ::isPackageSelected,
             ::canSelectPackage,
-            ::togglePackageSelection
+            ::togglePackageSelection,
+            iconCache
         )
     }
 
@@ -148,10 +166,18 @@ class PackageAdapter(
         private val onPackageLongClick: (Package) -> Boolean,
         private val isPackageSelected: (PackageId) -> Boolean,
         private val canSelectPackage: (Package) -> Boolean,
-        private val togglePackageSelection: (Package) -> Unit
+        private val togglePackageSelection: (Package) -> Unit,
+        private val iconCache: LruCache<String, Drawable>
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        // Coroutine scope for async icon loading
+        private val scope = CoroutineScope(Dispatchers.Main)
+
+        // Track current package for race condition prevention
+        private var currentPackage: Package? = null
+
         fun bind(pkg: Package, showIcons: Boolean, isSelectionMode: Boolean) {
+            currentPackage = pkg
             binding.appName.text = pkg.name
             binding.packageName.text = pkg.packageName
 
@@ -171,13 +197,33 @@ class PackageAdapter(
                 binding.root.alpha = 1.0f
             }
 
-            // Set app icon (pass userId for multi-user support)
+            // Set app icon with caching and async loading for performance
             if (showIcons) {
-                val realIcon = PackageUtils.getPackageIcon(binding.root.context, pkg.packageName, pkg.userId)
-                if (realIcon != null) {
-                    binding.appIcon.setImageDrawable(realIcon)
+                val iconCacheKey = "${pkg.packageName}_${pkg.userId}"
+
+                // Check cache first (synchronous, fast)
+                val cachedIcon = iconCache.get(iconCacheKey)
+                if (cachedIcon != null) {
+                    binding.appIcon.setImageDrawable(cachedIcon)
                 } else {
+                    // Set placeholder immediately
                     binding.appIcon.setImageResource(R.drawable.de1984_icon)
+
+                    // Load icon asynchronously
+                    val context = binding.root.context
+                    scope.launch {
+                        val icon = withContext(Dispatchers.IO) {
+                            PackageUtils.getPackageIcon(context, pkg.packageName, pkg.userId)
+                        }
+
+                        // Only update if this ViewHolder is still showing the same package
+                        if (currentPackage?.packageName == pkg.packageName && currentPackage?.userId == pkg.userId) {
+                            if (icon != null) {
+                                iconCache.put(iconCacheKey, icon)
+                                binding.appIcon.setImageDrawable(icon)
+                            }
+                        }
+                    }
                 }
             } else {
                 binding.appIcon.setImageResource(R.drawable.de1984_icon)

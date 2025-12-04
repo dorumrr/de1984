@@ -40,6 +40,9 @@ class PackagesViewModel(
     // Job to track the current data loading operation
     private var loadJob: Job? = null
 
+    // Performance optimization: cache all packages to avoid re-fetching from system on filter change
+    private var cachedPackages: List<Package> = emptyList()
+
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
 
@@ -66,13 +69,23 @@ class PackagesViewModel(
         loadPackages()
     }
 
-    fun loadPackages() {
+    /**
+     * Load packages from system. Only fetches from system if cache is empty or forceRefresh is true.
+     * @param forceRefresh If true, always fetch from system regardless of cache state
+     */
+    fun loadPackages(forceRefresh: Boolean = false) {
         // Cancel any previous loading operation
         loadJob?.cancel()
 
         // Use pending filter if available, otherwise use current filter
         val filterState = pendingFilterState ?: _uiState.value.filterState
         pendingFilterState = null
+
+        // If we have cached data and not forcing refresh, just apply filters
+        if (cachedPackages.isNotEmpty() && !forceRefresh) {
+            applyFilters(filterState)
+            return
+        }
 
         // Clear packages and update filter state immediately
         _uiState.value = _uiState.value.copy(
@@ -82,7 +95,8 @@ class PackagesViewModel(
             filterState = filterState
         )
 
-        loadJob = getPackagesUseCase.getFilteredByState(filterState)
+        // Fetch ALL packages (unfiltered) and cache them
+        loadJob = getPackagesUseCase.invoke()
             .catch { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
@@ -91,14 +105,75 @@ class PackagesViewModel(
                 )
             }
             .onEach { packages ->
+                // Cache the full list
+                cachedPackages = packages
+                // Apply current filters to the cached list
+                val filteredPackages = filterPackages(packages, filterState)
                 _uiState.value = _uiState.value.copy(
-                    packages = packages,
+                    packages = filteredPackages,
                     isLoadingData = false,
                     isRenderingUI = true,
                     error = null
                 )
             }
             .launchIn(viewModelScope)
+    }
+
+    /**
+     * Apply filters to cached packages (fast, in-memory operation).
+     * Does not fetch from system.
+     */
+    private fun applyFilters(filterState: PackageFilterState) {
+        _uiState.value = _uiState.value.copy(
+            filterState = filterState
+        )
+
+        val filteredPackages = filterPackages(cachedPackages, filterState)
+        _uiState.value = _uiState.value.copy(
+            packages = filteredPackages,
+            isLoadingData = false,
+            isRenderingUI = true,
+            error = null
+        )
+    }
+
+    /**
+     * Filter packages in-memory based on filter state.
+     */
+    private fun filterPackages(packages: List<Package>, filterState: PackageFilterState): List<Package> {
+        var result = packages
+
+        // Apply type filter
+        result = when (filterState.packageType.lowercase()) {
+            io.github.dorumrr.de1984.utils.Constants.Packages.TYPE_USER.lowercase() ->
+                result.filter { it.type == io.github.dorumrr.de1984.domain.model.PackageType.USER }
+            io.github.dorumrr.de1984.utils.Constants.Packages.TYPE_SYSTEM.lowercase() ->
+                result.filter { it.type == io.github.dorumrr.de1984.domain.model.PackageType.SYSTEM }
+            else -> result // "all" or default
+        }
+
+        // Apply profile filter
+        result = when (filterState.profileFilter.lowercase()) {
+            "personal" -> result.filter { !it.isWorkProfile && !it.isCloneProfile }
+            "work" -> result.filter { it.isWorkProfile }
+            "clone" -> result.filter { it.isCloneProfile }
+            else -> result // "all" or default
+        }
+
+        // Apply state filter
+        if (filterState.packageState != null) {
+            result = when (filterState.packageState.lowercase()) {
+                io.github.dorumrr.de1984.utils.Constants.Packages.STATE_ENABLED.lowercase() ->
+                    result.filter { it.isEnabled }
+                io.github.dorumrr.de1984.utils.Constants.Packages.STATE_DISABLED.lowercase() ->
+                    result.filter { !it.isEnabled }
+                io.github.dorumrr.de1984.utils.Constants.Packages.STATE_UNINSTALLED.lowercase() ->
+                    result.filter { it.versionName == null && !it.isEnabled && it.type == io.github.dorumrr.de1984.domain.model.PackageType.SYSTEM }
+                else -> result
+            }
+        }
+
+        return result
     }
     
     fun setPackageTypeFilter(packageType: String) {
@@ -107,15 +182,15 @@ class PackagesViewModel(
             packageType = packageType
             // Preserve packageState when switching type filters
         )
-        pendingFilterState = newFilterState
-        loadPackages()
+        // Apply filters in-memory (fast) instead of re-fetching from system
+        applyFilters(newFilterState)
     }
 
     fun setPackageStateFilter(packageState: String?) {
         val currentFilterState = _uiState.value.filterState
         val newFilterState = currentFilterState.copy(packageState = packageState)
-        pendingFilterState = newFilterState
-        loadPackages()
+        // Apply filters in-memory (fast) instead of re-fetching from system
+        applyFilters(newFilterState)
     }
 
     fun setProfileFilter(profileFilter: String) {
@@ -124,8 +199,8 @@ class PackagesViewModel(
             profileFilter = profileFilter
             // All other filters are preserved
         )
-        pendingFilterState = newFilterState
-        loadPackages()
+        // Apply filters in-memory (fast) instead of re-fetching from system
+        applyFilters(newFilterState)
     }
 
     fun setPackageEnabled(packageName: String, userId: Int = 0, enabled: Boolean) {
@@ -141,8 +216,8 @@ class PackagesViewModel(
                     // Success - optimistic update already applied, no need to reload
                 }
                 .onFailure { error ->
-                    // Revert on failure by reloading
-                    loadPackages()
+                    // Revert on failure by reloading from system
+                    loadPackages(forceRefresh = true)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -163,7 +238,7 @@ class PackagesViewModel(
                     _uiState.value = _uiState.value.copy(
                         uninstallSuccess = "$appName uninstalled"
                     )
-                    loadPackages()
+                    loadPackages(forceRefresh = true)
                 }
                 .onFailure { error ->
                     if (superuserBannerState.shouldShowBannerForError(error)) {
@@ -194,7 +269,7 @@ class PackagesViewModel(
             managePackageUseCase.uninstallMultiplePackages(packages)
                 .onSuccess { result ->
                     // Reload packages to reflect changes
-                    loadPackages()
+                    loadPackages(forceRefresh = true)
 
                     // Update UI state with result
                     _uiState.value = _uiState.value.copy(
@@ -233,7 +308,7 @@ class PackagesViewModel(
                     _uiState.value = _uiState.value.copy(
                         reinstallSuccess = "$appName reinstalled"
                     )
-                    loadPackages()
+                    loadPackages(forceRefresh = true)
                 }
                 .onFailure { error ->
                     if (superuserBannerState.shouldShowBannerForError(error)) {
@@ -265,7 +340,7 @@ class PackagesViewModel(
                     _uiState.value = _uiState.value.copy(
                         batchReinstallResult = result
                     )
-                    loadPackages()
+                    loadPackages(forceRefresh = true)
                 }
                 .onFailure { error ->
                     if (superuserBannerState.shouldShowBannerForError(error)) {
@@ -323,6 +398,7 @@ class PackagesViewModel(
     }
 
     private fun updatePackageInList(packageName: String, userId: Int = 0, transform: (Package) -> Package) {
+        // Update both the displayed list and the cache
         val currentPackages = _uiState.value.packages
         val updatedPackages = currentPackages.map { pkg ->
             if (pkg.packageName == packageName && pkg.userId == userId) {
@@ -332,6 +408,15 @@ class PackagesViewModel(
             }
         }
         _uiState.value = _uiState.value.copy(packages = updatedPackages)
+
+        // Also update the cache so filter changes reflect the update
+        cachedPackages = cachedPackages.map { pkg ->
+            if (pkg.packageName == packageName && pkg.userId == userId) {
+                transform(pkg)
+            } else {
+                pkg
+            }
+        }
     }
 
     class Factory(

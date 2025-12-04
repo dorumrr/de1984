@@ -163,6 +163,14 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // Note: ViewModel's init{} handles first load - no need to refresh here
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Refresh cached settings in adapter (in case user changed settings)
+        if (::adapter.isInitialized) {
+            adapter.refreshSettings(requireContext())
+        }
+    }
+
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)
         AppLogger.d(TAG, "onHiddenChanged: hidden=$hidden")
@@ -180,6 +188,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             } else {
                 AppLogger.d(TAG, "onHiddenChanged: No policy change detected")
             }
+
+            // Refresh cached settings when fragment becomes visible
+            if (::adapter.isInitialized) {
+                adapter.refreshSettings(requireContext())
+            }
         }
     }
 
@@ -196,6 +209,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 handleQuickToggle(pkg, networkType)
             }
         )
+
+        // Initialize adapter with context for caching
+        adapter.initialize(requireContext())
 
         // Setup selection listeners
         adapter.setOnSelectionChangedListener { selected ->
@@ -486,6 +502,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                             handleQuickToggle(pkg, networkType)
                         }
                     )
+
+                    // Initialize adapter with context for caching
+                    adapter.initialize(requireContext())
 
                     // Setup selection listeners for new adapter
                     adapter.setOnSelectionChangedListener { selected ->

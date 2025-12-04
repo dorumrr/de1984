@@ -18,6 +18,7 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.FirewallFilterState
 import io.github.dorumrr.de1984.domain.model.PackageId
+import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.domain.usecase.GetNetworkPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManageNetworkAccessUseCase
 import io.github.dorumrr.de1984.data.firewall.FirewallManager.FirewallState
@@ -56,6 +57,9 @@ class FirewallViewModel(
 
     // Job to track the current data loading operation
     private var loadJob: Job? = null
+
+    // Performance optimization: cache all packages to avoid re-fetching from system on filter change
+    private var cachedPackages: List<NetworkPackage> = emptyList()
 
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
@@ -109,10 +113,14 @@ class FirewallViewModel(
     fun refreshDefaultPolicy() {
         AppLogger.d(TAG, "refreshDefaultPolicy: Called - reloading policy and packages")
         loadDefaultPolicy()
-        loadNetworkPackages()
+        loadNetworkPackages(forceRefresh = true)
     }
 
-    fun loadNetworkPackages() {
+    /**
+     * Load network packages. Only fetches from system if cache is empty or forceRefresh is true.
+     * @param forceRefresh If true, always fetch from system regardless of cache state
+     */
+    fun loadNetworkPackages(forceRefresh: Boolean = false) {
         // Cancel any previous loading operation
         loadJob?.cancel()
 
@@ -122,6 +130,12 @@ class FirewallViewModel(
         // Clear pending filter immediately after using it
         pendingFilterState = null
 
+        // If we have cached data and not forcing refresh, just apply filters
+        if (cachedPackages.isNotEmpty() && !forceRefresh) {
+            applyFilters(filterState)
+            return
+        }
+
         // Clear packages AND update filter state immediately to prevent showing stale data
         _uiState.value = _uiState.value.copy(
             isLoadingData = true,
@@ -130,7 +144,8 @@ class FirewallViewModel(
             filterState = filterState  // Update filter immediately!
         )
 
-        loadJob = getNetworkPackagesUseCase.getFilteredByState(filterState)
+        // Fetch ALL packages (unfiltered) and cache them
+        loadJob = getNetworkPackagesUseCase.invoke()
             .catch { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
@@ -139,13 +154,18 @@ class FirewallViewModel(
                 )
             }
             .onEach { packages ->
-                // Filter state was already updated when we started loading
+                // Cache the full list
+                cachedPackages = packages
+
+                // Apply current filters to the cached list
+                val filteredPackages = filterPackages(packages, filterState)
+
                 // Derive profile availability from loaded packages (avoids separate query)
                 val hasWorkProfile = packages.any { it.isWorkProfile }
                 val hasCloneProfile = packages.any { it.isCloneProfile }
 
                 _uiState.value = _uiState.value.copy(
-                    packages = packages,
+                    packages = filteredPackages,
                     isLoadingData = false,
                     isRenderingUI = true,
                     error = null,
@@ -156,17 +176,72 @@ class FirewallViewModel(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Apply filters to cached packages (fast, in-memory operation).
+     * Does not fetch from system.
+     */
+    private fun applyFilters(filterState: FirewallFilterState) {
+        _uiState.value = _uiState.value.copy(
+            filterState = filterState
+        )
+
+        val filteredPackages = filterPackages(cachedPackages, filterState)
+        _uiState.value = _uiState.value.copy(
+            packages = filteredPackages,
+            isLoadingData = false,
+            isRenderingUI = true,
+            error = null
+        )
+    }
+
+    /**
+     * Filter packages in-memory based on filter state.
+     */
+    private fun filterPackages(packages: List<NetworkPackage>, filterState: FirewallFilterState): List<NetworkPackage> {
+        var result = packages
+
+        // Apply type filter
+        result = when (filterState.packageType.lowercase()) {
+            Constants.Packages.TYPE_USER.lowercase() ->
+                result.filter { it.type == PackageType.USER }
+            Constants.Packages.TYPE_SYSTEM.lowercase() ->
+                result.filter { it.type == PackageType.SYSTEM }
+            else -> result // "all" or default
+        }
+
+        // Apply profile filter
+        result = when (filterState.profileFilter.lowercase()) {
+            "personal" -> result.filter { !it.isWorkProfile && !it.isCloneProfile }
+            "work" -> result.filter { it.isWorkProfile }
+            "clone" -> result.filter { it.isCloneProfile }
+            else -> result // "all" or default
+        }
+
+        // Apply internet-only filter
+        if (filterState.internetOnly) {
+            result = result.filter { it.hasInternetPermission }
+        }
+
+        // Apply network state filter (allowed/blocked)
+        if (filterState.networkState != null) {
+            result = when (filterState.networkState.lowercase()) {
+                "allowed" -> result.filter { !it.wifiBlocked && !it.mobileBlocked }
+                "blocked" -> result.filter { it.wifiBlocked || it.mobileBlocked }
+                else -> result
+            }
+        }
+
+        return result
+    }
+
     fun setPackageTypeFilter(packageType: String) {
         val currentFilterState = _uiState.value.filterState
         val newFilterState = currentFilterState.copy(
             packageType = packageType
             // Preserve networkState and internetOnly when switching type filters
         )
-        // Store filter in pending state - DO NOT update StateFlow yet
-        pendingFilterState = newFilterState
-
-        // Load packages will emit the state with correct data
-        loadNetworkPackages()
+        // Apply filters in-memory (fast) instead of re-fetching from system
+        applyFilters(newFilterState)
     }
 
     fun setNetworkStateFilter(networkState: String?) {
@@ -175,11 +250,8 @@ class FirewallViewModel(
             networkState = networkState
             // internetOnly is preserved when switching Allowed/Blocked
         )
-        // Store filter in pending state - DO NOT update StateFlow yet
-        pendingFilterState = newFilterState
-
-        // Load packages will emit the state with correct data
-        loadNetworkPackages()
+        // Apply filters in-memory (fast) instead of re-fetching from system
+        applyFilters(newFilterState)
     }
 
     fun setInternetOnlyFilter(internetOnly: Boolean) {
@@ -188,11 +260,8 @@ class FirewallViewModel(
             internetOnly = internetOnly
             // networkState and packageType are preserved
         )
-        // Store filter in pending state - DO NOT update StateFlow yet
-        pendingFilterState = newFilterState
-
-        // Load packages will emit the state with correct data
-        loadNetworkPackages()
+        // Apply filters in-memory (fast) instead of re-fetching from system
+        applyFilters(newFilterState)
     }
 
     fun setProfileFilter(profileFilter: String) {
@@ -201,8 +270,8 @@ class FirewallViewModel(
             profileFilter = profileFilter
             // All other filters are preserved
         )
-        pendingFilterState = newFilterState
-        loadNetworkPackages()
+        // Apply filters in-memory (fast) instead of re-fetching from system
+        applyFilters(newFilterState)
     }
 
     fun setWifiBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
@@ -421,6 +490,7 @@ class FirewallViewModel(
     }
 
     private fun updatePackageInList(packageName: String, userId: Int = 0, transform: (NetworkPackage) -> NetworkPackage) {
+        // Update both the displayed list and the cache
         val currentPackages = _uiState.value.packages
         val updatedPackages = currentPackages.map { pkg ->
             if (pkg.packageName == packageName && pkg.userId == userId) {
@@ -430,6 +500,15 @@ class FirewallViewModel(
             }
         }
         _uiState.value = _uiState.value.copy(packages = updatedPackages)
+
+        // Also update the cache so filter changes reflect the update
+        cachedPackages = cachedPackages.map { pkg ->
+            if (pkg.packageName == packageName && pkg.userId == userId) {
+                transform(pkg)
+            } else {
+                pkg
+            }
+        }
     }
 
     fun clearError() {

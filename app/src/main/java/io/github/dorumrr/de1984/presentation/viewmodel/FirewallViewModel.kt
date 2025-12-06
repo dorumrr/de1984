@@ -30,9 +30,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -87,9 +89,12 @@ class FirewallViewModel(
     /**
      * Observe package data changes from other screens (e.g., Package Control).
      * When packages are enabled/disabled or firewall rules change, refresh the list.
+     * Debounced to prevent rapid successive refreshes.
      */
+    @OptIn(FlowPreview::class)
     private fun observePackageDataChanges() {
         packageDataChanged
+            .debounce(300L) // Debounce rapid changes to prevent excessive refreshes
             .onEach {
                 AppLogger.d(TAG, "Package data changed, refreshing list")
                 loadNetworkPackages(forceRefresh = true)

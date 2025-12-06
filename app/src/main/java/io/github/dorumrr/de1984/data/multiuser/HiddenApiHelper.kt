@@ -25,6 +25,13 @@ object HiddenApiHelper {
     private var initialized = false
     private var hiddenApiAvailable = false
     
+    // User profile caching to avoid repeated expensive reflection calls
+    @Volatile
+    private var cachedUsers: List<UserProfile>? = null
+    @Volatile
+    private var usersCacheTime: Long = 0
+    private const val USERS_CACHE_TTL = 30_000L // 30 seconds
+    
     /**
      * Data class representing a user profile
      */
@@ -76,10 +83,19 @@ object HiddenApiHelper {
      * 2. UserManager.getUsers() - hidden API requiring MANAGE_USERS permission
      * 3. Fallback to user 0 only
      *
+     * Results are cached for 30 seconds to avoid repeated expensive reflection calls.
      * Returns list with just user 0 if all methods fail.
      */
     fun getUsers(context: Context): List<UserProfile> {
         if (!initialized) initialize()
+
+        // Check cache first to avoid expensive reflection calls
+        cachedUsers?.let { cached ->
+            if (System.currentTimeMillis() - usersCacheTime < USERS_CACHE_TTL) {
+                AppLogger.d(TAG, "🔍 MULTI-USER: Returning cached ${cached.size} user profiles")
+                return cached
+            }
+        }
 
         AppLogger.i(TAG, "🔍 MULTI-USER: Starting user profile detection...")
 
@@ -128,7 +144,7 @@ object HiddenApiHelper {
 
                 if (userProfiles.isNotEmpty()) {
                     AppLogger.i(TAG, "✅ MULTI-USER: Found ${userProfiles.size} user profiles via getUserProfiles(): ${userProfiles.map { "${it.userId}:${it.displayName}(work=${it.isWorkProfile},clone=${it.isCloneProfile})" }}")
-                    return userProfiles
+                    return cacheAndReturn(userProfiles)
                 }
             }
         } catch (e: Exception) {
@@ -171,7 +187,7 @@ object HiddenApiHelper {
 
                     if (profiles.isNotEmpty()) {
                         AppLogger.i(TAG, "✅ Found ${profiles.size} user profiles via getUsers(): ${profiles.map { "${it.userId}:${it.displayName}" }}")
-                        return profiles
+                        return cacheAndReturn(profiles)
                     }
                 }
             } catch (e: Exception) {
@@ -181,7 +197,26 @@ object HiddenApiHelper {
 
         // Strategy 3: Fallback to user 0 only
         AppLogger.d(TAG, "All user enumeration methods failed, returning only user 0")
-        return listOf(UserProfile(0, "Personal", isWorkProfile = false, isCloneProfile = false))
+        return cacheAndReturn(listOf(UserProfile(0, "Personal", isWorkProfile = false, isCloneProfile = false)))
+    }
+
+    /**
+     * Cache the user profiles and return them.
+     */
+    private fun cacheAndReturn(users: List<UserProfile>): List<UserProfile> {
+        cachedUsers = users
+        usersCacheTime = System.currentTimeMillis()
+        return users
+    }
+
+    /**
+     * Clear the user profile cache. Call this when user profiles may have changed
+     * (e.g., work profile added/removed).
+     */
+    fun clearUserCache() {
+        cachedUsers = null
+        usersCacheTime = 0
+        AppLogger.d(TAG, "User profile cache cleared")
     }
 
     /**

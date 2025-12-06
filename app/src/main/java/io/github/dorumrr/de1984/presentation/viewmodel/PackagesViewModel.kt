@@ -12,12 +12,14 @@ import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.usecase.GetPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManagePackageUseCase
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -75,9 +77,12 @@ class PackagesViewModel(
     /**
      * Observe package data changes from other screens (e.g., Firewall Rules).
      * When firewall rules change, refresh the list to show updated state.
+     * Debounced to prevent rapid successive refreshes.
      */
+    @OptIn(FlowPreview::class)
     private fun observePackageDataChanges() {
         packageDataChanged
+            .debounce(300L) // Debounce rapid changes to prevent excessive refreshes
             .onEach {
                 Log.d(TAG, "Package data changed, refreshing list")
                 loadPackages(forceRefresh = true)

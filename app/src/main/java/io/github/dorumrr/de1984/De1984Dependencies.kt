@@ -31,6 +31,10 @@ import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /**
  * ServiceLocator for managing application dependencies.
@@ -69,6 +73,28 @@ class De1984Dependencies(private val context: Context) {
      * Automatically cancels when the application process is killed by Android.
      */
     val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    // =============================================================================================
+    // Package Data Change Notifications
+    // =============================================================================================
+
+    /**
+     * SharedFlow to notify ViewModels when package data changes.
+     * This enables cross-screen refresh when packages are enabled/disabled or firewall rules change.
+     */
+    private val _packageDataChanged = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val packageDataChanged: SharedFlow<Unit> = _packageDataChanged.asSharedFlow()
+
+    /**
+     * Notify all observers that package data has changed and they should refresh.
+     */
+    fun notifyPackageDataChanged() {
+        _packageDataChanged.tryEmit(Unit)
+    }
 
     // =============================================================================================
     // Database
@@ -190,7 +216,7 @@ class De1984Dependencies(private val context: Context) {
     // =============================================================================================
 
     val firewallRepository: FirewallRepository by lazy {
-        FirewallRepositoryImpl(firewallRuleDao, context)
+        FirewallRepositoryImpl(firewallRuleDao, context) { notifyPackageDataChanged() }
     }
 
     // Note: PackageDataSource depends on FirewallRepository (circular dependency)
@@ -200,7 +226,7 @@ class De1984Dependencies(private val context: Context) {
     }
 
     val packageRepository: PackageRepository by lazy {
-        PackageRepositoryImpl(context, packageDataSource)
+        PackageRepositoryImpl(context, packageDataSource) { notifyPackageDataChanged() }
     }
 
     val networkPackageRepository: NetworkPackageRepository by lazy {

@@ -68,7 +68,8 @@ class MainActivity : AppCompatActivity() {
             manageNetworkAccessUseCase = deps.provideManageNetworkAccessUseCase(),
             superuserBannerState = deps.superuserBannerState,
             permissionManager = deps.permissionManager,
-            firewallManager = deps.firewallManager
+            firewallManager = deps.firewallManager,
+            packageDataChanged = deps.packageDataChanged
         )
     }
 

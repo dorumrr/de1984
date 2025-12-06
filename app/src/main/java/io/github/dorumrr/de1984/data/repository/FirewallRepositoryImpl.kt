@@ -12,7 +12,8 @@ import kotlinx.coroutines.flow.map
 
 class FirewallRepositoryImpl(
     private val firewallRuleDao: FirewallRuleDao,
-    private val context: Context
+    private val context: Context,
+    private val onDataChanged: (() -> Unit)? = null
 ) : FirewallRepository {
 
     companion object {
@@ -20,9 +21,13 @@ class FirewallRepositoryImpl(
     }
 
     private fun notifyRulesChanged() {
+        // Send broadcast for VPN/privileged firewall services
         val intent = android.content.Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED")
         intent.setPackage(context.packageName)
         context.sendBroadcast(intent)
+        
+        // Notify ViewModels via SharedFlow callback
+        onDataChanged?.invoke()
     }
     
     // =============================================================================================

@@ -56,7 +56,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             managePackageUseCase = app.dependencies.provideManagePackageUseCase(),
             superuserBannerState = app.dependencies.superuserBannerState,
             rootManager = app.dependencies.rootManager,
-            shizukuManager = app.dependencies.shizukuManager
+            shizukuManager = app.dependencies.shizukuManager,
+            packageDataChanged = app.dependencies.packageDataChanged
         )
     }
 

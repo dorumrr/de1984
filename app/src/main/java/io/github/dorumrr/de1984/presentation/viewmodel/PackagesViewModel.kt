@@ -14,6 +14,7 @@ import io.github.dorumrr.de1984.domain.usecase.ManagePackageUseCase
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -26,7 +27,8 @@ class PackagesViewModel(
     private val managePackageUseCase: ManagePackageUseCase,
     private val superuserBannerState: SuperuserBannerState,
     val rootManager: RootManager,
-    val shizukuManager: ShizukuManager
+    val shizukuManager: ShizukuManager,
+    private val packageDataChanged: SharedFlow<Unit>
 ) : ViewModel() {
 
     private val TAG = "PackagesViewModel"
@@ -67,6 +69,20 @@ class PackagesViewModel(
 
     init {
         loadPackages()
+        observePackageDataChanges()
+    }
+
+    /**
+     * Observe package data changes from other screens (e.g., Firewall Rules).
+     * When firewall rules change, refresh the list to show updated state.
+     */
+    private fun observePackageDataChanges() {
+        packageDataChanged
+            .onEach {
+                Log.d(TAG, "Package data changed, refreshing list")
+                loadPackages(forceRefresh = true)
+            }
+            .launchIn(viewModelScope)
     }
 
     /**
@@ -424,7 +440,8 @@ class PackagesViewModel(
         private val managePackageUseCase: ManagePackageUseCase,
         private val superuserBannerState: SuperuserBannerState,
         private val rootManager: RootManager,
-        private val shizukuManager: ShizukuManager
+        private val shizukuManager: ShizukuManager,
+        private val packageDataChanged: SharedFlow<Unit>
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -434,7 +451,8 @@ class PackagesViewModel(
                     managePackageUseCase,
                     superuserBannerState,
                     rootManager,
-                    shizukuManager
+                    shizukuManager,
+                    packageDataChanged
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")

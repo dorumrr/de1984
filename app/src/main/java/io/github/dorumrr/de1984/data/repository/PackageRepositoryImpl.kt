@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.onEach
 
 class PackageRepositoryImpl(
     private val context: Context,
-    private val packageDataSource: PackageDataSource
+    private val packageDataSource: PackageDataSource,
+    private val onDataChanged: (() -> Unit)? = null
 ) : PackageRepository {
     
     override fun getPackages(): Flow<List<Package>> {
@@ -55,6 +56,8 @@ class PackageRepositoryImpl(
         return try {
             val success = packageDataSource.setPackageEnabled(packageName, userId, enabled)
             if (success) {
+                // Notify observers that package data changed
+                onDataChanged?.invoke()
                 Result.success(Unit)
             } else {
                 val errorMessage = if (enabled) {

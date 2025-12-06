@@ -34,6 +34,35 @@ class HandleNewAppInstallUseCase constructor(
             val packageInfo = validatePackage(packageName, userId)
                 ?: return Result.failure(Exception("Package not found or invalid: $packageName"))
 
+            // Check if app was installed before De1984 to prevent notification spam
+            // after clearing app data. Apps that existed before De1984 should not
+            // trigger "new app" notifications.
+            val de1984InstallTime = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
+            } catch (e: Exception) {
+                0L  // Fallback: treat as new app if we can't get our install time
+            }
+            
+            val isPreExistingApp = packageInfo.firstInstallTime < de1984InstallTime
+            
+            if (isPreExistingApp) {
+                AppLogger.d(TAG, "Pre-existing app (installed before De1984): $packageName")
+                // Still create rule for pre-existing apps, but return failure to skip notification
+                if (!hasNetworkPermissions(packageName, userId)) {
+                    return Result.failure(Exception("Pre-existing app without network permissions"))
+                }
+                
+                val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
+                if (existingRule == null) {
+                    val defaultRule = createDefaultFirewallRule(packageName, packageInfo, userId)
+                    if (defaultRule != null) {
+                        firewallRepository.insertRule(defaultRule)
+                        AppLogger.d(TAG, "Created rule for pre-existing app: $packageName")
+                    }
+                }
+                return Result.failure(Exception("Pre-existing app - notification skipped"))
+            }
+
             if (!hasNetworkPermissions(packageName, userId)) {
                 return Result.success(Unit)
             }

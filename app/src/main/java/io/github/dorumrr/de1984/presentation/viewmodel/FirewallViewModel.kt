@@ -28,6 +28,7 @@ import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -42,7 +43,8 @@ class FirewallViewModel(
     private val manageNetworkAccessUseCase: ManageNetworkAccessUseCase,
     private val superuserBannerState: SuperuserBannerState,
     private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager,
-    private val firewallManager: FirewallManager
+    private val firewallManager: FirewallManager,
+    private val packageDataChanged: SharedFlow<Unit>
 ) : AndroidViewModel(application) {
 
     companion object {
@@ -75,10 +77,24 @@ class FirewallViewModel(
     init {
         loadNetworkPackages()
         observeFirewallState()
+        observePackageDataChanges()
         loadDefaultPolicy()
         // NOTE: Privilege monitoring for automatic backend switching is now handled
         // at the application level in FirewallManager, not in the ViewModel.
         // This ensures automatic switching works even when the app is not open.
+    }
+
+    /**
+     * Observe package data changes from other screens (e.g., Package Control).
+     * When packages are enabled/disabled or firewall rules change, refresh the list.
+     */
+    private fun observePackageDataChanges() {
+        packageDataChanged
+            .onEach {
+                AppLogger.d(TAG, "Package data changed, refreshing list")
+                loadNetworkPackages(forceRefresh = true)
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun loadDefaultPolicy() {
@@ -876,7 +892,8 @@ class FirewallViewModel(
         private val manageNetworkAccessUseCase: ManageNetworkAccessUseCase,
         private val superuserBannerState: SuperuserBannerState,
         private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager,
-        private val firewallManager: FirewallManager
+        private val firewallManager: FirewallManager,
+        private val packageDataChanged: SharedFlow<Unit>
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -887,7 +904,8 @@ class FirewallViewModel(
                     manageNetworkAccessUseCase,
                     superuserBannerState,
                     permissionManager,
-                    firewallManager
+                    firewallManager,
+                    packageDataChanged
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")

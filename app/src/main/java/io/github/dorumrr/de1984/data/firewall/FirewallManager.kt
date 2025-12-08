@@ -165,6 +165,8 @@ class FirewallManager(
      */
     private fun initializeBackendState() {
         scope.launch {
+            val initStartTime = System.currentTimeMillis()
+            AppLogger.i(TAG, "⏱️ TIMING: initializeBackendState START at $initStartTime")
             try {
                 // Add initial delay to let services update SharedPreferences
                 // This prevents race condition where we check before service has started
@@ -176,7 +178,8 @@ class FirewallManager(
                 val maxAttempts = 5
 
                 while (attempts < maxAttempts) {
-                    AppLogger.d(TAG, "initializeBackendState: Attempt ${attempts + 1}/$maxAttempts")
+                    val attemptStartTime = System.currentTimeMillis()
+                    AppLogger.d(TAG, "⏱️ TIMING: initializeBackendState attempt ${attempts + 1}/$maxAttempts at $attemptStartTime (elapsed: ${attemptStartTime - initStartTime}ms)")
 
                     // Check if VPN service is running
                     val vpnBackend = VpnFirewallBackend(context)
@@ -191,9 +194,11 @@ class FirewallManager(
                     }
 
                     // Check if iptables backend is running
+                    val iptablesCheckStart = System.currentTimeMillis()
                     val iptablesBackend = IptablesFirewallBackend(context, rootManager, shizukuManager, errorHandler)
                     if (iptablesBackend.isActive()) {
-                        AppLogger.d(TAG, "Detected iptables backend running on startup (attempt ${attempts + 1})")
+                        val iptablesCheckEnd = System.currentTimeMillis()
+                        AppLogger.i(TAG, "⏱️ TIMING: Detected iptables backend running (check took ${iptablesCheckEnd - iptablesCheckStart}ms, total elapsed: ${iptablesCheckEnd - initStartTime}ms)")
                         currentBackend = iptablesBackend
                         _activeBackendType.value = FirewallBackendType.IPTABLES
                         _firewallState.value = FirewallState.Running(FirewallBackendType.IPTABLES)

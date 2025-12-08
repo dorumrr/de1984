@@ -61,12 +61,20 @@ class AndroidPackageDataSource(
     
     override fun getPackages(): Flow<List<PackageEntity>> = flow {
         val packages = withContext(Dispatchers.IO) {
+            val flowStartTime = System.currentTimeMillis()
+            AppLogger.i(TAG, "⏱️ TIMING: getPackages START at $flowStartTime")
             try {
                 // Get all user profiles (personal, work, clone, etc.)
+                val getUsersStart = System.currentTimeMillis()
                 val userProfiles = HiddenApiHelper.getUsers(context)
+                val getUsersEnd = System.currentTimeMillis()
+                AppLogger.i(TAG, "⏱️ TIMING: getUsers took ${getUsersEnd - getUsersStart}ms, returned ${userProfiles.size} profiles")
                 AppLogger.d(TAG, "📱 Enumerating packages for ${userProfiles.size} user profiles")
 
+                val rulesStart = System.currentTimeMillis()
                 val firewallRules = firewallRepository.getAllRules().first()
+                val rulesEnd = System.currentTimeMillis()
+                AppLogger.i(TAG, "⏱️ TIMING: getAllRules().first() took ${rulesEnd - rulesStart}ms, returned ${firewallRules.size} rules")
                 // Key by (packageName, userId) for multi-user support
                 val rulesByKey = firewallRules.associateBy { "${it.packageName}:${it.userId}" }
 
@@ -91,11 +99,15 @@ class AndroidPackageDataSource(
                 }
 
                 for (profile in userProfiles) {
+                    val profileStart = System.currentTimeMillis()
                     val installedPackages = HiddenApiHelper.getInstalledApplicationsAsUser(
                         context,
                         PackageManager.GET_META_DATA,
                         profile.userId
                     )
+                    val profileEnd = System.currentTimeMillis()
+
+                    AppLogger.i(TAG, "⏱️ TIMING: Profile ${profile.userId} (${profile.displayName}): getInstalledApplicationsAsUser took ${profileEnd - profileStart}ms, returned ${installedPackages.size} packages")
 
                     AppLogger.d(TAG, "📦 User ${profile.userId} (${profile.displayName}): ${installedPackages.size} packages")
 
@@ -224,6 +236,9 @@ class AndroidPackageDataSource(
                 if (cloneApps.isNotEmpty()) {
                     AppLogger.i(TAG, "📊 MULTI-USER: Clone profile apps sample: $cloneApps")
                 }
+
+                val flowEndTime = System.currentTimeMillis()
+                AppLogger.i(TAG, "⏱️ TIMING: getPackages COMPLETE - Total time: ${flowEndTime - flowStartTime}ms for ${allPackages.size} packages")
 
                 allPackages.sortedBy { it.name.lowercase() }
             } catch (e: Exception) {

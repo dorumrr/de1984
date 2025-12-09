@@ -7,6 +7,7 @@ import io.github.dorumrr.de1984.data.mapper.toDomain
 import io.github.dorumrr.de1984.data.mapper.toEntity
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
+import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -149,12 +150,14 @@ class FirewallRepositoryImpl(
     // =============================================================================================
 
     override suspend fun blockAllApps() {
-        firewallRuleDao.blockAllApps()
+        // Exclude system-recommended packages to preserve their "allow all" rules
+        firewallRuleDao.blockAllApps(Constants.Firewall.SYSTEM_RECOMMENDED_ALLOW.toList())
         notifyRulesChanged()
     }
 
     override suspend fun allowAllApps() {
-        firewallRuleDao.allowAllApps()
+        // Exclude system-recommended packages to avoid unnecessary updates
+        firewallRuleDao.allowAllApps(Constants.Firewall.SYSTEM_RECOMMENDED_ALLOW.toList())
         notifyRulesChanged()
     }
 

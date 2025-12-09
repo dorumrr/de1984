@@ -88,11 +88,11 @@ interface FirewallRuleDao {
     // Bulk operations - All users
     // =============================================================================================
 
-    @Query("UPDATE firewall_rules SET wifiBlocked = 1, mobileBlocked = 1, updatedAt = :timestamp WHERE enabled = 1")
-    suspend fun blockAllApps(timestamp: Long = System.currentTimeMillis())
+    @Query("UPDATE firewall_rules SET wifiBlocked = 1, mobileBlocked = 1, updatedAt = :timestamp WHERE enabled = 1 AND packageName NOT IN (:excludedPackages)")
+    suspend fun blockAllApps(excludedPackages: List<String>, timestamp: Long = System.currentTimeMillis())
 
-    @Query("UPDATE firewall_rules SET wifiBlocked = 0, mobileBlocked = 0, updatedAt = :timestamp WHERE enabled = 1")
-    suspend fun allowAllApps(timestamp: Long = System.currentTimeMillis())
+    @Query("UPDATE firewall_rules SET wifiBlocked = 0, mobileBlocked = 0, updatedAt = :timestamp WHERE enabled = 1 AND packageName NOT IN (:excludedPackages)")
+    suspend fun allowAllApps(excludedPackages: List<String>, timestamp: Long = System.currentTimeMillis())
 
     // =============================================================================================
     // Atomic field updates (require userId for composite key)

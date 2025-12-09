@@ -694,7 +694,13 @@ class FirewallManager(
         context.sendBroadcast(widgetIntent)
         AppLogger.d(TAG, "✅ Explicit broadcast sent to FirewallWidget")
         
-        // Also send implicit broadcast for other potential listeners (e.g., TileService uses StateFlow)
+        // Request Quick Settings Tile to update its state
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            io.github.dorumrr.de1984.ui.tile.FirewallTileService.requestTileUpdate(context)
+            AppLogger.d(TAG, "✅ Requested Quick Settings Tile update")
+        }
+        
+        // Also send implicit broadcast for other potential listeners
         val implicitIntent = Intent(Constants.Firewall.ACTION_FIREWALL_STATE_CHANGED).apply {
             putExtra(Constants.Firewall.EXTRA_FIREWALL_STATE, state.toString())
             when (state) {

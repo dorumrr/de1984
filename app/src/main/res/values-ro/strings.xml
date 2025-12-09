@@ -814,6 +814,9 @@
     <string name="tile_label_firewall_off">Firewall OFF</string>
     <string name="tile_label_firewall_starting">Se pornește…</string>
     <string name="tile_label_firewall_error">Eroare</string>
+    <string name="tile_subtitle_active">Activ</string>
+    <string name="tile_subtitle_inactive">Inactiv</string>
+    <string name="tile_subtitle_starting">Se pornește…</string>
     <string name="tile_description_firewall_on">De1984 firewall este activ folosind backend-ul %s</string>
     <string name="tile_description_firewall_off">De1984 firewall este oprit</string>
     <string name="tile_description_firewall_starting">De1984 firewall pornește</string>

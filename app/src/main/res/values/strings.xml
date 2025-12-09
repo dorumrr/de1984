@@ -809,7 +809,11 @@
     <string name="tile_label_firewall_on">Firewall ON</string>
     <string name="tile_label_firewall_off">Firewall OFF</string>
     <string name="tile_label_firewall_starting">Starting…</string>
+    <string name="tile_label_firewall_loading">Firewall starting</string>
     <string name="tile_label_firewall_error">Error</string>
+    <string name="tile_subtitle_active">Active</string>
+    <string name="tile_subtitle_inactive">Inactive</string>
+    <string name="tile_subtitle_starting">Starting…</string>
     <string name="tile_description_firewall_on">De1984 firewall is active using %s backend</string>
     <string name="tile_description_firewall_off">De1984 firewall is stopped</string>
     <string name="tile_description_firewall_starting">De1984 firewall is starting</string>

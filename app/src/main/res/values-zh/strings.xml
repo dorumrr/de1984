@@ -822,6 +822,9 @@
     <string name="tile_label_firewall_off">防火墙 关闭</string>
     <string name="tile_label_firewall_starting">正在启动…</string>
     <string name="tile_label_firewall_error">错误</string>
+    <string name="tile_subtitle_active">已启用</string>
+    <string name="tile_subtitle_inactive">已停用</string>
+    <string name="tile_subtitle_starting">正在启动…</string>
     <string name="tile_description_firewall_on">De1984 防火墙正在使用 %s 后端运行</string>
     <string name="tile_description_firewall_off">De1984 防火墙已停止</string>
     <string name="tile_description_firewall_starting">De1984 防火墙正在启动</string>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Loading/Starting state - amber/orange gradient to indicate transition -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#F57C00"
+        android:centerColor="#FF9800"
+        android:endColor="#FFB74D" />
+    <corners android:radius="24dp" />
+</shape>
+

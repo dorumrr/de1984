@@ -20,6 +20,41 @@ class FirewallWidget : AppWidgetProvider() {
 
     companion object {
         private const val TAG = "FirewallWidget"
+
+        /**
+         * Update all widgets to show loading/starting state.
+         * Called from FirewallToggleReceiver before starting the firewall.
+         */
+        fun setLoadingState(context: Context) {
+            AppLogger.d(TAG, "━━━━━ setLoadingState() called ━━━━━")
+
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                android.content.ComponentName(context, FirewallWidget::class.java)
+            )
+
+            AppLogger.d(TAG, "Setting ${appWidgetIds.size} widgets to loading state")
+
+            for (appWidgetId in appWidgetIds) {
+                val views = RemoteViews(context.packageName, R.layout.widget_firewall)
+
+                // Set loading state UI
+                views.setTextViewText(R.id.widget_status_text, context.getString(R.string.tile_label_firewall_loading))
+                views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_background_loading)
+
+                // Disable click during loading (set empty pending intent)
+                val emptyIntent = PendingIntent.getBroadcast(
+                    context,
+                    appWidgetId,
+                    Intent(),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setOnClickPendingIntent(R.id.widget_container, emptyIntent)
+
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+                AppLogger.d(TAG, "✅ Widget $appWidgetId set to LOADING state (amber gradient)")
+            }
+        }
     }
 
     override fun onUpdate(

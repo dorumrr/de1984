@@ -812,6 +812,9 @@
     <string name="tile_label_firewall_off">Firewall OFF</string>
     <string name="tile_label_firewall_starting">Iniciando…</string>
     <string name="tile_label_firewall_error">Erro</string>
+    <string name="tile_subtitle_active">Ativo</string>
+    <string name="tile_subtitle_inactive">Inativo</string>
+    <string name="tile_subtitle_starting">Iniciando…</string>
     <string name="tile_description_firewall_on">De1984 firewall está ativo usando backend %s</string>
     <string name="tile_description_firewall_off">De1984 firewall está parado</string>
     <string name="tile_description_firewall_starting">De1984 firewall está iniciando</string>

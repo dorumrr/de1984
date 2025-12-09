@@ -810,6 +810,9 @@
     <string name="tile_label_firewall_off">Файрволл ВЫКЛ</string>
     <string name="tile_label_firewall_starting">Запуск…</string>
     <string name="tile_label_firewall_error">Ошибка</string>
+    <string name="tile_subtitle_active">Активен</string>
+    <string name="tile_subtitle_inactive">Неактивен</string>
+    <string name="tile_subtitle_starting">Запуск…</string>
     <string name="tile_description_firewall_on">Файрволл De1984 активен, используется бэкенд %s</string>
     <string name="tile_description_firewall_off">Файрволл De1984 остановлен</string>
     <string name="tile_description_firewall_starting">Файрволл De1984 запускается</string>

@@ -6,6 +6,7 @@ import android.content.Intent
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
 import io.github.dorumrr.de1984.ui.MainActivity
+import io.github.dorumrr.de1984.ui.widget.FirewallWidget
 import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
@@ -65,7 +66,10 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                 } else {
                     // Firewall is OFF - start directly without opening app (quick toggle from widget)
                     AppLogger.d(TAG, "🟢 Firewall is stopped, starting directly...")
-                    
+
+                    // Immediately show loading state on widgets for responsive UX
+                    FirewallWidget.setLoadingState(context)
+
                     // Check if VPN permission is needed
                     val planResult = firewallManager.computeStartPlan(FirewallMode.AUTO)
                     val plan = planResult.getOrNull()

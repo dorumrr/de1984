@@ -812,6 +812,9 @@
     <string name="tile_label_firewall_off">Pare-feu OFF</string>
     <string name="tile_label_firewall_starting">Démarrage…</string>
     <string name="tile_label_firewall_error">Erreur</string>
+    <string name="tile_subtitle_active">Actif</string>
+    <string name="tile_subtitle_inactive">Inactif</string>
+    <string name="tile_subtitle_starting">Démarrage…</string>
     <string name="tile_description_firewall_on">De1984 pare-feu est actif avec le backend %s</string>
     <string name="tile_description_firewall_off">De1984 pare-feu est arrêté</string>
     <string name="tile_description_firewall_starting">De1984 pare-feu démarre</string>

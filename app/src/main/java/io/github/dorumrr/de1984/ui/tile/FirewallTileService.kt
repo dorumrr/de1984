@@ -1,6 +1,8 @@
 package io.github.dorumrr.de1984.ui.tile
 
 import android.app.PendingIntent
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.service.quicksettings.Tile
@@ -29,6 +31,22 @@ class FirewallTileService : TileService() {
 
     companion object {
         private const val TAG = "FirewallTileService"
+        
+        /**
+         * Request the system to update the tile state.
+         * This forces the tile to call onStartListening() which will fetch the current state.
+         */
+        fun requestTileUpdate(context: Context) {
+            try {
+                AppLogger.d(TAG, "Requesting tile state update")
+                requestListeningState(
+                    context,
+                    ComponentName(context, FirewallTileService::class.java)
+                )
+            } catch (e: Exception) {
+                AppLogger.e(TAG, "Failed to request tile update", e)
+            }
+        }
     }
 
     private var scope: CoroutineScope? = null
@@ -40,6 +58,11 @@ class FirewallTileService : TileService() {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
         val firewallManager = (application as De1984Application).dependencies.firewallManager
+        
+        // Force immediate tile update with current state
+        val currentState = firewallManager.firewallState.value
+        AppLogger.d(TAG, "Initial state on startListening: $currentState")
+        updateTile(currentState)
 
         // Collect StateFlow for real-time updates
         scope?.launch {
@@ -61,10 +84,24 @@ class FirewallTileService : TileService() {
         AppLogger.d(TAG, "Tile clicked")
         
         val firewallManager = (application as De1984Application).dependencies.firewallManager
-        val isActive = firewallManager.isActive()
-        AppLogger.d(TAG, "Current firewall state: isActive=$isActive")
         
-        if (isActive) {
+        // Use StateFlow state (more reliable than isActive() which uses deprecated APIs)
+        val currentState = firewallManager.firewallState.value
+        val isActive = currentState is FirewallManager.FirewallState.Running || 
+                       currentState is FirewallManager.FirewallState.Starting
+        
+        // Also check isActive() for redundancy
+        val isActiveBackend = firewallManager.isActive()
+        
+        AppLogger.d(TAG, "Current state: $currentState")
+        AppLogger.d(TAG, "isActive from StateFlow: $isActive")
+        AppLogger.d(TAG, "isActive from backend: $isActiveBackend")
+        
+        // Consider active if EITHER check returns true
+        val shouldTreatAsActive = isActive || isActiveBackend
+        AppLogger.d(TAG, "Final decision - treat as active: $shouldTreatAsActive")
+        
+        if (shouldTreatAsActive) {
             // Firewall is ON - open app for stop confirmation
             AppLogger.d(TAG, "Firewall is ON, opening app for stop confirmation")
             val intent = Intent(this, MainActivity::class.java).apply {
@@ -83,12 +120,20 @@ class FirewallTileService : TileService() {
                 startActivityAndCollapse(intent)
             }
         } else {
-            // Firewall is OFF - start directly (like widget)
-            AppLogger.d(TAG, "Firewall is OFF, starting directly...")
+            // Firewall is OFF - show "Starting..." immediately for responsive UX
+            AppLogger.d(TAG, "Firewall is OFF, showing Starting state immediately...")
+            setStartingState()
             
-            // Collapse the quick settings panel first
+            // Then send broadcast to FirewallToggleReceiver (same as widget)
+            AppLogger.d(TAG, "Sending broadcast to FirewallToggleReceiver...")
+            val toggleIntent = Intent(this, io.github.dorumrr.de1984.data.receiver.FirewallToggleReceiver::class.java).apply {
+                action = Constants.Firewall.ACTION_TOGGLE_FIREWALL
+            }
+            sendBroadcast(toggleIntent)
+            AppLogger.d(TAG, "Broadcast sent to FirewallToggleReceiver")
+            
+            // Collapse the quick settings panel
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                // On Android 14+, we need to collapse manually
                 try {
                     val statusBarService = getSystemService("statusbar")
                     val statusBarManager = Class.forName("android.app.StatusBarManager")
@@ -98,30 +143,26 @@ class FirewallTileService : TileService() {
                     AppLogger.d(TAG, "Could not collapse panels: ${e.message}")
                 }
             }
-            
-            // Use coroutine to check VPN permission and start
-            scope?.launch(Dispatchers.IO) {
-                val planResult = firewallManager.computeStartPlan(io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO)
-                val plan = planResult.getOrNull()
-                
-                if (plan?.requiresVpnPermission == true) {
-                    // VPN permission needed - launch transparent activity without collapsing animation
-                    AppLogger.d(TAG, "VPN permission required, launching VpnPermissionActivity")
-                    val vpnIntent = Intent(this@FirewallTileService, io.github.dorumrr.de1984.ui.VpnPermissionActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
-                    }
-                    startActivity(vpnIntent)
-                } else {
-                    // No VPN permission needed - start directly without any UI
-                    AppLogger.d(TAG, "No VPN permission needed, starting firewall directly")
-                    val result = firewallManager.startFirewall(io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO)
-                    AppLogger.d(TAG, "startFirewall result: $result")
-                    
-                    // Update SharedPreferences
-                    val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, MODE_PRIVATE)
-                    prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
-                }
+        }
+    }
+
+    /**
+     * Immediately set the tile to "Starting..." state for responsive UX.
+     * Called when user clicks to start the firewall.
+     */
+    private fun setStartingState() {
+        try {
+            val tile = qsTile ?: return
+            tile.state = Tile.STATE_ACTIVE
+            tile.label = getString(R.string.tile_label_firewall)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                tile.subtitle = getString(R.string.tile_subtitle_starting)
             }
+            tile.contentDescription = getString(R.string.tile_description_firewall_starting)
+            tile.updateTile()
+            AppLogger.d(TAG, "Tile set to STARTING state")
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Error setting starting state", e)
         }
     }
 
@@ -130,34 +171,33 @@ class FirewallTileService : TileService() {
         try {
             val tile = qsTile ?: return
             
+            // Always use "De1984" as label, state shown in subtitle
+            tile.label = getString(R.string.tile_label_firewall)
+            
             when (state) {
                 is FirewallManager.FirewallState.Running -> {
                     tile.state = Tile.STATE_ACTIVE
-                    tile.label = getString(R.string.tile_label_de1984_on)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        tile.subtitle = null
+                        tile.subtitle = getString(R.string.tile_subtitle_active)
                     }
                     tile.contentDescription = getString(R.string.tile_description_firewall_on, state.backend.name)
                 }
                 FirewallManager.FirewallState.Stopped -> {
                     tile.state = Tile.STATE_INACTIVE
-                    tile.label = getString(R.string.tile_label_de1984_off)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        tile.subtitle = null
+                        tile.subtitle = getString(R.string.tile_subtitle_inactive)
                     }
                     tile.contentDescription = getString(R.string.tile_description_firewall_off)
                 }
                 is FirewallManager.FirewallState.Starting -> {
-                    tile.state = Tile.STATE_UNAVAILABLE
-                    tile.label = getString(R.string.tile_label_firewall_starting)
+                    tile.state = Tile.STATE_ACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        tile.subtitle = null
+                        tile.subtitle = getString(R.string.tile_subtitle_starting)
                     }
                     tile.contentDescription = getString(R.string.tile_description_firewall_starting)
                 }
                 is FirewallManager.FirewallState.Error -> {
                     tile.state = Tile.STATE_INACTIVE
-                    tile.label = getString(R.string.tile_label_de1984_off)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         tile.subtitle = getString(R.string.tile_label_firewall_error)
                     }

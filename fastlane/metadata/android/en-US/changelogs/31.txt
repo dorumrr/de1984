@@ -1,0 +1,5 @@
+Added full support for multi-user awareness
+Implemented home-screen Widget
+Implemented Quick Settings tile
+Extended multilingual support and added new languages
+Improved overall performance and stability

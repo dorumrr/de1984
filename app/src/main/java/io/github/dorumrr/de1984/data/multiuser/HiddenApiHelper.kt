@@ -598,9 +598,11 @@ object HiddenApiHelper {
             PackageInfo().apply {
                 this.packageName = personalInfo.packageName
                 this.versionName = personalInfo.versionName
-                this.versionCode = personalInfo.versionCode
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                     this.longVersionCode = personalInfo.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    this.versionCode = personalInfo.versionCode
                 }
                 this.firstInstallTime = personalInfo.firstInstallTime
                 this.lastUpdateTime = personalInfo.lastUpdateTime

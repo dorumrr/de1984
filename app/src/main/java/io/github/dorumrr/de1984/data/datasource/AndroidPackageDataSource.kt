@@ -19,9 +19,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private data class BlockingState(
@@ -55,19 +59,48 @@ class AndroidPackageDataSource(
 
     private val packageManager = context.packageManager
 
+    // SharedFlow to deduplicate concurrent getPackages() calls
+    private val packagesFlow = MutableSharedFlow<List<PackageEntity>>(replay = 1)
+    private val loadMutex = Mutex()
+    private var isLoading = false
+    private var lastLoadTime = 0L
+    private val CACHE_TTL = 1000L // 1 second cache to prevent rapid successive loads
+
     companion object {
         private const val TAG = "AndroidPackageDataSource"
     }
     
-    override fun getPackages(): Flow<List<PackageEntity>> = flow {
-        val packages = withContext(Dispatchers.IO) {
-            val flowStartTime = System.currentTimeMillis()
-            AppLogger.i(TAG, "⏱️ TIMING: getPackages START at $flowStartTime")
-            try {
-                // Get all user profiles (personal, work, clone, etc.)
-                val getUsersStart = System.currentTimeMillis()
-                val userProfiles = HiddenApiHelper.getUsers(context)
-                val getUsersEnd = System.currentTimeMillis()
+    override fun getPackages(): Flow<List<PackageEntity>> = packagesFlow
+        .onStart {
+            // Only load if not already loading or cache expired
+            val now = System.currentTimeMillis()
+            val cacheExpired = (now - lastLoadTime) > CACHE_TTL
+            
+            if (!isLoading && (packagesFlow.replayCache.isEmpty() || cacheExpired)) {
+                loadMutex.withLock {
+                    // Double-check inside lock
+                    if (!isLoading && (packagesFlow.replayCache.isEmpty() || (now - lastLoadTime) > CACHE_TTL)) {
+                        isLoading = true
+                        try {
+                            val packages = loadPackagesInternal()
+                            lastLoadTime = System.currentTimeMillis()
+                            packagesFlow.emit(packages)
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                }
+            }
+        }
+    
+    private suspend fun loadPackagesInternal(): List<PackageEntity> = withContext(Dispatchers.IO) {
+        val flowStartTime = System.currentTimeMillis()
+        AppLogger.i(TAG, "⏱️ TIMING: getPackages START at $flowStartTime")
+        try {
+            // Get all user profiles (personal, work, clone, etc.)
+            val getUsersStart = System.currentTimeMillis()
+            val userProfiles = HiddenApiHelper.getUsers(context)
+            val getUsersEnd = System.currentTimeMillis()
                 AppLogger.i(TAG, "⏱️ TIMING: getUsers took ${getUsersEnd - getUsersStart}ms, returned ${userProfiles.size} profiles")
                 AppLogger.d(TAG, "📱 Enumerating packages for ${userProfiles.size} user profiles")
 
@@ -237,17 +270,15 @@ class AndroidPackageDataSource(
                     AppLogger.i(TAG, "📊 MULTI-USER: Clone profile apps sample: $cloneApps")
                 }
 
-                val flowEndTime = System.currentTimeMillis()
-                AppLogger.i(TAG, "⏱️ TIMING: getPackages COMPLETE - Total time: ${flowEndTime - flowStartTime}ms for ${allPackages.size} packages")
+            val flowEndTime = System.currentTimeMillis()
+            AppLogger.i(TAG, "⏱️ TIMING: getPackages COMPLETE - Total time: ${flowEndTime - flowStartTime}ms for ${allPackages.size} packages")
 
-                allPackages.sortedBy { it.name.lowercase() }
-            } catch (e: Exception) {
-                AppLogger.e(TAG, "Failed to get packages: ${e.message}", e)
-                emptyList()
-            }
+            allPackages.sortedBy { it.name.lowercase() }
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to get packages: ${e.message}", e)
+            emptyList()
         }
-        emit(packages)
-    }.flowOn(Dispatchers.IO)
+    }
     
     override suspend fun getPackage(packageName: String, userId: Int): PackageEntity? {
         if (Constants.App.isOwnApp(packageName)) {

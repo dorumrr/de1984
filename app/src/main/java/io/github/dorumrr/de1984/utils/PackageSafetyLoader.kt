@@ -3,6 +3,8 @@ package io.github.dorumrr.de1984.utils
 import android.content.Context
 import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.domain.model.PackageCriticality
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -15,6 +17,7 @@ object PackageSafetyLoader {
     private const val SAFETY_DATA_FILE = "package_safety_levels.json"
     
     private var cachedData: PackageSafetyData? = null
+    private val loadMutex = Mutex()
     private val json = Json { 
         ignoreUnknownKeys = true
         isLenient = true
@@ -22,35 +25,42 @@ object PackageSafetyLoader {
     
     /**
      * Load safety data from assets. Data is cached after first load.
+     * Thread-safe with mutex to prevent race conditions during parallel loading.
      */
-    fun loadSafetyData(context: Context): PackageSafetyData {
-        // Return cached data if available
+    suspend fun loadSafetyData(context: Context): PackageSafetyData {
+        // Fast path: return cached data if available
         cachedData?.let { return it }
         
-        try {
-            AppLogger.d(TAG, "Loading package safety data from assets...")
+        // Slow path: load with mutex to prevent duplicate loads
+        return loadMutex.withLock {
+            // Double-check after acquiring lock
+            cachedData?.let { return@withLock it }
             
-            val jsonString = context.assets.open(SAFETY_DATA_FILE).bufferedReader().use { 
-                it.readText() 
-            }
-            
-            val data = json.decodeFromString<PackageSafetyData>(jsonString)
-            cachedData = data
-            
-            AppLogger.d(TAG, "Loaded safety data for ${data.packages.size} packages")
-            AppLogger.d(TAG, "Data version: ${data.version}, last updated: ${data.lastUpdated}")
+            try {
+                AppLogger.d(TAG, "Loading package safety data from assets...")
+                
+                val jsonString = context.assets.open(SAFETY_DATA_FILE).bufferedReader().use { 
+                    it.readText() 
+                }
+                
+                val data = json.decodeFromString<PackageSafetyData>(jsonString)
+                cachedData = data
+                
+                AppLogger.d(TAG, "Loaded safety data for ${data.packages.size} packages")
+                AppLogger.d(TAG, "Data version: ${data.version}, last updated: ${data.lastUpdated}")
 
-            return data
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "Failed to load safety data", e)
-            // Return empty data on error
-            val emptyData = PackageSafetyData(
-                version = 0,
-                lastUpdated = "",
-                packages = emptyMap()
-            )
-            cachedData = emptyData
-            return emptyData
+                data
+            } catch (e: Exception) {
+                AppLogger.e(TAG, "Failed to load safety data", e)
+                // Return empty data on error
+                val emptyData = PackageSafetyData(
+                    version = 0,
+                    lastUpdated = "",
+                    packages = emptyMap()
+                )
+                cachedData = emptyData
+                emptyData
+            }
         }
     }
     
@@ -58,7 +68,7 @@ object PackageSafetyLoader {
      * Get safety info for a specific package.
      * Returns null if package not found in safety data.
      */
-    fun getSafetyInfo(context: Context, packageName: String): PackageSafetyInfo? {
+    suspend fun getSafetyInfo(context: Context, packageName: String): PackageSafetyInfo? {
         val data = loadSafetyData(context)
         return data.packages[packageName]
     }
@@ -67,7 +77,7 @@ object PackageSafetyLoader {
      * Get criticality level for a package.
      * Returns UNKNOWN if package not found in safety data.
      */
-    fun getCriticality(context: Context, packageName: String): PackageCriticality {
+    suspend fun getCriticality(context: Context, packageName: String): PackageCriticality {
         val info = getSafetyInfo(context, packageName) ?: return PackageCriticality.UNKNOWN
         
         return when (info.criticality) {
@@ -83,7 +93,7 @@ object PackageSafetyLoader {
      * Get category for a package.
      * Returns null if package not found in safety data.
      */
-    fun getCategory(context: Context, packageName: String): String? {
+    suspend fun getCategory(context: Context, packageName: String): String? {
         return getSafetyInfo(context, packageName)?.category
     }
     
@@ -91,7 +101,7 @@ object PackageSafetyLoader {
      * Get affects list for a package.
      * Returns empty list if package not found in safety data.
      */
-    fun getAffects(context: Context, packageName: String): List<String> {
+    suspend fun getAffects(context: Context, packageName: String): List<String> {
         return getSafetyInfo(context, packageName)?.affects ?: emptyList()
     }
     
@@ -99,7 +109,7 @@ object PackageSafetyLoader {
      * Check if a package is critical (Essential or Important).
      * Used to determine if uninstall should be restricted.
      */
-    fun isCriticalPackage(context: Context, packageName: String): Boolean {
+    suspend fun isCriticalPackage(context: Context, packageName: String): Boolean {
         val criticality = getCriticality(context, packageName)
         return criticality == PackageCriticality.ESSENTIAL || 
                criticality == PackageCriticality.IMPORTANT

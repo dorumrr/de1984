@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="12dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical">
+
+    <!-- Icon on the left -->
+    <FrameLayout
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:background="@drawable/widget_icon_background">
+        
+        <ImageView
+            android:id="@+id/widget_icon"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_gravity="center"
+            android:src="@mipmap/ic_launcher_foreground"
+            android:contentDescription="@string/app_name" />
+    </FrameLayout>
+
+    <!-- Text on the right -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical">
+
+        <!-- App name - larger -->
+        <TextView
+            android:id="@+id/widget_app_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="15sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:letterSpacing="0.02" />
+
+        <!-- Status - smaller -->
+        <TextView
+            android:id="@+id/widget_status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:text="@string/tile_label_firewall_off"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:alpha="0.9" />
+    </LinearLayout>
+
+</LinearLayout>

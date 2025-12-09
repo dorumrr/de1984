@@ -649,8 +649,9 @@ class FirewallViewModel(
 
     fun stopFirewall() {
         viewModelScope.launch {
-            firewallManager.stopFirewall()
+            // Save state BEFORE stopping so widget reads correct state when broadcast arrives
             saveFirewallState(false)
+            firewallManager.stopFirewall()
         }
     }
 

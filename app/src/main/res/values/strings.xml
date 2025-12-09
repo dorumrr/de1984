@@ -801,4 +801,21 @@
     <string name="hint_custom_http_url">Custom HTTP URL</string>
     <string name="hint_custom_https_url">Custom HTTPS URL</string>
 
+    <!-- Quick Settings Tile -->
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_firewall_on">Firewall ON</string>
+    <string name="tile_label_firewall_off">Firewall OFF</string>
+    <string name="tile_label_firewall_starting">Starting…</string>
+    <string name="tile_label_firewall_error">Error</string>
+    <string name="tile_description_firewall_on">De1984 firewall is active using %s backend</string>
+    <string name="tile_description_firewall_off">De1984 firewall is stopped</string>
+    <string name="tile_description_firewall_starting">De1984 firewall is starting</string>
+    <string name="tile_description_firewall_error">De1984 firewall encountered an error</string>
+
+    <!-- Home Screen Widget -->
+    <string name="widget_description">Quick toggle for De1984 Firewall</string>
+
+    <!-- Notification Actions -->
+    <string name="notification_action_stop_firewall">TURN OFF</string>
+
 </resources>

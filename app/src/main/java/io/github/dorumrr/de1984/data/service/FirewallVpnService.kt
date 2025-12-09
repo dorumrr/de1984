@@ -20,6 +20,7 @@ import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.AppLogger
+import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

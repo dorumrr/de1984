@@ -209,6 +209,32 @@ class MainActivity : AppCompatActivity() {
                 Constants.Notifications.ACTION_BOOT_FAILURE_RECOVERY -> {
                     handleBootFailureRecovery()
                 }
+                Constants.Firewall.ACTION_REQUEST_VPN_PERMISSION -> {
+                    AppLogger.d(TAG, "VPN permission request from widget/tile - starting firewall")
+                    // Start firewall, which will trigger VPN permission dialog if needed
+                    firewallViewModel.startFirewall()
+                }
+                Constants.Firewall.ACTION_TOGGLE_FIREWALL -> {
+                    AppLogger.d(TAG, "Firewall toggle request from tile/widget")
+                    // This action is only sent when firewall is ON and user wants to stop
+                    // (Widget starts directly when OFF, only opens app for stop confirmation)
+                    val deps = (application as De1984Application).dependencies
+                    val isActuallyActive = deps.firewallManager.isActive()
+                    AppLogger.d(TAG, "Actual firewall state from manager: isActive=$isActuallyActive")
+                    
+                    if (isActuallyActive) {
+                        // Firewall is ON - show stop confirmation dialog
+                        AppLogger.d(TAG, "Showing stop confirmation dialog")
+                        showFirewallStopDialog()
+                    } else {
+                        // Firewall is somehow OFF - this shouldn't happen normally from widget
+                        // but handle it gracefully by just showing the app
+                        AppLogger.d(TAG, "Firewall is OFF, no action needed - just showing app")
+                    }
+                }
+                else -> {
+                    // Ignore unknown actions
+                }
             }
         }
     }

@@ -239,6 +239,15 @@ object Constants {
         const val STATE_ALLOWED = "Allowed"
         const val STATE_INTERNET = "Internet"
 
+        // Firewall actions
+        const val ACTION_TOGGLE_FIREWALL = "io.github.dorumrr.de1984.TOGGLE_FIREWALL"
+        const val ACTION_FIREWALL_STATE_CHANGED = "io.github.dorumrr.de1984.FIREWALL_STATE_CHANGED"
+        const val ACTION_REQUEST_VPN_PERMISSION = "io.github.dorumrr.de1984.REQUEST_VPN_PERMISSION"
+
+        // Intent extras for firewall state broadcasts
+        const val EXTRA_FIREWALL_STATE = "firewall_state"
+        const val EXTRA_BACKEND_TYPE = "backend_type"
+
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val NETWORK_STATE_FILTERS = listOf("Allowed", "Blocked")
         val PERMISSION_FILTERS = listOf("Internet")

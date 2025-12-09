@@ -67,6 +67,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Transparent activity for VPN permission requests from widget/tile -->
+        <activity
+            android:name=".ui.VpnPermissionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.De1984.Transparent"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:launchMode="singleInstance" />
+
         <!-- Logs Activity -->
         <activity
             android:name=".ui.logs.LogsActivity"
@@ -174,6 +184,37 @@
             android:name=".data.receiver.NotificationActionReceiver"
             android:exported="false"
             android:enabled="true" />
+
+        <!-- Firewall toggle receiver for widget, tile, and notification actions -->
+        <receiver
+            android:name=".data.receiver.FirewallToggleReceiver"
+            android:exported="false"
+            android:enabled="true" />
+
+        <!-- Quick Settings Tile for firewall toggle -->
+        <service
+            android:name=".ui.tile.FirewallTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_notification_de1984"
+            android:label="@string/tile_label_firewall"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Home screen widget for firewall status and toggle -->
+        <receiver
+            android:name=".ui.widget.FirewallWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="io.github.dorumrr.de1984.FIREWALL_STATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
 
         <!-- Language switcher support for Android 12 and lower -->
         <service

@@ -13,6 +13,18 @@
         <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
 
+    <!-- Truly transparent theme for VPN permission activity - no visual impact -->
+    <style name="Theme.De1984.Transparent" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+
     <!-- AppCompat theme for Views-based activities -->
     <style name="Theme.De1984.Views" parent="Theme.Material3.Light.NoActionBar">
         <!-- Status bar -->

@@ -134,9 +134,9 @@ class BootReceiver : BroadcastReceiver() {
                     // Use goAsync() to keep receiver alive while coroutine runs
                     val pendingResult = goAsync()
 
-                    // Use coroutine to start firewall asynchronously
-                    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-                    scope.launch {
+                    // Use app's coroutine scope instead of creating orphaned scope
+                    // This ensures proper cancellation and resource cleanup
+                    app.dependencies.applicationScope.launch(Dispatchers.IO) {
                         try {
                             // CRITICAL: Request root permission FIRST to wake up Magisk
                             // Magisk doesn't grant root permission until the app requests it after boot/update

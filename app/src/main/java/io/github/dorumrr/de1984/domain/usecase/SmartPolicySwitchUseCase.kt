@@ -149,15 +149,19 @@ class SmartPolicySwitchUseCase(
         // Add SYSTEM_WHITELIST packages
         criticalPackages.addAll(Constants.Firewall.SYSTEM_WHITELIST)
 
-        // Add VPN apps (detected dynamically)
+        // Add VPN apps (detected dynamically) from ALL user profiles
         try {
-            val packageManager = context.packageManager
-            val installedPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
+            val installedPackages = userProfiles.flatMap { profile ->
+                io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledApplicationsAsUser(
+                    context, PackageManager.GET_META_DATA, profile.userId
+                ).map { appInfo -> appInfo to profile.userId }
+            }
 
-            for (appInfo in installedPackages) {
-                if (hasVpnService(appInfo.packageName)) {
+            for ((appInfo, userId) in installedPackages) {
+                if (hasVpnService(appInfo.packageName, userId)) {
                     criticalPackages.add(appInfo.packageName)
-                    AppLogger.d(TAG, "Detected VPN app: ${appInfo.packageName}")
+                    AppLogger.d(TAG, "Detected VPN app: ${appInfo.packageName} (userId=$userId)")
                 }
             }
         } catch (e: Exception) {
@@ -170,12 +174,14 @@ class SmartPolicySwitchUseCase(
     /**
      * Check if an app has a VPN service by looking for services with BIND_VPN_SERVICE permission.
      */
-    private fun hasVpnService(packageName: String): Boolean {
+    private fun hasVpnService(packageName: String, userId: Int = 0): Boolean {
         return try {
-            val packageInfo = context.packageManager.getPackageInfo(
+            val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                context,
                 packageName,
-                PackageManager.GET_SERVICES
-            )
+                PackageManager.GET_SERVICES,
+                userId
+            ) ?: return false
 
             packageInfo.services?.any { serviceInfo ->
                 serviceInfo.permission == Constants.Firewall.VPN_SERVICE_PERMISSION

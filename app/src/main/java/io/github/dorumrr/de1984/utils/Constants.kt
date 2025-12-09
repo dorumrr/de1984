@@ -43,6 +43,7 @@ object Constants {
 
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled", "Uninstalled")
+        val PROFILE_FILTERS = listOf("All", "Personal", "Work", "Clone")
 
         const val ANDROID_PACKAGE_PREFIX = "com.android"
         const val GOOGLE_PACKAGE_PREFIX = "com.google"
@@ -114,6 +115,7 @@ object Constants {
         const val LANGUAGE_CHINESE = "zh"
         const val LANGUAGE_ITALIAN = "it"
         const val LANGUAGE_FRENCH = "fr"
+        const val LANGUAGE_RUSSIAN = "ru"
 
         const val MODE_AUTO = "auto"
         const val MODE_VPN = "vpn"
@@ -238,9 +240,19 @@ object Constants {
         const val STATE_ALLOWED = "Allowed"
         const val STATE_INTERNET = "Internet"
 
+        // Firewall actions
+        const val ACTION_TOGGLE_FIREWALL = "io.github.dorumrr.de1984.TOGGLE_FIREWALL"
+        const val ACTION_FIREWALL_STATE_CHANGED = "io.github.dorumrr.de1984.FIREWALL_STATE_CHANGED"
+        const val ACTION_REQUEST_VPN_PERMISSION = "io.github.dorumrr.de1984.REQUEST_VPN_PERMISSION"
+
+        // Intent extras for firewall state broadcasts
+        const val EXTRA_FIREWALL_STATE = "firewall_state"
+        const val EXTRA_BACKEND_TYPE = "backend_type"
+
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val NETWORK_STATE_FILTERS = listOf("Allowed", "Blocked")
         val PERMISSION_FILTERS = listOf("Internet")
+        val PROFILE_FILTERS = listOf("All", "Personal", "Work", "Clone")
 
         val NETWORK_PERMISSIONS = listOf(
             "android.permission.INTERNET",
@@ -323,6 +335,12 @@ object Constants {
          * - Have normal (enabled) controls in the UI
          *
          * This ensures users can use "Block All" default policy without breaking WiFi/Bluetooth/Downloads.
+         *
+         * NOTE: Google Play Services is included here because:
+         * - It hosts Firebase Cloud Messaging (FCM) - the push notification infrastructure for most apps
+         * - Blocking it breaks notifications system-wide on GMS phones (Issue #66)
+         * - Users can still manually block it if desired (degoogled/privacy-focused users)
+         * - On degoogled devices without GMS, this entry has no effect
          */
         val SYSTEM_RECOMMENDED_ALLOW = setOf(
             // WiFi and Connectivity
@@ -339,6 +357,9 @@ object Constants {
 
             // NFC (for contactless payments, file sharing)
             "com.android.nfc",                     // NFC service
+
+            // Google Play Services (FCM push notifications)
+            "com.google.android.gms",              // Google Play Services - hosts FCM for push notifications
         )
 
         /**

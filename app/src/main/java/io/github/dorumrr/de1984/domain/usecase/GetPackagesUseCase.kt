@@ -46,8 +46,19 @@ class GetPackagesUseCase constructor(
             else -> invoke()   // Default to all packages
         }
 
+        // Apply profile filter (All, Personal, Work, Clone)
+        val profileFilteredFlow = baseFlow.map { packages ->
+            when (filterState.profileFilter.lowercase()) {
+                "personal" -> packages.filter { !it.isWorkProfile && !it.isCloneProfile }
+                "work" -> packages.filter { it.isWorkProfile }
+                "clone" -> packages.filter { it.isCloneProfile }
+                "all" -> packages
+                else -> packages
+            }
+        }
+
         return if (filterState.packageState != null) {
-            baseFlow.map { packages ->
+            profileFilteredFlow.map { packages ->
                 when (filterState.packageState.lowercase()) {
                     Constants.Packages.STATE_ENABLED.lowercase() -> packages.filter { it.isEnabled }
                     Constants.Packages.STATE_DISABLED.lowercase() -> packages.filter { !it.isEnabled }
@@ -55,7 +66,7 @@ class GetPackagesUseCase constructor(
                 }
             }
         } else {
-            baseFlow
+            profileFilteredFlow
         }
     }
 }

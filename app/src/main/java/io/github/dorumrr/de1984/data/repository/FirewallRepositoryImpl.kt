@@ -7,12 +7,14 @@ import io.github.dorumrr.de1984.data.mapper.toDomain
 import io.github.dorumrr.de1984.data.mapper.toEntity
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
+import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class FirewallRepositoryImpl(
     private val firewallRuleDao: FirewallRuleDao,
-    private val context: Context
+    private val context: Context,
+    private val onDataChanged: (() -> Unit)? = null
 ) : FirewallRepository {
 
     companion object {
@@ -20,11 +22,19 @@ class FirewallRepositoryImpl(
     }
 
     private fun notifyRulesChanged() {
+        // Send broadcast for VPN/privileged firewall services
         val intent = android.content.Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED")
         intent.setPackage(context.packageName)
         context.sendBroadcast(intent)
+        
+        // Notify ViewModels via SharedFlow callback
+        onDataChanged?.invoke()
     }
     
+    // =============================================================================================
+    // Read operations - All users
+    // =============================================================================================
+
     override fun getAllRules(): Flow<List<FirewallRule>> {
         return firewallRuleDao.getAllRules().map { entities ->
             entities.toDomain()
@@ -35,42 +45,60 @@ class FirewallRepositoryImpl(
         return firewallRuleDao.getAllRulesSync().toDomain()
     }
 
-    override fun getRuleByPackage(packageName: String): Flow<FirewallRule?> {
-        return firewallRuleDao.getRuleByPackage(packageName).map { entity ->
-            entity?.toDomain()
-        }
-    }
-
-    override suspend fun getRuleByPackageSync(packageName: String): FirewallRule? {
-        return firewallRuleDao.getRuleByPackageSync(packageName)?.toDomain()
-    }
-    
     override fun getBlockedRules(): Flow<List<FirewallRule>> {
         return firewallRuleDao.getBlockedRules().map { entities ->
             entities.toDomain()
         }
     }
-    
+
     override fun getAllowedRules(): Flow<List<FirewallRule>> {
         return firewallRuleDao.getAllowedRules().map { entities ->
             entities.toDomain()
         }
     }
-    
+
     override fun getUserAppRules(): Flow<List<FirewallRule>> {
         return firewallRuleDao.getUserAppRules().map { entities ->
             entities.toDomain()
         }
     }
-    
+
     override fun getSystemAppRules(): Flow<List<FirewallRule>> {
         return firewallRuleDao.getSystemAppRules().map { entities ->
             entities.toDomain()
         }
     }
-    
+
     override fun getBlockedCount(): Flow<Int> {
         return firewallRuleDao.getBlockedCount()
+    }
+
+    // =============================================================================================
+    // Read operations - By user profile
+    // =============================================================================================
+
+    override fun getRulesByUserId(userId: Int): Flow<List<FirewallRule>> {
+        return firewallRuleDao.getRulesByUserId(userId).map { entities ->
+            entities.toDomain()
+        }
+    }
+
+    override suspend fun getRulesByUserIdSync(userId: Int): List<FirewallRule> {
+        return firewallRuleDao.getRulesByUserIdSync(userId).toDomain()
+    }
+
+    // =============================================================================================
+    // Read operations - By package (require userId for composite key)
+    // =============================================================================================
+
+    override fun getRuleByPackage(packageName: String, userId: Int): Flow<FirewallRule?> {
+        return firewallRuleDao.getRuleByPackage(packageName, userId).map { entity ->
+            entity?.toDomain()
+        }
+    }
+
+    override suspend fun getRuleByPackageSync(packageName: String, userId: Int): FirewallRule? {
+        return firewallRuleDao.getRuleByPackageSync(packageName, userId)?.toDomain()
     }
     
     override suspend fun insertRule(rule: FirewallRule) {
@@ -102,8 +130,13 @@ class FirewallRepositoryImpl(
         notifyRulesChanged()
     }
 
-    override suspend fun deleteRule(packageName: String) {
-        firewallRuleDao.deleteRule(packageName)
+    override suspend fun deleteRule(packageName: String, userId: Int) {
+        firewallRuleDao.deleteRule(packageName, userId)
+        notifyRulesChanged()
+    }
+
+    override suspend fun deleteRulesByUserId(userId: Int) {
+        firewallRuleDao.deleteRulesByUserId(userId)
         notifyRulesChanged()
     }
 
@@ -112,52 +145,62 @@ class FirewallRepositoryImpl(
         notifyRulesChanged()
     }
 
+    // =============================================================================================
+    // Bulk operations - All users
+    // =============================================================================================
+
     override suspend fun blockAllApps() {
-        firewallRuleDao.blockAllApps()
+        // Exclude system-recommended packages to preserve their "allow all" rules
+        firewallRuleDao.blockAllApps(Constants.Firewall.SYSTEM_RECOMMENDED_ALLOW.toList())
         notifyRulesChanged()
     }
 
     override suspend fun allowAllApps() {
-        firewallRuleDao.allowAllApps()
+        // Exclude system-recommended packages to avoid unnecessary updates
+        firewallRuleDao.allowAllApps(Constants.Firewall.SYSTEM_RECOMMENDED_ALLOW.toList())
         notifyRulesChanged()
     }
 
-    override suspend fun updateWifiBlocking(packageName: String, blocked: Boolean) {
-        firewallRuleDao.updateWifiBlocking(packageName, blocked)
+    // =============================================================================================
+    // Atomic field updates (require userId for composite key)
+    // =============================================================================================
+
+    override suspend fun updateWifiBlocking(packageName: String, userId: Int, blocked: Boolean) {
+        firewallRuleDao.updateWifiBlocking(packageName, userId, blocked)
         notifyRulesChanged()
     }
 
-    override suspend fun updateMobileBlocking(packageName: String, blocked: Boolean) {
-        firewallRuleDao.updateMobileBlocking(packageName, blocked)
+    override suspend fun updateMobileBlocking(packageName: String, userId: Int, blocked: Boolean) {
+        firewallRuleDao.updateMobileBlocking(packageName, userId, blocked)
         notifyRulesChanged()
     }
 
-    override suspend fun updateRoamingBlocking(packageName: String, blocked: Boolean) {
-        firewallRuleDao.updateRoamingBlocking(packageName, blocked)
+    override suspend fun updateRoamingBlocking(packageName: String, userId: Int, blocked: Boolean) {
+        firewallRuleDao.updateRoamingBlocking(packageName, userId, blocked)
         notifyRulesChanged()
     }
 
-    override suspend fun updateBackgroundBlocking(packageName: String, blocked: Boolean) {
-        firewallRuleDao.updateBackgroundBlocking(packageName, blocked)
+    override suspend fun updateBackgroundBlocking(packageName: String, userId: Int, blocked: Boolean) {
+        firewallRuleDao.updateBackgroundBlocking(packageName, userId, blocked)
         notifyRulesChanged()
     }
 
-    override suspend fun updateLanBlocking(packageName: String, blocked: Boolean) {
-        firewallRuleDao.updateLanBlocking(packageName, blocked)
+    override suspend fun updateLanBlocking(packageName: String, userId: Int, blocked: Boolean) {
+        firewallRuleDao.updateLanBlocking(packageName, userId, blocked)
         notifyRulesChanged()
     }
 
-    override suspend fun updateAllNetworkBlocking(packageName: String, blocked: Boolean) {
+    override suspend fun updateAllNetworkBlocking(packageName: String, userId: Int, blocked: Boolean) {
         val startTime = System.currentTimeMillis()
-        AppLogger.d(TAG, "🔥 [TIMING] updateAllNetworkBlocking START: pkg=$packageName, blocked=$blocked")
-        firewallRuleDao.updateAllNetworkBlocking(packageName, blocked)
+        AppLogger.d(TAG, "🔥 [TIMING] updateAllNetworkBlocking START: pkg=$packageName, userId=$userId, blocked=$blocked")
+        firewallRuleDao.updateAllNetworkBlocking(packageName, userId, blocked)
         AppLogger.d(TAG, "🔥 [TIMING] DAO update done: +${System.currentTimeMillis() - startTime}ms")
         notifyRulesChanged()
         AppLogger.d(TAG, "🔥 [TIMING] Broadcast sent: +${System.currentTimeMillis() - startTime}ms")
     }
 
-    override suspend fun updateMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean) {
-        firewallRuleDao.updateMobileAndRoaming(packageName, mobileBlocked, roamingBlocked)
+    override suspend fun updateMobileAndRoaming(packageName: String, userId: Int, mobileBlocked: Boolean, roamingBlocked: Boolean) {
+        firewallRuleDao.updateMobileAndRoaming(packageName, userId, mobileBlocked, roamingBlocked)
         notifyRulesChanged()
     }
 }

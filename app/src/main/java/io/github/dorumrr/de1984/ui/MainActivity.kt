@@ -68,7 +68,8 @@ class MainActivity : AppCompatActivity() {
             manageNetworkAccessUseCase = deps.provideManageNetworkAccessUseCase(),
             superuserBannerState = deps.superuserBannerState,
             permissionManager = deps.permissionManager,
-            firewallManager = deps.firewallManager
+            firewallManager = deps.firewallManager,
+            packageDataChanged = deps.packageDataChanged
         )
     }
 
@@ -207,6 +208,32 @@ class MainActivity : AppCompatActivity() {
                 }
                 Constants.Notifications.ACTION_BOOT_FAILURE_RECOVERY -> {
                     handleBootFailureRecovery()
+                }
+                Constants.Firewall.ACTION_REQUEST_VPN_PERMISSION -> {
+                    AppLogger.d(TAG, "VPN permission request from widget/tile - starting firewall")
+                    // Start firewall, which will trigger VPN permission dialog if needed
+                    firewallViewModel.startFirewall()
+                }
+                Constants.Firewall.ACTION_TOGGLE_FIREWALL -> {
+                    AppLogger.d(TAG, "Firewall toggle request from tile/widget")
+                    // This action is only sent when firewall is ON and user wants to stop
+                    // (Widget starts directly when OFF, only opens app for stop confirmation)
+                    val deps = (application as De1984Application).dependencies
+                    val isActuallyActive = deps.firewallManager.isActive()
+                    AppLogger.d(TAG, "Actual firewall state from manager: isActive=$isActuallyActive")
+                    
+                    if (isActuallyActive) {
+                        // Firewall is ON - show stop confirmation dialog
+                        AppLogger.d(TAG, "Showing stop confirmation dialog")
+                        showFirewallStopDialog()
+                    } else {
+                        // Firewall is somehow OFF - this shouldn't happen normally from widget
+                        // but handle it gracefully by just showing the app
+                        AppLogger.d(TAG, "Firewall is OFF, no action needed - just showing app")
+                    }
+                }
+                else -> {
+                    // Ignore unknown actions
                 }
             }
         }
@@ -458,58 +485,53 @@ class MainActivity : AppCompatActivity() {
         currentTab = tab
 
         supportFragmentManager.commit {
-            // Get or create cached fragments - check FragmentManager first to avoid duplicates
-            val firewall = firewallFragment
-                ?: (supportFragmentManager.findFragmentByTag("FIREWALL") as? FirewallFragmentViews)?.also {
-                    firewallFragment = it
-                    AppLogger.d(TAG, "loadFragment: Found existing Firewall fragment in FragmentManager")
-                }
-                ?: FirewallFragmentViews().also {
-                    firewallFragment = it
-                    add(R.id.fragment_container, it, "FIREWALL")
-                    AppLogger.d(TAG, "loadFragment: Created new Firewall fragment")
-                }
+            // Hide all existing fragments first
+            firewallFragment?.let { hide(it) }
+            packagesFragment?.let { hide(it) }
+            settingsFragment?.let { hide(it) }
 
-            val packages = packagesFragment
-                ?: (supportFragmentManager.findFragmentByTag("APPS") as? PackagesFragmentViews)?.also {
-                    packagesFragment = it
-                    AppLogger.d(TAG, "loadFragment: Found existing Packages fragment in FragmentManager")
-                }
-                ?: PackagesFragmentViews().also {
-                    packagesFragment = it
-                    add(R.id.fragment_container, it, "APPS")
-                    AppLogger.d(TAG, "loadFragment: Created new Packages fragment")
-                }
-
-            val settings = settingsFragment
-                ?: (supportFragmentManager.findFragmentByTag("SETTINGS") as? SettingsFragmentViews)?.also {
-                    settingsFragment = it
-                    AppLogger.d(TAG, "loadFragment: Found existing Settings fragment in FragmentManager")
-                }
-                ?: SettingsFragmentViews().also {
-                    settingsFragment = it
-                    add(R.id.fragment_container, it, "SETTINGS")
-                    AppLogger.d(TAG, "loadFragment: Created new Settings fragment")
-                }
-
-            // Hide all fragments
-            hide(firewall)
-            hide(packages)
-            hide(settings)
-            AppLogger.d(TAG, "loadFragment: Hidden all fragments")
-
-            // Show the selected fragment
+            // Get or create only the fragment being shown (lazy creation)
             when (tab) {
                 Tab.FIREWALL -> {
-                    show(firewall)
+                    val fragment = firewallFragment
+                        ?: (supportFragmentManager.findFragmentByTag("FIREWALL") as? FirewallFragmentViews)?.also {
+                            firewallFragment = it
+                            AppLogger.d(TAG, "loadFragment: Found existing Firewall fragment in FragmentManager")
+                        }
+                        ?: FirewallFragmentViews().also {
+                            firewallFragment = it
+                            add(R.id.fragment_container, it, "FIREWALL")
+                            AppLogger.d(TAG, "loadFragment: Created new Firewall fragment")
+                        }
+                    show(fragment)
                     AppLogger.d(TAG, "loadFragment: Showing Firewall fragment")
                 }
                 Tab.APPS -> {
-                    show(packages)
+                    val fragment = packagesFragment
+                        ?: (supportFragmentManager.findFragmentByTag("APPS") as? PackagesFragmentViews)?.also {
+                            packagesFragment = it
+                            AppLogger.d(TAG, "loadFragment: Found existing Packages fragment in FragmentManager")
+                        }
+                        ?: PackagesFragmentViews().also {
+                            packagesFragment = it
+                            add(R.id.fragment_container, it, "APPS")
+                            AppLogger.d(TAG, "loadFragment: Created new Packages fragment")
+                        }
+                    show(fragment)
                     AppLogger.d(TAG, "loadFragment: Showing Packages fragment")
                 }
                 Tab.SETTINGS -> {
-                    show(settings)
+                    val fragment = settingsFragment
+                        ?: (supportFragmentManager.findFragmentByTag("SETTINGS") as? SettingsFragmentViews)?.also {
+                            settingsFragment = it
+                            AppLogger.d(TAG, "loadFragment: Found existing Settings fragment in FragmentManager")
+                        }
+                        ?: SettingsFragmentViews().also {
+                            settingsFragment = it
+                            add(R.id.fragment_container, it, "SETTINGS")
+                            AppLogger.d(TAG, "loadFragment: Created new Settings fragment")
+                        }
+                    show(fragment)
                     AppLogger.d(TAG, "loadFragment: Showing Settings fragment")
                 }
             }
@@ -674,26 +696,32 @@ class MainActivity : AppCompatActivity() {
     /**
      * Navigate to Firewall screen and open dialog for specific app.
      * Used for cross-navigation from notifications and other screens.
+     *
+     * @param packageName The package name of the app
+     * @param userId Android user profile ID (0 = personal, 10+ = work/clone profiles)
      */
-    fun navigateToFirewallWithApp(packageName: String) {
-        AppLogger.d(TAG, "🔘 USER ACTION: Navigate to Firewall with app: $packageName")
+    fun navigateToFirewallWithApp(packageName: String, userId: Int = 0) {
+        AppLogger.d(TAG, "🔘 USER ACTION: Navigate to Firewall with app: $packageName (userId=$userId)")
         loadFragment(Tab.FIREWALL)
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
-            firewallFragment?.openAppDialog(packageName)
+            firewallFragment?.openAppDialog(packageName, userId)
         }, 100)
     }
 
     /**
      * Navigate to Packages screen and open dialog for specific app.
      * Used for cross-navigation from Firewall screen.
+     *
+     * @param packageName The package name of the app
+     * @param userId Android user profile ID (0 = personal, 10+ = work/clone profiles)
      */
-    fun navigateToPackagesWithApp(packageName: String) {
-        AppLogger.d(TAG, "🔘 USER ACTION: Navigate to Packages with app: $packageName")
+    fun navigateToPackagesWithApp(packageName: String, userId: Int = 0) {
+        AppLogger.d(TAG, "🔘 USER ACTION: Navigate to Packages with app: $packageName (userId=$userId)")
         loadFragment(Tab.APPS)
         // Use postDelayed to ensure fragment is fully loaded before opening dialog
         binding.root.postDelayed({
-            packagesFragment?.openAppDialog(packageName)
+            packagesFragment?.openAppDialog(packageName, userId)
         }, 100)
     }
 

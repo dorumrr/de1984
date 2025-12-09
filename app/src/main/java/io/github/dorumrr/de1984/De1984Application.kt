@@ -7,6 +7,7 @@ import com.google.android.material.color.DynamicColors
 import com.topjohnwu.superuser.Shell
 import io.github.dorumrr.de1984.data.firewall.ConnectivityManagerFirewallBackend
 import io.github.dorumrr.de1984.data.firewall.IptablesFirewallBackend
+import io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
 import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +45,10 @@ class De1984Application : Application() {
         AppLogger.init(this)
         AppLogger.i(TAG, "Application starting")
 
+        // Initialize HiddenApiBypass for multi-user/work profile support
+        // Must be done early, before any hidden API calls
+        HiddenApiHelper.initialize()
+
         // Apply dynamic colors if enabled
         applyDynamicColorsIfEnabled()
 
@@ -53,10 +58,30 @@ class De1984Application : Application() {
         // Register Shizuku listeners for lifecycle monitoring
         dependencies.shizukuManager.registerListeners()
 
+        // Ensure system-recommended apps have proper rules (Issue #66 - GMS notifications)
+        ensureSystemRecommendedRules()
+
         // Clean up orphaned firewall rules if app was killed while privileged backends were running
         cleanupOrphanedFirewallRules()
-        
+
         AppLogger.i(TAG, "Application initialized")
+    }
+
+    /**
+     * Ensure that all system-recommended apps (SYSTEM_RECOMMENDED_ALLOW) have proper "allow all" rules.
+     * This handles existing installations where GMS or other recommended apps don't have rules yet (Issue #66).
+     * Safe to call on every startup - only creates rules for missing packages, respects existing user config.
+     */
+    private fun ensureSystemRecommendedRules() {
+        dependencies.applicationScope.launch(Dispatchers.IO) {
+            try {
+                val useCase = dependencies.provideEnsureSystemRecommendedRulesUseCase()
+                useCase.invoke()
+            } catch (e: Exception) {
+                AppLogger.w(TAG, "Failed to sync system-recommended rules: ${e.message}")
+                // Ignore errors - this is best-effort
+            }
+        }
     }
 
     /**
@@ -64,8 +89,8 @@ class De1984Application : Application() {
      * This prevents apps from remaining blocked after app crash/kill.
      */
     private fun cleanupOrphanedFirewallRules() {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        scope.launch {
+        // Use application scope for cleanup - this is an app-level operation
+        dependencies.applicationScope.launch(Dispatchers.IO) {
             try {
                 val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, MODE_PRIVATE)
                 val wasFirewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)

@@ -193,23 +193,29 @@ class IptablesFirewallBackend(
             // If default policy is "Block All", we need to get all installed packages
             // and block those without explicit "allow" rules
             if (isBlockAllDefault) {
-                val packageManager = context.packageManager
-                val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                    .filter { appInfo ->
-                        try {
-                            val packageInfo = packageManager.getPackageInfo(
-                                appInfo.packageName,
-                                PackageManager.GET_PERMISSIONS
-                            )
-                            packageInfo.requestedPermissions?.any { permission ->
-                                Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
-                            } ?: false
-                        } catch (e: Exception) {
-                            false
-                        }
+                // Get packages from ALL user profiles for multi-user support
+                val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
+                val allPackages = userProfiles.flatMap { profile ->
+                    io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledApplicationsAsUser(
+                        context, PackageManager.GET_META_DATA, profile.userId
+                    ).map { appInfo -> appInfo to profile.userId }
+                }.filter { (appInfo, userId) ->
+                    try {
+                        val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                            context,
+                            appInfo.packageName,
+                            PackageManager.GET_PERMISSIONS,
+                            userId
+                        )
+                        packageInfo?.requestedPermissions?.any { permission ->
+                            Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
+                        } ?: false
+                    } catch (e: Exception) {
+                        false
                     }
+                }.map { (appInfo, _) -> appInfo }
 
-                AppLogger.d(TAG, "Block All mode: found ${allPackages.size} packages with network permissions")
+                AppLogger.d(TAG, "Block All mode: found ${allPackages.size} packages with network permissions across ${userProfiles.size} profiles")
 
                 // Get critical package protection setting once (outside the loop)
                 val allowCritical = prefs.getBoolean(
@@ -280,9 +286,13 @@ class IptablesFirewallBackend(
                 // Default policy is "Allow All" - only block apps with explicit block rules
                 // For shared UIDs, block if ANY app with that UID should be blocked
 
-                // Get all installed packages (needed to check for shared UIDs with system-critical/VPN apps)
-                val packageManager = context.packageManager
-                val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                // Get all installed packages from ALL user profiles (needed to check for shared UIDs with system-critical/VPN apps)
+                val userProfilesForAllowAll = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
+                val allPackages = userProfilesForAllowAll.flatMap { profile ->
+                    io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledApplicationsAsUser(
+                        context, PackageManager.GET_META_DATA, profile.userId
+                    )
+                }
 
                 for ((uid, rulesForUid) in rulesByUid) {
                     // Never block UIDs that contain system-critical packages or VPN apps
@@ -348,9 +358,13 @@ class IptablesFirewallBackend(
             // LAN Blocking Logic
             // =============================================================================================
 
-            // Get all installed packages (needed to check for shared UIDs with system-critical/VPN apps)
-            val packageManager = context.packageManager
-            val allPackagesForLan = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            // Get all installed packages from ALL user profiles (needed to check for shared UIDs with system-critical/VPN apps)
+            val userProfilesForLan = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
+            val allPackagesForLan = userProfilesForLan.flatMap { profile ->
+                io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledApplicationsAsUser(
+                    context, PackageManager.GET_META_DATA, profile.userId
+                )
+            }
 
             // Calculate LAN blocking diff
             val uidsToBlockLan = mutableSetOf<Int>()
@@ -727,12 +741,14 @@ class IptablesFirewallBackend(
      * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
      * This is a service permission that protects the VPN service from being bound by unauthorized apps.
      */
-    private fun hasVpnService(packageName: String): Boolean {
+    private fun hasVpnService(packageName: String, userId: Int = 0): Boolean {
         return try {
-            val packageInfo = context.packageManager.getPackageInfo(
+            val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                context,
                 packageName,
-                PackageManager.GET_SERVICES
-            )
+                PackageManager.GET_SERVICES,
+                userId
+            ) ?: return false
 
             // Check if any service has BIND_VPN_SERVICE permission
             packageInfo.services?.any { serviceInfo ->

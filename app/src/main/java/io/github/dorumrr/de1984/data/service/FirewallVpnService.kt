@@ -20,6 +20,7 @@ import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.AppLogger
+import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -510,24 +511,34 @@ class FirewallVpnService : VpnService() {
         AppLogger.d(TAG, "getBlockedAppsForCurrentState: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
 
         val allRules = firewallRepository.getAllRules().first()
-        val rulesMap = allRules.associateBy { it.packageName }
+        // Use (packageName:userId) as key for multi-user support
+        val rulesMap = allRules.associateBy { "${it.packageName}:${it.userId}" }
 
         AppLogger.d(TAG, "getBlockedAppsForCurrentState: loaded ${allRules.size} rules from database")
 
-        val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { appInfo ->
-                try {
-                    val packageInfo = packageManager.getPackageInfo(
-                        appInfo.packageName,
-                        PackageManager.GET_PERMISSIONS
-                    )
-                    packageInfo.requestedPermissions?.any { permission ->
-                        io.github.dorumrr.de1984.utils.Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
-                    } ?: false
-                } catch (e: Exception) {
-                    false
-                }
+        // Get packages from ALL user profiles for multi-user support
+        val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(this)
+        val allPackages = userProfiles.flatMap { profile ->
+            io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledApplicationsAsUser(
+                this, PackageManager.GET_META_DATA, profile.userId
+            ).map { appInfo -> appInfo to profile.userId }
+        }.filter { (appInfo, userId) ->
+            try {
+                val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                    this,
+                    appInfo.packageName,
+                    PackageManager.GET_PERMISSIONS,
+                    userId
+                )
+                packageInfo?.requestedPermissions?.any { permission ->
+                    io.github.dorumrr.de1984.utils.Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
+                } ?: false
+            } catch (e: Exception) {
+                false
             }
+        }.map { (appInfo, _) -> appInfo }
+
+        AppLogger.d(TAG, "getBlockedAppsForCurrentState: found ${allPackages.size} packages across ${userProfiles.size} profiles")
 
         // Get critical package protection setting once (outside the loop)
         val prefs = getSharedPreferences(io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -550,6 +561,8 @@ class FirewallVpnService : VpnService() {
         for (appInfo in allPackages) {
             val packageName = appInfo.packageName
             val uid = appInfo.uid
+            // Derive userId from UID for rule lookup
+            val userId = uid / 100000
 
             // Never block our own app
             if (io.github.dorumrr.de1984.utils.Constants.App.isOwnApp(packageName)) {
@@ -566,7 +579,8 @@ class FirewallVpnService : VpnService() {
                 continue
             }
 
-            val rule = rulesMap[packageName]
+            // Look up rule by (packageName:userId) composite key
+            val rule = rulesMap["$packageName:$userId"]
 
             val shouldBlock = if (rule != null && rule.enabled) {
                 // Has explicit rule - use same logic as applyFirewallRules() for consistency
@@ -680,21 +694,28 @@ class FirewallVpnService : VpnService() {
             val rulesList = firewallRepository.getAllRules().first()
             AppLogger.d(TAG, "applyFirewallRules: loaded ${rulesList.size} rules from database")
 
-            val allPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { appInfo ->
-                    try {
-                        val packageInfo = packageManager.getPackageInfo(
-                            appInfo.packageName,
-                            PackageManager.GET_PERMISSIONS
-                        )
-                        packageInfo.requestedPermissions?.any { permission ->
-                            io.github.dorumrr.de1984.utils.Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
-                        } ?: false
-                    } catch (e: Exception) {
-                        false
-                    }
+            // Get packages from ALL user profiles for multi-user support
+            val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(this@FirewallVpnService)
+            val allPackages = userProfiles.flatMap { profile ->
+                io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledApplicationsAsUser(
+                    this@FirewallVpnService, PackageManager.GET_META_DATA, profile.userId
+                ).map { appInfo -> appInfo to profile.userId }
+            }.filter { (appInfo, userId) ->
+                try {
+                    val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                        this@FirewallVpnService,
+                        appInfo.packageName,
+                        PackageManager.GET_PERMISSIONS,
+                        userId
+                    )
+                    packageInfo?.requestedPermissions?.any { permission ->
+                        io.github.dorumrr.de1984.utils.Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
+                    } ?: false
+                } catch (e: Exception) {
+                    false
                 }
-            AppLogger.d(TAG, "applyFirewallRules: found ${allPackages.size} packages with network permissions")
+            }.map { (appInfo, _) -> appInfo }
+            AppLogger.d(TAG, "applyFirewallRules: found ${allPackages.size} packages across ${userProfiles.size} profiles")
 
             // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
             // Even though VPN backend operates per-package, Android's network permissions are UID-based
@@ -712,7 +733,8 @@ class FirewallVpnService : VpnService() {
             var defaultPolicyCount = 0
             var failedCount = 0
 
-            val rulesMap = rulesList.associateBy { it.packageName }
+            // Use (packageName:userId) as key for multi-user support
+            val rulesMap = rulesList.associateBy { "${it.packageName}:${it.userId}" }
 
             // SIMPLE STRATEGY: Always use addAllowedApplication() for blocked apps
             // This means:
@@ -725,6 +747,8 @@ class FirewallVpnService : VpnService() {
             allPackages.forEach { appInfo ->
                 val packageName = appInfo.packageName
                 val uid = appInfo.uid
+                // Derive userId from UID for rule lookup
+                val userId = uid / 100000
 
                 // Never block system-critical packages (unless setting is enabled)
                 if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
@@ -738,7 +762,8 @@ class FirewallVpnService : VpnService() {
                     return@forEach
                 }
 
-                val rule = rulesMap[packageName]
+                // Look up rule by (packageName:userId) composite key
+                val rule = rulesMap["$packageName:$userId"]
 
                 val shouldBlock = if (rule != null && rule.enabled) {
                     // Has explicit rule - determine blocking based on rule configuration
@@ -749,7 +774,7 @@ class FirewallVpnService : VpnService() {
                         currentNetworkType == NetworkType.NONE -> rule.wifiBlocked || rule.mobileBlocked
                         else -> rule.isBlockedOn(currentNetworkType)
                     }
-                    AppLogger.d(TAG, "  $packageName: explicit rule, shouldBlock=$blocked (wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, currentNetwork=$currentNetworkType)")
+                    AppLogger.d(TAG, "  $packageName (user $userId): explicit rule, shouldBlock=$blocked (wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, currentNetwork=$currentNetworkType)")
                     blocked
                 } else {
                     // No explicit rule - use default policy
@@ -911,12 +936,14 @@ class FirewallVpnService : VpnService() {
      * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
      * This is a service permission that protects the VPN service from being bound by unauthorized apps.
      */
-    private fun hasVpnService(packageName: String): Boolean {
+    private fun hasVpnService(packageName: String, userId: Int = 0): Boolean {
         return try {
-            val packageInfo = packageManager.getPackageInfo(
+            val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                this,
                 packageName,
-                PackageManager.GET_SERVICES
-            )
+                PackageManager.GET_SERVICES,
+                userId
+            ) ?: return false
 
             // Check if any service has BIND_VPN_SERVICE permission
             packageInfo.services?.any { serviceInfo ->

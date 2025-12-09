@@ -82,6 +82,14 @@
     <string name="packages_filter_threats">Threats</string>
     <string name="packages_empty_state_no_uninstalled">No uninstalled system apps</string>
 
+    <!-- Profile Filters (Multi-user/Work Profile Support) -->
+    <string name="filter_profile_all">All Profiles</string>
+    <string name="filter_profile_personal">Personal</string>
+    <string name="filter_profile_work">Work</string>
+    <string name="filter_profile_clone">Clone</string>
+    <string name="badge_work_profile">Work</string>
+    <string name="badge_clone_profile">Clone</string>
+
     <!-- Package Status -->
     <string name="status_enabled">Enabled</string>
     <string name="status_disabled">Disabled</string>
@@ -372,6 +380,7 @@
     <string name="language_chinese">中文 (Chinese)</string>
     <string name="language_italian">Italiano (Italian)</string>
     <string name="language_french">Français (French)</string>
+    <string name="language_russian">Русский (Russian)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Version %s</string>
@@ -792,5 +801,28 @@
     <string name="hint_server_preset">Server Preset</string>
     <string name="hint_custom_http_url">Custom HTTP URL</string>
     <string name="hint_custom_https_url">Custom HTTPS URL</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_de1984_on">De1984 ON</string>
+    <string name="tile_label_de1984_off">De1984 OFF</string>
+    <string name="tile_label_firewall_on">Firewall ON</string>
+    <string name="tile_label_firewall_off">Firewall OFF</string>
+    <string name="tile_label_firewall_starting">Starting…</string>
+    <string name="tile_label_firewall_loading">Firewall starting</string>
+    <string name="tile_label_firewall_error">Error</string>
+    <string name="tile_subtitle_active">Active</string>
+    <string name="tile_subtitle_inactive">Inactive</string>
+    <string name="tile_subtitle_starting">Starting…</string>
+    <string name="tile_description_firewall_on">De1984 firewall is active using %s backend</string>
+    <string name="tile_description_firewall_off">De1984 firewall is stopped</string>
+    <string name="tile_description_firewall_starting">De1984 firewall is starting</string>
+    <string name="tile_description_firewall_error">De1984 firewall encountered an error</string>
+
+    <!-- Home Screen Widget -->
+    <string name="widget_description">Quick toggle for De1984 Firewall</string>
+
+    <!-- Notification Actions -->
+    <string name="notification_action_stop_firewall">TURN OFF</string>
 
 </resources>

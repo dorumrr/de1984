@@ -328,16 +328,16 @@ build_all_apks() {
 uninstall_app() {
     log_header "Uninstalling Existing App"
 
-    # Check if debug version is installed
-    if adb shell pm list packages | grep -q "$APP_ID_DEBUG"; then
+    # Check if debug version is installed (use --user 0 to avoid multi-user permission issues)
+    if adb shell pm list packages --user 0 2>/dev/null | grep -q "$APP_ID_DEBUG"; then
         log_info "Uninstalling debug version: $APP_ID_DEBUG"
         adb uninstall "$APP_ID_DEBUG" || log_warn "Failed to uninstall debug version"
     else
         log_info "Debug version not installed"
     fi
 
-    # Check if release version is installed
-    if adb shell pm list packages | grep -q "^package:$APP_ID$"; then
+    # Check if release version is installed (use --user 0 to avoid multi-user permission issues)
+    if adb shell pm list packages --user 0 2>/dev/null | grep -q "^package:$APP_ID$"; then
         log_info "Uninstalling release version: $APP_ID"
         adb uninstall "$APP_ID" || log_warn "Failed to uninstall release version"
     else
@@ -435,7 +435,8 @@ show_device_info() {
 show_app_info() {
     log_header "App Information"
 
-    if adb shell pm list packages | grep -q "$APP_ID_DEBUG"; then
+    # Use --user 0 to avoid multi-user permission issues on devices with work profiles
+    if adb shell pm list packages --user 0 2>/dev/null | grep -q "$APP_ID_DEBUG"; then
         local version=$(adb shell dumpsys package "$APP_ID_DEBUG" | grep "versionName" | head -1 | cut -d'=' -f2 || echo "Unknown")
         local install_time=$(adb shell dumpsys package "$APP_ID_DEBUG" | grep "firstInstallTime" | head -1 | cut -d'=' -f2 || echo "Unknown")
 

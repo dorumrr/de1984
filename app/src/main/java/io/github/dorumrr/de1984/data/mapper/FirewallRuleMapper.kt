@@ -6,6 +6,7 @@ import io.github.dorumrr.de1984.domain.model.FirewallRule
 fun FirewallRuleEntity.toDomain(): FirewallRule {
     return FirewallRule(
         packageName = packageName,
+        userId = userId,
         uid = uid,
         appName = appName,
         wifiBlocked = wifiBlocked,
@@ -24,6 +25,7 @@ fun FirewallRuleEntity.toDomain(): FirewallRule {
 fun FirewallRule.toEntity(): FirewallRuleEntity {
     return FirewallRuleEntity(
         packageName = packageName,
+        userId = userId,
         uid = uid,
         appName = appName,
         wifiBlocked = wifiBlocked,

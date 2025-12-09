@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.onEach
 
 class PackageRepositoryImpl(
     private val context: Context,
-    private val packageDataSource: PackageDataSource
+    private val packageDataSource: PackageDataSource,
+    private val onDataChanged: (() -> Unit)? = null
 ) : PackageRepository {
     
     override fun getPackages(): Flow<List<Package>> {
@@ -51,10 +52,12 @@ class PackageRepositoryImpl(
         }
     }
 
-    override suspend fun setPackageEnabled(packageName: String, enabled: Boolean): Result<Unit> {
+    override suspend fun setPackageEnabled(packageName: String, userId: Int, enabled: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setPackageEnabled(packageName, enabled)
+            val success = packageDataSource.setPackageEnabled(packageName, userId, enabled)
             if (success) {
+                // Notify observers that package data changed
+                onDataChanged?.invoke()
                 Result.success(Unit)
             } else {
                 val errorMessage = if (enabled) {
@@ -68,10 +71,10 @@ class PackageRepositoryImpl(
             Result.failure(e)
         }
     }
-    
-    override suspend fun getPackage(packageName: String): Result<Package> {
+
+    override suspend fun getPackage(packageName: String, userId: Int): Result<Package> {
         return try {
-            val entity = packageDataSource.getPackage(packageName)
+            val entity = packageDataSource.getPackage(packageName, userId)
             if (entity != null) {
                 Result.success(entity.toDomain())
             } else {
@@ -81,10 +84,10 @@ class PackageRepositoryImpl(
             Result.failure(e)
         }
     }
-    
-    override suspend fun uninstallPackage(packageName: String): Result<Unit> {
+
+    override suspend fun uninstallPackage(packageName: String, userId: Int): Result<Unit> {
         return try {
-            val success = packageDataSource.uninstallPackage(packageName)
+            val success = packageDataSource.uninstallPackage(packageName, userId)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -96,13 +99,13 @@ class PackageRepositoryImpl(
         }
     }
 
-    override suspend fun uninstallMultiplePackages(packageNames: List<String>): Result<UninstallBatchResult> {
+    override suspend fun uninstallMultiplePackages(packages: List<Pair<String, Int>>): Result<UninstallBatchResult> {
         return try {
             val succeeded = mutableListOf<String>()
             val failed = mutableListOf<Pair<String, String>>()
 
-            packageNames.forEach { packageName ->
-                val result = uninstallPackage(packageName)
+            packages.forEach { (packageName, userId) ->
+                val result = uninstallPackage(packageName, userId)
                 result.fold(
                     onSuccess = { succeeded.add(packageName) },
                     onFailure = { error -> failed.add(packageName to (error.message ?: context.getString(R.string.error_unknown))) }
@@ -115,9 +118,9 @@ class PackageRepositoryImpl(
         }
     }
 
-    override suspend fun reinstallPackage(packageName: String): Result<Unit> {
+    override suspend fun reinstallPackage(packageName: String, userId: Int): Result<Unit> {
         return try {
-            val success = packageDataSource.reinstallPackage(packageName)
+            val success = packageDataSource.reinstallPackage(packageName, userId)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -129,13 +132,13 @@ class PackageRepositoryImpl(
         }
     }
 
-    override suspend fun reinstallMultiplePackages(packageNames: List<String>): Result<ReinstallBatchResult> {
+    override suspend fun reinstallMultiplePackages(packages: List<Pair<String, Int>>): Result<ReinstallBatchResult> {
         return try {
             val succeeded = mutableListOf<String>()
             val failed = mutableListOf<Pair<String, String>>()
 
-            packageNames.forEach { packageName ->
-                val result = reinstallPackage(packageName)
+            packages.forEach { (packageName, userId) ->
+                val result = reinstallPackage(packageName, userId)
                 result.fold(
                     onSuccess = { succeeded.add(packageName) },
                     onFailure = { error -> failed.add(packageName to (error.message ?: context.getString(R.string.error_unknown))) }
@@ -148,9 +151,9 @@ class PackageRepositoryImpl(
         }
     }
 
-    override suspend fun forceStopPackage(packageName: String): Result<Unit> {
+    override suspend fun forceStopPackage(packageName: String, userId: Int): Result<Unit> {
         return try {
-            val success = packageDataSource.forceStopPackage(packageName)
+            val success = packageDataSource.forceStopPackage(packageName, userId)
             if (success) {
                 Result.success(Unit)
             } else {

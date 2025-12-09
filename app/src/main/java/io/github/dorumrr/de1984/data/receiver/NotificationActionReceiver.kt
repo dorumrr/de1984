@@ -57,10 +57,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
             scope.launch {
                 try {
                     // Update firewall rule for all networks
-                    manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, blocked)
+                    // Note: For notifications, we use userId=0 (personal profile) as notifications
+                    // are typically for newly installed apps in the main profile
+                    manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, userId = 0, blocked)
                         .onSuccess {
                             AppLogger.d(TAG, "Successfully updated network access for $packageName: blocked=$blocked")
-                            
+
                             // Dismiss the notification
                             dismissNotification(context, packageName)
                         }

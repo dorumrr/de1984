@@ -165,6 +165,8 @@ class FirewallManager(
      */
     private fun initializeBackendState() {
         scope.launch {
+            val initStartTime = System.currentTimeMillis()
+            AppLogger.i(TAG, "⏱️ TIMING: initializeBackendState START at $initStartTime")
             try {
                 // Add initial delay to let services update SharedPreferences
                 // This prevents race condition where we check before service has started
@@ -176,7 +178,8 @@ class FirewallManager(
                 val maxAttempts = 5
 
                 while (attempts < maxAttempts) {
-                    AppLogger.d(TAG, "initializeBackendState: Attempt ${attempts + 1}/$maxAttempts")
+                    val attemptStartTime = System.currentTimeMillis()
+                    AppLogger.d(TAG, "⏱️ TIMING: initializeBackendState attempt ${attempts + 1}/$maxAttempts at $attemptStartTime (elapsed: ${attemptStartTime - initStartTime}ms)")
 
                     // Check if VPN service is running
                     val vpnBackend = VpnFirewallBackend(context)
@@ -185,18 +188,22 @@ class FirewallManager(
                         currentBackend = vpnBackend
                         _activeBackendType.value = FirewallBackendType.VPN
                         _firewallState.value = FirewallState.Running(FirewallBackendType.VPN)
+                        emitStateChangeBroadcast(_firewallState.value)
                         // VPN monitors internally, no need to start monitoring
                         startBackendHealthMonitoring()
                         return@launch
                     }
 
                     // Check if iptables backend is running
+                    val iptablesCheckStart = System.currentTimeMillis()
                     val iptablesBackend = IptablesFirewallBackend(context, rootManager, shizukuManager, errorHandler)
                     if (iptablesBackend.isActive()) {
-                        AppLogger.d(TAG, "Detected iptables backend running on startup (attempt ${attempts + 1})")
+                        val iptablesCheckEnd = System.currentTimeMillis()
+                        AppLogger.i(TAG, "⏱️ TIMING: Detected iptables backend running (check took ${iptablesCheckEnd - iptablesCheckStart}ms, total elapsed: ${iptablesCheckEnd - initStartTime}ms)")
                         currentBackend = iptablesBackend
                         _activeBackendType.value = FirewallBackendType.IPTABLES
                         _firewallState.value = FirewallState.Running(FirewallBackendType.IPTABLES)
+                        emitStateChangeBroadcast(_firewallState.value)
                         startMonitoring()
                         startBackendHealthMonitoring()
                         return@launch
@@ -209,6 +216,7 @@ class FirewallManager(
                         currentBackend = cmBackend
                         _activeBackendType.value = FirewallBackendType.CONNECTIVITY_MANAGER
                         _firewallState.value = FirewallState.Running(FirewallBackendType.CONNECTIVITY_MANAGER)
+                        emitStateChangeBroadcast(_firewallState.value)
                         startMonitoring()
                         startBackendHealthMonitoring()
                         return@launch
@@ -218,9 +226,10 @@ class FirewallManager(
                     val npmBackend = NetworkPolicyManagerFirewallBackend(context, shizukuManager, errorHandler)
                     if (npmBackend.isActive()) {
                         AppLogger.d(TAG, "Detected NetworkPolicyManager backend running on startup (attempt ${attempts + 1})")
-                        currentBackend = npmBackend
+                        currentBackend
                         _activeBackendType.value = FirewallBackendType.NETWORK_POLICY_MANAGER
                         _firewallState.value = FirewallState.Running(FirewallBackendType.NETWORK_POLICY_MANAGER)
+                        emitStateChangeBroadcast(_firewallState.value)
                         startMonitoring()
                         startBackendHealthMonitoring()
                         return@launch
@@ -250,13 +259,16 @@ class FirewallManager(
                             "Firewall should be running but failed to restart: ${error.message}",
                             null
                         )
+                        emitStateChangeBroadcast(_firewallState.value)
                     }
                 } else {
                     _firewallState.value = FirewallState.Stopped
+                    emitStateChangeBroadcast(_firewallState.value)
                 }
             } catch (e: Exception) {
                 AppLogger.e(TAG, "Error initializing backend state", e)
                 _firewallState.value = FirewallState.Error("Error initializing backend state: ${e.message}", _activeBackendType.value)
+                emitStateChangeBroadcast(_firewallState.value)
             }
         }
     }
@@ -406,6 +418,7 @@ class FirewallManager(
 
             // We are about to attempt a backend start/switch
             _firewallState.value = FirewallState.Starting(oldBackendType)
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Instantiate new backend based on planner decision
             val newBackend = selectBackend(plan.mode).getOrElse { error ->
@@ -416,6 +429,7 @@ class FirewallManager(
                     message = "Failed to select backend: ${error.message}",
                     lastBackend = oldBackendType
                 )
+                emitStateChangeBroadcast(_firewallState.value)
                 return Result.failure(error)
             }
 
@@ -429,12 +443,14 @@ class FirewallManager(
                             message = "Failed to restart backend: ${error.message}",
                             lastBackend = oldBackendType
                         )
+                        emitStateChangeBroadcast(_firewallState.value)
                         return Result.failure(error)
                     }
                 }
 
                 // Same backend, successfully (re)started
                 _firewallState.value = FirewallState.Running(newBackendType)
+                emitStateChangeBroadcast(_firewallState.value)
                 return Result.success(oldBackendType)
             }
 
@@ -464,11 +480,13 @@ class FirewallManager(
                 if (oldBackend != null && oldBackend.isActive()) {
                     AppLogger.w(TAG, "Keeping old backend ($oldBackendType) running since new backend failed to start")
                     _firewallState.value = FirewallState.Running(oldBackend.getType())
+                    emitStateChangeBroadcast(_firewallState.value)
                 } else {
                     _firewallState.value = FirewallState.Error(
                         message = "Failed to start new backend: ${error.message}",
                         lastBackend = oldBackendType
                     )
+                    emitStateChangeBroadcast(_firewallState.value)
                 }
                 return Result.failure(error)
             }
@@ -483,11 +501,13 @@ class FirewallManager(
                 if (oldBackend != null && oldBackend.isActive()) {
                     AppLogger.w(TAG, "Keeping old backend ($oldBackendType) running since new backend failed to apply rules")
                     _firewallState.value = FirewallState.Running(oldBackend.getType())
+                    emitStateChangeBroadcast(_firewallState.value)
                 } else {
                     _firewallState.value = FirewallState.Error(
                         message = "Failed to apply rules to new backend: ${error.message}",
                         lastBackend = oldBackendType
                     )
+                    emitStateChangeBroadcast(_firewallState.value)
                 }
                 return Result.failure(error)
             }
@@ -502,11 +522,13 @@ class FirewallManager(
                 if (oldBackend != null && oldBackend.isActive()) {
                     AppLogger.w(TAG, "Keeping old backend ($oldBackendType) running since new backend is not active")
                     _firewallState.value = FirewallState.Running(oldBackend.getType())
+                    emitStateChangeBroadcast(_firewallState.value)
                 } else {
                     _firewallState.value = FirewallState.Error(
                         message = "New backend failed to become active",
                         lastBackend = oldBackendType
                     )
+                    emitStateChangeBroadcast(_firewallState.value)
                 }
                 return Result.failure(Exception("New backend failed to become active"))
             }
@@ -526,6 +548,7 @@ class FirewallManager(
             currentBackend = newBackend
             _activeBackendType.value = newBackendType
             _firewallState.value = FirewallState.Running(newBackendType)
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Clear firewall down flag - firewall is now running successfully
             _isFirewallDown.value = false
@@ -552,6 +575,7 @@ class FirewallManager(
                 message = "Failed to start firewall: ${error.message}",
                 lastBackend = _activeBackendType.value
             )
+            emitStateChangeBroadcast(_firewallState.value)
             Result.failure(error)
         }
     }
@@ -586,6 +610,7 @@ class FirewallManager(
             currentBackend = null
             _activeBackendType.value = null
             _firewallState.value = FirewallState.Stopped
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Clear firewall down flag - firewall is intentionally stopped by user
             _isFirewallDown.value = false
@@ -597,6 +622,7 @@ class FirewallManager(
             AppLogger.e(TAG, "Failed to stop firewall", e)
             val error = errorHandler.handleError(e, "stop firewall")
             _firewallState.value = FirewallState.Error("Failed to stop firewall: ${error.message}", _activeBackendType.value)
+            emitStateChangeBroadcast(_firewallState.value)
             Result.failure(error)
         }
     }
@@ -641,6 +667,51 @@ class FirewallManager(
      */
     fun isActive(): Boolean {
         return currentBackend?.isActive() ?: false
+    }
+
+    /**
+     * Emit a broadcast when firewall state changes.
+     * This allows widgets, tiles, and other components to receive real-time updates.
+     * 
+     * Note: On Android 8.0+ (API 26+), implicit broadcasts are restricted for manifest-registered
+     * receivers. We must send explicit broadcasts to each component.
+     */
+    private fun emitStateChangeBroadcast(state: FirewallState) {
+        AppLogger.d(TAG, "━━━━━ emitStateChangeBroadcast() ━━━━━")
+        AppLogger.d(TAG, "Emitting state change broadcast: state=$state")
+        
+        // Send explicit broadcast to FirewallWidget
+        val widgetIntent = Intent(Constants.Firewall.ACTION_FIREWALL_STATE_CHANGED).apply {
+            setClass(context, io.github.dorumrr.de1984.ui.widget.FirewallWidget::class.java)
+            putExtra(Constants.Firewall.EXTRA_FIREWALL_STATE, state.toString())
+            when (state) {
+                is FirewallState.Running -> {
+                    putExtra(Constants.Firewall.EXTRA_BACKEND_TYPE, state.backend.name)
+                }
+                else -> {}
+            }
+        }
+        context.sendBroadcast(widgetIntent)
+        AppLogger.d(TAG, "✅ Explicit broadcast sent to FirewallWidget")
+        
+        // Request Quick Settings Tile to update its state
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            io.github.dorumrr.de1984.ui.tile.FirewallTileService.requestTileUpdate(context)
+            AppLogger.d(TAG, "✅ Requested Quick Settings Tile update")
+        }
+        
+        // Also send implicit broadcast for other potential listeners
+        val implicitIntent = Intent(Constants.Firewall.ACTION_FIREWALL_STATE_CHANGED).apply {
+            putExtra(Constants.Firewall.EXTRA_FIREWALL_STATE, state.toString())
+            when (state) {
+                is FirewallState.Running -> {
+                    putExtra(Constants.Firewall.EXTRA_BACKEND_TYPE, state.backend.name)
+                }
+                else -> {}
+            }
+        }
+        context.sendBroadcast(implicitIntent)
+        AppLogger.d(TAG, "Implicit broadcast also sent for other listeners")
     }
 
     /**
@@ -1041,6 +1112,7 @@ class FirewallManager(
                 message = "$failedBackendType backend not available",
                 lastBackend = failedBackendType
             )
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Preserve user intent for recovery attempts
             _isFirewallDown.value = true
@@ -1066,6 +1138,7 @@ class FirewallManager(
                 message = "Failed to compute fallback plan: ${error?.message}",
                 lastBackend = failedBackendType
             )
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Mark firewall as down (preserve user intent for recovery)
             _isFirewallDown.value = true
@@ -1090,6 +1163,7 @@ class FirewallManager(
                     message = "Fallback start failed: ${error.message}",
                     lastBackend = failedBackendType
                 )
+                emitStateChangeBroadcast(_firewallState.value)
 
                 // Mark firewall as down (preserve user intent for recovery)
                 _isFirewallDown.value = true
@@ -1117,6 +1191,7 @@ class FirewallManager(
                 message = "VPN conflict - another VPN is active",
                 lastBackend = failedBackendType
             )
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Mark firewall as down (preserve user intent for recovery)
             _isFirewallDown.value = true
@@ -1168,6 +1243,7 @@ class FirewallManager(
                 message = "VPN permission required for fallback",
                 lastBackend = failedBackendType
             )
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Mark firewall as down (preserve user intent for recovery)
             // When user grants VPN permission or when handlePrivilegeChange() runs,
@@ -1240,6 +1316,7 @@ class FirewallManager(
             currentBackend = vpnBackend
             _activeBackendType.value = FirewallBackendType.VPN
             _firewallState.value = FirewallState.Running(FirewallBackendType.VPN)
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Update SharedPreferences to reflect firewall is running
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -1274,6 +1351,7 @@ class FirewallManager(
                 message = "Exception during VPN fallback: ${e.message}",
                 lastBackend = failedBackendType
             )
+            emitStateChangeBroadcast(_firewallState.value)
 
             // Mark firewall as down (preserve user intent for recovery)
             _isFirewallDown.value = true
@@ -1934,6 +2012,7 @@ class FirewallManager(
         // Mark firewall as down
         _isFirewallDown.value = true
         _firewallState.value = FirewallState.Error("Another VPN is active", FirewallBackendType.VPN)
+        emitStateChangeBroadcast(_firewallState.value)
         _activeBackendType.value = null
         
         // Show notification

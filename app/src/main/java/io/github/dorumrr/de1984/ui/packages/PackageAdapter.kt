@@ -1,6 +1,8 @@
 package io.github.dorumrr.de1984.ui.packages
 
+import android.graphics.drawable.Drawable
 import android.util.Log
+import android.util.LruCache
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,9 +14,14 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.databinding.ItemPackageBinding
 import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.model.PackageCriticality
+import io.github.dorumrr.de1984.domain.model.PackageId
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PackageAdapter(
     private var showIcons: Boolean,
@@ -24,12 +31,23 @@ class PackageAdapter(
 
     companion object {
         private const val TAG = "PackageAdapter"
+        private const val ICON_CACHE_SIZE = 100 // Cache up to 100 app icons
     }
 
     private var isSelectionMode = false
-    private val selectedPackages = mutableSetOf<String>()
-    private var onSelectionChanged: ((Set<String>) -> Unit)? = null
+    private val selectedPackages = mutableSetOf<PackageId>()
+    private var onSelectionChanged: ((Set<PackageId>) -> Unit)? = null
     private var onSelectionLimitReached: (() -> Unit)? = null
+
+    // Performance optimization: cache app icons to avoid repeated I/O during scrolling
+    private val iconCache = LruCache<String, Drawable>(ICON_CACHE_SIZE)
+
+    /**
+     * Clear the icon cache. Call when memory is low or when the list changes significantly.
+     */
+    fun clearIconCache() {
+        iconCache.evictAll()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PackageViewHolder {
         val binding = ItemPackageBinding.inflate(
@@ -43,7 +61,8 @@ class PackageAdapter(
             onPackageLongClick,
             ::isPackageSelected,
             ::canSelectPackage,
-            ::togglePackageSelection
+            ::togglePackageSelection,
+            iconCache
         )
     }
 
@@ -81,11 +100,11 @@ class PackageAdapter(
         }
     }
 
-    fun setOnSelectionChangedListener(listener: (Set<String>) -> Unit) {
+    fun setOnSelectionChangedListener(listener: (Set<PackageId>) -> Unit) {
         onSelectionChanged = listener
     }
 
-    fun getSelectedPackages(): Set<String> = selectedPackages.toSet()
+    fun getSelectedPackages(): Set<PackageId> = selectedPackages.toSet()
 
     fun clearSelection() {
         selectedPackages.clear()
@@ -96,10 +115,10 @@ class PackageAdapter(
     /**
      * Programmatically select a package (used when entering selection mode via long press)
      */
-    fun selectPackage(packageName: String) {
-        if (!selectedPackages.contains(packageName) &&
+    fun selectPackage(packageId: PackageId) {
+        if (!selectedPackages.contains(packageId) &&
             selectedPackages.size < Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
-            selectedPackages.add(packageName)
+            selectedPackages.add(packageId)
             onSelectionChanged?.invoke(selectedPackages)
             notifyDataSetChanged()
         }
@@ -119,22 +138,23 @@ class PackageAdapter(
         }
     }
 
-    private fun isPackageSelected(packageName: String): Boolean {
-        return selectedPackages.contains(packageName)
+    private fun isPackageSelected(packageId: PackageId): Boolean {
+        return selectedPackages.contains(packageId)
     }
 
     private fun togglePackageSelection(pkg: Package) {
         if (!isSelectionMode) return
 
-        if (selectedPackages.contains(pkg.packageName)) {
-            selectedPackages.remove(pkg.packageName)
+        val packageId = pkg.id
+        if (selectedPackages.contains(packageId)) {
+            selectedPackages.remove(packageId)
         } else {
             if (selectedPackages.size >= Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
                 // Notify listener when limit is reached
                 onSelectionLimitReached?.invoke()
                 return
             }
-            selectedPackages.add(pkg.packageName)
+            selectedPackages.add(packageId)
         }
         onSelectionChanged?.invoke(selectedPackages)
         notifyDataSetChanged()
@@ -144,19 +164,27 @@ class PackageAdapter(
         private val binding: ItemPackageBinding,
         private val onPackageClick: (Package) -> Unit,
         private val onPackageLongClick: (Package) -> Boolean,
-        private val isPackageSelected: (String) -> Boolean,
+        private val isPackageSelected: (PackageId) -> Boolean,
         private val canSelectPackage: (Package) -> Boolean,
-        private val togglePackageSelection: (Package) -> Unit
+        private val togglePackageSelection: (Package) -> Unit,
+        private val iconCache: LruCache<String, Drawable>
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        // Coroutine scope for async icon loading
+        private val scope = CoroutineScope(Dispatchers.Main)
+
+        // Track current package for race condition prevention
+        private var currentPackage: Package? = null
+
         fun bind(pkg: Package, showIcons: Boolean, isSelectionMode: Boolean) {
+            currentPackage = pkg
             binding.appName.text = pkg.name
             binding.packageName.text = pkg.packageName
 
             // Handle selection mode
             if (isSelectionMode) {
                 binding.selectionCheckbox.visibility = View.VISIBLE
-                val isSelected = isPackageSelected(pkg.packageName)
+                val isSelected = isPackageSelected(pkg.id)
                 val canSelect = canSelectPackage(pkg)
 
                 binding.selectionCheckbox.isChecked = isSelected
@@ -169,13 +197,33 @@ class PackageAdapter(
                 binding.root.alpha = 1.0f
             }
 
-            // Set app icon
+            // Set app icon with caching and async loading for performance
             if (showIcons) {
-                val realIcon = PackageUtils.getPackageIcon(binding.root.context, pkg.packageName)
-                if (realIcon != null) {
-                    binding.appIcon.setImageDrawable(realIcon)
+                val iconCacheKey = "${pkg.packageName}_${pkg.userId}"
+
+                // Check cache first (synchronous, fast)
+                val cachedIcon = iconCache.get(iconCacheKey)
+                if (cachedIcon != null) {
+                    binding.appIcon.setImageDrawable(cachedIcon)
                 } else {
+                    // Set placeholder immediately
                     binding.appIcon.setImageResource(R.drawable.de1984_icon)
+
+                    // Load icon asynchronously
+                    val context = binding.root.context
+                    scope.launch {
+                        val icon = withContext(Dispatchers.IO) {
+                            PackageUtils.getPackageIcon(context, pkg.packageName, pkg.userId)
+                        }
+
+                        // Only update if this ViewHolder is still showing the same package
+                        if (currentPackage?.packageName == pkg.packageName && currentPackage?.userId == pkg.userId) {
+                            if (icon != null) {
+                                iconCache.put(iconCacheKey, icon)
+                                binding.appIcon.setImageDrawable(icon)
+                            }
+                        }
+                    }
                 }
             } else {
                 binding.appIcon.setImageResource(R.drawable.de1984_icon)
@@ -256,6 +304,24 @@ class PackageAdapter(
                 binding.safetyBadge.visibility = View.GONE
             }
 
+            // Show/hide profile badge for non-personal profiles (Work/Clone)
+            when {
+                pkg.userId >= 10 && pkg.userId < 100 -> {
+                    // Work profile (typically userId 10-99)
+                    binding.profileBadge.text = binding.root.context.getString(R.string.badge_work_profile)
+                    binding.profileBadge.visibility = View.VISIBLE
+                }
+                pkg.userId >= 100 -> {
+                    // Clone profile (typically userId 100+)
+                    binding.profileBadge.text = binding.root.context.getString(R.string.badge_clone_profile)
+                    binding.profileBadge.visibility = View.VISIBLE
+                }
+                else -> {
+                    // Personal profile (userId 0)
+                    binding.profileBadge.visibility = View.GONE
+                }
+            }
+
             // Set click listeners
             binding.root.setOnClickListener {
                 if (isSelectionMode) {
@@ -282,7 +348,8 @@ class PackageAdapter(
 
     private class PackageDiffCallback : DiffUtil.ItemCallback<Package>() {
         override fun areItemsTheSame(oldItem: Package, newItem: Package): Boolean {
-            return oldItem.packageName == newItem.packageName
+            // Compare by both packageName and userId for multi-user support
+            return oldItem.packageName == newItem.packageName && oldItem.userId == newItem.userId
         }
 
         override fun areContentsTheSame(oldItem: Package, newItem: Package): Boolean {

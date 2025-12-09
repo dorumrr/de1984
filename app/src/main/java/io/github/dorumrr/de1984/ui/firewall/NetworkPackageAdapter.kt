@@ -5,6 +5,7 @@ import android.graphics.PorterDuff
 import android.graphics.drawable.Drawable
 import android.telephony.TelephonyManager
 import android.util.Log
+import android.util.LruCache
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,9 +18,14 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
+import io.github.dorumrr.de1984.domain.model.PackageId
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Network type for quick toggle
@@ -41,26 +47,72 @@ class NetworkPackageAdapter(
 
     companion object {
         private const val TAG = "NetworkPackageAdapter"
+        private const val ICON_CACHE_SIZE = 100 // Cache up to 100 app icons
     }
 
     private var isSelectionMode = false
-    private val selectedPackages = mutableSetOf<String>()
-    private var onSelectionChanged: ((Set<String>) -> Unit)? = null
+    private val selectedPackages = mutableSetOf<PackageId>()
+    private var onSelectionChanged: ((Set<PackageId>) -> Unit)? = null
     private var onSelectionLimitReached: (() -> Unit)? = null
+
+    // Performance optimization: cache app icons to avoid repeated I/O during scrolling
+    private val iconCache = LruCache<String, Drawable>(ICON_CACHE_SIZE)
+
+    // Performance optimization: cache settings value (updated via refreshSettings())
+    private var cachedAllowCritical: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+
+    // Performance optimization: cache device capability at adapter level
+    private var hasCellular: Boolean = true // Default true, set properly in init
+
+    /**
+     * Initialize adapter with context. Call this after creating the adapter.
+     * Sets up device capability check and loads cached settings.
+     */
+    fun initialize(context: Context) {
+        // Check device cellular capability once
+        val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+        hasCellular = telephonyManager?.phoneType != TelephonyManager.PHONE_TYPE_NONE
+
+        // Load settings
+        refreshSettings(context)
+    }
+
+    /**
+     * Refresh cached settings. Call this in onResume() to pick up any changes.
+     */
+    fun refreshSettings(context: Context) {
+        val prefs = context.getSharedPreferences(
+            Constants.Settings.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        cachedAllowCritical = prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+    }
+
+    /**
+     * Clear the icon cache. Call when memory is low or when the list changes significantly.
+     */
+    fun clearIconCache() {
+        iconCache.evictAll()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NetworkPackageViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_network_package, parent, false)
-        val context = parent.context
         return NetworkPackageViewHolder(
             view,
             showIcons,
             onPackageClick,
             onPackageLongClick,
             ::isPackageSelected,
-            { pkg -> canSelectPackage(pkg, context) },
+            ::canSelectPackageCached,
             ::togglePackageSelection,
-            onQuickToggle
+            onQuickToggle,
+            iconCache,
+            { hasCellular },
+            { cachedAllowCritical }
         )
     }
 
@@ -82,11 +134,11 @@ class NetworkPackageAdapter(
         }
     }
 
-    fun setOnSelectionChangedListener(listener: (Set<String>) -> Unit) {
+    fun setOnSelectionChangedListener(listener: (Set<PackageId>) -> Unit) {
         onSelectionChanged = listener
     }
 
-    fun getSelectedPackages(): Set<String> = selectedPackages.toSet()
+    fun getSelectedPackages(): Set<PackageId> = selectedPackages.toSet()
 
     fun clearSelection() {
         selectedPackages.clear()
@@ -97,10 +149,10 @@ class NetworkPackageAdapter(
     /**
      * Programmatically select a package (used when entering selection mode via long press)
      */
-    fun selectPackage(packageName: String) {
-        if (!selectedPackages.contains(packageName) &&
+    fun selectPackage(packageId: PackageId) {
+        if (!selectedPackages.contains(packageId) &&
             selectedPackages.size < Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
-            selectedPackages.add(packageName)
+            selectedPackages.add(packageId)
             onSelectionChanged?.invoke(selectedPackages)
             notifyDataSetChanged()
         }
@@ -124,8 +176,17 @@ class NetworkPackageAdapter(
         return true
     }
 
-    private fun isPackageSelected(packageName: String): Boolean {
-        return selectedPackages.contains(packageName)
+    /**
+     * Fast check using cached setting value. Used during bind() for performance.
+     */
+    private fun canSelectPackageCached(pkg: NetworkPackage): Boolean {
+        // Cannot select if critical/VPN and setting is OFF
+        if ((pkg.isSystemCritical || pkg.isVpnApp) && !cachedAllowCritical) return false
+        return true
+    }
+
+    private fun isPackageSelected(packageId: PackageId): Boolean {
+        return selectedPackages.contains(packageId)
     }
 
     private fun togglePackageSelection(pkg: NetworkPackage, context: Context) {
@@ -139,14 +200,15 @@ class NetworkPackageAdapter(
             return
         }
 
-        if (selectedPackages.contains(pkg.packageName)) {
-            selectedPackages.remove(pkg.packageName)
+        val packageId = pkg.id
+        if (selectedPackages.contains(packageId)) {
+            selectedPackages.remove(packageId)
         } else {
             if (selectedPackages.size >= Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
                 onSelectionLimitReached?.invoke()
                 return
             }
-            selectedPackages.add(pkg.packageName)
+            selectedPackages.add(packageId)
         }
         onSelectionChanged?.invoke(selectedPackages)
         notifyDataSetChanged()
@@ -157,10 +219,13 @@ class NetworkPackageAdapter(
         private val showIcons: Boolean,
         private val onPackageClick: (NetworkPackage) -> Unit,
         private val onPackageLongClick: (NetworkPackage) -> Boolean,
-        private val isPackageSelected: (String) -> Boolean,
+        private val isPackageSelected: (PackageId) -> Boolean,
         private val canSelectPackage: (NetworkPackage) -> Boolean,
         private val togglePackageSelection: (NetworkPackage, Context) -> Unit,
-        private val onQuickToggle: ((NetworkPackage, NetworkType) -> Unit)?
+        private val onQuickToggle: ((NetworkPackage, NetworkType) -> Unit)?,
+        private val iconCache: LruCache<String, Drawable>,
+        private val getHasCellular: () -> Boolean,
+        private val getAllowCritical: () -> Boolean
     ) : RecyclerView.ViewHolder(itemView) {
 
         private val selectionCheckbox: CheckBox = itemView.findViewById(R.id.selection_checkbox)
@@ -170,6 +235,7 @@ class NetworkPackageAdapter(
         private val systemCriticalBadge: TextView = itemView.findViewById(R.id.system_critical_badge)
         private val vpnAppBadge: TextView = itemView.findViewById(R.id.vpn_app_badge)
         private val noInternetBadge: TextView = itemView.findViewById(R.id.no_internet_badge)
+        private val profileBadge: TextView = itemView.findViewById(R.id.profile_badge)
         private val wifiContainer: View = itemView.findViewById(R.id.wifi_container)
         private val wifiIcon: ImageView = itemView.findViewById(R.id.wifi_icon)
         private val wifiBlockedOverlay: ImageView = itemView.findViewById(R.id.wifi_blocked_overlay)
@@ -180,15 +246,14 @@ class NetworkPackageAdapter(
         private val roamingIcon: ImageView = itemView.findViewById(R.id.roaming_icon)
         private val roamingBlockedOverlay: ImageView = itemView.findViewById(R.id.roaming_blocked_overlay)
 
-        // Check device capability once
-        private val hasCellular: Boolean by lazy {
-            val telephonyManager = itemView.context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-            telephonyManager?.phoneType != TelephonyManager.PHONE_TYPE_NONE
-        }
+        // Coroutine scope for async icon loading
+        private val scope = CoroutineScope(Dispatchers.Main)
 
         // Store current package for selection mode click handling
         private var currentPackage: NetworkPackage? = null
         private var currentIsSelectionMode: Boolean = false
+        // Track which package the icon was loaded for (to avoid race conditions)
+        private var iconLoadedForPackage: String? = null
 
         fun bind(pkg: NetworkPackage, isSelectionMode: Boolean) {
             currentPackage = pkg
@@ -207,22 +272,34 @@ class NetworkPackageAdapter(
             // Show/hide no internet permission badge
             noInternetBadge.visibility = if (!pkg.hasInternetPermission) View.VISIBLE else View.GONE
 
+            // Show/hide profile badge for non-personal profiles (Work/Clone)
+            when {
+                pkg.userId >= 10 && pkg.userId < 100 -> {
+                    // Work profile (typically userId 10-99)
+                    profileBadge.text = itemView.context.getString(R.string.badge_work_profile)
+                    profileBadge.visibility = View.VISIBLE
+                }
+                pkg.userId >= 100 -> {
+                    // Clone profile (typically userId 100+)
+                    profileBadge.text = itemView.context.getString(R.string.badge_clone_profile)
+                    profileBadge.visibility = View.VISIBLE
+                }
+                else -> {
+                    // Personal profile (userId 0)
+                    profileBadge.visibility = View.GONE
+                }
+            }
+
             // Dim the entire item if system critical or VPN app (unless setting is enabled)
-            val prefs = itemView.context.getSharedPreferences(
-                Constants.Settings.PREFS_NAME,
-                Context.MODE_PRIVATE
-            )
-            val allowCritical = prefs.getBoolean(
-                Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
-                Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
-            )
+            // Use cached setting value for performance (no SharedPreferences read per bind)
+            val allowCritical = getAllowCritical()
             val shouldDim = !allowCritical && (pkg.isSystemCritical || pkg.isVpnApp)
             itemView.alpha = if (shouldDim) 0.6f else 1.0f
 
             // Selection mode UI
             if (isSelectionMode) {
                 selectionCheckbox.visibility = View.VISIBLE
-                val isSelected = isPackageSelected(pkg.packageName)
+                val isSelected = isPackageSelected(pkg.id)
                 selectionCheckbox.isChecked = isSelected
 
                 // Dim checkbox for non-selectable packages
@@ -232,16 +309,49 @@ class NetworkPackageAdapter(
                 selectionCheckbox.visibility = View.GONE
             }
 
-            // Set app icon
+            // Set app icon with caching and async loading for performance
             if (showIcons) {
                 appIcon.visibility = View.VISIBLE
-                try {
-                    val pm = itemView.context.packageManager
-                    val appInfo = pm.getApplicationInfo(pkg.packageName, 0)
-                    val icon = pm.getApplicationIcon(appInfo)
-                    appIcon.setImageDrawable(icon)
-                } catch (e: Exception) {
+                val iconCacheKey = "${pkg.packageName}_${pkg.userId}"
+
+                // Check cache first (synchronous, fast)
+                val cachedIcon = iconCache.get(iconCacheKey)
+                if (cachedIcon != null) {
+                    appIcon.setImageDrawable(cachedIcon)
+                    iconLoadedForPackage = iconCacheKey
+                } else {
+                    // Set placeholder immediately
                     appIcon.setImageResource(R.drawable.de1984_icon)
+                    iconLoadedForPackage = null
+
+                    // Load icon asynchronously
+                    val context = itemView.context
+                    scope.launch {
+                        val icon = withContext(Dispatchers.IO) {
+                            try {
+                                val pm = context.packageManager
+                                val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                                    context, pkg.packageName, 0, pkg.userId
+                                )
+                                if (appInfo != null) {
+                                    pm.getApplicationIcon(appInfo)
+                                } else {
+                                    null
+                                }
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+
+                        // Only update if this ViewHolder is still showing the same package
+                        if (currentPackage?.packageName == pkg.packageName && currentPackage?.userId == pkg.userId) {
+                            if (icon != null) {
+                                iconCache.put(iconCacheKey, icon)
+                                appIcon.setImageDrawable(icon)
+                                iconLoadedForPackage = iconCacheKey
+                            }
+                        }
+                    }
                 }
             } else {
                 appIcon.visibility = View.GONE
@@ -269,6 +379,7 @@ class NetworkPackageAdapter(
 
             // Set Roaming icon visibility, color, and overlay
             // Always show if device has cellular
+            val hasCellular = getHasCellular()
             if (hasCellular) {
                 roamingContainer.visibility = View.VISIBLE
                 roamingIcon.setColorFilter(
@@ -333,7 +444,8 @@ class NetworkPackageAdapter(
 
     class NetworkPackageDiffCallback : DiffUtil.ItemCallback<NetworkPackage>() {
         override fun areItemsTheSame(oldItem: NetworkPackage, newItem: NetworkPackage): Boolean {
-            return oldItem.packageName == newItem.packageName
+            // Compare by both packageName and userId for multi-user support
+            return oldItem.packageName == newItem.packageName && oldItem.userId == newItem.userId
         }
 
         override fun areContentsTheSame(oldItem: NetworkPackage, newItem: NetworkPackage): Boolean {

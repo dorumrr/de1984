@@ -19,68 +19,111 @@ class HandleNewAppInstallUseCase constructor(
         private const val TAG = "HandleNewAppInstallUseCase"
     }
     
-    suspend fun execute(packageName: String): Result<Unit> {
+    /**
+     * Handle a new app installation by creating a default firewall rule.
+     *
+     * @param packageName The package name of the newly installed app
+     * @param uid Optional UID of the app. If provided, userId will be derived from it.
+     *            If not provided, the app's UID will be looked up from PackageManager.
+     */
+    suspend fun execute(packageName: String, uid: Int? = null): Result<Unit> {
         return try {
-            val packageInfo = validatePackage(packageName)
+            // Derive userId from UID first: userId = uid / 100000
+            val userId = uid?.let { it / 100000 } ?: 0
+
+            val packageInfo = validatePackage(packageName, userId)
                 ?: return Result.failure(Exception("Package not found or invalid: $packageName"))
-            
-            if (!hasNetworkPermissions(packageName)) {
-                return Result.success(Unit)
+
+            // Check if app was installed before De1984 to prevent notification spam
+            // after clearing app data. Apps that existed before De1984 should not
+            // trigger "new app" notifications.
+            val de1984InstallTime = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
+            } catch (e: Exception) {
+                0L  // Fallback: treat as new app if we can't get our install time
             }
             
-            val existingRule = firewallRepository.getRuleByPackage(packageName).first()
+            val isPreExistingApp = packageInfo.firstInstallTime < de1984InstallTime
+            
+            if (isPreExistingApp) {
+                AppLogger.d(TAG, "Pre-existing app (installed before De1984): $packageName")
+                // Still create rule for pre-existing apps, but return failure to skip notification
+                if (!hasNetworkPermissions(packageName, userId)) {
+                    return Result.failure(Exception("Pre-existing app without network permissions"))
+                }
+                
+                val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
+                if (existingRule == null) {
+                    val defaultRule = createDefaultFirewallRule(packageName, packageInfo, userId)
+                    if (defaultRule != null) {
+                        firewallRepository.insertRule(defaultRule)
+                        AppLogger.d(TAG, "Created rule for pre-existing app: $packageName")
+                    }
+                }
+                return Result.failure(Exception("Pre-existing app - notification skipped"))
+            }
+
+            if (!hasNetworkPermissions(packageName, userId)) {
+                return Result.success(Unit)
+            }
+
+            val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
             if (existingRule != null) {
                 return Result.success(Unit)
             }
 
-            val defaultRule = createDefaultFirewallRule(packageName, packageInfo)
+            val defaultRule = createDefaultFirewallRule(packageName, packageInfo, userId)
                 ?: return Result.failure(Exception("Failed to create firewall rule: applicationInfo is null"))
             firewallRepository.insertRule(defaultRule)
-            
+
             Result.success(Unit)
-            
+
         } catch (e: Exception) {
             val error = errorHandler.handleError(e, "new app install handling")
             Result.failure(error)
         }
     }
-    
-    private fun validatePackage(packageName: String): android.content.pm.PackageInfo? {
+
+    private fun validatePackage(packageName: String, userId: Int = 0): android.content.pm.PackageInfo? {
         return try {
             if (packageName.isBlank() || !packageName.contains(".")) {
                 return null
             }
-            
+
             if (Constants.App.isOwnApp(packageName)) {
                 return null
             }
-            
-            context.packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+
+            io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                context, packageName, PackageManager.GET_PERMISSIONS, userId
+            )
         } catch (e: PackageManager.NameNotFoundException) {
             null
         } catch (e: Exception) {
             null
         }
     }
-    
-    private fun hasNetworkPermissions(packageName: String): Boolean {
+
+    private fun hasNetworkPermissions(packageName: String, userId: Int = 0): Boolean {
         return try {
-            val packageInfo = context.packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                context, packageName, PackageManager.GET_PERMISSIONS, userId
+            ) ?: return false
             val permissions = packageInfo.requestedPermissions ?: return false
-            
+
             val networkPermissions = setOf(
                 "android.permission.INTERNET",
                 "android.permission.ACCESS_NETWORK_STATE",
                 "android.permission.ACCESS_WIFI_STATE"
             )
-            
+
             permissions.any { it in networkPermissions }
         } catch (e: Exception) {
             false
         }
     }
     
-    private fun createDefaultFirewallRule(packageName: String, packageInfo: android.content.pm.PackageInfo): FirewallRule? {
+    private fun createDefaultFirewallRule(packageName: String, packageInfo: android.content.pm.PackageInfo, userId: Int): FirewallRule? {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val defaultPolicy = prefs.getString(
             Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
@@ -113,9 +156,10 @@ class HandleNewAppInstallUseCase constructor(
             isCriticalPackage -> {
                 if (!allowCritical) {
                     // Setting OFF: Create 'allow all' rule to protect critical package
-                    AppLogger.d(TAG, "Creating 'allow all' rule for critical package (protection ON): $packageName")
+                    AppLogger.d(TAG, "Creating 'allow all' rule for critical package (protection ON): $packageName (userId=$userId)")
                     FirewallRule(
                         packageName = packageName,
+                        userId = userId,
                         uid = uid,
                         appName = appName,
                         wifiBlocked = false,
@@ -127,7 +171,7 @@ class HandleNewAppInstallUseCase constructor(
                 } else {
                     // Setting ON: Don't create a rule - critical package will default to ALLOW
                     // User can manually change it if they want (critical packages are immune to bulk operations)
-                    AppLogger.d(TAG, "Skipping rule creation for critical package (protection OFF, user can manually configure): $packageName")
+                    AppLogger.d(TAG, "Skipping rule creation for critical package (protection OFF, user can manually configure): $packageName (userId=$userId)")
                     null
                 }
             }
@@ -135,6 +179,7 @@ class HandleNewAppInstallUseCase constructor(
             isRecommendedAllow -> {
                 FirewallRule(
                     packageName = packageName,
+                    userId = userId,
                     uid = uid,
                     appName = appName,
                     wifiBlocked = false,
@@ -148,6 +193,7 @@ class HandleNewAppInstallUseCase constructor(
             defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL -> {
                 FirewallRule(
                     packageName = packageName,
+                    userId = userId,
                     uid = uid,
                     appName = appName,
                     wifiBlocked = true,
@@ -161,6 +207,7 @@ class HandleNewAppInstallUseCase constructor(
             else -> {
                 FirewallRule(
                     packageName = packageName,
+                    userId = userId,
                     uid = uid,
                     appName = appName,
                     wifiBlocked = false,
@@ -179,12 +226,14 @@ class HandleNewAppInstallUseCase constructor(
      * VPN apps don't REQUEST the BIND_VPN_SERVICE permission - they DECLARE it on their service.
      * This is a service permission that protects the VPN service from being bound by unauthorized apps.
      */
-    private fun hasVpnService(packageName: String): Boolean {
+    private fun hasVpnService(packageName: String, userId: Int = 0): Boolean {
         return try {
-            val packageInfo = context.packageManager.getPackageInfo(
+            val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
+                context,
                 packageName,
-                PackageManager.GET_SERVICES
-            )
+                PackageManager.GET_SERVICES,
+                userId
+            ) ?: return false
 
             // Check if any service has BIND_VPN_SERVICE permission
             packageInfo.services?.any { serviceInfo ->

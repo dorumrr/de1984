@@ -82,6 +82,14 @@
     <string name="packages_filter_threats">Ameaças</string>
     <string name="packages_empty_state_no_uninstalled">Nenhum app do sistema desinstalado</string>
 
+    <!-- Profile Filters (Multi-user/Work Profile Support) -->
+    <string name="filter_profile_all">Todos os perfis</string>
+    <string name="filter_profile_personal">Pessoal</string>
+    <string name="filter_profile_work">Trabalho</string>
+    <string name="filter_profile_clone">Clone</string>
+    <string name="badge_work_profile">Trabalho</string>
+    <string name="badge_clone_profile">Clone</string>
+
     <!-- Package Status -->
     <string name="status_enabled">Ativado</string>
     <string name="status_disabled">Desativado</string>
@@ -370,7 +378,8 @@
     <string name="language_portuguese">Português</string>
     <string name="language_chinese">中文 (Chinês)</string>
     <string name="language_italian">Italiano (Italiano)</string>
-    <string name="language_french">Français (Francesa)</string>
+    <string name="language_french">Français (Francês)</string>
+    <string name="language_russian">Русский (Russo)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Versão %s</string>
@@ -785,6 +794,37 @@
     <string name="logs_cleared">Logs limpos</string>
     <string name="logs_share_title">Compartilhar logs do De1984</string>
     <string name="logs_disabled_message">Registro desativado. Novos logs não serão gravados.</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_multiselect_icon">Vários pacotes selecionados</string>
+
+    <!-- VPN Conflict Dialog -->
+    <string name="dialog_vpn_conflict_title">Outra VPN está ativa</string>
+    <string name="dialog_vpn_conflict_message">Mudar para o backend VPN desconectará sua conexão VPN atual (ex: Proton VPN, NordVPN, etc.).\n\nDeseja continuar?</string>
+    <string name="dialog_vpn_conflict_confirm">Desconectar e mudar</string>
+    <string name="vpn_permission_denied">Permissão VPN negada. Revertendo para modo AUTO.</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_de1984_on">De1984 ON</string>
+    <string name="tile_label_de1984_off">De1984 OFF</string>
+    <string name="tile_label_firewall_on">Firewall ON</string>
+    <string name="tile_label_firewall_off">Firewall OFF</string>
+    <string name="tile_label_firewall_starting">Iniciando…</string>
+    <string name="tile_label_firewall_error">Erro</string>
+    <string name="tile_subtitle_active">Ativo</string>
+    <string name="tile_subtitle_inactive">Inativo</string>
+    <string name="tile_subtitle_starting">Iniciando…</string>
+    <string name="tile_description_firewall_on">De1984 firewall está ativo usando backend %s</string>
+    <string name="tile_description_firewall_off">De1984 firewall está parado</string>
+    <string name="tile_description_firewall_starting">De1984 firewall está iniciando</string>
+    <string name="tile_description_firewall_error">De1984 firewall encontrou um erro</string>
+
+    <!-- Home Screen Widget -->
+    <string name="widget_description">Alternância rápida para De1984 Firewall</string>
+
+    <!-- Notification Actions -->
+    <string name="notification_action_stop_firewall">DESLIGAR</string>
 
 </resources>
 

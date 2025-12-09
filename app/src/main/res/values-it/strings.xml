@@ -82,6 +82,14 @@
     <string name="packages_filter_threats">Rischi</string>
     <string name="packages_empty_state_no_uninstalled">Nessuna app di sistema disinstallata</string>
 
+    <!-- Profile Filters (Multi-user/Work Profile Support) -->
+    <string name="filter_profile_all">Tutti i profili</string>
+    <string name="filter_profile_personal">Personale</string>
+    <string name="filter_profile_work">Lavoro</string>
+    <string name="filter_profile_clone">Clone</string>
+    <string name="badge_work_profile">Lavoro</string>
+    <string name="badge_clone_profile">Clone</string>
+
     <!-- Package Status -->
     <string name="status_enabled">Attivo</string>
     <string name="status_disabled">Disattivo</string>
@@ -369,8 +377,9 @@
     <string name="language_romanian">Română (Rumeno)</string>
     <string name="language_portuguese">Português (Portoghese)</string>
     <string name="language_chinese">中文 (Cinese)</string>
-    <string name="language_italian">Italiano</string>
+    <string name="language_italian">Italiano (Italiano)</string>
     <string name="language_french">Français (Francese)</string>
+    <string name="language_russian">Русский (Russo)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Versione %s</string>
@@ -785,5 +794,36 @@
     <string name="logs_cleared">Log cancellati</string>
     <string name="logs_share_title">Condividi log De1984</string>
     <string name="logs_disabled_message">Registrazione disabilitata. I nuovi log non verranno registrati.</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_multiselect_icon">Più pacchetti selezionati</string>
+
+    <!-- VPN Conflict Dialog -->
+    <string name="dialog_vpn_conflict_title">Un\'altra VPN è attiva</string>
+    <string name="dialog_vpn_conflict_message">Il passaggio al backend VPN disconnetterà la tua connessione VPN corrente (es. Proton VPN, NordVPN, ecc.).\n\nVuoi continuare?</string>
+    <string name="dialog_vpn_conflict_confirm">Disconnetti e cambia</string>
+    <string name="vpn_permission_denied">Permesso VPN negato. Ripristino della modalità AUTO.</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_de1984_on">De1984 ON</string>
+    <string name="tile_label_de1984_off">De1984 OFF</string>
+    <string name="tile_label_firewall_on">Firewall ON</string>
+    <string name="tile_label_firewall_off">Firewall OFF</string>
+    <string name="tile_label_firewall_starting">Avvio in corso…</string>
+    <string name="tile_label_firewall_error">Errore</string>
+    <string name="tile_subtitle_active">Attivo</string>
+    <string name="tile_subtitle_inactive">Inattivo</string>
+    <string name="tile_subtitle_starting">Avvio…</string>
+    <string name="tile_description_firewall_on">De1984 firewall è attivo usando il backend %s</string>
+    <string name="tile_description_firewall_off">De1984 firewall è fermo</string>
+    <string name="tile_description_firewall_starting">De1984 firewall si sta avviando</string>
+    <string name="tile_description_firewall_error">De1984 firewall ha riscontrato un errore</string>
+
+    <!-- Home Screen Widget -->
+    <string name="widget_description">Toggle rapido per De1984 Firewall</string>
+
+    <!-- Notification Actions -->
+    <string name="notification_action_stop_firewall">DISATTIVA</string>
 
 </resources>

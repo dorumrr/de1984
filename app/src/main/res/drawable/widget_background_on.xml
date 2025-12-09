@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Active/ON state - vibrant purple/blue gradient -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#667eea"
+        android:centerColor="#764ba2"
+        android:endColor="#f093fb" />
+    <corners android:radius="24dp" />
+</shape>

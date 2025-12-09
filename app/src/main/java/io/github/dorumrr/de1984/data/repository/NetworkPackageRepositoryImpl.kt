@@ -50,9 +50,9 @@ class NetworkPackageRepositoryImpl(
             }
     }
     
-    override suspend fun setNetworkAccess(packageName: String, allowed: Boolean): Result<Unit> {
+    override suspend fun setNetworkAccess(packageName: String, userId: Int, allowed: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setNetworkAccess(packageName, allowed)
+            val success = packageDataSource.setNetworkAccess(packageName, userId, allowed)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -67,10 +67,10 @@ class NetworkPackageRepositoryImpl(
             Result.failure(e)
         }
     }
-    
-    override suspend fun getNetworkPackage(packageName: String): Result<NetworkPackage> {
+
+    override suspend fun getNetworkPackage(packageName: String, userId: Int): Result<NetworkPackage> {
         return try {
-            val entity = packageDataSource.getPackage(packageName)
+            val entity = packageDataSource.getPackage(packageName, userId)
             if (entity != null) {
                 Result.success(
                     entity.toNetworkDomain().copy(
@@ -84,10 +84,10 @@ class NetworkPackageRepositoryImpl(
             Result.failure(e)
         }
     }
-    
-    override suspend fun isNetworkBlocked(packageName: String): Result<Boolean> {
+
+    override suspend fun isNetworkBlocked(packageName: String, userId: Int): Result<Boolean> {
         return try {
-            val entity = packageDataSource.getPackage(packageName)
+            val entity = packageDataSource.getPackage(packageName, userId)
             if (entity != null) {
                 Result.success(entity.isNetworkBlocked)
             } else {
@@ -106,9 +106,9 @@ class NetworkPackageRepositoryImpl(
         return getNetworkPackagesByAccessState(NetworkAccessState.ALLOWED)
     }
 
-    override suspend fun setWifiBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+    override suspend fun setWifiBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setWifiBlocking(packageName, blocked)
+            val success = packageDataSource.setWifiBlocking(packageName, userId, blocked)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -119,9 +119,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setMobileBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+    override suspend fun setMobileBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setMobileBlocking(packageName, blocked)
+            val success = packageDataSource.setMobileBlocking(packageName, userId, blocked)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -132,9 +132,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setRoamingBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+    override suspend fun setRoamingBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setRoamingBlocking(packageName, blocked)
+            val success = packageDataSource.setRoamingBlocking(packageName, userId, blocked)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -145,9 +145,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setBackgroundBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+    override suspend fun setBackgroundBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setBackgroundBlocking(packageName, blocked)
+            val success = packageDataSource.setBackgroundBlocking(packageName, userId, blocked)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -158,9 +158,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setLanBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+    override suspend fun setLanBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setLanBlocking(packageName, blocked)
+            val success = packageDataSource.setLanBlocking(packageName, userId, blocked)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -171,9 +171,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setAllNetworkBlocking(packageName: String, blocked: Boolean): Result<Unit> {
+    override suspend fun setAllNetworkBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setAllNetworkBlocking(packageName, blocked)
+            val success = packageDataSource.setAllNetworkBlocking(packageName, userId, blocked)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -184,9 +184,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setMobileAndRoaming(packageName: String, mobileBlocked: Boolean, roamingBlocked: Boolean): Result<Unit> {
+    override suspend fun setMobileAndRoaming(packageName: String, userId: Int, mobileBlocked: Boolean, roamingBlocked: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setMobileAndRoaming(packageName, mobileBlocked, roamingBlocked)
+            val success = packageDataSource.setMobileAndRoaming(packageName, userId, mobileBlocked, roamingBlocked)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -201,6 +201,8 @@ class NetworkPackageRepositoryImpl(
 private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain(): NetworkPackage {
     return NetworkPackage(
         packageName = packageName,
+        userId = userId,
+        uid = uid,
         name = name,
         icon = icon,
         isEnabled = isEnabled,
@@ -220,6 +222,8 @@ private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain():
         versionCode = versionCode,
         installTime = installTime,
         updateTime = updateTime,
-        isVpnApp = isVpnApp
+        isVpnApp = isVpnApp,
+        isWorkProfile = isWorkProfile,
+        isCloneProfile = isCloneProfile
     )
 }

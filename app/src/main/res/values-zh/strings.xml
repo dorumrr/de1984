@@ -82,6 +82,14 @@
     <string name="packages_filter_threats">威胁</string>
     <string name="packages_empty_state_no_uninstalled">没有已卸载的系统应用</string>
 
+    <!-- Profile Filters (Multi-user/Work Profile Support) -->
+    <string name="filter_profile_all">所有配置文件</string>
+    <string name="filter_profile_personal">个人</string>
+    <string name="filter_profile_work">工作</string>
+    <string name="filter_profile_clone">克隆</string>
+    <string name="badge_work_profile">工作</string>
+    <string name="badge_clone_profile">克隆</string>
+
     <!-- Package Status -->
     <string name="status_enabled">已启用</string>
     <string name="status_disabled">已禁用</string>
@@ -381,6 +389,7 @@
     <string name="language_chinese">中文</string>
     <string name="language_italian">Italiano (意大利语)</string>
     <string name="language_french">Français (法语)</string>
+    <string name="language_russian">Русский (俄语)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">版本 %s</string>
@@ -795,5 +804,36 @@
     <string name="logs_cleared">日志已清除</string>
     <string name="logs_share_title">分享 De1984 日志</string>
     <string name="logs_disabled_message">日志记录已禁用。新日志将不会被记录。</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_multiselect_icon">已选择多个软件包</string>
+
+    <!-- VPN Conflict Dialog -->
+    <string name="dialog_vpn_conflict_title">另一个 VPN 处于活动状态</string>
+    <string name="dialog_vpn_conflict_message">切换到 VPN 后端将断开您当前的 VPN 连接（例如 Proton VPN、NordVPN 等）。\n\n您要继续吗？</string>
+    <string name="dialog_vpn_conflict_confirm">断开并切换</string>
+    <string name="vpn_permission_denied">VPN 权限被拒绝。恢复到自动模式。</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_de1984_on">De1984 开启</string>
+    <string name="tile_label_de1984_off">De1984 关闭</string>
+    <string name="tile_label_firewall_on">防火墙 开启</string>
+    <string name="tile_label_firewall_off">防火墙 关闭</string>
+    <string name="tile_label_firewall_starting">正在启动…</string>
+    <string name="tile_label_firewall_error">错误</string>
+    <string name="tile_subtitle_active">已启用</string>
+    <string name="tile_subtitle_inactive">已停用</string>
+    <string name="tile_subtitle_starting">正在启动…</string>
+    <string name="tile_description_firewall_on">De1984 防火墙正在使用 %s 后端运行</string>
+    <string name="tile_description_firewall_off">De1984 防火墙已停止</string>
+    <string name="tile_description_firewall_starting">De1984 防火墙正在启动</string>
+    <string name="tile_description_firewall_error">De1984 防火墙遇到错误</string>
+
+    <!-- Home Screen Widget -->
+    <string name="widget_description">De1984 防火墙快速切换</string>
+
+    <!-- Notification Actions -->
+    <string name="notification_action_stop_firewall">关闭</string>
 
 </resources>

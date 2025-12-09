@@ -37,7 +37,7 @@ android {
         versionName = "2.5.1"
 
         // Specify supported languages (reduces APK size by excluding unused translations)
-        resourceConfigurations += listOf("en", "ro", "pt", "zh", "it", "fr")
+        resourceConfigurations += listOf("en", "ro", "pt", "zh", "it", "fr", "ru")
 
         vectorDrawables {
             useSupportLibrary = true
@@ -182,4 +182,7 @@ dependencies {
 
     // JSON serialization for backup/restore
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
+    // HiddenApiBypass for multi-user/work profile support
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:4.3")
 }

@@ -4,31 +4,37 @@ import io.github.dorumrr.de1984.domain.model.ReinstallBatchResult
 import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
 
+/**
+ * Use case for managing packages (enable/disable, uninstall, reinstall, force stop).
+ *
+ * All methods require both packageName AND userId to properly support
+ * multi-user/work profile environments.
+ */
 class ManagePackageUseCase constructor(
     private val packageRepository: PackageRepository
 ) {
 
-    suspend fun setPackageEnabled(packageName: String, enabled: Boolean): Result<Unit> {
-        return packageRepository.setPackageEnabled(packageName, enabled)
+    suspend fun setPackageEnabled(packageName: String, userId: Int = 0, enabled: Boolean): Result<Unit> {
+        return packageRepository.setPackageEnabled(packageName, userId, enabled)
     }
 
-    suspend fun uninstallPackage(packageName: String): Result<Unit> {
-        return packageRepository.uninstallPackage(packageName)
+    suspend fun uninstallPackage(packageName: String, userId: Int = 0): Result<Unit> {
+        return packageRepository.uninstallPackage(packageName, userId)
     }
 
-    suspend fun uninstallMultiplePackages(packageNames: List<String>): Result<UninstallBatchResult> {
-        return packageRepository.uninstallMultiplePackages(packageNames)
+    suspend fun uninstallMultiplePackages(packages: List<Pair<String, Int>>): Result<UninstallBatchResult> {
+        return packageRepository.uninstallMultiplePackages(packages)
     }
 
-    suspend fun reinstallPackage(packageName: String): Result<Unit> {
-        return packageRepository.reinstallPackage(packageName)
+    suspend fun reinstallPackage(packageName: String, userId: Int = 0): Result<Unit> {
+        return packageRepository.reinstallPackage(packageName, userId)
     }
 
-    suspend fun reinstallMultiplePackages(packageNames: List<String>): Result<ReinstallBatchResult> {
-        return packageRepository.reinstallMultiplePackages(packageNames)
+    suspend fun reinstallMultiplePackages(packages: List<Pair<String, Int>>): Result<ReinstallBatchResult> {
+        return packageRepository.reinstallMultiplePackages(packages)
     }
 
-    suspend fun forceStopPackage(packageName: String): Result<Unit> {
-        return packageRepository.forceStopPackage(packageName)
+    suspend fun forceStopPackage(packageName: String, userId: Int = 0): Result<Unit> {
+        return packageRepository.forceStopPackage(packageName, userId)
     }
 }

@@ -28,6 +28,13 @@ import io.github.dorumrr.de1984.domain.repository.NetworkPackageRepository
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
 import io.github.dorumrr.de1984.domain.usecase.*
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /**
  * ServiceLocator for managing application dependencies.
@@ -57,6 +64,39 @@ class De1984Dependencies(private val context: Context) {
     }
 
     // =============================================================================================
+    // Application Scope
+    // =============================================================================================
+
+    /**
+     * Application-level coroutine scope that lives for the entire application process.
+     * Use this for long-running operations that should survive beyond single components.
+     * Automatically cancels when the application process is killed by Android.
+     */
+    val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    // =============================================================================================
+    // Package Data Change Notifications
+    // =============================================================================================
+
+    /**
+     * SharedFlow to notify ViewModels when package data changes.
+     * This enables cross-screen refresh when packages are enabled/disabled or firewall rules change.
+     */
+    private val _packageDataChanged = MutableSharedFlow<Unit>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val packageDataChanged: SharedFlow<Unit> = _packageDataChanged.asSharedFlow()
+
+    /**
+     * Notify all observers that package data has changed and they should refresh.
+     */
+    fun notifyPackageDataChanged() {
+        _packageDataChanged.tryEmit(Unit)
+    }
+
+    // =============================================================================================
     // Database
     // =============================================================================================
 
@@ -67,13 +107,65 @@ class De1984Dependencies(private val context: Context) {
         }
     }
 
+    private val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add userId column for multi-user/work profile support
+            // Default 0 = personal profile (existing rules)
+            db.execSQL("ALTER TABLE firewall_rules ADD COLUMN userId INTEGER NOT NULL DEFAULT 0")
+
+            // Recreate table with composite primary key (packageName, userId)
+            // Room doesn't support changing primary key via ALTER TABLE, so we need to:
+            // 1. Create new table with correct schema
+            // 2. Copy data from old table
+            // 3. Drop old table
+            // 4. Rename new table
+            db.execSQL("""
+                CREATE TABLE firewall_rules_new (
+                    packageName TEXT NOT NULL,
+                    userId INTEGER NOT NULL DEFAULT 0,
+                    uid INTEGER NOT NULL,
+                    appName TEXT NOT NULL,
+                    wifiBlocked INTEGER NOT NULL DEFAULT 0,
+                    mobileBlocked INTEGER NOT NULL DEFAULT 0,
+                    blockWhenBackground INTEGER NOT NULL DEFAULT 0,
+                    blockWhenRoaming INTEGER NOT NULL DEFAULT 0,
+                    lanBlocked INTEGER NOT NULL DEFAULT 0,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    isSystemApp INTEGER NOT NULL DEFAULT 0,
+                    hasInternetPermission INTEGER NOT NULL DEFAULT 0,
+                    createdAt INTEGER NOT NULL,
+                    updatedAt INTEGER NOT NULL,
+                    PRIMARY KEY(packageName, userId)
+                )
+            """.trimIndent())
+
+            db.execSQL("""
+                INSERT INTO firewall_rules_new (
+                    packageName, userId, uid, appName, wifiBlocked, mobileBlocked,
+                    blockWhenBackground, blockWhenRoaming, lanBlocked, enabled,
+                    isSystemApp, hasInternetPermission, createdAt, updatedAt
+                )
+                SELECT
+                    packageName, userId, uid, appName, wifiBlocked, mobileBlocked,
+                    blockWhenBackground, blockWhenRoaming, lanBlocked, enabled,
+                    isSystemApp, hasInternetPermission, createdAt, updatedAt
+                FROM firewall_rules
+            """.trimIndent())
+
+            db.execSQL("DROP TABLE firewall_rules")
+            db.execSQL("ALTER TABLE firewall_rules_new RENAME TO firewall_rules")
+
+            AppLogger.i(TAG, "Database migrated to version 6: Added userId column for multi-user support")
+        }
+    }
+
     val database: De1984Database by lazy {
         Room.databaseBuilder(
             context.applicationContext,
             De1984Database::class.java,
             "de1984_database"
         )
-            .addMigrations(MIGRATION_4_5)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigration()
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
@@ -124,7 +216,7 @@ class De1984Dependencies(private val context: Context) {
     // =============================================================================================
 
     val firewallRepository: FirewallRepository by lazy {
-        FirewallRepositoryImpl(firewallRuleDao, context)
+        FirewallRepositoryImpl(firewallRuleDao, context) { notifyPackageDataChanged() }
     }
 
     // Note: PackageDataSource depends on FirewallRepository (circular dependency)
@@ -134,7 +226,7 @@ class De1984Dependencies(private val context: Context) {
     }
 
     val packageRepository: PackageRepository by lazy {
-        PackageRepositoryImpl(context, packageDataSource)
+        PackageRepositoryImpl(context, packageDataSource) { notifyPackageDataChanged() }
     }
 
     val networkPackageRepository: NetworkPackageRepository by lazy {
@@ -220,5 +312,8 @@ class De1984Dependencies(private val context: Context) {
     fun provideUpdateFirewallRuleUseCase(): UpdateFirewallRuleUseCase {
         return UpdateFirewallRuleUseCase(firewallRepository)
     }
-}
 
+    fun provideEnsureSystemRecommendedRulesUseCase(): EnsureSystemRecommendedRulesUseCase {
+        return EnsureSystemRecommendedRulesUseCase(context, firewallRepository)
+    }
+}

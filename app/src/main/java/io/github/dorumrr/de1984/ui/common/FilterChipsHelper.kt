@@ -63,12 +63,15 @@ object FilterChipsHelper {
         typeFilters: List<String>,
         stateFilters: List<String>,
         permissionFilters: List<String>,
+        profileFilters: List<String> = emptyList(),
         selectedTypeFilter: String?,
         selectedStateFilter: String?,
         selectedPermissionFilter: Boolean,
+        selectedProfileFilter: String? = null,
         onTypeFilterSelected: (String) -> Unit,
         onStateFilterSelected: (String?) -> Unit,
-        onPermissionFilterSelected: (Boolean) -> Unit
+        onPermissionFilterSelected: (Boolean) -> Unit,
+        onProfileFilterSelected: (String) -> Unit = {}
     ) {
         chipGroup.removeAllViews()
 
@@ -164,6 +167,71 @@ object FilterChipsHelper {
             }
             chipGroup.addView(chip)
         }
+
+        // Add profile filters (single selection with deselect-to-default behavior)
+        // First filter in the list is the default (typically "All Profiles")
+        val defaultProfileFilter = profileFilters.firstOrNull() ?: ""
+
+        profileFilters.forEach { filter ->
+            val chip = createFilterChip(chipGroup, filter, filter == selectedProfileFilter)
+            chip.tag = "profile:$filter" // Tag to identify chip type
+            chip.setOnCheckedChangeListener { _, isChecked ->
+                // Skip if this is a programmatic update
+                if (isUpdatingProgrammatically) {
+                    return@setOnCheckedChangeListener
+                }
+
+                val clickedFilter = chip.tag.toString().removePrefix("profile:")
+
+                if (isChecked) {
+                    // When a profile chip is checked, uncheck all other profile chips
+                    isUpdatingProgrammatically = true
+
+                    // Uncheck other profile chips
+                    for (i in 0 until chipGroup.childCount) {
+                        val otherChip = chipGroup.getChildAt(i) as? Chip
+                        if (otherChip != null &&
+                            otherChip.tag.toString().startsWith("profile:") &&
+                            otherChip != chip) {
+                            otherChip.isChecked = false
+                        }
+                    }
+
+                    isUpdatingProgrammatically = false
+
+                    // Notify the callback
+                    onProfileFilterSelected(clickedFilter)
+                } else {
+                    // When unchecking: if it's the default filter, keep it checked
+                    // Otherwise, deselect and select the default filter
+                    if (clickedFilter == defaultProfileFilter) {
+                        // Can't uncheck the default - keep it selected
+                        isUpdatingProgrammatically = true
+                        chip.isChecked = true
+                        isUpdatingProgrammatically = false
+                    } else {
+                        // Deselect this chip and select the default
+                        isUpdatingProgrammatically = true
+
+                        // Find and check the default chip
+                        for (i in 0 until chipGroup.childCount) {
+                            val otherChip = chipGroup.getChildAt(i) as? Chip
+                            if (otherChip != null &&
+                                otherChip.tag.toString() == "profile:$defaultProfileFilter") {
+                                otherChip.isChecked = true
+                                break
+                            }
+                        }
+
+                        isUpdatingProgrammatically = false
+
+                        // Notify with default filter
+                        onProfileFilterSelected(defaultProfileFilter)
+                    }
+                }
+            }
+            chipGroup.addView(chip)
+        }
     }
 
 
@@ -176,7 +244,8 @@ object FilterChipsHelper {
         chipGroup: ChipGroup,
         selectedTypeFilter: String?,
         selectedStateFilter: String?,
-        selectedPermissionFilter: Boolean
+        selectedPermissionFilter: Boolean,
+        selectedProfileFilter: String? = null
     ) {
         // Set flag to prevent callbacks during programmatic updates
         isUpdatingProgrammatically = true
@@ -199,6 +268,11 @@ object FilterChipsHelper {
                 }
                 tag.startsWith("permission:") -> {
                     chip.isChecked = selectedPermissionFilter
+                }
+                tag.startsWith("profile:") -> {
+                    val filterName = tag.removePrefix("profile:")
+                    val shouldBeChecked = filterName == selectedProfileFilter
+                    chip.isChecked = shouldBeChecked
                 }
             }
         }

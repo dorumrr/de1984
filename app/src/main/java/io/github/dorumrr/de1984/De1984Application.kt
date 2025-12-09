@@ -58,10 +58,30 @@ class De1984Application : Application() {
         // Register Shizuku listeners for lifecycle monitoring
         dependencies.shizukuManager.registerListeners()
 
+        // Ensure system-recommended apps have proper rules (Issue #66 - GMS notifications)
+        ensureSystemRecommendedRules()
+
         // Clean up orphaned firewall rules if app was killed while privileged backends were running
         cleanupOrphanedFirewallRules()
 
         AppLogger.i(TAG, "Application initialized")
+    }
+
+    /**
+     * Ensure that all system-recommended apps (SYSTEM_RECOMMENDED_ALLOW) have proper "allow all" rules.
+     * This handles existing installations where GMS or other recommended apps don't have rules yet (Issue #66).
+     * Safe to call on every startup - only creates rules for missing packages, respects existing user config.
+     */
+    private fun ensureSystemRecommendedRules() {
+        dependencies.applicationScope.launch(Dispatchers.IO) {
+            try {
+                val useCase = dependencies.provideEnsureSystemRecommendedRulesUseCase()
+                useCase.invoke()
+            } catch (e: Exception) {
+                AppLogger.w(TAG, "Failed to sync system-recommended rules: ${e.message}")
+                // Ignore errors - this is best-effort
+            }
+        }
     }
 
     /**

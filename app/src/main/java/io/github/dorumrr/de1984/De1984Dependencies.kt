@@ -312,5 +312,8 @@ class De1984Dependencies(private val context: Context) {
     fun provideUpdateFirewallRuleUseCase(): UpdateFirewallRuleUseCase {
         return UpdateFirewallRuleUseCase(firewallRepository)
     }
-}
 
+    fun provideEnsureSystemRecommendedRulesUseCase(): EnsureSystemRecommendedRulesUseCase {
+        return EnsureSystemRecommendedRulesUseCase(context, firewallRepository)
+    }
+}

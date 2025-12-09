@@ -325,6 +325,12 @@ object Constants {
          * - Have normal (enabled) controls in the UI
          *
          * This ensures users can use "Block All" default policy without breaking WiFi/Bluetooth/Downloads.
+         *
+         * NOTE: Google Play Services is included here because:
+         * - It hosts Firebase Cloud Messaging (FCM) - the push notification infrastructure for most apps
+         * - Blocking it breaks notifications system-wide on GMS phones (Issue #66)
+         * - Users can still manually block it if desired (degoogled/privacy-focused users)
+         * - On degoogled devices without GMS, this entry has no effect
          */
         val SYSTEM_RECOMMENDED_ALLOW = setOf(
             // WiFi and Connectivity
@@ -341,6 +347,9 @@ object Constants {
 
             // NFC (for contactless payments, file sharing)
             "com.android.nfc",                     // NFC service
+
+            // Google Play Services (FCM push notifications)
+            "com.google.android.gms",              // Google Play Services - hosts FCM for push notifications
         )
 
         /**

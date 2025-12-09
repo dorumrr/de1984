@@ -9,4 +9,4 @@
     android:resizeMode="none"
     android:widgetCategory="home_screen"
     android:description="@string/widget_description"
-    android:previewImage="@drawable/ic_notification_de1984" />
+    android:previewImage="@mipmap/ic_launcher" />

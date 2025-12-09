@@ -115,6 +115,7 @@ object Constants {
         const val LANGUAGE_CHINESE = "zh"
         const val LANGUAGE_ITALIAN = "it"
         const val LANGUAGE_FRENCH = "fr"
+        const val LANGUAGE_RUSSIAN = "ru"
 
         const val MODE_AUTO = "auto"
         const val MODE_VPN = "vpn"

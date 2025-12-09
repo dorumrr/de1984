@@ -796,5 +796,33 @@
     <string name="logs_share_title">Partajează jurnalele De1984</string>
     <string name="logs_disabled_message">Jurnalizare dezactivată. Noile jurnale nu vor fi înregistrate.</string>
 
+    <!-- Content Descriptions -->
+    <string name="cd_multiselect_icon">Mai multe pachete selectate</string>
+
+    <!-- VPN Conflict Dialog -->
+    <string name="dialog_vpn_conflict_title">Alt VPN este activ</string>
+    <string name="dialog_vpn_conflict_message">Trecerea la backend-ul VPN va deconecta conexiunea VPN curentă (ex: Proton VPN, NordVPN, etc.).\n\nVrei să continui?</string>
+    <string name="dialog_vpn_conflict_confirm">Deconectează și schimbă</string>
+    <string name="vpn_permission_denied">Permisiunea VPN a fost refuzată. Se revine la modul AUTO.</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_de1984_on">De1984 ON</string>
+    <string name="tile_label_de1984_off">De1984 OFF</string>
+    <string name="tile_label_firewall_on">Firewall ON</string>
+    <string name="tile_label_firewall_off">Firewall OFF</string>
+    <string name="tile_label_firewall_starting">Se pornește…</string>
+    <string name="tile_label_firewall_error">Eroare</string>
+    <string name="tile_description_firewall_on">De1984 firewall este activ folosind backend-ul %s</string>
+    <string name="tile_description_firewall_off">De1984 firewall este oprit</string>
+    <string name="tile_description_firewall_starting">De1984 firewall pornește</string>
+    <string name="tile_description_firewall_error">De1984 firewall a întâmpinat o eroare</string>
+
+    <!-- Home Screen Widget -->
+    <string name="widget_description">Comutator rapid pentru De1984 Firewall</string>
+
+    <!-- Notification Actions -->
+    <string name="notification_action_stop_firewall">OPREȘTE</string>
+
 </resources>
 

@@ -794,5 +794,33 @@
     <string name="logs_share_title">Compartilhar logs do De1984</string>
     <string name="logs_disabled_message">Registro desativado. Novos logs não serão gravados.</string>
 
+    <!-- Content Descriptions -->
+    <string name="cd_multiselect_icon">Vários pacotes selecionados</string>
+
+    <!-- VPN Conflict Dialog -->
+    <string name="dialog_vpn_conflict_title">Outra VPN está ativa</string>
+    <string name="dialog_vpn_conflict_message">Mudar para o backend VPN desconectará sua conexão VPN atual (ex: Proton VPN, NordVPN, etc.).\n\nDeseja continuar?</string>
+    <string name="dialog_vpn_conflict_confirm">Desconectar e mudar</string>
+    <string name="vpn_permission_denied">Permissão VPN negada. Revertendo para modo AUTO.</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_de1984_on">De1984 ON</string>
+    <string name="tile_label_de1984_off">De1984 OFF</string>
+    <string name="tile_label_firewall_on">Firewall ON</string>
+    <string name="tile_label_firewall_off">Firewall OFF</string>
+    <string name="tile_label_firewall_starting">Iniciando…</string>
+    <string name="tile_label_firewall_error">Erro</string>
+    <string name="tile_description_firewall_on">De1984 firewall está ativo usando backend %s</string>
+    <string name="tile_description_firewall_off">De1984 firewall está parado</string>
+    <string name="tile_description_firewall_starting">De1984 firewall está iniciando</string>
+    <string name="tile_description_firewall_error">De1984 firewall encontrou um erro</string>
+
+    <!-- Home Screen Widget -->
+    <string name="widget_description">Alternância rápida para De1984 Firewall</string>
+
+    <!-- Notification Actions -->
+    <string name="notification_action_stop_firewall">DESLIGAR</string>
+
 </resources>
 

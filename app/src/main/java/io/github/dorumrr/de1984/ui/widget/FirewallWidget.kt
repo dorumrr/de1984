@@ -101,11 +101,11 @@ class FirewallWidget : AppWidgetProvider() {
         
         // Update UI based on state
         if (isEnabled) {
-            views.setTextViewText(R.id.widget_status_text, "Firewall ON")
+            views.setTextViewText(R.id.widget_status_text, context.getString(R.string.tile_label_firewall_on))
             views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_background_on)
             AppLogger.d(TAG, "UI set to ON state (purple gradient)")
         } else {
-            views.setTextViewText(R.id.widget_status_text, "Firewall OFF")
+            views.setTextViewText(R.id.widget_status_text, context.getString(R.string.tile_label_firewall_off))
             views.setInt(R.id.widget_container, "setBackgroundResource", R.drawable.widget_background_off)
             AppLogger.d(TAG, "UI set to OFF state (gray gradient)")
         }

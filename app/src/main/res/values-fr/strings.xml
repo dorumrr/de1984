@@ -794,4 +794,32 @@
     <string name="logs_share_title">Partager les journaux De1984</string>
     <string name="logs_disabled_message">Journalisation désactivée. Les nouveaux journaux ne seront pas enregistrés.</string>
 
+    <!-- Content Descriptions -->
+    <string name="cd_multiselect_icon">Plusieurs paquets sélectionnés</string>
+
+    <!-- VPN Conflict Dialog -->
+    <string name="dialog_vpn_conflict_title">Un autre VPN est actif</string>
+    <string name="dialog_vpn_conflict_message">Passer au backend VPN déconnectera votre connexion VPN actuelle (ex: Proton VPN, NordVPN, etc.).\n\nVoulez-vous continuer?</string>
+    <string name="dialog_vpn_conflict_confirm">Déconnecter et changer</string>
+    <string name="vpn_permission_denied">Permission VPN refusée. Retour au mode AUTO.</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_de1984_on">De1984 ON</string>
+    <string name="tile_label_de1984_off">De1984 OFF</string>
+    <string name="tile_label_firewall_on">Pare-feu ON</string>
+    <string name="tile_label_firewall_off">Pare-feu OFF</string>
+    <string name="tile_label_firewall_starting">Démarrage…</string>
+    <string name="tile_label_firewall_error">Erreur</string>
+    <string name="tile_description_firewall_on">De1984 pare-feu est actif avec le backend %s</string>
+    <string name="tile_description_firewall_off">De1984 pare-feu est arrêté</string>
+    <string name="tile_description_firewall_starting">De1984 pare-feu démarre</string>
+    <string name="tile_description_firewall_error">De1984 pare-feu a rencontré une erreur</string>
+
+    <!-- Home Screen Widget -->
+    <string name="widget_description">Bascule rapide pour De1984 Pare-feu</string>
+
+    <!-- Notification Actions -->
+    <string name="notification_action_stop_firewall">DÉSACTIVER</string>
+
 </resources>

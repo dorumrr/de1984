@@ -325,6 +325,9 @@ object HiddenApiHelper {
      * Create a synthetic ApplicationInfo for a work profile app.
      * Uses the personal profile's ApplicationInfo as a template and adjusts the UID.
      * This is much faster than calling pm dump for each package.
+     *
+     * IMPORTANT: The enabled state is queried from the work profile, not copied from personal profile,
+     * because an app can be enabled in personal profile but disabled in work profile.
      */
     private fun createSyntheticApplicationInfo(
         context: Context,
@@ -332,6 +335,9 @@ object HiddenApiHelper {
         userId: Int
     ): ApplicationInfo? {
         return try {
+            // Query the enabled state for this specific user (not from personal profile!)
+            val isEnabled = isPackageEnabledForUser(packageName, userId)
+
             // Try to get info from personal profile first (most apps are clones)
             val personalInfo = try {
                 context.packageManager.getApplicationInfo(packageName, 0)
@@ -346,6 +352,8 @@ object HiddenApiHelper {
                     // UID = userId * 100000 + appId
                     val appId = personalInfo.uid % 100000
                     this.uid = userId * 100000 + appId
+                    // Override enabled state with the actual state for this user profile
+                    this.enabled = isEnabled
                 }
             } else {
                 // App only exists in work profile, create minimal info
@@ -355,6 +363,7 @@ object HiddenApiHelper {
                     // Estimate UID - this may not be accurate but is good enough for display
                     this.uid = userId * 100000 + 10000 + packageName.hashCode().and(0xFFFF)
                     this.flags = 0
+                    this.enabled = isEnabled
                 }
             }
         } catch (e: Exception) {
@@ -396,6 +405,70 @@ object HiddenApiHelper {
             AppLogger.d(TAG, "Shell pm list packages failed: ${e.message}")
             emptyList()
         }
+    }
+
+    /**
+     * Get the set of disabled packages for a specific user via shell.
+     * Uses `pm list packages -d --user $userId` to get disabled packages.
+     * Results are cached per user to avoid repeated shell calls.
+     */
+    private val disabledPackagesCache = mutableMapOf<Int, Set<String>>()
+
+    private fun getDisabledPackagesForUser(userId: Int): Set<String> {
+        // Return cached result if available
+        disabledPackagesCache[userId]?.let { return it }
+
+        return try {
+            val cachedShell = Shell.getCachedShell()
+            if (cachedShell == null || !cachedShell.isRoot) {
+                AppLogger.d(TAG, "No cached root shell available for disabled packages check (user $userId)")
+                return emptySet()
+            }
+
+            val outputList = mutableListOf<String>()
+            val result = cachedShell.newJob()
+                .add("pm list packages -d --user $userId")
+                .to(outputList)
+                .exec()
+
+            if (!result.isSuccess) {
+                AppLogger.d(TAG, "Shell pm list packages -d failed for user $userId: exit code ${result.code}")
+                return emptySet()
+            }
+
+            // Parse output: "package:com.example.app" -> "com.example.app"
+            val disabledSet = outputList
+                .filter { it.startsWith("package:") }
+                .map { it.removePrefix("package:").trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+
+            // Cache the result
+            disabledPackagesCache[userId] = disabledSet
+            AppLogger.d(TAG, "Found ${disabledSet.size} disabled packages for user $userId")
+            disabledSet
+        } catch (e: Exception) {
+            AppLogger.d(TAG, "Shell pm list packages -d failed: ${e.message}")
+            emptySet()
+        }
+    }
+
+    /**
+     * Check if a package is enabled for a specific user.
+     * Uses the cached disabled packages set for performance.
+     */
+    private fun isPackageEnabledForUser(packageName: String, userId: Int): Boolean {
+        val disabledPackages = getDisabledPackagesForUser(userId)
+        return !disabledPackages.contains(packageName)
+    }
+
+    /**
+     * Clear the disabled packages cache.
+     * Should be called when package state might have changed.
+     */
+    fun clearDisabledPackagesCache() {
+        disabledPackagesCache.clear()
+        AppLogger.d(TAG, "Cleared disabled packages cache")
     }
 
     /**
@@ -497,12 +570,16 @@ object HiddenApiHelper {
             // Determine if it's a system app
             val isSystem = flagsMatch?.groupValues?.get(1)?.contains("SYSTEM") == true
 
+            // Query the enabled state for this specific user
+            val isEnabled = isPackageEnabledForUser(packageName, userId)
+
             // Create ApplicationInfo
             ApplicationInfo().apply {
                 this.packageName = packageName
                 this.uid = absoluteUid
                 this.sourceDir = codePath ?: "/data/app/$packageName"
                 this.flags = if (isSystem) ApplicationInfo.FLAG_SYSTEM else 0
+                this.enabled = isEnabled
 
                 // Try to get the label from the personal profile version
                 try {

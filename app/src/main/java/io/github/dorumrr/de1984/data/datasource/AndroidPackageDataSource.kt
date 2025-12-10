@@ -97,6 +97,9 @@ class AndroidPackageDataSource(
         val flowStartTime = System.currentTimeMillis()
         AppLogger.i(TAG, "⏱️ TIMING: getPackages START at $flowStartTime")
         try {
+            // Clear disabled packages cache to ensure fresh enabled state for work profiles
+            HiddenApiHelper.clearDisabledPackagesCache()
+
             // Get all user profiles (personal, work, clone, etc.)
             val getUsersStart = System.currentTimeMillis()
             val userProfiles = HiddenApiHelper.getUsers(context)
@@ -445,6 +448,8 @@ class AndroidPackageDataSource(
 
                         val (exitCode, _) = shizukuManager.executeShellCommand(command)
                         if (exitCode == 0) {
+                            // Clear cache since package state changed
+                            HiddenApiHelper.clearDisabledPackagesCache()
                             return@withContext true
                         }
                     } catch (e: Exception) {
@@ -472,6 +477,8 @@ class AndroidPackageDataSource(
                 process.destroy()
 
                 if (exitCode == 0) {
+                    // Clear cache since package state changed
+                    HiddenApiHelper.clearDisabledPackagesCache()
                     return@withContext true
                 }
             } catch (e: Exception) {

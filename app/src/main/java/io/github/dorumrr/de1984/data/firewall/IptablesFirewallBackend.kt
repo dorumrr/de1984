@@ -332,26 +332,14 @@ class IptablesFirewallBackend(
                 AppLogger.d(TAG, "🔥 [TIMING] UIDs to REMOVE (unblock): $uidsToRemove")
             }
 
-            // Remove rules that are no longer needed
-            val unblockStartTime = System.currentTimeMillis()
-            for (uid in uidsToRemove) {
-                unblockApp(uid).getOrElse { error ->
-                    AppLogger.w(TAG, "Failed to unblock UID $uid: ${error.message}")
+            // Apply block/unblock rules in a single batched shell command for performance
+            // This dramatically reduces execution time by avoiding per-UID shell overhead
+            val ruleStartTime = System.currentTimeMillis()
+            if (uidsToRemove.isNotEmpty() || uidsToAdd.isNotEmpty()) {
+                applyRulesBatch(uidsToAdd, uidsToRemove).getOrElse { error ->
+                    AppLogger.w(TAG, "Failed to apply batched rules: ${error.message}")
                 }
-            }
-            if (uidsToRemove.isNotEmpty()) {
-                AppLogger.d(TAG, "🔥 [TIMING] Unblock ${uidsToRemove.size} UIDs took ${System.currentTimeMillis() - unblockStartTime}ms")
-            }
-
-            // Add new rules
-            val blockStartTime = System.currentTimeMillis()
-            for (uid in uidsToAdd) {
-                blockApp(uid).getOrElse { error ->
-                    AppLogger.w(TAG, "Failed to block UID $uid: ${error.message}")
-                }
-            }
-            if (uidsToAdd.isNotEmpty()) {
-                AppLogger.d(TAG, "🔥 [TIMING] Block ${uidsToAdd.size} UIDs took ${System.currentTimeMillis() - blockStartTime}ms")
+                AppLogger.d(TAG, "🔥 [TIMING] Batched rules (unblock=${uidsToRemove.size}, block=${uidsToAdd.size}) took ${System.currentTimeMillis() - ruleStartTime}ms")
             }
 
             // =============================================================================================
@@ -387,18 +375,13 @@ class IptablesFirewallBackend(
 
             AppLogger.d(TAG, "LAN blocking diff: add=${uidsToAddLan.size}, remove=${uidsToRemoveLan.size}, keep=${blockedLanUids.intersect(uidsToBlockLan).size}")
 
-            // Remove LAN rules that are no longer needed
-            for (uid in uidsToRemoveLan) {
-                unblockAppLan(uid).getOrElse { error ->
-                    AppLogger.w(TAG, "Failed to unblock LAN for UID $uid: ${error.message}")
+            // Apply LAN block/unblock rules in a single batched shell command
+            val lanStartTime = System.currentTimeMillis()
+            if (uidsToRemoveLan.isNotEmpty() || uidsToAddLan.isNotEmpty()) {
+                applyLanRulesBatch(uidsToAddLan, uidsToRemoveLan).getOrElse { error ->
+                    AppLogger.w(TAG, "Failed to apply batched LAN rules: ${error.message}")
                 }
-            }
-
-            // Add new LAN rules
-            for (uid in uidsToAddLan) {
-                blockAppLan(uid).getOrElse { error ->
-                    AppLogger.w(TAG, "Failed to block LAN for UID $uid: ${error.message}")
-                }
+                AppLogger.d(TAG, "🔥 [TIMING] Batched LAN rules (unblock=${uidsToRemoveLan.size}, block=${uidsToAddLan.size}) took ${System.currentTimeMillis() - lanStartTime}ms")
             }
 
             AppLogger.d(TAG, "🔥 [TIMING] IptablesBackend.applyRules COMPLETE: total=${System.currentTimeMillis() - startTime}ms")
@@ -720,6 +703,108 @@ class IptablesFirewallBackend(
         }
     }
     
+    /**
+     * Apply block/unblock rules in a single batched shell command for performance.
+     * Dramatically reduces execution time by avoiding per-UID shell overhead.
+     *
+     * CRITICAL: Runs in NonCancellable context to prevent interruption.
+     */
+    private suspend fun applyRulesBatch(
+        uidsToBlock: Set<Int>,
+        uidsToUnblock: Set<Int>
+    ): Result<Unit> = withContext(NonCancellable) {
+        return@withContext try {
+            val script = StringBuilder()
+
+            // Unblock commands first (delete rules that are no longer needed)
+            for (uid in uidsToUnblock) {
+                script.appendLine("$IPTABLES -D $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null || true")
+                script.appendLine("$IP6TABLES -D $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null || true")
+            }
+
+            // Block commands (add new rules)
+            for (uid in uidsToBlock) {
+                script.appendLine("$IPTABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP")
+                script.appendLine("$IP6TABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -j DROP")
+            }
+
+            if (script.isNotEmpty()) {
+                val (exitCode, output) = executeCommand(script.toString())
+                if (exitCode != 0) {
+                    AppLogger.w(TAG, "Batch rule script returned non-zero: exitCode=$exitCode, output=$output")
+                    // Don't fail - some delete commands may fail if rule doesn't exist, that's OK
+                }
+            }
+
+            // Update tracking sets
+            blockedUids.removeAll(uidsToUnblock)
+            blockedUids.addAll(uidsToBlock)
+
+            AppLogger.d(TAG, "✅ Batched rules applied: blocked=${uidsToBlock.size}, unblocked=${uidsToUnblock.size}")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to apply batched rules", e)
+            val error = errorHandler.handleError(e, "apply batched iptables rules")
+            Result.failure(error)
+        }
+    }
+
+    /**
+     * Apply LAN block/unblock rules in a single batched shell command for performance.
+     *
+     * CRITICAL: Runs in NonCancellable context to prevent interruption.
+     */
+    private suspend fun applyLanRulesBatch(
+        uidsToBlock: Set<Int>,
+        uidsToUnblock: Set<Int>
+    ): Result<Unit> = withContext(NonCancellable) {
+        return@withContext try {
+            val script = StringBuilder()
+
+            // IPv4 and IPv6 private ranges for LAN blocking
+            val ipv4Ranges = listOf("192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12")
+            val ipv6Ranges = listOf("fc00::/7", "fe80::/10")
+
+            // Unblock LAN commands first (delete rules)
+            for (uid in uidsToUnblock) {
+                for (range in ipv4Ranges) {
+                    script.appendLine("$IPTABLES -D $CHAIN_OUTPUT -m owner --uid-owner $uid -d $range -j DROP 2>/dev/null || true")
+                }
+                for (range in ipv6Ranges) {
+                    script.appendLine("$IP6TABLES -D $CHAIN_OUTPUT -m owner --uid-owner $uid -d $range -j DROP 2>/dev/null || true")
+                }
+            }
+
+            // Block LAN commands (add new rules)
+            for (uid in uidsToBlock) {
+                for (range in ipv4Ranges) {
+                    script.appendLine("$IPTABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -d $range -j DROP")
+                }
+                for (range in ipv6Ranges) {
+                    script.appendLine("$IP6TABLES -A $CHAIN_OUTPUT -m owner --uid-owner $uid -d $range -j DROP")
+                }
+            }
+
+            if (script.isNotEmpty()) {
+                val (exitCode, output) = executeCommand(script.toString())
+                if (exitCode != 0) {
+                    AppLogger.w(TAG, "Batch LAN rule script returned non-zero: exitCode=$exitCode, output=$output")
+                }
+            }
+
+            // Update tracking sets
+            blockedLanUids.removeAll(uidsToUnblock)
+            blockedLanUids.addAll(uidsToBlock)
+
+            AppLogger.d(TAG, "✅ Batched LAN rules applied: blocked=${uidsToBlock.size}, unblocked=${uidsToUnblock.size}")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to apply batched LAN rules", e)
+            val error = errorHandler.handleError(e, "apply batched LAN iptables rules")
+            Result.failure(error)
+        }
+    }
+
     /**
      * Execute command using root or Shizuku.
      */

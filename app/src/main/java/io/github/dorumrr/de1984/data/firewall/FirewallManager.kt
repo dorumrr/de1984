@@ -204,7 +204,7 @@ class FirewallManager(
                         _activeBackendType.value = FirewallBackendType.IPTABLES
                         _firewallState.value = FirewallState.Running(FirewallBackendType.IPTABLES)
                         emitStateChangeBroadcast(_firewallState.value)
-                        startMonitoring()
+                        // Note: iptables backend uses PrivilegedFirewallService for monitoring, so don't call startMonitoring() here
                         startBackendHealthMonitoring()
                         return@launch
                     }
@@ -554,10 +554,10 @@ class FirewallManager(
             _isFirewallDown.value = false
             dismissBackendFailedNotification()
 
-            // Start monitoring for iptables, ConnectivityManager, and NetworkPolicyManager backends
-            // (VPN backend monitors internally)
-            if (newBackendType == FirewallBackendType.IPTABLES ||
-                newBackendType == FirewallBackendType.CONNECTIVITY_MANAGER ||
+            // Start monitoring for ConnectivityManager and NetworkPolicyManager backends only
+            // - VPN backend monitors internally via VpnService
+            // - Iptables backend monitors via PrivilegedFirewallService (avoid duplicate monitoring)
+            if (newBackendType == FirewallBackendType.CONNECTIVITY_MANAGER ||
                 newBackendType == FirewallBackendType.NETWORK_POLICY_MANAGER) {
                 startMonitoring()
             }

@@ -2232,9 +2232,11 @@ class FirewallManager(
                 AppLogger.d(TAG, "Privilege loss: planner suggests backend change $currentBackendType → $plannedBackendType, restarting firewall with fallback backend...")
             }
 
-            // CRITICAL: Stop current backend FIRST to avoid mutex deadlock
-            // If we don't stop the old backend first, startFirewall() will hang waiting for the mutex
-            // because the old backend's service might be holding it (health check, rule application, etc.)
+            // NOTE: We stop the current backend before calling startFirewall() so that
+            // startFirewall() sees no existing backend and performs a fresh start rather than
+            // an atomic switch. This creates a brief security gap (~1-2s) where apps are
+            // unprotected. A future improvement could refactor this to use atomic switching
+            // (start new backend first, then stop old) as documented in FIREWALL.md.
             if (currentBackend != null) {
                 AppLogger.d(TAG, "Stopping current backend ($currentBackendType) before switching to $plannedBackendType...")
                 stopMonitoring() // Stop health monitoring

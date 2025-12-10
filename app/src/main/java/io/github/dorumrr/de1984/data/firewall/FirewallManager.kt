@@ -420,7 +420,7 @@ class FirewallManager(
             // skip all work and return success immediately. This prevents redundant broadcasts and widget
             // updates when multiple concurrent paths (initializeBackendState, startPrivilegeMonitoring,
             // checkBackendShouldSwitch) all trigger startFirewall() during startup.
-            if (oldBackendType == plan.selectedBackendType && oldBackend != null && oldBackend.isActive()) {
+            if (oldBackend != null && oldBackendType == plan.selectedBackendType && oldBackend.isActive()) {
                 AppLogger.d(TAG, "startFirewall: Backend $oldBackendType is already running and active - skipping redundant start")
                 return Result.success(oldBackendType)
             }

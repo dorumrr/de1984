@@ -244,6 +244,10 @@ class MainActivity : AppCompatActivity() {
 
         AppLogger.d(TAG, "📱 MAINACTIVITY RESUMED - CHECKING PRIVILEGES")
 
+        // Clear disabled packages cache to detect external package state changes
+        // This is critical for work profile apps where enabled/disabled state can change externally
+        io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.clearDisabledPackagesCache()
+
         // Re-check privileges when app comes to foreground
         // This ensures we detect newly available Shizuku/root and request permissions
         // Force re-check even if previously had permission to detect privilege restoration

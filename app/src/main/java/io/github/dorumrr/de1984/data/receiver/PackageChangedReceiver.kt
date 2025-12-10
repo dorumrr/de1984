@@ -57,6 +57,10 @@ class PackageChangedReceiver : BroadcastReceiver() {
 
             AppLogger.i(TAG, "📦 Package changed externally: $packageName (userId=$userId) - triggering refresh")
 
+            // Clear disabled packages cache to ensure fresh enabled/disabled state
+            // This is critical for work profile apps where enabled state can change externally
+            io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.clearDisabledPackagesCache()
+
             // Notify observers that package data changed
             val app = context.applicationContext as De1984Application
             app.dependencies.notifyPackageDataChanged()

@@ -416,6 +416,15 @@ class FirewallManager(
             val wasGranular = oldBackend?.supportsGranularControl() ?: false
             val oldBackendType = oldBackend?.getType()
 
+            // EARLY EXIT: If the planned backend is the same as the current backend AND it's already active,
+            // skip all work and return success immediately. This prevents redundant broadcasts and widget
+            // updates when multiple concurrent paths (initializeBackendState, startPrivilegeMonitoring,
+            // checkBackendShouldSwitch) all trigger startFirewall() during startup.
+            if (oldBackendType == plan.selectedBackendType && oldBackend != null && oldBackend.isActive()) {
+                AppLogger.d(TAG, "startFirewall: Backend $oldBackendType is already running and active - skipping redundant start")
+                return Result.success(oldBackendType)
+            }
+
             // We are about to attempt a backend start/switch
             _firewallState.value = FirewallState.Starting(oldBackendType)
             emitStateChangeBroadcast(_firewallState.value)

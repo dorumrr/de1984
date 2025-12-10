@@ -97,8 +97,9 @@ class AndroidPackageDataSource(
         val flowStartTime = System.currentTimeMillis()
         AppLogger.i(TAG, "⏱️ TIMING: getPackages START at $flowStartTime")
         try {
-            // Clear disabled packages cache to ensure fresh enabled state for work profiles
+            // Clear caches to ensure fresh data for work profiles
             HiddenApiHelper.clearDisabledPackagesCache()
+            HiddenApiHelper.clearInstalledAppsCache()
 
             // Get all user profiles (personal, work, clone, etc.)
             val getUsersStart = System.currentTimeMillis()

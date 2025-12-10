@@ -31,6 +31,14 @@ object HiddenApiHelper {
     @Volatile
     private var usersCacheTime: Long = 0
     private const val USERS_CACHE_TTL = 30_000L // 30 seconds
+
+    // Installed apps caching to avoid repeated expensive shell/API calls
+    // This is critical for performance - applyRules() calls getInstalledApplicationsAsUser() multiple times
+    @Volatile
+    private var installedAppsCache: MutableMap<Int, List<ApplicationInfo>> = mutableMapOf()
+    @Volatile
+    private var installedAppsCacheTime: Long = 0
+    private const val INSTALLED_APPS_CACHE_TTL = 5_000L // 5 seconds - short TTL to handle app installs/uninstalls
     
     /**
      * Data class representing a user profile
@@ -264,6 +272,9 @@ object HiddenApiHelper {
      * 2. Hidden API getInstalledApplicationsAsUser()
      * 3. Root shell: pm list packages --user X (fast, creates synthetic ApplicationInfo)
      *
+     * Results are cached for 5 seconds to avoid repeated expensive shell/API calls.
+     * This is critical for performance - applyRules() calls this multiple times per rule application.
+     *
      * Falls back to empty list if all methods fail.
      */
     fun getInstalledApplicationsAsUser(
@@ -273,9 +284,18 @@ object HiddenApiHelper {
     ): List<ApplicationInfo> {
         if (!initialized) initialize()
 
-        // For user 0, always use standard API (most reliable)
+        // For user 0, always use standard API (most reliable) - no caching needed as it's fast
         if (userId == 0) {
             return context.packageManager.getInstalledApplications(flags)
+        }
+
+        // Check cache first for non-zero users (work profiles, clone profiles)
+        val now = System.currentTimeMillis()
+        if (now - installedAppsCacheTime < INSTALLED_APPS_CACHE_TTL) {
+            installedAppsCache[userId]?.let { cached ->
+                AppLogger.d(TAG, "📦 Returning cached ${cached.size} apps for user $userId")
+                return cached
+            }
         }
 
         // Strategy 1: Try hidden API first
@@ -292,6 +312,7 @@ object HiddenApiHelper {
                 val apps = method.invoke(pm, flags, userId) as? List<ApplicationInfo>
                 if (!apps.isNullOrEmpty()) {
                     AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via hidden API")
+                    cacheInstalledApps(userId, apps)
                     return apps
                 }
             } catch (e: Exception) {
@@ -310,6 +331,7 @@ object HiddenApiHelper {
                 }
                 if (apps.isNotEmpty()) {
                     AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via shell (synthetic)")
+                    cacheInstalledApps(userId, apps)
                     return apps
                 }
             }
@@ -319,6 +341,24 @@ object HiddenApiHelper {
 
         AppLogger.w(TAG, "⚠️ Could not get apps for user $userId - all methods failed")
         return emptyList()
+    }
+
+    /**
+     * Cache installed apps for a user and update the cache timestamp.
+     */
+    private fun cacheInstalledApps(userId: Int, apps: List<ApplicationInfo>) {
+        installedAppsCache[userId] = apps
+        installedAppsCacheTime = System.currentTimeMillis()
+    }
+
+    /**
+     * Clear the installed apps cache.
+     * Should be called when apps are installed/uninstalled or when a fresh list is needed.
+     */
+    fun clearInstalledAppsCache() {
+        installedAppsCache.clear()
+        installedAppsCacheTime = 0
+        AppLogger.d(TAG, "Cleared installed apps cache")
     }
 
     /**

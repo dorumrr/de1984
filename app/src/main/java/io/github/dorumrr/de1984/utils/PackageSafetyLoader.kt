@@ -15,7 +15,9 @@ import kotlinx.serialization.json.Json
 object PackageSafetyLoader {
     private const val TAG = "PackageSafetyLoader"
     private const val SAFETY_DATA_FILE = "package_safety_levels.json"
-    
+
+    // @Volatile ensures visibility across threads for the double-check idiom
+    @Volatile
     private var cachedData: PackageSafetyData? = null
     private val loadMutex = Mutex()
     private val json = Json { 

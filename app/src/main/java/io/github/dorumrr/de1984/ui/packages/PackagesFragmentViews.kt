@@ -39,7 +39,9 @@ import io.github.dorumrr.de1984.utils.PackageUtils
 import io.github.dorumrr.de1984.utils.copyToClipboard
 import io.github.dorumrr.de1984.utils.openAppSettings
 import io.github.dorumrr.de1984.utils.setOnClickListenerDebounced
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.core.widget.addTextChangedListener
 import io.github.dorumrr.de1984.data.common.RootStatus
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
@@ -760,23 +762,30 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             }
         }
 
-        // Set app info
+        // Set app info with async icon loading (prevents UI freeze for work profile apps)
+        binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon) // Placeholder
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
+
+        // Load icon asynchronously to prevent blocking main thread
+        // Work profile apps require slow shell commands via HiddenApiHelper
+        // IMPORTANT: Capture context BEFORE entering coroutine to avoid IllegalStateException
+        val context = requireContext()
+        lifecycleScope.launch {
+            val icon = withContext(Dispatchers.IO) {
+                PackageUtils.getPackageIcon(context, pkg.packageName, pkg.userId)
+            }
+            // Update icon if dialog is still showing and fragment is attached
+            if (dialog.isShowing && isAdded) {
+                icon?.let { binding.actionSheetAppIcon.setImageDrawable(it) }
+            }
+        }
 
         // ============================================================================
         // Click package name to copy to clipboard
         // ============================================================================
         binding.actionSheetPackageName.setOnClickListenerDebounced {
             requireContext().copyToClipboard(pkg.packageName, getString(io.github.dorumrr.de1984.R.string.action_sheet_package_name_label))
-        }
-
-        // Pass userId for multi-user support
-        val realIcon = PackageUtils.getPackageIcon(requireContext(), pkg.packageName, pkg.userId)
-        if (realIcon != null) {
-            binding.actionSheetAppIcon.setImageDrawable(realIcon)
-        } else {
-            binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
         }
 
         // ============================================================================

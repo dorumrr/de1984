@@ -41,7 +41,9 @@ import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.copyToClipboard
 import io.github.dorumrr.de1984.utils.openAppSettings
 import io.github.dorumrr.de1984.utils.setOnClickListenerDebounced
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Firewall Fragment using XML Views
@@ -754,23 +756,36 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val telephonyManager = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
         val hasCellular = telephonyManager?.phoneType != TelephonyManager.PHONE_TYPE_NONE
 
-        // Setup header (use HiddenApiHelper for multi-user support)
-        try {
-            val pm = requireContext().packageManager
-            val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
-                requireContext(), pkg.packageName, 0, pkg.userId
-            )
-            if (appInfo != null) {
-                val icon = pm.getApplicationIcon(appInfo)
-                binding.actionSheetAppIcon.setImageDrawable(icon)
-            } else {
-                binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
-            }
-        } catch (e: Exception) {
-            binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
-        }
+        // Setup header with async icon loading (prevents UI freeze for work profile apps)
+        binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon) // Placeholder
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
+
+        // Load icon asynchronously to prevent blocking main thread
+        // Work profile apps require slow shell commands via HiddenApiHelper
+        // IMPORTANT: Capture context BEFORE entering coroutine to avoid IllegalStateException
+        val context = requireContext()
+        lifecycleScope.launch {
+            val icon = withContext(Dispatchers.IO) {
+                try {
+                    val pm = context.packageManager
+                    val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                        context, pkg.packageName, 0, pkg.userId
+                    )
+                    if (appInfo != null) {
+                        pm.getApplicationIcon(appInfo)
+                    } else {
+                        null
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            // Update icon if dialog is still showing and fragment is attached
+            if (dialog.isShowing && isAdded) {
+                icon?.let { binding.actionSheetAppIcon.setImageDrawable(it) }
+            }
+        }
 
         // ============================================================================
         // Click package name to copy to clipboard
@@ -1086,23 +1101,36 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private fun showSimpleControlSheet(dialog: BottomSheetDialog, pkg: NetworkPackage) {
         val binding = BottomSheetPackageActionSimpleBinding.inflate(layoutInflater)
 
-        // Setup header (use HiddenApiHelper for multi-user support)
-        try {
-            val pm = requireContext().packageManager
-            val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
-                requireContext(), pkg.packageName, 0, pkg.userId
-            )
-            if (appInfo != null) {
-                val icon = pm.getApplicationIcon(appInfo)
-                binding.actionSheetAppIcon.setImageDrawable(icon)
-            } else {
-                binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
-            }
-        } catch (e: Exception) {
-            binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon)
-        }
+        // Setup header with async icon loading (prevents UI freeze for work profile apps)
+        binding.actionSheetAppIcon.setImageResource(R.drawable.de1984_icon) // Placeholder
         binding.actionSheetAppName.text = pkg.name
         binding.actionSheetPackageName.text = pkg.packageName
+
+        // Load icon asynchronously to prevent blocking main thread
+        // Work profile apps require slow shell commands via HiddenApiHelper
+        // IMPORTANT: Capture context BEFORE entering coroutine to avoid IllegalStateException
+        val context = requireContext()
+        lifecycleScope.launch {
+            val icon = withContext(Dispatchers.IO) {
+                try {
+                    val pm = context.packageManager
+                    val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
+                        context, pkg.packageName, 0, pkg.userId
+                    )
+                    if (appInfo != null) {
+                        pm.getApplicationIcon(appInfo)
+                    } else {
+                        null
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            // Update icon if dialog is still showing and fragment is attached
+            if (dialog.isShowing && isAdded) {
+                icon?.let { binding.actionSheetAppIcon.setImageDrawable(it) }
+            }
+        }
 
         // ============================================================================
         // Click package name to copy to clipboard

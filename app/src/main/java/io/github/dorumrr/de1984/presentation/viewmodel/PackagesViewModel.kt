@@ -108,11 +108,11 @@ class PackagesViewModel(
             return
         }
 
-        // Clear packages and update filter state immediately
+        // Set loading state but keep existing packages visible to preserve scroll position
+        // DiffUtil will handle smooth transition when new data arrives
         _uiState.value = _uiState.value.copy(
             isLoadingData = true,
             isRenderingUI = false,
-            packages = emptyList(),
             filterState = filterState
         )
 

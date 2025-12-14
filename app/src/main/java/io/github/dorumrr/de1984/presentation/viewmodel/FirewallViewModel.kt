@@ -157,11 +157,11 @@ class FirewallViewModel(
             return
         }
 
-        // Clear packages AND update filter state immediately to prevent showing stale data
+        // Set loading state but keep existing packages visible to preserve scroll position
+        // DiffUtil will handle smooth transition when new data arrives
         _uiState.value = _uiState.value.copy(
             isLoadingData = true,
             isRenderingUI = false,
-            packages = emptyList(),
             filterState = filterState  // Update filter immediately!
         )
 

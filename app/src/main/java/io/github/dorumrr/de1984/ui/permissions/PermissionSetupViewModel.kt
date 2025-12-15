@@ -48,7 +48,9 @@ class PermissionSetupViewModel constructor(
                 hasAdvancedPermissions = permissionManager.hasRootAccess() || permissionManager.hasShizukuAccess() || permissionManager.hasSystemPermissions(),
                 hasBatteryOptimizationExemption = permissionManager.isBatteryOptimizationDisabled(),
                 // When using privileged backend, VPN permission is not required
-                hasVpnPermission = isUsingPrivilegedBackend || permissionManager.hasVpnPermission(null, null),
+                // Pass firewallManager to enable safety guard that prevents calling VpnService.prepare()
+                // when another VPN is active (fixes Issue #69 - other VPN apps stopped upon entering De1984)
+                hasVpnPermission = isUsingPrivilegedBackend || permissionManager.hasVpnPermission(currentBackendType, firewallManager),
                 isUsingPrivilegedBackend = isUsingPrivilegedBackend,
                 basicPermissions = basicPermissions,
                 enhancedPermissions = emptyList(),
@@ -136,8 +138,10 @@ class PermissionSetupViewModel constructor(
 
     private fun getVpnPermissionInfo(isUsingPrivilegedBackend: Boolean): List<PermissionInfo> {
         // When using privileged backend, VPN permission is not required - show as granted/not needed
-        // Otherwise, check actual VPN permission status (without safety guards for display only)
-        val hasVpn = isUsingPrivilegedBackend || permissionManager.hasVpnPermission(null, null)
+        // Pass firewallManager to enable safety guard that prevents calling VpnService.prepare()
+        // when another VPN is active (fixes Issue #69 - other VPN apps stopped upon entering De1984)
+        val currentBackendType = firewallManager?.getActiveBackendType()
+        val hasVpn = isUsingPrivilegedBackend || permissionManager.hasVpnPermission(currentBackendType, firewallManager)
         return listOf(
             PermissionInfo(
                 permission = "android.permission.BIND_VPN_SERVICE",

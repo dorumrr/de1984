@@ -260,9 +260,14 @@ class MainActivity : AppCompatActivity() {
             deps.shizukuManager.checkShizukuStatus()
 
             // If Shizuku is available but permission not granted, request it
+            // BUT: Skip if user already denied to prevent prompt spam (Issue #68)
             if (deps.shizukuManager.isShizukuAvailable() && !deps.shizukuManager.hasShizukuPermission) {
-                AppLogger.d(TAG, "Shizuku available but permission not granted - requesting permission")
-                deps.shizukuManager.requestShizukuPermission()
+                if (deps.shizukuManager.hasUserDeniedPermission) {
+                    AppLogger.d(TAG, "Shizuku available but user previously denied - skipping auto-request to prevent spam")
+                } else {
+                    AppLogger.d(TAG, "Shizuku available but permission not granted - requesting permission")
+                    deps.shizukuManager.requestShizukuPermission()
+                }
             }
 
             // Force re-check root status to detect privilege restoration

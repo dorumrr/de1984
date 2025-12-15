@@ -1922,10 +1922,12 @@ class FirewallManager(
             }
             
             // Case 1b: We're using privileged backend but mode says VPN
-            // Update mode to AUTO to reflect reality
+            // Issue #68: Do NOT force AUTO mode - respect user's VPN preference
+            // This state is unusual but possible during transitions. User chose VPN
+            // because they want system app blocking. Leave mode as VPN so when the
+            // external VPN disconnects, we can switch back to our VPN backend.
             if (currentMode == FirewallMode.VPN && currentBackendType != null) {
-                AppLogger.i(TAG, "🔐 Mode is VPN but we're using $currentBackendType - updating mode to AUTO")
-                setMode(FirewallMode.AUTO)
+                AppLogger.i(TAG, "🔐 Mode is VPN but we're using $currentBackendType - keeping VPN mode (respecting user preference)")
                 return
             }
             
@@ -1954,28 +1956,41 @@ class FirewallManager(
 
     /**
      * Handle VPN conflict when another VPN app takes over.
-     * Always try to switch to privileged backend if available, regardless of mode.
-     * If successful, update mode to AUTO so UI reflects the change.
+     *
+     * Issue #68: If user explicitly selected VPN mode, DO NOT auto-switch to another backend.
+     * ConnectivityManager doesn't block system apps, so users who chose VPN mode likely
+     * need that capability. Instead, show notification that VPN was lost.
+     *
+     * Only auto-switch if user was in AUTO mode.
      */
     private suspend fun handleVpnConflict(currentMode: FirewallMode) {
         AppLogger.d(TAG, "🔐 Handling VPN conflict in mode: $currentMode")
-        
-        // Always try to find a non-VPN backend, regardless of current mode
-        AppLogger.i(TAG, "🔐 Attempting to switch to privileged backend due to VPN conflict...")
-        
+
+        // Issue #68: If user explicitly chose VPN mode, respect their choice
+        // Don't auto-switch to a backend that may not meet their needs
+        if (currentMode == FirewallMode.VPN) {
+            AppLogger.i(TAG, "🔐 User explicitly selected VPN mode - NOT auto-switching to privileged backend")
+            AppLogger.i(TAG, "🔐 VPN conflict: Another VPN took over - firewall protection LOST (respecting user choice)")
+            handleVpnConflictFallbackFailed()
+            return
+        }
+
+        // AUTO mode: Try to find a non-VPN backend
+        AppLogger.i(TAG, "🔐 AUTO mode: Attempting to switch to privileged backend due to VPN conflict...")
+
         val planResult = computeStartPlan(FirewallMode.AUTO)
         if (planResult.isFailure) {
             AppLogger.e(TAG, "🔐 Failed to compute fallback plan", planResult.exceptionOrNull())
             handleVpnConflictFallbackFailed()
             return
         }
-        
+
         val plan = planResult.getOrThrow()
-        
+
         // Check if there's a non-VPN backend available
         if (plan.selectedBackendType != FirewallBackendType.VPN) {
             AppLogger.i(TAG, "🔐 Switching to ${plan.selectedBackendType} backend due to VPN conflict")
-            
+
             // Stop the current (dead) VPN backend first
             if (currentBackend != null) {
                 AppLogger.d(TAG, "🔐 Stopping current VPN backend before switching...")
@@ -1986,16 +2001,10 @@ class FirewallManager(
                 currentBackend = null
                 _activeBackendType.value = null
             }
-            
-            // Update mode to AUTO so UI dropdown reflects the change
-            if (currentMode != FirewallMode.AUTO) {
-                AppLogger.i(TAG, "🔐 Switching mode from $currentMode to AUTO due to VPN conflict")
-                setMode(FirewallMode.AUTO)
-            }
-            
-            // Start firewall with new backend
+
+            // Start firewall with new backend (keep mode as AUTO since that's what it was)
             val restartResult = startFirewall(FirewallMode.AUTO)
-            
+
             if (restartResult.isSuccess) {
                 val newBackend = restartResult.getOrThrow()
                 AppLogger.i(TAG, "🔐 ✅ Successfully switched to $newBackend due to VPN conflict")

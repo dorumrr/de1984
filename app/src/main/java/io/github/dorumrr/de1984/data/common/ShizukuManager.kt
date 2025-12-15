@@ -55,6 +55,28 @@ class ShizukuManager(private val context: Context) {
     val hasShizukuPermission: Boolean
         get() = _shizukuStatus.value == ShizukuStatus.RUNNING_WITH_PERMISSION
 
+    // Track if user explicitly denied permission to avoid prompt spam (Issue #68)
+    // This is reset when Shizuku restarts (binder received) to allow retry
+    @Volatile
+    private var userExplicitlyDeniedPermission = false
+
+    /**
+     * Check if user has explicitly denied Shizuku permission.
+     * When true, auto-requesting should be skipped to avoid prompt spam.
+     * User can still request manually via Settings.
+     */
+    val hasUserDeniedPermission: Boolean
+        get() = userExplicitlyDeniedPermission
+
+    /**
+     * Reset the denial flag to allow re-requesting permission.
+     * Called from Settings when user explicitly wants to retry.
+     */
+    fun resetPermissionDenial() {
+        AppLogger.d(TAG, "🔄 Resetting permission denial flag - user can be prompted again")
+        userExplicitlyDeniedPermission = false
+    }
+
     // Binder death listener - detects when Shizuku service dies
     private val binderDeathRecipient = IBinder.DeathRecipient {
         // Shizuku service died, update status
@@ -69,10 +91,15 @@ class ShizukuManager(private val context: Context) {
                 AppLogger.d(TAG, "✅ Shizuku permission GRANTED - updating status to RUNNING_WITH_PERMISSION")
                 AppLogger.d(TAG, "✅ hasShizukuPermission will now return TRUE")
                 _shizukuStatus.value = ShizukuStatus.RUNNING_WITH_PERMISSION
+                // Clear denial flag on successful grant
+                userExplicitlyDeniedPermission = false
             } else {
                 AppLogger.d(TAG, "❌ Shizuku permission DENIED - updating status to RUNNING_NO_PERMISSION")
                 AppLogger.d(TAG, "❌ hasShizukuPermission will now return FALSE")
+                AppLogger.d(TAG, "❌ Setting userExplicitlyDeniedPermission=true to prevent prompt spam")
                 _shizukuStatus.value = ShizukuStatus.RUNNING_NO_PERMISSION
+                // Track denial to prevent auto-requesting again (Issue #68)
+                userExplicitlyDeniedPermission = true
             }
         }
     }
@@ -81,6 +108,12 @@ class ShizukuManager(private val context: Context) {
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
         // Shizuku binder received, check status
         AppLogger.d(TAG, "🔧 SYSTEM EVENT: Shizuku binder received (Shizuku started)")
+
+        // Reset denial flag when Shizuku restarts - user may want to grant permission now (Issue #68)
+        if (userExplicitlyDeniedPermission) {
+            AppLogger.d(TAG, "🔄 Shizuku restarted - resetting permission denial flag to allow new prompt")
+            userExplicitlyDeniedPermission = false
+        }
 
         // Per @embeddedtofu suggestion, re-check SUI availability on reconnection
         // This handles the case where SUI module was enabled/disabled since app start

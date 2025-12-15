@@ -180,13 +180,21 @@ class SettingsViewModel(
             shizukuManager.checkShizukuStatus()
 
             val status = shizukuManager.shizukuStatus.value
-            if (status == ShizukuStatus.RUNNING_NO_PERMISSION) {
+            // Skip if user already denied to prevent prompt spam (Issue #68)
+            // This is called from init{}, so only auto-request if user hasn't denied
+            if (status == ShizukuStatus.RUNNING_NO_PERMISSION && !shizukuManager.hasUserDeniedPermission) {
                 shizukuManager.requestShizukuPermission()
             }
         }
     }
 
+    /**
+     * Explicitly grant Shizuku permission - called from Settings UI.
+     * This resets the denial flag to allow re-prompting.
+     */
     fun grantShizukuPermission() {
+        // Reset denial flag - user explicitly wants to try again
+        shizukuManager.resetPermissionDenial()
         shizukuManager.requestShizukuPermission()
     }
 

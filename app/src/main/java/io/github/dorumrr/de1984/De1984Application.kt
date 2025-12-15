@@ -58,6 +58,9 @@ class De1984Application : Application() {
         // Register Shizuku listeners for lifecycle monitoring
         dependencies.shizukuManager.registerListeners()
 
+        // Set ShizukuManager reference for HiddenApiHelper (Issue #68 - work profile with Shizuku)
+        HiddenApiHelper.setShizukuManager(dependencies.shizukuManager)
+
         // Ensure system-recommended apps have proper rules (Issue #66 - GMS notifications)
         ensureSystemRecommendedRules()
 

@@ -7,7 +7,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.UserHandle
 import com.topjohnwu.superuser.Shell
+import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.utils.AppLogger
+import kotlinx.coroutines.runBlocking
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 
 /**
@@ -21,10 +23,24 @@ import org.lsposed.hiddenapibypass.HiddenApiBypass
  */
 object HiddenApiHelper {
     private const val TAG = "HiddenApiHelper"
-    
+
     private var initialized = false
     private var hiddenApiAvailable = false
-    
+
+    // Shizuku manager reference for shell command fallback (Issue #68)
+    // Set via setShizukuManager() from De1984Application after dependencies are created
+    @Volatile
+    private var shizukuManager: ShizukuManager? = null
+
+    /**
+     * Set the ShizukuManager reference for Shizuku shell fallback.
+     * Must be called after dependencies are initialized in De1984Application.
+     */
+    fun setShizukuManager(manager: ShizukuManager) {
+        shizukuManager = manager
+        AppLogger.d(TAG, "ShizukuManager reference set for work profile shell fallback")
+    }
+
     // User profile caching to avoid repeated expensive reflection calls
     @Volatile
     private var cachedUsers: List<UserProfile>? = null
@@ -330,13 +346,31 @@ object HiddenApiHelper {
                     createSyntheticApplicationInfo(context, packageName, userId)
                 }
                 if (apps.isNotEmpty()) {
-                    AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via shell (synthetic)")
+                    AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via root shell (synthetic)")
                     cacheInstalledApps(userId, apps)
                     return apps
                 }
             }
         } catch (e: Exception) {
-            AppLogger.d(TAG, "Shell method failed for user $userId: ${e.message}")
+            AppLogger.d(TAG, "Root shell method failed for user $userId: ${e.message}")
+        }
+
+        // Strategy 3: Use Shizuku shell if available (Issue #68 - work apps not showing with Shizuku)
+        // This fallback enables work profile support when user has Shizuku but not root
+        try {
+            val packageNames = getPackageListViaShizuku(userId)
+            if (packageNames.isNotEmpty()) {
+                val apps = packageNames.mapNotNull { packageName ->
+                    createSyntheticApplicationInfo(context, packageName, userId)
+                }
+                if (apps.isNotEmpty()) {
+                    AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via Shizuku shell (synthetic)")
+                    cacheInstalledApps(userId, apps)
+                    return apps
+                }
+            }
+        } catch (e: Exception) {
+            AppLogger.d(TAG, "Shizuku shell method failed for user $userId: ${e.message}")
         }
 
         AppLogger.w(TAG, "⚠️ Could not get apps for user $userId - all methods failed")
@@ -413,7 +447,7 @@ object HiddenApiHelper {
     }
 
     /**
-     * Get package list for a user via shell command.
+     * Get package list for a user via root shell command.
      * Uses libsu's cached shell to avoid spawning multiple su processes.
      */
     private fun getPackageListViaShell(userId: Int): List<String> {
@@ -432,7 +466,7 @@ object HiddenApiHelper {
                 .exec()
 
             if (!result.isSuccess) {
-                AppLogger.d(TAG, "Shell pm list packages failed for user $userId: exit code ${result.code}")
+                AppLogger.d(TAG, "Root shell pm list packages failed for user $userId: exit code ${result.code}")
                 return emptyList()
             }
 
@@ -442,7 +476,47 @@ object HiddenApiHelper {
                 .map { it.removePrefix("package:").trim() }
                 .filter { it.isNotEmpty() }
         } catch (e: Exception) {
-            AppLogger.d(TAG, "Shell pm list packages failed: ${e.message}")
+            AppLogger.d(TAG, "Root shell pm list packages failed: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Get package list for a user via Shizuku shell command (Issue #68).
+     * Fallback when root is not available but Shizuku is.
+     * This enables work profile support for Shizuku-only users.
+     */
+    private fun getPackageListViaShizuku(userId: Int): List<String> {
+        val manager = shizukuManager
+        if (manager == null) {
+            AppLogger.d(TAG, "ShizukuManager not set - cannot use Shizuku shell for user $userId")
+            return emptyList()
+        }
+
+        if (!manager.hasShizukuPermission) {
+            AppLogger.d(TAG, "No Shizuku permission - cannot use Shizuku shell for user $userId")
+            return emptyList()
+        }
+
+        return try {
+            // Use runBlocking since HiddenApiHelper methods are synchronous
+            // and Shizuku executeShellCommand is suspend
+            val (exitCode, output) = runBlocking {
+                manager.executeShellCommand("pm list packages --user $userId")
+            }
+
+            if (exitCode != 0) {
+                AppLogger.d(TAG, "Shizuku shell pm list packages failed for user $userId: exit code $exitCode")
+                return emptyList()
+            }
+
+            // Parse output: "package:com.example.app" -> "com.example.app"
+            output.lines()
+                .filter { it.startsWith("package:") }
+                .map { it.removePrefix("package:").trim() }
+                .filter { it.isNotEmpty() }
+        } catch (e: Exception) {
+            AppLogger.d(TAG, "Shizuku shell pm list packages failed: ${e.message}")
             emptyList()
         }
     }

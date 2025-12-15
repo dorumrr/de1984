@@ -60,8 +60,11 @@ class PackagesViewModel(
             shizukuManager.checkShizukuStatus()
 
             // If Shizuku is available but permission not granted, request it
+            // BUT: Skip if user already denied to prevent prompt spam (Issue #68)
             if (shizukuManager.isShizukuAvailable() && !shizukuManager.hasShizukuPermission) {
-                shizukuManager.requestShizukuPermission()
+                if (!shizukuManager.hasUserDeniedPermission) {
+                    shizukuManager.requestShizukuPermission()
+                }
             }
 
             // Also check root as fallback

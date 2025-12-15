@@ -1,0 +1,5 @@
+Fixed UI freezing when opening work profile apps and scroll position resetting after firewall changes #61
+Fixed Shizuku prompt spam on deny.
+Fixed Work profile apps not showing with Shizuku.
+Fixed persistence of VPN mode when user specifically selected it and not return to AUTO
+Fixed other VPN apps being stopped when opening De1984 #69

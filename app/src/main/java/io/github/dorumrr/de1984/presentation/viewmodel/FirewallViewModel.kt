@@ -15,10 +15,15 @@ import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.firewall.FirewallManager
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.BlockingContext
+import io.github.dorumrr.de1984.domain.firewall.UidRuleAggregate
+import io.github.dorumrr.de1984.domain.firewall.asEnforcedBy
+import io.github.dorumrr.de1984.domain.firewall.blockingRefused
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.FirewallFilterState
 import io.github.dorumrr.de1984.domain.model.PackageId
 import io.github.dorumrr.de1984.domain.model.PackageType
+import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.domain.usecase.GetNetworkPackagesUseCase
 import io.github.dorumrr.de1984.domain.usecase.ManageNetworkAccessUseCase
 import io.github.dorumrr.de1984.data.firewall.FirewallManager.FirewallState
@@ -36,6 +41,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -47,6 +53,7 @@ class FirewallViewModel(
     private val superuserBannerState: SuperuserBannerState,
     private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager,
     private val firewallManager: FirewallManager,
+    private val firewallRepository: FirewallRepository,
     private val packageDataChanged: SharedFlow<Unit>
 ) : AndroidViewModel(application) {
 
@@ -67,6 +74,18 @@ class FirewallViewModel(
 
     private var cachedPackages: List<NetworkPackage> = emptyList()
 
+    /**
+     * Per uid, the union of what its ENABLED rules block, read from the SAME query the backends
+     * are handed - firewallRepository.getAllRules(), exactly as FirewallManager.applyRules does.
+     *
+     * Not derived from the package list. A rule outlives the package it was written for: uninstall
+     * or disable an app and the row disappears while its rule stays in the table, and the UID
+     * backends group by rulesByUid, so they would still see a rule where a package-derived map saw
+     * none. That mismatch made a row claim "the Block All default does not reach this app" for a
+     * uid the backend was in fact ruling on.
+     */
+    private var cachedUidRules: Map<Int, UidRuleAggregate> = emptyMap()
+
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
 
@@ -82,7 +101,9 @@ class FirewallViewModel(
 
     init {
         loadNetworkPackages()
+        observeRuleUids()
         observeFirewallState()
+        observeActiveBackendType()
         observePackageDataChanges()
         loadDefaultPolicy()
         // NOTE: Privilege monitoring for automatic backend switching is now handled
@@ -122,6 +143,161 @@ class FirewallViewModel(
     private fun saveFirewallState(enabled: Boolean) {
         val prefs = getApplication<Application>().getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, enabled).apply()
+    }
+
+    /**
+     * The Blocked/Allowed chips classify by what the running backend actually enforces, and that
+     * changes with no package emission and no chip tap behind it - the firewall starts or stops, or
+     * a privilege gain swaps the backend. Nothing else re-runs [filterPackages]: its only other
+     * callers are the package flow and [applyFilters], and neither fires on a backend change.
+     *
+     * Without this, turning the firewall on while the Blocked chip is active leaves every platform
+     * uid sitting in a list labelled "Blocked" while its row paints allowed.
+     *
+     * drop(1) skips the value the StateFlow replays on collect - the list was just built with it.
+     * [applyFilters] is deliberately not reused: it re-persists the filter to preferences, and a
+     * backend change is not the user choosing a filter.
+     */
+    /**
+     * Keeps [cachedUidRules] current and republishes when it changes, because a rule written
+     * from anywhere - this screen, a batch, the notification action, another profile - moves a row
+     * out of the NO_RULE_IN_PROTECTED_UID or SIBLING_RULE_OVERRIDES_DEFAULT state.
+     */
+    private fun observeRuleUids() {
+        firewallRepository.getAllRules()
+            .onEach { rules ->
+                // ENABLED rules only, grouped per uid, then the union of what they block - the
+                // exact shape both uid backends enforce. IptablesFirewallBackend.applyRules builds
+                // `rules.filter { it.enabled }.groupBy { it.uid }`, stops applying the Block All
+                // default to a uid the moment that map has an entry for it, and takes
+                // rulesForUid.any{} per network (plus a LAN pass and a screen-off pass). The union
+                // carries every flag so unblockableReason and asEnforcedBy can paint a rule-less
+                // sibling with the block that is REALLY on its uid, partial ones included.
+                val aggregates = rules.filter { it.enabled }
+                    .groupBy { it.uid }
+                    .mapValues { (_, uidRules) ->
+                        UidRuleAggregate(
+                            wifiBlocked = uidRules.any { it.wifiBlocked },
+                            mobileBlocked = uidRules.any { it.mobileBlocked },
+                            roamingBlocked = uidRules.any { it.blockWhenRoaming },
+                            lanBlocked = uidRules.any { it.lanBlocked },
+                            backgroundBlocked = uidRules.any { it.blockWhenBackground },
+                        )
+                    }
+
+                if (aggregates == cachedUidRules) return@onEach
+                cachedUidRules = aggregates
+                if (cachedPackages.isEmpty()) return@onEach
+                val context = computeBlockingContext(cachedPackages)
+                _uiState.value = _uiState.value.copy(
+                    packages = filterPackages(cachedPackages, _uiState.value.filterState, context),
+                    blockingContext = context
+                )
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeActiveBackendType() {
+        firewallManager.activeBackendType
+            .drop(1)
+            .onEach {
+                if (cachedPackages.isEmpty()) return@onEach
+                val context = computeBlockingContext(cachedPackages)
+                _uiState.value = _uiState.value.copy(
+                    packages = filterPackages(cachedPackages, _uiState.value.filterState, context),
+                    blockingContext = context
+                )
+            }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * The pair of facts every backend consults, mirroring
+     * IptablesFirewallBackend.applyRules (:409-423), its isUidExempted (:1266) and
+     * NetworkPolicyManagerFirewallBackend.isUidExempted (:855).
+     *
+     * Costs nothing extra: isSystemCritical is a set lookup, isVpnApp is already on the model - put
+     * there by the same hasVpnService check the backends run - and hasExplicitRule is `rule != null`
+     * from the same query that built the row. Computed from the UNFILTERED list, because a
+     * protected package the current chip hides still exempts its uid.
+     */
+    private fun computeBlockingContext(
+        packages: List<NetworkPackage>,
+        /**
+         * Supplied by [refreshBlockingContext], never read from preferences there.
+         *
+         * SettingsViewModel publishes the new value to its state flow BEFORE writing the
+         * preference, and the firewall screen collects that flow on Dispatchers.Main.immediate - so
+         * the collector runs inside the assignment, one line before the write. Reading the
+         * preference at that moment returns the OLD value and the exemption would flip a beat late,
+         * or not at all if nothing else republished.
+         */
+        allowCriticalOverride: Boolean? = null,
+    ): BlockingContext {
+        val prefs = getApplication<Application>()
+            .getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        val allowCritical = allowCriticalOverride ?: prefs.getBoolean(
+            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
+            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
+        )
+        val blockAllDefault = prefs.getString(
+            Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
+            Constants.Settings.DEFAULT_FIREWALL_POLICY
+        ) == Constants.Settings.POLICY_BLOCK_ALL
+
+        return BlockingContext(
+            criticalOrVpnUids = packages
+                .filter { it.isSystemCritical || it.isVpnApp }
+                .map { it.uid }
+                .toSet(),
+            uidRules = cachedUidRules,
+            allowCritical = allowCritical,
+            blockAllDefault = blockAllDefault,
+            ownUserId = android.os.Process.myUid() / 100000
+        )
+    }
+
+    /**
+     * Recompute after the "Allow Firewall Critical Packages" switch or the default policy moves.
+     * Both live in SharedPreferences and are written from the Settings screen, which publishes
+     * nothing this ViewModel collects, so the firewall screen calls this when it notices a change.
+     */
+    fun refreshBlockingContext(allowCritical: Boolean) {
+        val context = computeBlockingContext(cachedPackages, allowCriticalOverride = allowCritical)
+        if (context == _uiState.value.blockingContext) return
+        // The re-filter must use the SAME context, not go back to the preference this was called
+        // to work around.
+        _uiState.value = _uiState.value.copy(
+            blockingContext = context,
+            packages = filterPackages(cachedPackages, _uiState.value.filterState, context)
+        )
+    }
+
+    /**
+     * One package as the screen should show it, taken from the unfiltered cache.
+     *
+     * An open sheet must not lose its subject when a write moves the row out of the active chip:
+     * the Blocked filter drops a row the moment its last block is lifted, and a sheet re-reading
+     * the filtered list then found nothing and froze at its last painted values.
+     */
+    fun enforcedPackage(id: PackageId): NetworkPackage? =
+        cachedPackages.find { it.id == id }
+            ?.asEnforcedBy(firewallManager.activeBackendType.value, _uiState.value.blockingContext)
+
+    /**
+     * Which of [ids] the running backend cannot act on.
+     *
+     * Answers from the UNFILTERED list on purpose. The screen's own copy holds only the rows the
+     * current chip and search leave visible, so asking it would treat every hidden row as unknown -
+     * and a batch would then either drop rows it should keep or keep rows it should drop.
+     */
+    fun unreachableSelection(ids: Set<PackageId>): Set<PackageId> {
+        val backend = firewallManager.activeBackendType.value
+        val context = computeBlockingContext(cachedPackages)
+        return cachedPackages
+            .filter { it.id in ids && backend.blockingRefused(it, context) }
+            .map { it.id }
+            .toSet()
     }
 
     private fun observeFirewallState() {
@@ -199,10 +375,12 @@ class FirewallViewModel(
                     activeFilter
                 }
 
-                val filteredPackages = filterPackages(packages, effectiveFilter)
+                val blockingContext = computeBlockingContext(packages)
+                val filteredPackages = filterPackages(packages, effectiveFilter, blockingContext)
 
                 _uiState.value = _uiState.value.copy(
                     packages = filteredPackages,
+                    blockingContext = blockingContext,
                     isLoadingData = false,
                     isRenderingUI = true,
                     error = null,
@@ -227,17 +405,28 @@ class FirewallViewModel(
             filterState = filterState
         )
 
-        val filteredPackages = filterPackages(cachedPackages, filterState)
+        val context = computeBlockingContext(cachedPackages)
+        val filteredPackages = filterPackages(cachedPackages, filterState, context)
         _uiState.value = _uiState.value.copy(
             packages = filteredPackages,
+            blockingContext = context,
             isLoadingData = false,
             isRenderingUI = true,
             error = null
         )
     }
 
-    private fun filterPackages(packages: List<NetworkPackage>, filterState: FirewallFilterState): List<NetworkPackage> {
-        var result = packages
+    private fun filterPackages(
+        packages: List<NetworkPackage>,
+        filterState: FirewallFilterState,
+        blockingContext: BlockingContext = computeBlockingContext(packages),
+    ): List<NetworkPackage> {
+        // Masked HERE, once, so nothing downstream has to remember to. The rows, both sheets, the
+        // multi-select sheet, the Blocked/Allowed chips, the counters and - the one that actually
+        // bit - the quick toggle, which derives its write from what the row shows, all read the
+        // enforced flags rather than the saved ones. cachedPackages keeps the raw truth.
+        val backend = firewallManager.activeBackendType.value
+        var result = packages.map { it.asEnforcedBy(backend, blockingContext) }
 
         result = when (filterState.packageType.lowercase()) {
             Constants.Packages.TYPE_USER.lowercase() ->
@@ -259,6 +448,8 @@ class FirewallViewModel(
         }
 
         if (filterState.networkState != null) {
+            // The flags reaching here are already the enforced ones, so this classifies by what is
+            // in force without repeating the test.
             result = when (filterState.networkState.lowercase()) {
                 "allowed" -> result.filter { !it.wifiBlocked && !it.mobileBlocked }
                 "blocked" -> result.filter { it.wifiBlocked || it.mobileBlocked }
@@ -303,7 +494,7 @@ class FirewallViewModel(
 
     fun setWifiBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
-            updatePackageInList(packageName, userId) { pkg ->
+            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                 AppLogger.d(TAG, "setWifiBlocking: BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                 val updated = pkg.copy(wifiBlocked = blocked)
                 AppLogger.d(TAG, "setWifiBlocking: AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
@@ -326,7 +517,7 @@ class FirewallViewModel(
     fun setMobileBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
             if (blocked) {
-                updatePackageInList(packageName, userId) { pkg ->
+                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
                     AppLogger.d(TAG, "setMobileBlocking(blocked=true): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                     val updated = pkg.copy(mobileBlocked = true, roamingBlocked = true)
                     AppLogger.d(TAG, "setMobileBlocking(blocked=true): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
@@ -349,7 +540,7 @@ class FirewallViewModel(
                         )
                     }
             } else {
-                updatePackageInList(packageName, userId) { pkg ->
+                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = true) { pkg ->
                     AppLogger.d(TAG, "setMobileBlocking(blocked=false): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                     val updated = pkg.copy(mobileBlocked = blocked)
                     AppLogger.d(TAG, "setMobileBlocking(blocked=false): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
@@ -375,7 +566,7 @@ class FirewallViewModel(
             // Per user preference: "enabling Roaming block should auto-enable Mobile block"
             // and "roaming requires mobile" so unblocking roaming also unblocks mobile
             // Both blocking and unblocking affect mobile due to these dependencies
-            updatePackageInList(packageName, userId) { pkg ->
+            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                 AppLogger.d(TAG, "setRoamingBlocking(blocked=$blocked): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                 val updated = if (blocked) {
                     pkg.copy(mobileBlocked = true, roamingBlocked = true)
@@ -413,7 +604,10 @@ class FirewallViewModel(
     fun setBackgroundBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
             AppLogger.d(TAG, "setBackgroundBlocking: packageName=$packageName, userId=$userId, blocked=$blocked")
-            updatePackageInList(packageName, userId) { pkg ->
+            // false in BOTH directions: the background insert writes the networks flat, never the
+            // Block All default, because this toggle is only shown on a row that is not fully
+            // blocked. See the comment on that insert in AndroidPackageDataSource.
+            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
                 AppLogger.d(TAG, "setBackgroundBlocking: BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                 val updated = pkg.copy(backgroundBlocked = blocked)
                 AppLogger.d(TAG, "setBackgroundBlocking: AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
@@ -438,7 +632,7 @@ class FirewallViewModel(
     fun setLanBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
             AppLogger.d(TAG, "setLanBlocking: packageName=$packageName, userId=$userId, blocked=$blocked")
-            updatePackageInList(packageName, userId) { pkg ->
+            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                 AppLogger.d(TAG, "setLanBlocking: BEFORE copy - pkg.lanBlocked=${pkg.lanBlocked}")
                 val updated = pkg.copy(lanBlocked = blocked)
                 AppLogger.d(TAG, "setLanBlocking: AFTER copy - updated.lanBlocked=${updated.lanBlocked}")
@@ -465,7 +659,7 @@ class FirewallViewModel(
         AppLogger.d(TAG, "🔥 [TIMING] setAllNetworkBlocking START: pkg=$packageName, userId=$userId, blocked=$blocked, timestamp=$startTime")
 
         viewModelScope.launch {
-            updatePackageInList(packageName, userId) { pkg ->
+            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                 pkg.copy(
                     wifiBlocked = blocked,
                     mobileBlocked = blocked,
@@ -488,24 +682,56 @@ class FirewallViewModel(
         }
     }
 
-    private fun updatePackageInList(packageName: String, userId: Int = 0, transform: (NetworkPackage) -> NetworkPackage) {
-        val currentPackages = _uiState.value.packages
-        val updatedPackages = currentPackages.map { pkg ->
-            if (pkg.packageName == packageName && pkg.userId == userId) {
-                transform(pkg)
-            } else {
-                pkg
-            }
+    private fun updatePackageInList(
+        packageName: String,
+        userId: Int = 0,
+        /**
+         * Whether the FIRST rule this tap creates carries the Block All default onto the networks
+         * the tap does not name. An UNBLOCK tap does, a BLOCK tap does not - see the six first-rule
+         * inserts in AndroidPackageDataSource, which this mirrors. Ignored once the package has a
+         * rule of its own, because the row is then painted from that rule.
+         *
+         * Keep the two in step. When they drifted, one tap on WiFi painted a block on all four
+         * networks until the rescan landed, which is the very lie this state exists to remove.
+         */
+        firstRuleKeepsBlockAllDefault: Boolean = false,
+        transform: (NetworkPackage) -> NetworkPackage,
+    ) {
+        // Every caller of this is writing a rule, so the package now HAS one. Recording that is
+        // what lifts the NO_RULE_IN_PROTECTED_UID state: without it the row kept reporting "the
+        // Block All default does not reach this app" after the user had just given it a rule, and
+        // the switch they were told to turn on snapped straight back.
+        fun applied(pkg: NetworkPackage): NetworkPackage {
+            // A package with no rule yet is painted from the Block All default, not from anything
+            // written down (AndroidPackageDataSource BlockingState). The rule about to be inserted
+            // never carries that default onto LAN or background, and carries it onto the other
+            // networks only when the tap is an unblock.
+            val base = if (pkg.hasExplicitRule) pkg else pkg.copy(
+                wifiBlocked = pkg.wifiBlocked && firstRuleKeepsBlockAllDefault,
+                mobileBlocked = pkg.mobileBlocked && firstRuleKeepsBlockAllDefault,
+                roamingBlocked = pkg.roamingBlocked && firstRuleKeepsBlockAllDefault,
+                lanBlocked = false,
+                backgroundBlocked = false,
+            )
+            val updated = transform(base).copy(hasExplicitRule = true)
+            // Derived, not carried over: once a rule exists the read side computes this from the
+            // rule (AndroidPackageDataSource:190), so deriving it here stops the optimistic row and
+            // the row the repository emits a moment later from disagreeing about the Blocked chip.
+            return updated.copy(isNetworkBlocked = updated.wifiBlocked || updated.mobileBlocked)
         }
-        _uiState.value = _uiState.value.copy(packages = updatedPackages)
 
         cachedPackages = cachedPackages.map { pkg ->
-            if (pkg.packageName == packageName && pkg.userId == userId) {
-                transform(pkg)
-            } else {
-                pkg
-            }
+            if (pkg.packageName == packageName && pkg.userId == userId) applied(pkg) else pkg
         }
+
+        // Republished from the raw cache so the masking re-evaluates. The uid rule map itself is
+        // one beat behind - it comes from the repository flow, which has not emitted yet - which is
+        // why unblockableReason answers from hasExplicitRule before it ever consults the map.
+        val context = computeBlockingContext(cachedPackages)
+        _uiState.value = _uiState.value.copy(
+            packages = filterPackages(cachedPackages, _uiState.value.filterState, context),
+            blockingContext = context
+        )
     }
 
     fun clearError() {
@@ -519,8 +745,8 @@ class FirewallViewModel(
     /**
      * Undo an optimistic row update whose write failed.
      *
-     * Must force a refresh. [updatePackageInList] writes the optimistic value into BOTH the UI state
-     * and [cachedPackages], and a plain [loadNetworkPackages] returns early on a non-empty cache -
+     * Must force a refresh. [updatePackageInList] writes the optimistic value into [cachedPackages]
+     * and republishes from it, and a plain [loadNetworkPackages] returns early on a non-empty cache -
      * so the "revert" re-filtered the value it was supposed to undo and the row kept showing a block
      * that was never applied.
      */
@@ -669,7 +895,8 @@ class FirewallViewModel(
                     )
                 )
 
-                updatePackageInList(packageId.packageName, packageId.userId) { pkg ->
+                // setNetworkAccess names all four networks itself, so nothing is left to inherit.
+                updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
                     pkg.copy(wifiBlocked = true, mobileBlocked = true, roamingBlocked = true, lanBlocked = true)
                 }
 
@@ -722,7 +949,8 @@ class FirewallViewModel(
                     )
                 )
 
-                updatePackageInList(packageId.packageName, packageId.userId) { pkg ->
+                // setNetworkAccess names all four networks itself, so nothing is left to inherit.
+                updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
                     pkg.copy(wifiBlocked = false, mobileBlocked = false, roamingBlocked = false, lanBlocked = false)
                 }
 
@@ -765,7 +993,16 @@ class FirewallViewModel(
         viewModelScope.launch {
             AppLogger.d(TAG, "🔥 batchSetAllNetworkBlocking: Setting all networks blocked=$blocked for ${packages.size} packages")
             for ((packageName, userId) in packages) {
-                updatePackageInList(packageName, userId) { pkg ->
+                // See batchSetWifiBlocking. All three must already agree before this is a no-op,
+                // the state must be the row's OWN - its rule, or a default no rule has touched -
+                // and a row we cannot find is written, not skipped.
+                val current = enforcedPackage(PackageId(packageName, userId))
+                if (current != null &&
+                    (current.hasExplicitRule || current.uid !in cachedUidRules) &&
+                    current.wifiBlocked == blocked &&
+                    current.mobileBlocked == blocked && current.roamingBlocked == blocked
+                ) continue
+                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     pkg.copy(
                         wifiBlocked = blocked,
                         mobileBlocked = blocked,
@@ -785,7 +1022,22 @@ class FirewallViewModel(
         viewModelScope.launch {
             AppLogger.d(TAG, "🔥 batchSetWifiBlocking: Setting WiFi blocked=$blocked for ${packages.size} packages")
             for ((packageName, userId) in packages) {
-                updatePackageInList(packageName, userId) { pkg ->
+                // A batch reaches rows that are ALREADY in the requested state - the sheet renders a
+                // mixed selection as unchecked, so one tap sends "block" to rows that are blocked
+                // already. Writing a first rule for those replaces the Block All default with an
+                // explicit rule, and the uid backends switch to rule-based the moment any rule
+                // exists - silently ALLOWING the networks the new rule does not name. Skip them -
+                // but only rows whose state is their OWN: their rule, or a default no rule has
+                // touched. A rule-less row in a ruled uid displays its NEIGHBOURS' union
+                // (SIBLING_RULE_OVERRIDES_DEFAULT), and skipping on that borrowed state swallowed
+                // the user's explicit ask whenever a same-uid sibling earlier in the batch got its
+                // rule written first. A row we cannot find is written, never skipped.
+                val current = enforcedPackage(PackageId(packageName, userId))
+                if (current != null &&
+                    (current.hasExplicitRule || current.uid !in cachedUidRules) &&
+                    current.wifiBlocked == blocked
+                ) continue
+                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     pkg.copy(wifiBlocked = blocked)
                 }
                 manageNetworkAccessUseCase.setWifiBlocking(packageName, userId, blocked)
@@ -801,7 +1053,14 @@ class FirewallViewModel(
         viewModelScope.launch {
             AppLogger.d(TAG, "🔥 batchSetMobileBlocking: Setting Mobile blocked=$blocked for ${packages.size} packages")
             for ((packageName, userId) in packages) {
-                updatePackageInList(packageName, userId) { pkg ->
+                // Same skip rule as batchSetWifiBlocking: only a row whose state is its own - its
+                // rule, or a default no rule has touched - and never on missing information.
+                val current = enforcedPackage(PackageId(packageName, userId))
+                if (current != null &&
+                    (current.hasExplicitRule || current.uid !in cachedUidRules) &&
+                    current.mobileBlocked == blocked
+                ) continue
+                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     if (blocked) {
                         pkg.copy(mobileBlocked = true, roamingBlocked = true)
                     } else {
@@ -828,7 +1087,14 @@ class FirewallViewModel(
         viewModelScope.launch {
             AppLogger.d(TAG, "🔥 batchSetRoamingBlocking: Setting Roaming blocked=$blocked for ${packages.size} packages")
             for ((packageName, userId) in packages) {
-                updatePackageInList(packageName, userId) { pkg ->
+                // Same skip rule as batchSetWifiBlocking: only a row whose state is its own - its
+                // rule, or a default no rule has touched - and never on missing information.
+                val current = enforcedPackage(PackageId(packageName, userId))
+                if (current != null &&
+                    (current.hasExplicitRule || current.uid !in cachedUidRules) &&
+                    current.roamingBlocked == blocked
+                ) continue
+                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     if (blocked) {
                         pkg.copy(mobileBlocked = true, roamingBlocked = true)
                     } else {
@@ -848,7 +1114,14 @@ class FirewallViewModel(
         viewModelScope.launch {
             AppLogger.d(TAG, "🔥 batchSetLanBlocking: Setting LAN blocked=$blocked for ${packages.size} packages")
             for ((packageName, userId) in packages) {
-                updatePackageInList(packageName, userId) { pkg ->
+                // Same skip rule as batchSetWifiBlocking: only a row whose state is its own - its
+                // rule, or a default no rule has touched - and never on missing information.
+                val current = enforcedPackage(PackageId(packageName, userId))
+                if (current != null &&
+                    (current.hasExplicitRule || current.uid !in cachedUidRules) &&
+                    current.lanBlocked == blocked
+                ) continue
+                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     pkg.copy(lanBlocked = blocked)
                 }
                 manageNetworkAccessUseCase.setLanBlocking(packageName, userId, blocked)
@@ -867,6 +1140,7 @@ class FirewallViewModel(
         private val superuserBannerState: SuperuserBannerState,
         private val permissionManager: io.github.dorumrr.de1984.data.common.PermissionManager,
         private val firewallManager: FirewallManager,
+        private val firewallRepository: FirewallRepository,
         private val packageDataChanged: SharedFlow<Unit>
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -879,6 +1153,7 @@ class FirewallViewModel(
                     superuserBannerState,
                     permissionManager,
                     firewallManager,
+                    firewallRepository,
                     packageDataChanged
                 ) as T
             }
@@ -900,7 +1175,13 @@ data class FirewallUiState(
     val batchProgress: BatchProgress? = null,
     val batchBlockResult: BatchBlockResult? = null,
     val hasWorkProfile: Boolean = false,
-    val hasCloneProfile: Boolean = false
+    val hasCloneProfile: Boolean = false,
+
+    /**
+     * What the running backend will consult before deciding whether a rule is worth sending.
+     * See FirewallViewModel.computeBlockingContext.
+     */
+    val blockingContext: BlockingContext = BlockingContext()
 ) {
     val isLoading: Boolean get() = isLoadingData || isRenderingUI
 }

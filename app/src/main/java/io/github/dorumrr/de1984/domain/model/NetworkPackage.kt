@@ -21,6 +21,8 @@ data class NetworkPackage(
     val updateTime: Long? = null,
     val isSystemCritical: Boolean = false,
     val isVpnApp: Boolean = false,
+    /** See PackageEntity.hasExplicitRule. Distinguishes a real rule from the default policy. */
+    val hasExplicitRule: Boolean = false,
     val isWorkProfile: Boolean = false,
     val isCloneProfile: Boolean = false
 ) {

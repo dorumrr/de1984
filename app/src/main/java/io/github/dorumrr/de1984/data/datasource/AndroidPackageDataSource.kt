@@ -239,6 +239,7 @@ class AndroidPackageDataSource(
                                 backgroundBlocked = blockingState.backgroundBlocked,
                                 lanBlocked = blockingState.lanBlocked,
                                 isVpnApp = metadata.isVpnApp,
+                                hasExplicitRule = rule?.enabled == true,
                                 criticality = criticality,
                                 category = category,
                                 affects = affects,
@@ -378,6 +379,7 @@ class AndroidPackageDataSource(
                     roamingBlocked = blockingState.roamingBlocked,
                     backgroundBlocked = blockingState.backgroundBlocked,
                     isVpnApp = isVpnApp,
+                    hasExplicitRule = rule?.enabled == true,
                     criticality = criticality,
                     category = category,
                     affects = affects,
@@ -524,6 +526,7 @@ class AndroidPackageDataSource(
                             roamingBlocked = false,
                             backgroundBlocked = false,
                             isVpnApp = false,
+                            hasExplicitRule = false,
                             criticality = null,
                             category = null,
                             affects = emptyList(),
@@ -928,14 +931,19 @@ class AndroidPackageDataSource(
                     )
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
+                    // A FIRST rule created by a BLOCK tap must not stamp the Block All default onto the
+                    // networks the user did not touch. That only ever happens on a row already showing
+                    // Allowed - one Block All is not reaching - so inheriting the default there turned
+                    // one tap on one icon into a block on three, with an Undo that lifted only one.
+                    // An UNBLOCK tap keeps the old behaviour: the row was showing those as blocked.
                     val rule = FirewallRule(
                         packageName = packageName,
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
                         wifiBlocked = blocked,
-                        mobileBlocked = isBlockAllDefault,
-                        blockWhenRoaming = isBlockAllDefault,
+                        mobileBlocked = isBlockAllDefault && !blocked,
+                        blockWhenRoaming = isBlockAllDefault && !blocked,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
                         hasInternetPermission = hasNetworkPermissions(packageName, userId)
@@ -981,14 +989,19 @@ class AndroidPackageDataSource(
                     )
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
+                    // A FIRST rule created by a BLOCK tap must not stamp the Block All default onto the
+                    // networks the user did not touch. That only ever happens on a row already showing
+                    // Allowed - one Block All is not reaching - so inheriting the default there turned
+                    // one tap on one icon into a block on three, with an Undo that lifted only one.
+                    // An UNBLOCK tap keeps the old behaviour: the row was showing those as blocked.
                     val rule = FirewallRule(
                         packageName = packageName,
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault,
+                        wifiBlocked = isBlockAllDefault && !blocked,
                         mobileBlocked = blocked,
-                        blockWhenRoaming = isBlockAllDefault,
+                        blockWhenRoaming = isBlockAllDefault && !blocked,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
                         hasInternetPermission = hasNetworkPermissions(packageName, userId)
@@ -1034,13 +1047,18 @@ class AndroidPackageDataSource(
                     )
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
+                    // A FIRST rule created by a BLOCK tap must not stamp the Block All default onto the
+                    // networks the user did not touch. That only ever happens on a row already showing
+                    // Allowed - one Block All is not reaching - so inheriting the default there turned
+                    // one tap on one icon into a block on three, with an Undo that lifted only one.
+                    // An UNBLOCK tap keeps the old behaviour: the row was showing those as blocked.
                     val rule = FirewallRule(
                         packageName = packageName,
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault,
-                        mobileBlocked = isBlockAllDefault,
+                        wifiBlocked = isBlockAllDefault && !blocked,
+                        mobileBlocked = isBlockAllDefault && !blocked,
                         blockWhenRoaming = blocked,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
@@ -1087,14 +1105,24 @@ class AndroidPackageDataSource(
                     )
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
+                    // A FIRST rule created by a BLOCK tap must not stamp the Block All default onto the
+                    // networks the user did not touch. That only ever happens on a row already showing
+                    // Allowed - one Block All is not reaching - so inheriting the default there turned
+                    // one tap on one icon into a block on three, with an Undo that lifted only one.
+                    // An UNBLOCK tap keeps the old behaviour: the row was showing those as blocked.
                     val rule = FirewallRule(
                         packageName = packageName,
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault,
-                        mobileBlocked = isBlockAllDefault,
-                        blockWhenRoaming = isBlockAllDefault,
+                        // Flat false, not the Block All default. This toggle is only SHOWN when the
+                        // row is not fully blocked, so a first rule created through it always comes
+                        // from a row displaying its networks as allowed - in either direction.
+                        // Inheriting the default here meant that turning "Allow in Background" ON
+                        // wrote a full network block.
+                        wifiBlocked = false,
+                        mobileBlocked = false,
+                        blockWhenRoaming = false,
                         blockWhenBackground = blocked,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
@@ -1141,14 +1169,19 @@ class AndroidPackageDataSource(
                     ) ?: Constants.Settings.DEFAULT_FIREWALL_POLICY
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
+                    // A FIRST rule created by a BLOCK tap must not stamp the Block All default onto the
+                    // networks the user did not touch. That only ever happens on a row already showing
+                    // Allowed - one Block All is not reaching - so inheriting the default there turned
+                    // one tap on one icon into a block on three, with an Undo that lifted only one.
+                    // An UNBLOCK tap keeps the old behaviour: the row was showing those as blocked.
                     val rule = FirewallRule(
                         packageName = packageName,
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault,
-                        mobileBlocked = isBlockAllDefault,
-                        blockWhenRoaming = isBlockAllDefault,
+                        wifiBlocked = isBlockAllDefault && !blocked,
+                        mobileBlocked = isBlockAllDefault && !blocked,
+                        blockWhenRoaming = isBlockAllDefault && !blocked,
                         lanBlocked = blocked,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
@@ -1244,12 +1277,17 @@ class AndroidPackageDataSource(
                     )
                     val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
 
+                    // A FIRST rule created by a BLOCK tap must not stamp the Block All default onto the
+                    // networks the user did not touch. That only ever happens on a row already showing
+                    // Allowed - one Block All is not reaching - so inheriting the default there turned
+                    // one tap on one icon into a block on three, with an Undo that lifted only one.
+                    // An UNBLOCK tap keeps the old behaviour: the row was showing those as blocked.
                     val rule = FirewallRule(
                         packageName = packageName,
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault,
+                        wifiBlocked = isBlockAllDefault && !(mobileBlocked || roamingBlocked),
                         mobileBlocked = mobileBlocked,
                         blockWhenRoaming = roamingBlocked,
                         enabled = true,

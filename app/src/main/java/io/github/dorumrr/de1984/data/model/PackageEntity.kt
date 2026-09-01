@@ -27,6 +27,14 @@ data class PackageEntity(
     val backgroundBlocked: Boolean = false,
     val lanBlocked: Boolean = false,
     val isVpnApp: Boolean = false,
+    /**
+     * An ENABLED rule row exists for this package, as opposed to the blocking flags above being
+     * the default policy showing through. `rule?.enabled == true`, matching what the backends see -
+     * both uid backends build `rules.filter { it.enabled }.groupBy { it.uid }` before testing
+     * presence, so a disabled rule does not count for them and must not count here. (A disabled
+     * rule also paints from the default branch, not from its own flags.)
+     */
+    val hasExplicitRule: Boolean = false,
     val criticality: PackageCriticality? = null,
     val category: String? = null,
     val affects: List<String> = emptyList(),

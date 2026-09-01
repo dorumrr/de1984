@@ -17,6 +17,10 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import io.github.dorumrr.de1984.R
+import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.domain.firewall.BlockingContext
+import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.blockingRefused
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.PackageId
 import io.github.dorumrr.de1984.domain.model.PackageType
@@ -71,6 +75,18 @@ class NetworkPackageAdapter(
 
     private var cachedAllowCritical: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
 
+    /**
+     * The running backend, or null while the firewall is stopped. Decides whether a row outside the
+     * app-uid range can be blocked at all - see [blockingRefused].
+     */
+    private var cachedBackendType: FirewallBackendType? = null
+
+    /**
+     * From FirewallUiState. Needs the UNFILTERED package list to be correct, which only the
+     * ViewModel has, so it arrives by setter rather than being worked out here.
+     */
+    private var cachedBlockingContext: BlockingContext = BlockingContext()
+
     private var hasCellular: Boolean = true
 
     fun initialize(context: Context) {
@@ -89,6 +105,27 @@ class NetworkPackageAdapter(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
             Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
         )
+
+        // Read here rather than through a setter because the fragment builds the adapter in two
+        // places - setupRecyclerView and the icons-changed branch of observeSettingsState - and
+        // both call initialize(), which calls this. A setter would have to be repeated at both.
+        cachedBackendType = (context.applicationContext as? De1984Application)
+            ?.dependencies?.firewallManager?.activeBackendType?.value
+    }
+
+    /**
+     * A row whose block nothing here can make happen. Dimmed with dead toggles, the same treatment
+     * a protected package gets. NOT used for what the row DISPLAYS - the list arrives already
+     * carrying the enforced flags, see FirewallViewModel.filterPackages.
+     */
+    private fun isRefusedByBackend(pkg: NetworkPackage): Boolean =
+        cachedBackendType.blockingRefused(pkg, cachedBlockingContext)
+
+    /** Rebinds only when it actually changed - this is called on every list update. */
+    fun setBlockingContext(context: BlockingContext) {
+        if (cachedBlockingContext == context) return
+        cachedBlockingContext = context
+        notifyDataSetChanged()
     }
 
     fun clearIconCache() {
@@ -109,7 +146,8 @@ class NetworkPackageAdapter(
             onQuickToggle,
             iconCache,
             { hasCellular },
-            { cachedAllowCritical }
+            { cachedAllowCritical },
+            ::isRefusedByBackend
         )
     }
 
@@ -179,11 +217,13 @@ class NetworkPackageAdapter(
             Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
         )
         if ((pkg.isSystemCritical || pkg.isVpnApp) && !allowCritical) return false
+        if (isRefusedByBackend(pkg)) return false
         return true
     }
 
     private fun canSelectPackageCached(pkg: NetworkPackage): Boolean {
         if ((pkg.isSystemCritical || pkg.isVpnApp) && !cachedAllowCritical) return false
+        if (isRefusedByBackend(pkg)) return false
         return true
     }
 
@@ -192,25 +232,44 @@ class NetworkPackageAdapter(
     }
 
     private fun togglePackageSelection(pkg: NetworkPackage, context: Context) {
+        val packageId = pkg.id
+
+        // Removing is always allowed, and it has to come BEFORE the guard. A row can become
+        // unselectable while it is already selected - the firewall starts, or a privilege gain
+        // switches the backend, neither of which the user did from this screen - and with the guard
+        // first every further tap only re-showed the toast. The row could then never be taken out of
+        // the selection, and the batch actions still applied to it. The tap on the row is the only
+        // deselect there is: the checkbox is not clickable and the toolbar has no "unselect".
+        if (selectedPackages.contains(packageId)) {
+            selectedPackages.remove(packageId)
+            onSelectionChanged?.invoke(selectedPackages)
+            notifyDataSetChanged()
+            return
+        }
+
         if (!canSelectPackage(pkg, context)) {
+            // Protection by the setting comes first: when it applies that is the operative reason,
+            // and there is a switch in Settings for it.
+            val protectedBySetting = (pkg.isSystemCritical || pkg.isVpnApp) && !cachedAllowCritical
+            val reason = if (!protectedBySetting && isRefusedByBackend(pkg)) {
+                R.string.firewall_multiselect_toast_cannot_select_system_uid
+            } else {
+                R.string.firewall_multiselect_toast_cannot_select_critical
+            }
             android.widget.Toast.makeText(
                 context,
-                context.getString(R.string.firewall_multiselect_toast_cannot_select_critical),
+                context.getString(reason),
                 android.widget.Toast.LENGTH_SHORT
             ).show()
             return
         }
 
-        val packageId = pkg.id
-        if (selectedPackages.contains(packageId)) {
-            selectedPackages.remove(packageId)
-        } else {
-            if (selectedPackages.size >= Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
-                onSelectionLimitReached?.invoke()
-                return
-            }
-            selectedPackages.add(packageId)
+        if (selectedPackages.size >= Constants.Packages.MultiSelect.MAX_SELECTION_COUNT) {
+            onSelectionLimitReached?.invoke()
+            return
         }
+        selectedPackages.add(packageId)
+
         onSelectionChanged?.invoke(selectedPackages)
         notifyDataSetChanged()
     }
@@ -226,7 +285,8 @@ class NetworkPackageAdapter(
         private val onQuickToggle: ((NetworkPackage, NetworkType) -> Unit)?,
         private val iconCache: LruCache<String, Drawable>,
         private val getHasCellular: () -> Boolean,
-        private val getAllowCritical: () -> Boolean
+        private val getAllowCritical: () -> Boolean,
+        private val isRefusedByBackend: (NetworkPackage) -> Boolean
     ) : RecyclerView.ViewHolder(itemView) {
 
         private val selectionCheckbox: CheckBox = itemView.findViewById(R.id.selection_checkbox)
@@ -281,10 +341,15 @@ class NetworkPackageAdapter(
                 }
             }
 
-            // Dim the entire item if system critical or VPN app (unless setting is enabled)
+            // Dim the entire item if system critical or VPN app (unless setting is enabled), or if
+            // the running backend cannot act on this uid at all. Dimming is what already means
+            // "the toggles here will not respond", and it gates canQuickToggle below, so a row the
+            // backend would silently skip stops offering a switch that writes a rule nothing
+            // enforces. Tapping the row still opens the sheet, which explains why.
             // Use cached setting value for performance (no SharedPreferences read per bind)
             val allowCritical = getAllowCritical()
-            val shouldDim = !allowCritical && (pkg.isSystemCritical || pkg.isVpnApp)
+            val shouldDim = (!allowCritical && (pkg.isSystemCritical || pkg.isVpnApp)) ||
+                isRefusedByBackend(pkg)
             itemView.alpha = if (shouldDim) 0.6f else 1.0f
 
             if (isSelectionMode) {
@@ -344,28 +409,44 @@ class NetworkPackageAdapter(
             val allowedColor = ContextCompat.getColor(itemView.context, R.color.lineage_teal)
             val blockedColor = ContextCompat.getColor(itemView.context, R.color.error_red)
 
+            // These icons report what the NETWORK is doing, not what the database holds, and the two
+            // part company for a uid the running backend cannot act on. Under the Block All default
+            // every package with no rule of its own is synthesised as blocked, so an unreachable row
+            // was born red and struck through while the app kept full network - the exact false
+            // "Blocked" this change exists to remove. Dimming alone did not fix it, because a dimmed
+            // critical row means "forced Allowed" and the same pixels would have meant the opposite
+            // here.
+            // The WIDER test: the icons report what the network is doing, and under Block All in a
+            // protected uid the app is online even though its controls stay usable.
+            // No masking here. FirewallViewModel.filterPackages hands this list out with the
+            // ENFORCED flags already applied, so these report what the network is doing.
+            // Masking a second time is what let the icons and the quick toggle disagree.
+            val wifiBlocked = pkg.wifiBlocked
+            val mobileBlocked = pkg.mobileBlocked
+            val roamingBlocked = pkg.roamingBlocked
+
             wifiIcon.setColorFilter(
-                if (pkg.wifiBlocked) blockedColor else allowedColor,
+                if (wifiBlocked) blockedColor else allowedColor,
                 PorterDuff.Mode.SRC_IN
             )
-            wifiBlockedOverlay.visibility = if (pkg.wifiBlocked) View.VISIBLE else View.GONE
+            wifiBlockedOverlay.visibility = if (wifiBlocked) View.VISIBLE else View.GONE
             wifiBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
 
             mobileIcon.setColorFilter(
-                if (pkg.mobileBlocked) blockedColor else allowedColor,
+                if (mobileBlocked) blockedColor else allowedColor,
                 PorterDuff.Mode.SRC_IN
             )
-            mobileBlockedOverlay.visibility = if (pkg.mobileBlocked) View.VISIBLE else View.GONE
+            mobileBlockedOverlay.visibility = if (mobileBlocked) View.VISIBLE else View.GONE
             mobileBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
 
             val hasCellular = getHasCellular()
             if (hasCellular) {
                 roamingContainer.visibility = View.VISIBLE
                 roamingIcon.setColorFilter(
-                    if (pkg.roamingBlocked) blockedColor else allowedColor,
+                    if (roamingBlocked) blockedColor else allowedColor,
                     PorterDuff.Mode.SRC_IN
                 )
-                roamingBlockedOverlay.visibility = if (pkg.roamingBlocked) View.VISIBLE else View.GONE
+                roamingBlockedOverlay.visibility = if (roamingBlocked) View.VISIBLE else View.GONE
                 roamingBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
             } else {
                 roamingContainer.visibility = View.GONE

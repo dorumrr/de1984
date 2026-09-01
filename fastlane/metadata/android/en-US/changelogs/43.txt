@@ -1,0 +1,3 @@
+- Fixed: system apps such as "Android System" were not blocked in ConnectivityManager and NetworkPolicyManager modes.
+- The app now tells you why a switch is off, instead of leaving a dead control with no reason.
+- Apps that share a user ID with a protected app now show what is really enforced, not a false "Blocked".

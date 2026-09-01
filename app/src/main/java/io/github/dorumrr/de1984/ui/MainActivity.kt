@@ -73,6 +73,7 @@ class MainActivity : AppCompatActivity() {
             superuserBannerState = deps.superuserBannerState,
             permissionManager = deps.permissionManager,
             firewallManager = deps.firewallManager,
+            firewallRepository = deps.firewallRepository,
             packageDataChanged = deps.packageDataChanged
         )
     }

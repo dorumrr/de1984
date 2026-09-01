@@ -175,6 +175,7 @@
 
     <!-- Firewall Multi-Select -->
     <string name="firewall_multiselect_toast_cannot_select_critical">Critical/VPN packages cannot be selected</string>
+    <string name="firewall_multiselect_toast_cannot_select_system_uid">This app cannot be blocked in the current firewall mode</string>
     <string name="firewall_multiselect_toolbar_button_block">Block</string>
     <string name="firewall_multiselect_toolbar_button_allow">Allow</string>
     <string name="firewall_multiselect_toolbar_button_rules">Change Rules</string>
@@ -527,6 +528,13 @@
     <string name="firewall_network_label_roaming">Roaming</string>
     <string name="firewall_network_label_lan">LAN Access</string>
     <string name="firewall_lan_requires_root">Requires root access</string>
+    <string name="firewall_backend_cannot_block_uid">Cannot be blocked</string>
+    <string name="firewall_system_uid_info">⚠️ Part of Android itself, not an ordinary app. Shizuku cannot block it — Android refuses firewall rules for its own components. Root can, but where the user ID is shared with a protected app, such as Settings, it also needs \'Allow Firewall Critical Packages\' enabled in Settings and will affect those apps too.</string>
+    <string name="firewall_unknown_uid_info">⚠️ De1984 could not determine this app\'s user ID in its profile, so no firewall rule can be applied to it.</string>
+    <string name="firewall_other_profile_info">⚠️ This app is in another profile. The current firewall mode works with app names inside the profile De1984 runs in, so it cannot reach this one. Root access blocks by user ID and can reach every profile.</string>
+    <string name="firewall_shared_uid_info">⚠️ This app shares a user ID with a protected app, and the current firewall mode blocks by user ID, not by app. Blocking it would cut off the protected app too, so De1984 leaves the whole user ID alone. To block it anyway, enable \'Allow Firewall Critical Packages\' in Settings and then turn on the switch for this app.</string>
+    <string name="firewall_no_rule_protected_uid_info">⚠️ De1984 protects this app\'s user ID, so the Block All default is not applied to it — doing so could cut off a protected system app. With \'Allow Firewall Critical Packages\' enabled you can still block it: turn on the switch for this app.</string>
+    <string name="firewall_sibling_rule_info">⚠️ Another app shares this app\'s user ID and has a firewall rule of its own. The current firewall mode blocks by user ID, so that rule decides for both apps and the Block All default no longer applies here. To block this app, turn on its switch.</string>
     <string name="firewall_network_label_background_access">Allow in Background</string>
     <string name="firewall_network_label_internet_access">Internet Access</string>
     <string name="firewall_internet_access_subtitle">WiFi, Mobile, Roaming</string>

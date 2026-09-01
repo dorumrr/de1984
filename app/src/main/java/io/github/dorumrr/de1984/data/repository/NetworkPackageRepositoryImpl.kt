@@ -223,6 +223,7 @@ private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain():
         installTime = installTime,
         updateTime = updateTime,
         isVpnApp = isVpnApp,
+        hasExplicitRule = hasExplicitRule,
         isWorkProfile = isWorkProfile,
         isCloneProfile = isCloneProfile
     )

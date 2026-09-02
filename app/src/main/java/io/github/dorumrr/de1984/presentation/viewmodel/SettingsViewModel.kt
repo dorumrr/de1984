@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -1110,12 +1111,38 @@ class SettingsViewModel(
                     isLoading = false,
                     error = context.getString(io.github.dorumrr.de1984.R.string.error_import_file_read_failed, e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
                 )
+            } catch (e: CancellationException) {
+                // Never swallowed. CancellationException extends Exception, so the generic catch
+                // below would mislabel it as a failed import and break structured concurrency by not
+                // letting it through.
+                //
+                // Not because the user navigating away cancels this - it does not; this ViewModel is
+                // activityViewModels, so the only cancellation is onCleared. It is here so that any
+                // cancellation, present or future, cannot be reported as a failure.
+                throw e
             } catch (e: Exception) {
                 AppLogger.e(TAG, "📥 IMPORT: Failed", e)
+                // A scan failure carries developer English written for a log. The import runs
+                // getPackages().first(), so that message was being formatted straight into the
+                // user's error toast, untranslated, in every locale. Discriminated by TYPE:
+                // IllegalStateException also catches unrelated ones from the file parsing above -
+                // and kotlinx CancellationException is itself an IllegalStateException.
+                val detail = if (e is io.github.dorumrr.de1984.data.datasource.PackageScanException) {
+                    context.getString(io.github.dorumrr.de1984.R.string.error_package_scan_failed)
+                } else {
+                    e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown)
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = context.getString(io.github.dorumrr.de1984.R.string.error_import_failed, e.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
+                    error = context.getString(io.github.dorumrr.de1984.R.string.error_import_failed, detail)
                 )
+            } finally {
+                // The one guaranteed exit, covering the paths no catch above reaches: the rethrown
+                // CancellationException, and any future early return. NOT the OutOfMemoryError case
+                // - an Error escaping viewModelScope.launch takes the process with it, so nothing
+                // this writes is ever rendered; that case has no in-app recovery either way. The
+                // assignments above are now redundant rather than load-bearing.
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }

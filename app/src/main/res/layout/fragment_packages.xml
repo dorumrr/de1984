@@ -189,15 +189,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:gravity="center"
                 android:text="@string/packages_empty_state_title"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary" />
 
             <TextView
+                android:id="@+id/empty_state_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:gravity="center"
                 android:text="@string/packages_empty_state_subtitle"
                 android:textSize="14sp"
                 android:textColor="?android:attr/textColorSecondary" />

@@ -39,6 +39,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
@@ -75,6 +77,8 @@ class FirewallViewModel(
 
     private var cachedPackages: List<NetworkPackage> = emptyList()
 
+
+
     /**
      * Per uid, the union of what its ENABLED rules block, read from the SAME query the backends
      * are handed - firewallRepository.getAllRules(), exactly as FirewallManager.applyRules does.
@@ -86,7 +90,6 @@ class FirewallViewModel(
      * uid the backend was in fact ruling on.
      */
     private var cachedUidRules: Map<Int, Map<String, UidRuleAggregate>> = emptyMap()
-
 
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
@@ -382,12 +385,59 @@ class FirewallViewModel(
             filterState = filterState
         )
 
+        // A LOCAL, not a field. loadJob.cancel() unwinds asynchronously, so a shared counter let
+        // the outgoing collection spend the incoming one's budget - the new load began with a
+        // retry already gone, at exactly the 'user just granted root' moment it exists for.
+
+        var retriesSinceSuccess = 0
+
         loadJob = getNetworkPackagesUseCase.invoke()
+            // Reset on every good emission, so the budget below is per INCIDENT.
+            //
+            // retryWhen's own `attempt` counter is monotonic for the life of the collection, and
+            // these collections live as long as the screen. Three unrelated transients an hour
+            // apart - each of which recovered on its own - would have exhausted it and killed the
+            // screen for good.
+            .onEach { retriesSinceSuccess = 0 }
+            // A scan can fail transiently on a cold start - root or Shizuku is not granted yet, or
+            // the package service is still coming up. One quiet retry turns that into a short wait
+            // instead of an empty screen the user has to force-stop out of. Bounded on purpose: a
+            // device where the scan really cannot work must reach the message, not spin forever.
+            .retryWhen { cause, _ ->
+                // ONE retry, not two. Every retry re-enters onStart and costs a full serialized
+                // rescan - measured in seconds on a device with hundreds of packages - and both
+                // screens retry independently. Two each meant up to six full scans before either
+                // said anything, spinner throughout. The second retry buys a second of extra grace
+                // for a cold start and changes almost nothing the first did not.
+                val retry = retriesSinceSuccess < 1 && cause !is CancellationException
+                if (retry) {
+                    retriesSinceSuccess++
+                    AppLogger.w(TAG, "Package scan failed (attempt $retriesSinceSuccess), retrying: ${cause.message}")
+                    delay(1000)
+                }
+                retry
+            }
             .catch { error ->
+                // A resource string, not error.message. That message is developer English written
+                // for a log, and it was being shown to the user verbatim in every locale.
+                AppLogger.e(TAG, "Package scan failed after retries", error)
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
                     isRenderingUI = false,
-                    error = error.message
+                    // Only when we have nothing. A rescan that fails while rows are already on
+                    // screen leaves stale data, not an unreadable device - and claiming otherwise
+                    // latched: applyFilters clears `error` but not this, so every later chip that
+                    // happened to match nothing said "could not read the app list" over a list that
+                    // had merely filtered to empty.
+                    scanFailed = cachedPackages.isEmpty(),
+                    // Always announced. A guard was tried - stay quiet when a full list is already
+                    // on screen - and it was a false distinction: every rule write fires
+                    // packageDataChanged, so practically every refresh counted as "the painting is
+                    // superseded" and the quiet branch never ran. Announcing every time is honest,
+                    // and the cases it used to protect are now handled where they belong - the
+                    // optimistic row is undone locally, so a failed rescan no longer leaves a block
+                    // showing that is not in force.
+                    error = getApplication<Application>().getString(R.string.error_package_scan_failed)
                 )
             }
             .onEach { packages ->
@@ -400,30 +450,22 @@ class FirewallViewModel(
                 // stale value back into the state, silently undoing the user's own selection.
                 val activeFilter = _uiState.value.filterState
 
+                // From the ROWS, and deliberately the same signal filterPackages uses to decide
+                // whether a profile filter can match. Offering a chip on one signal while the filter
+                // behind it answers to another is what made the Work chip appear, highlight when
+                // tapped, and then show every PERSONAL app - a firewall telling the user they were
+                // looking at work apps while they blocked personal ones.
+                //
+                // A profile that exists but cannot be enumerated therefore offers no chip at all,
+                // rather than a chip that lies. Nothing destructive is decided here: the saved filter
+                // is never written from this. A filter already in force keeps its chip - see
+                // rebuildFilterChips - so an unmatched filter shows an honest empty list with a way
+                // out, rather than being silently widened.
                 val hasWorkProfile = packages.any { it.isWorkProfile }
                 val hasCloneProfile = packages.any { it.isCloneProfile }
 
-                // A restored profile filter can name a profile that no longer exists - the user
-                // saved "Work", then removed the work profile. This screen HIDES the profile chips
-                // when there is nothing to choose between (see rebuildFilterChips), so the list
-                // would come up empty with no control on screen to undo it. Correct it here, where
-                // the profiles are actually known.
-                //
-                // "Personal" needs no guard: it filters on `!isWorkProfile && !isCloneProfile`,
-                // which on a device with no profiles keeps every package.
-                val stranded =
-                    (activeFilter.profileFilter.equals("work", true) && !hasWorkProfile) ||
-                    (activeFilter.profileFilter.equals("clone", true) && !hasCloneProfile)
-
-                val effectiveFilter = if (stranded) {
-                    AppLogger.d(TAG, "Saved profile filter '${activeFilter.profileFilter}' matches no profile on this device - resetting to All")
-                    activeFilter.copy(profileFilter = "All")
-                } else {
-                    activeFilter
-                }
-
                 val blockingContext = computeBlockingContext(packages)
-                val filteredPackages = filterPackages(packages, effectiveFilter, blockingContext)
+                val filteredPackages = filterPackages(packages, activeFilter, blockingContext)
 
                 _uiState.value = _uiState.value.copy(
                     packages = filteredPackages,
@@ -431,16 +473,14 @@ class FirewallViewModel(
                     isLoadingData = false,
                     isRenderingUI = true,
                     error = null,
+                    scanFailed = false,
                     hasWorkProfile = hasWorkProfile,
                     hasCloneProfile = hasCloneProfile
                 )
 
-                // Only after the list is drawn, and only when the guard actually changed something.
-                // applyFilters both persists and republishes the filter, so calling it on the happy
-                // path would be the very write-back this function must not do.
-                if (stranded) {
-                    applyFilters(effectiveFilter)
-                }
+                // Deliberately nothing here. An unmatched profile filter is left exactly as the user
+                // set it - shown, selected, and honestly empty. Writing a correction back, to state
+                // or to preferences, is what destroyed the saved filter in two earlier attempts.
             }
             .launchIn(viewModelScope)
     }
@@ -483,6 +523,15 @@ class FirewallViewModel(
             else -> result
         }
 
+        // No widening. A profile filter that matches nothing shows an EMPTY list, which is the
+        // truth - "no apps in this profile" - and the chip stays visible and selected so the user
+        // can step off it.
+        //
+        // Widening was tried and was worse: it showed every personal app under a highlighted Work
+        // chip, so a self-evidently empty result became a silently wrong one, with nothing on screen
+        // saying the filter had been ignored. The two real defects were never the empty list. They
+        // were that the saved filter got overwritten, and that the chip could vanish leaving no way
+        // out - and both are fixed where they happen.
         result = when (filterState.profileFilter.lowercase()) {
             "personal" -> result.filter { !it.isWorkProfile && !it.isCloneProfile }
             "work" -> result.filter { it.isWorkProfile }
@@ -541,7 +590,7 @@ class FirewallViewModel(
 
     fun setWifiBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
-            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                 AppLogger.d(TAG, "setWifiBlocking: BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                 val updated = pkg.copy(wifiBlocked = blocked)
                 AppLogger.d(TAG, "setWifiBlocking: AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
@@ -549,10 +598,8 @@ class FirewallViewModel(
             }
 
             manageNetworkAccessUseCase.setWifiBlocking(packageName, userId, blocked)
-                .onSuccess {
-                }
-                .onFailure { error ->
-                    revertOptimisticUpdate()
+                                .onFailure { error ->
+                    restoreRow(snapshot)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -564,7 +611,7 @@ class FirewallViewModel(
     fun setMobileBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
             if (blocked) {
-                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
                     AppLogger.d(TAG, "setMobileBlocking(blocked=true): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                     val updated = pkg.copy(mobileBlocked = true, roamingBlocked = true)
                     AppLogger.d(TAG, "setMobileBlocking(blocked=true): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
@@ -572,10 +619,8 @@ class FirewallViewModel(
                 }
 
                 manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = true, roamingBlocked = true)
-                    .onSuccess {
-                    }
-                    .onFailure { error ->
-                        revertOptimisticUpdate()
+                                        .onFailure { error ->
+                        restoreRow(snapshot)
                         if (superuserBannerState.shouldShowBannerForError(error)) {
                             superuserBannerState.showSuperuserRequiredBanner()
                         }
@@ -587,7 +632,7 @@ class FirewallViewModel(
                         )
                     }
             } else {
-                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = true) { pkg ->
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = true) { pkg ->
                     AppLogger.d(TAG, "setMobileBlocking(blocked=false): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                     val updated = pkg.copy(mobileBlocked = blocked)
                     AppLogger.d(TAG, "setMobileBlocking(blocked=false): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
@@ -595,10 +640,8 @@ class FirewallViewModel(
                 }
 
                 manageNetworkAccessUseCase.setMobileBlocking(packageName, userId, blocked)
-                    .onSuccess {
-                    }
-                    .onFailure { error ->
-                        revertOptimisticUpdate()
+                                        .onFailure { error ->
+                        restoreRow(snapshot)
                         if (superuserBannerState.shouldShowBannerForError(error)) {
                             superuserBannerState.showSuperuserRequiredBanner()
                         }
@@ -613,7 +656,7 @@ class FirewallViewModel(
             // Per user preference: "enabling Roaming block should auto-enable Mobile block"
             // and "roaming requires mobile" so unblocking roaming also unblocks mobile
             // Both blocking and unblocking affect mobile due to these dependencies
-            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                 AppLogger.d(TAG, "setRoamingBlocking(blocked=$blocked): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                 val updated = if (blocked) {
                     pkg.copy(mobileBlocked = true, roamingBlocked = true)
@@ -625,10 +668,8 @@ class FirewallViewModel(
             }
 
             manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = blocked, roamingBlocked = blocked)
-                .onSuccess {
-                }
-                .onFailure { error ->
-                    revertOptimisticUpdate()
+                                .onFailure { error ->
+                    restoreRow(snapshot)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -654,7 +695,7 @@ class FirewallViewModel(
             // false in BOTH directions: the background insert writes the networks flat, never the
             // Block All default, because this toggle is only shown on a row that is not fully
             // blocked. See the comment on that insert in AndroidPackageDataSource.
-            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
                 AppLogger.d(TAG, "setBackgroundBlocking: BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                 val updated = pkg.copy(backgroundBlocked = blocked)
                 AppLogger.d(TAG, "setBackgroundBlocking: AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
@@ -667,7 +708,7 @@ class FirewallViewModel(
                 }
                 .onFailure { error ->
                     AppLogger.e(TAG, "setBackgroundBlocking: FAILURE - ${error.message}")
-                    revertOptimisticUpdate()
+                    restoreRow(snapshot)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -679,7 +720,7 @@ class FirewallViewModel(
     fun setLanBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
             AppLogger.d(TAG, "setLanBlocking: packageName=$packageName, userId=$userId, blocked=$blocked")
-            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                 AppLogger.d(TAG, "setLanBlocking: BEFORE copy - pkg.lanBlocked=${pkg.lanBlocked}")
                 val updated = pkg.copy(lanBlocked = blocked)
                 AppLogger.d(TAG, "setLanBlocking: AFTER copy - updated.lanBlocked=${updated.lanBlocked}")
@@ -692,7 +733,7 @@ class FirewallViewModel(
                 }
                 .onFailure { error ->
                     AppLogger.e(TAG, "setLanBlocking: FAILURE - ${error.message}")
-                    revertOptimisticUpdate()
+                    restoreRow(snapshot)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -706,7 +747,7 @@ class FirewallViewModel(
         AppLogger.d(TAG, "🔥 [TIMING] setAllNetworkBlocking START: pkg=$packageName, userId=$userId, blocked=$blocked, timestamp=$startTime")
 
         viewModelScope.launch {
-            updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                 pkg.copy(
                     wifiBlocked = blocked,
                     mobileBlocked = blocked,
@@ -720,7 +761,7 @@ class FirewallViewModel(
                     AppLogger.d(TAG, "🔥 [TIMING] UseCase SUCCESS: +${System.currentTimeMillis() - startTime}ms - DB update complete")
                 }
                 .onFailure { error ->
-                    revertOptimisticUpdate()
+                    restoreRow(snapshot)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -743,7 +784,7 @@ class FirewallViewModel(
          */
         firstRuleKeepsBlockAllDefault: Boolean = false,
         transform: (NetworkPackage) -> NetworkPackage,
-    ) {
+    ): NetworkPackage? {
         // Every caller of this is writing a rule, so the package now HAS one. Recording that is
         // what lifts the NO_RULE_IN_PROTECTED_UID state: without it the row kept reporting "the
         // Block All default does not reach this app" after the user had just given it a rule, and
@@ -767,10 +808,17 @@ class FirewallViewModel(
             return updated.copy(isNetworkBlocked = updated.wifiBlocked || updated.mobileBlocked)
         }
 
+        // Handed back so the caller can undo exactly this change if its write fails.
+        val snapshot = cachedPackages.firstOrNull {
+            it.packageName == packageName && it.userId == userId
+        }
+
         cachedPackages = cachedPackages.map { pkg ->
             if (pkg.packageName == packageName && pkg.userId == userId) applied(pkg) else pkg
         }
 
+        // Handed to the caller as its undo - see restoreRow.
+        //
         // Republished from the raw cache so the masking re-evaluates. The uid rule map itself is
         // one beat behind - it comes from the repository flow, which has not emitted yet - which is
         // why unblockableReason answers from hasExplicitRule before it ever consults the map.
@@ -779,6 +827,8 @@ class FirewallViewModel(
             packages = filterPackages(cachedPackages, _uiState.value.filterState, context),
             blockingContext = context
         )
+
+        return snapshot
     }
 
     fun clearError() {
@@ -790,15 +840,40 @@ class FirewallViewModel(
     }
 
     /**
-     * Undo an optimistic row update whose write failed.
+     * Put back the row exactly as [updatePackageInList] returned it, because this write failed.
      *
-     * Must force a refresh. [updatePackageInList] writes the optimistic value into [cachedPackages]
-     * and republishes from it, and a plain [loadNetworkPackages] returns early on a non-empty cache -
-     * so the "revert" re-filtered the value it was supposed to undo and the row kept showing a block
-     * that was never applied.
+     * The undo travels WITH the write. A shared map was tried and every lifetime question it raised
+     * turned into a defect: "first writer wins" undid an earlier write that had SUCCEEDED, retiring
+     * an entry on success stranded a second write still in flight, and a batch that reverted the
+     * whole map restored rows the same batch had just applied. A local value has no lifetime to get
+     * wrong - each failure restores precisely what its own tap changed.
+     *
+     * [reconcile] asks for one rescan afterwards, and singles want it. A whole-row snapshot taken
+     * for a SECOND tap already contains the first tap's optimistic paint, so restoring it can put
+     * back a block the first tap never got written - or undo a concurrent tap that succeeded. The
+     * row alone cannot tell; only the database can. Batches pass false and reconcile once at the
+     * end, because one uncached full scan per failed row is a spinner storm that fixes nothing the
+     * single scan does not.
+     *
+     * What actually fails here, since an earlier version of this comment blamed root outright:
+     * `manageNetworkAccessUseCase.set*` is a PackageManager lookup plus a Room write. For a row in
+     * the user's OWN profile that needs no privilege at all - checked on hardware, revoking root did
+     * not fail the write - and a failure means system-critical or VpnService with "allow critical"
+     * off, an unresolvable package, or a database error. A WORK or CLONE row is different:
+     * HiddenApiHelper.getApplicationInfoAsUser needs INTERACT_ACROSS_USERS or a root shell for any
+     * user but 0, so there the write really can fail for want of privilege.
      */
-    private fun revertOptimisticUpdate() {
-        loadNetworkPackages(forceRefresh = true)
+    private fun restoreRow(snapshot: NetworkPackage?, reconcile: Boolean = true) {
+        if (snapshot == null) return
+        cachedPackages = cachedPackages.map { if (it.id == snapshot.id) snapshot else it }
+        val context = computeBlockingContext(cachedPackages)
+        _uiState.value = _uiState.value.copy(
+            blockingContext = context,
+            packages = filterPackages(cachedPackages, _uiState.value.filterState, context),
+        )
+        // One scan settles any interleaving. loadNetworkPackages cancels the previous job, so
+        // repeated singles collapse into one.
+        if (reconcile) loadNetworkPackages(forceRefresh = true)
     }
 
     fun startFirewall(): Intent? {
@@ -942,7 +1017,7 @@ class FirewallViewModel(
                 )
 
                 // setNetworkAccess names all four networks itself, so nothing is left to inherit.
-                updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
+                val snapshot = updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
                     pkg.copy(wifiBlocked = true, mobileBlocked = true, roamingBlocked = true, lanBlocked = true)
                 }
 
@@ -962,7 +1037,7 @@ class FirewallViewModel(
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchBlockPackages: Failed to block ${packageId.packageName}: ${error.message}")
                         failed.add(packageId.packageName)
-                        revertOptimisticUpdate()
+                        restoreRow(snapshot, reconcile = false)
                     }
             }
 
@@ -975,6 +1050,8 @@ class FirewallViewModel(
                 )
             )
             AppLogger.d(TAG, "🔥 batchBlockPackages: Complete. Succeeded: ${succeeded.size}, Failed: ${failed.size}")
+            // One scan for the whole batch - see restoreRow.
+            loadNetworkPackages(forceRefresh = true)
         }
     }
 
@@ -996,7 +1073,7 @@ class FirewallViewModel(
                 )
 
                 // setNetworkAccess names all four networks itself, so nothing is left to inherit.
-                updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
+                val snapshot = updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
                     pkg.copy(wifiBlocked = false, mobileBlocked = false, roamingBlocked = false, lanBlocked = false)
                 }
 
@@ -1009,7 +1086,7 @@ class FirewallViewModel(
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchAllowPackages: Failed to allow ${packageId.packageName}: ${error.message}")
                         failed.add(packageId.packageName)
-                        revertOptimisticUpdate()
+                        restoreRow(snapshot, reconcile = false)
                     }
             }
 
@@ -1022,6 +1099,8 @@ class FirewallViewModel(
                 )
             )
             AppLogger.d(TAG, "🔥 batchAllowPackages: Complete. Succeeded: ${succeeded.size}, Failed: ${failed.size}")
+            // One scan for the whole batch - see restoreRow.
+            loadNetworkPackages(forceRefresh = true)
         }
     }
 
@@ -1047,7 +1126,7 @@ class FirewallViewModel(
                     current.ownVector.wifiBlocked == blocked &&
                     current.ownVector.mobileBlocked == blocked && current.ownVector.roamingBlocked == blocked
                 ) continue
-                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     pkg.copy(
                         wifiBlocked = blocked,
                         mobileBlocked = blocked,
@@ -1057,9 +1136,19 @@ class FirewallViewModel(
                 manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, userId, blocked)
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchSetAllNetworkBlocking: Failed for $packageName (user=$userId): ${error.message}")
+                        // Undo this row, and only this row. Snapshotting without ever
+                        // resolving left a refused batch painting blocks that were
+                        // never applied - and those stale snapshots then made an
+                        // unrelated later failure revert rows a different batch HAD
+                        // applied.
+                        restoreRow(snapshot, reconcile = false)
                     }
             }
             AppLogger.d(TAG, "🔥 batchSetAllNetworkBlocking: Complete")
+            // One scan for the whole batch. Per failed row it was an uncached full scan
+            // each, spinner throughout; skipping it entirely left an interleaved pair of
+            // taps able to repaint a block that was never written.
+            loadNetworkPackages(forceRefresh = true)
         }
     }
 
@@ -1086,15 +1175,25 @@ class FirewallViewModel(
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
                     current.ownVector.wifiBlocked == blocked
                 ) continue
-                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     pkg.copy(wifiBlocked = blocked)
                 }
                 manageNetworkAccessUseCase.setWifiBlocking(packageName, userId, blocked)
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchSetWifiBlocking: Failed for $packageName (user=$userId): ${error.message}")
+                        // Undo this row, and only this row. Snapshotting without ever
+                        // resolving left a refused batch painting blocks that were
+                        // never applied - and those stale snapshots then made an
+                        // unrelated later failure revert rows a different batch HAD
+                        // applied.
+                        restoreRow(snapshot, reconcile = false)
                     }
             }
             AppLogger.d(TAG, "🔥 batchSetWifiBlocking: Complete")
+            // One scan for the whole batch. Per failed row it was an uncached full scan
+            // each, spinner throughout; skipping it entirely left an interleaved pair of
+            // taps able to repaint a block that was never written.
+            loadNetworkPackages(forceRefresh = true)
         }
     }
 
@@ -1109,26 +1208,35 @@ class FirewallViewModel(
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
                     current.ownVector.mobileBlocked == blocked
                 ) continue
-                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     if (blocked) {
                         pkg.copy(mobileBlocked = true, roamingBlocked = true)
                     } else {
                         pkg.copy(mobileBlocked = false)
                     }
                 }
+                // Both branches resolve the snapshot, same as the other batch setters: undo this
+                // row on failure, retire it on success. This one was missed because its two calls
+                // sit inside an if/else rather than following the shared shape.
                 if (blocked) {
                     manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = true, roamingBlocked = true)
                         .onFailure { error ->
                             AppLogger.e(TAG, "🔥 batchSetMobileBlocking: Failed for $packageName (user=$userId): ${error.message}")
+                            restoreRow(snapshot, reconcile = false)
                         }
                 } else {
                     manageNetworkAccessUseCase.setMobileBlocking(packageName, userId, blocked = false)
                         .onFailure { error ->
                             AppLogger.e(TAG, "🔥 batchSetMobileBlocking: Failed for $packageName (user=$userId): ${error.message}")
+                            restoreRow(snapshot, reconcile = false)
                         }
                 }
             }
             AppLogger.d(TAG, "🔥 batchSetMobileBlocking: Complete")
+            // One scan for the whole batch. Per failed row it was an uncached full scan
+            // each, spinner throughout; skipping it entirely left an interleaved pair of
+            // taps able to repaint a block that was never written.
+            loadNetworkPackages(forceRefresh = true)
         }
     }
 
@@ -1143,7 +1251,7 @@ class FirewallViewModel(
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
                     current.ownVector.roamingBlocked == blocked
                 ) continue
-                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     if (blocked) {
                         pkg.copy(mobileBlocked = true, roamingBlocked = true)
                     } else {
@@ -1153,9 +1261,19 @@ class FirewallViewModel(
                 manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = blocked, roamingBlocked = blocked)
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchSetRoamingBlocking: Failed for $packageName (user=$userId): ${error.message}")
+                        // Undo this row, and only this row. Snapshotting without ever
+                        // resolving left a refused batch painting blocks that were
+                        // never applied - and those stale snapshots then made an
+                        // unrelated later failure revert rows a different batch HAD
+                        // applied.
+                        restoreRow(snapshot, reconcile = false)
                     }
             }
             AppLogger.d(TAG, "🔥 batchSetRoamingBlocking: Complete")
+            // One scan for the whole batch. Per failed row it was an uncached full scan
+            // each, spinner throughout; skipping it entirely left an interleaved pair of
+            // taps able to repaint a block that was never written.
+            loadNetworkPackages(forceRefresh = true)
         }
     }
 
@@ -1170,15 +1288,25 @@ class FirewallViewModel(
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
                     current.ownVector.lanBlocked == blocked
                 ) continue
-                updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
                     pkg.copy(lanBlocked = blocked)
                 }
                 manageNetworkAccessUseCase.setLanBlocking(packageName, userId, blocked)
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchSetLanBlocking: Failed for $packageName (user=$userId): ${error.message}")
+                        // Undo this row, and only this row. Snapshotting without ever
+                        // resolving left a refused batch painting blocks that were
+                        // never applied - and those stale snapshots then made an
+                        // unrelated later failure revert rows a different batch HAD
+                        // applied.
+                        restoreRow(snapshot, reconcile = false)
                     }
             }
             AppLogger.d(TAG, "🔥 batchSetLanBlocking: Complete")
+            // One scan for the whole batch. Per failed row it was an uncached full scan
+            // each, spinner throughout; skipping it entirely left an interleaved pair of
+            // taps able to repaint a block that was never written.
+            loadNetworkPackages(forceRefresh = true)
         }
     }
 
@@ -1218,6 +1346,17 @@ data class FirewallUiState(
     val isLoadingData: Boolean = true,
     val isRenderingUI: Boolean = false,
     val error: String? = null,
+    /**
+     * The last package scan failed and nothing replaced its result.
+     *
+     * Separate from [error], which is shown once as a Snackbar and cleared. Three seconds later the
+     * screen was left on the generic empty state - "No packages found / Try adjusting your filters"
+     * - actively blaming the user's filters for a scan that never ran. This survives, so the empty
+     * state can say what actually happened. Set only when the cache is empty, so a failed rescan
+     * over rows already on screen does not claim the device is unreadable; cleared by the next
+     * successful scan.
+     */
+    val scanFailed: Boolean = false,
     val isFirewallEnabled: Boolean = false,
     val defaultFirewallPolicy: String = Constants.Settings.DEFAULT_FIREWALL_POLICY,
     val shouldRequestBatteryOptimization: Boolean = false,

@@ -789,4 +789,7 @@
     <string name="settings_confirm_firewall_stop_description">Demander avant d\'arrêter le pare-feu depuis la tuile ou le widget</string>
     <string name="firewall_stopped_notification_title">Pare-feu arrêté</string>
     <string name="firewall_stopped_notification_text">Toutes les applications peuvent maintenant accéder à Internet. Appuyez pour le relancer.</string>
+    <string name="error_package_scan_failed_title">Impossible de lire la liste des applications</string>
+    <string name="error_package_scan_failed_hint">Si cela se reproduit, fermez puis rouvrez De1984.</string>
+    <string name="error_package_scan_failed">Impossible de lire la liste des applications de cet appareil. Si cela se reproduit, fermez puis rouvrez De1984.</string>
 </resources>

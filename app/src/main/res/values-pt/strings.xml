@@ -789,5 +789,7 @@
     <string name="settings_confirm_firewall_stop_description">Perguntar antes de parar a firewall a partir do mosaico ou widget</string>
     <string name="firewall_stopped_notification_title">Firewall parada</string>
     <string name="firewall_stopped_notification_text">Todas as aplicações podem agora aceder à internet. Toque para iniciar novamente.</string>
+    <string name="error_package_scan_failed_title">Não foi possível ler a lista de aplicações</string>
+    <string name="error_package_scan_failed_hint">Se acontecer de novo, feche e reabra o De1984.</string>
+    <string name="error_package_scan_failed">Não foi possível ler a lista de aplicações deste dispositivo. Se continuar a acontecer, feche e reabra o De1984.</string>
 </resources>
-

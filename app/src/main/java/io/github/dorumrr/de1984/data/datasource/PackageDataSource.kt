@@ -36,3 +36,13 @@ interface PackageDataSource {
     suspend fun setMobileAndRoaming(packageName: String, userId: Int, mobileBlocked: Boolean, roamingBlocked: Boolean): Boolean
 }
 
+/**
+ * The package scan failed. Wraps whatever really went wrong.
+ *
+ * A type rather than a message test. The screens need to say "could not read the app list" in the
+ * user's language, and they were picking that out by catching IllegalStateException - which also
+ * catches unrelated ones from file parsing, and misses a SecurityException or RemoteException from
+ * the enumeration, letting developer English reach the user. Note kotlinx CancellationException IS
+ * an IllegalStateException, which is how badly that test could go wrong.
+ */
+class PackageScanException(message: String, cause: Throwable? = null) : Exception(message, cause)

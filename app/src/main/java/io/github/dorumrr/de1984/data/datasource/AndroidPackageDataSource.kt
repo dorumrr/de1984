@@ -16,6 +16,7 @@ import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageSafetyLoader
 import io.github.dorumrr.de1984.utils.ShellRunner
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -57,14 +58,17 @@ class AndroidPackageDataSource(
     private val packageManager = context.packageManager
 
     private val packagesFlow = MutableSharedFlow<List<PackageEntity>>(replay = 1)
+
     private val loadMutex = Mutex()
-    private var isLoading = false
-    private var lastLoadTime = 0L
+    // @Volatile because the outer guard reads these OUTSIDE loadMutex. They are only safe today
+    // because every collector happens to run on Main; one flowOn would break that silently.
+    @Volatile private var isLoading = false
+    @Volatile private var lastLoadTime = 0L
 
     /**
      * A rescan was asked for. Survives a scan that is already running - see [invalidateCache].
      */
-    private var invalidated = false
+    @Volatile private var invalidated = false
     private val CACHE_TTL = 1000L
 
     companion object {
@@ -76,15 +80,24 @@ class AndroidPackageDataSource(
             val now = System.currentTimeMillis()
             val cacheExpired = (now - lastLoadTime) > CACHE_TTL
             
-            // An invalidation WAITS on the mutex instead of being turned away by isLoading.
+            // An outstanding invalidation WAITS. Everything else may skip while a scan is running.
             //
-            // Cancelling a load job unwinds asynchronously, so a replacement collector arrives while
-            // isLoading is still true. Skipping there meant the cancelled scan never re-ran, the
-            // request stayed set and unconsumed, and the replay cache handed back the very rows the
-            // invalidation existed to replace - with nothing left to trigger a retry.
-            if (invalidated || (!isLoading && (packagesFlow.replayCache.isEmpty() || cacheExpired))) {
+            // Skipping on an invalidation looked safe - the collector subscribes right after onStart,
+            // and a scan in flight honours the flag in its own loop. That premise is false for the
+            // one case that matters: a settings or rule change invalidates AND cancels the running
+            // load in the same breath, so the scan that was supposed to honour the flag dies, and
+            // the replacement collector - running inline while isLoading is still true - skips. The
+            // request then had nobody left to consume it and the list sat on pre-change rows
+            // indefinitely. Waiting costs at most one scan; skipping cost correctness.
+            //
+            // With NO data there is no choice either way: wait, then take the fresh result or scan
+            // and throw our OWN error to our OWN screen. That is the hang this guard exists to fix -
+            // a collector turned away had no subscription yet, so it could be neither served nor
+            // told the scan had failed. (Broadcasting failures instead was worse: it killed other
+            // screens that were showing correct lists, and still missed this one.)
+            if (invalidated || packagesFlow.replayCache.isEmpty() || (cacheExpired && !isLoading)) {
                 loadMutex.withLock {
-                    if (!isLoading && (invalidated || packagesFlow.replayCache.isEmpty() || (now - lastLoadTime) > CACHE_TTL)) {
+                    if (invalidated || packagesFlow.replayCache.isEmpty() || (now - lastLoadTime) > CACHE_TTL) {
                         isLoading = true
                         try {
                             // A failed scan THROWS. It used to return emptyList(), which was emitted
@@ -103,23 +116,37 @@ class AndroidPackageDataSource(
                             // OLD settings - then stamped lastLoadTime and wiped the request. The
                             // rows stayed painted with values the user had already changed, and
                             // nothing on the firewall screen ever rescanned.
+                            var emittedInThisLoop = false
+                            // Bounded. Every waiter on loadMutex is blocked for the WHOLE loop, not
+                            // for one scan, and a scan of this device measures in seconds - so an
+                            // activity-scoped ViewModel raising an invalidation per settings change
+                            // could hold the Settings import dialog spinning through several of
+                            // them. Stopping early is safe: `invalidated` stays set, so the next
+                            // collector picks the request up.
+                            var extraPasses = 0
                             do {
                                 invalidated = false
-                                var landed = false
                                 try {
                                     val packages = loadPackagesInternal()
                                     lastLoadTime = System.currentTimeMillis()
                                     packagesFlow.emit(packages)
-                                    landed = true
-                                } finally {
-                                    // A scan that threw, or was cancelled when the ViewModel
-                                    // cancelled its load job, satisfied nothing. Leave the request
-                                    // standing so the next collector honours it - otherwise the
-                                    // rows and the policy read off them both stayed at the old
-                                    // setting with nothing left to trigger a rescan.
-                                    if (!landed) invalidated = true
+                                    emittedInThisLoop = true
+                                } catch (t: Throwable) {
+                                    // A CANCELLATION always re-raises the request.
+                                    //
+                                    // So does a failure that comes AFTER this loop already emitted:
+                                    // that means an invalidation arrived mid-loop, an earlier pass
+                                    // stamped lastLoadTime with pre-change rows, and a waiter would
+                                    // otherwise find a fresh-looking replay and skip - leaving the
+                                    // screen painted from settings that had already been rewritten.
+                                    //
+                                    // A first pass that fails does NOT re-raise. It stamps nothing,
+                                    // so the next collector rescans anyway, and latching there made
+                                    // a device that simply cannot scan rescan for ever.
+                                    if (t is CancellationException || emittedInThisLoop) invalidated = true
+                                    throw t
                                 }
-                            } while (invalidated)
+                            } while (invalidated && ++extraPasses <= 2)
                         } finally {
                             isLoading = false
                         }
@@ -187,6 +214,17 @@ class AndroidPackageDataSource(
                 AppLogger.i(TAG, "⏱️ TIMING: Profile ${profile.userId} (${profile.displayName}): getInstalledApplicationsAsUser took ${profileEnd - profileStart}ms, returned ${installedPackages.size} packages")
 
                 AppLogger.d(TAG, "📦 User ${profile.userId} (${profile.displayName}): ${installedPackages.size} packages")
+
+                // Logged, NOT thrown. Emptiness is not a failure signal at profile level:
+                // HiddenApiHelper.getInstalledApplicationsAsUser returns an empty list as its
+                // documented "all methods failed" outcome for any user other than 0, which is what
+                // happens on every device with no root and no Shizuku that has a work or clone
+                // profile. Throwing here replaced a complete personal list with "could not read the
+                // list of apps" for all of those users, permanently. The filter it was protecting is
+                // protected where the damage actually was - the reset is no longer persisted.
+                if (installedPackages.isEmpty()) {
+                    AppLogger.w(TAG, "⚠️ Profile ${profile.userId} (${profile.displayName}) returned NO packages - enumeration for that profile may have failed")
+                }
 
                 if (profile.userId != 0 && installedPackages.isNotEmpty()) {
                     val sampleApps = installedPackages.take(5).map { it.packageName }
@@ -332,11 +370,16 @@ class AndroidPackageDataSource(
             }
 
             allPackages.sortedBy { it.name.lowercase() }
+        } catch (e: CancellationException) {
+            // Straight through. This is loadJob.cancel() replacing its own load, not a failure, and
+            // structured concurrency requires it to propagate untouched.
+            throw e
         } catch (e: Exception) {
             AppLogger.e(TAG, "Failed to get packages: ${e.message}", e)
-            // Rethrown, not swallowed. This also stops a CancellationException from loadJob.cancel()
-            // being eaten here, which it was under both of the previous versions.
-            throw e
+            // Wrapped, not rethrown raw. The screens have to tell the user "could not read the app
+            // list" in their own language, and they can only do that reliably if every failure from
+            // this scan arrives as one recognisable type.
+            throw PackageScanException("Package scan failed: ${e.message}", e)
         }
     }
     

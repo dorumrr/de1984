@@ -797,4 +797,7 @@
     <string name="settings_confirm_firewall_stop_description">从磁贴或小部件停止防火墙前先询问</string>
     <string name="firewall_stopped_notification_title">防火墙已停止</string>
     <string name="firewall_stopped_notification_text">所有应用现在都可以访问互联网。点按可重新启动。</string>
+    <string name="error_package_scan_failed_title">无法读取应用列表</string>
+    <string name="error_package_scan_failed_hint">如果再次出现，请关闭并重新打开 De1984。</string>
+    <string name="error_package_scan_failed">无法读取本设备上的应用列表。如果反复出现，请关闭并重新打开 De1984。</string>
 </resources>

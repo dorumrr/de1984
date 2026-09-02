@@ -789,4 +789,7 @@
     <string name="settings_confirm_firewall_stop_description">Chiedi prima di arrestare il firewall dal riquadro o dal widget</string>
     <string name="firewall_stopped_notification_title">Firewall arrestato</string>
     <string name="firewall_stopped_notification_text">Tutte le app possono ora accedere a internet. Tocca per riavviarlo.</string>
+    <string name="error_package_scan_failed_title">Impossibile leggere l\'elenco delle app</string>
+    <string name="error_package_scan_failed_hint">Se succede di nuovo, chiudi e riapri De1984.</string>
+    <string name="error_package_scan_failed">Impossibile leggere l\'elenco delle app su questo dispositivo. Se continua a succedere, chiudi e riapri De1984.</string>
 </resources>

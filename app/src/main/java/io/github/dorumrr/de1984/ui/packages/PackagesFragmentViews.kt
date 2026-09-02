@@ -529,12 +529,22 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             // Both of these were English no matter the device language - one from a hardcoded
             // literal, one from a Constants string that exists as an internal value, not as UI text.
             // Both already have translated resources in all seven locales.
-            val emptyMessage = if (state.filterState.packageState?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()) {
-                getString(io.github.dorumrr.de1984.R.string.packages_empty_state_no_uninstalled)
-            } else {
-                getString(io.github.dorumrr.de1984.R.string.packages_empty_state_title)
+            // Say what actually happened. Same fix as the firewall screen: the Snackbar is gone in
+            // three seconds, and the generic subtitle then told a user whose scan had FAILED to
+            // adjust their filters. Both screens must answer a failed scan the same way.
+            val emptyMessage = when {
+                state.scanFailed ->
+                    getString(io.github.dorumrr.de1984.R.string.error_package_scan_failed_title)
+                state.filterState.packageState?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase() ->
+                    getString(io.github.dorumrr.de1984.R.string.packages_empty_state_no_uninstalled)
+                else -> getString(io.github.dorumrr.de1984.R.string.packages_empty_state_title)
             }
             binding.emptyStateMessage.text = emptyMessage
+            binding.emptyStateSubtitle.setText(
+                // The hint, not the full sentence: the full one repeats the title word for word.
+                if (state.scanFailed) io.github.dorumrr.de1984.R.string.error_package_scan_failed_hint
+                else io.github.dorumrr.de1984.R.string.packages_empty_state_subtitle
+            )
         } else {
             binding.packagesRecyclerView.visibility = View.VISIBLE
             binding.loadingState.visibility = View.GONE

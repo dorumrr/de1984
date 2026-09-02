@@ -791,5 +791,7 @@
     <string name="settings_confirm_firewall_stop_description">Întreabă înainte de a opri firewallul din dală sau widget</string>
     <string name="firewall_stopped_notification_title">Firewall oprit</string>
     <string name="firewall_stopped_notification_text">Toate aplicațiile pot accesa acum internetul. Atinge pentru a-l porni din nou.</string>
+    <string name="error_package_scan_failed_title">Nu s-a putut citi lista de aplicații</string>
+    <string name="error_package_scan_failed_hint">Dacă se întâmplă din nou, închide și redeschide De1984.</string>
+    <string name="error_package_scan_failed">Nu s-a putut citi lista de aplicații de pe acest dispozitiv. Dacă se repetă, închide și redeschide De1984.</string>
 </resources>
-

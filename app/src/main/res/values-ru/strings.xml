@@ -788,4 +788,7 @@
     <string name="settings_confirm_firewall_stop_description">Спрашивать перед остановкой брандмауэра с плитки или виджета</string>
     <string name="firewall_stopped_notification_title">Брандмауэр остановлен</string>
     <string name="firewall_stopped_notification_text">Теперь все приложения имеют доступ в интернет. Нажмите, чтобы снова запустить.</string>
+    <string name="error_package_scan_failed_title">Не удалось прочитать список приложений</string>
+    <string name="error_package_scan_failed_hint">Если это повторится, закройте и снова откройте De1984.</string>
+    <string name="error_package_scan_failed">Не удалось прочитать список приложений на этом устройстве. Если это повторяется, закройте и снова откройте De1984.</string>
 </resources>

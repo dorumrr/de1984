@@ -789,4 +789,7 @@
     <string name="settings_confirm_firewall_stop_description">Ask before stopping the firewall from the tile or widget</string>
     <string name="firewall_stopped_notification_title">Firewall stopped</string>
     <string name="firewall_stopped_notification_text">All apps can now access the internet. Tap to start it again.</string>
+    <string name="error_package_scan_failed_title">Could not read the app list</string>
+    <string name="error_package_scan_failed_hint">If this happens again, close and reopen De1984.</string>
+    <string name="error_package_scan_failed">Could not read the list of apps on this device. If this keeps happening, close and reopen De1984.</string>
 </resources>

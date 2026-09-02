@@ -326,10 +326,57 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_clone))
         }
 
-        if (currentProfileFilter != null && !profileFilters.contains(currentProfileFilter)) {
-            currentProfileFilter = profileFilters.firstOrNull()
-            if (currentProfileFilter != null) {
-                viewModel.setProfileFilter(mapProfileFilterToInternal(currentProfileFilter!!))
+        // KEEP the chip for a saved filter whose profile produced no rows this scan, rather than
+        // reassigning it. setProfileFilter PERSISTS, so this was a second copy of the reset the
+        // ViewModel used to do - and it destroyed the same saved setting from the UI layer, one chip
+        // rebuild later, whatever the ViewModel did.
+        //
+        // A profile filter that is still in force must always be visible and always be escapable.
+        //
+        // Two ways that broke. Appending the chip unguarded put a LONE chip on every profile-less
+        // device - including the default "All Profiles" itself - and FilterChipsHelper treats a sole
+        // entry as the default and re-checks it, pinning the filter with no control to move off it.
+        // Guarding on "some other profile survived" then broke the opposite case: when the work
+        // profile was the only one and stopped yielding rows, the whole profile row vanished while
+        // "work" was still selected, so the list silently widened to every app with nothing on
+        // screen saying so and no way to undo it.
+        //
+        // So: keep the chip whenever it is in force and not otherwise offered, and rebuild the rest
+        // of the row beside it so it can always be deselected and the other profiles stay reachable.
+        //
+        // The list behind the kept chip is EMPTY, not full - the ViewModel used to widen an
+        // unmatched filter to every row and that was removed, because a highlighted Work chip above
+        // every personal app is worse than an honest "no apps in this profile". The chip is what
+        // makes the empty list escapable; it is not decoration over a full list.
+        //
+        // A chip kept for a profile that is gone is not removed by stepping off it - a filter change
+        // goes through applyFilters, which does not rebuild this row - so it lingers until the row is
+        // rebuilt, on a profile-flag change or the next view recreation. It comes back whenever the
+        // filter is still in force, which is the point. Untidy, escapable, and still far better than
+        // overwriting what the user chose.
+        val allProfilesLabel = getString(io.github.dorumrr.de1984.R.string.filter_profile_all)
+        // The filter actually IN FORCE, read from the ViewModel - not `currentProfileFilter`, which
+        // setupFilterChips has hardcoded to "All Profiles" at this point. rebuildFilterChips runs on
+        // the first state emission, BEFORE updateFilterChips installs the saved value, so testing
+        // the field meant this branch could never fire at screen start - the one moment it is for.
+        val inForceProfileFilter =
+            mapInternalToProfileFilter(viewModel.uiState.value.filterState.profileFilter)
+        if (inForceProfileFilter != allProfilesLabel &&
+            !profileFilters.contains(inForceProfileFilter)
+        ) {
+            if (profileFilters.isEmpty()) {
+                // Both, in the order the normal path uses them. Adding only "All Profiles" left the
+                // row as [All Profiles, Work] and quietly removed Personal until the profile came
+                // back - a control the user lost without asking.
+                profileFilters.add(allProfilesLabel)
+                profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_personal))
+            }
+            // Re-checked: the insert above may have just added the very chip we are keeping. With a
+            // persisted "Personal" filter on a device whose profiles vanished, adding it again gave
+            // [All Profiles, Personal, Personal] with both highlighted - FilterChipsHelper matches
+            // by tag, so the duplicate is selected too.
+            if (!profileFilters.contains(inForceProfileFilter)) {
+                profileFilters.add(inForceProfileFilter)
             }
         }
 
@@ -630,14 +677,41 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             viewModel.clearError()
         }
 
+        val displayedPackages = if (state.searchQuery.isBlank()) {
+            state.packages
+        } else {
+            val query = state.searchQuery.lowercase()
+            state.packages.filter { pkg ->
+                pkg.name.lowercase().contains(query, ignoreCase = false)
+            }
+        }
+
+        // Computed BEFORE the visibility decision below, which used to test the unsearched list.
+        // Testing the list actually shown is the right question either way.
+        //
+        // NOT CONFIRMED to fix the symptom it was written for: on hardware, a search matching
+        // nothing still shows a blank list with no empty state. Three attempts found no
+        // explanation, so something else is also holding that view down. Left in as the correct
+        // test, not as a claimed fix.
         if (state.isLoadingData && state.packages.isEmpty()) {
             binding.packagesRecyclerView.visibility = View.INVISIBLE
             binding.loadingState.visibility = View.VISIBLE
             binding.emptyState.visibility = View.GONE
-        } else if (state.packages.isEmpty()) {
+        } else if (displayedPackages.isEmpty()) {
             binding.packagesRecyclerView.visibility = View.INVISIBLE
             binding.loadingState.visibility = View.GONE
             binding.emptyState.visibility = View.VISIBLE
+            // Say what actually happened. The Snackbar above is gone in three seconds, and the
+            // generic subtitle then told a user whose scan had FAILED to adjust their filters.
+            binding.emptyStateTitle.setText(
+                if (state.scanFailed) R.string.error_package_scan_failed_title
+                else R.string.firewall_empty_state_title
+            )
+            binding.emptyStateSubtitle.setText(
+                // The hint, not the full sentence: the full one repeats the title word for word.
+                if (state.scanFailed) R.string.error_package_scan_failed_hint
+                else R.string.firewall_empty_state_subtitle
+            )
         } else {
             binding.packagesRecyclerView.visibility = View.VISIBLE
             binding.loadingState.visibility = View.GONE
@@ -661,15 +735,6 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         state.batchBlockResult?.let { result ->
             showBatchResultDialog(result)
             viewModel.clearBatchBlockResult()
-        }
-
-        val displayedPackages = if (state.searchQuery.isBlank()) {
-            state.packages
-        } else {
-            val query = state.searchQuery.lowercase()
-            state.packages.filter { pkg ->
-                pkg.name.lowercase().contains(query, ignoreCase = false)
-            }
         }
 
         // Before the early return below: the exempt set can change while the list does not - the

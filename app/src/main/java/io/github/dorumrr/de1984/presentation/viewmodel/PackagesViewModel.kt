@@ -28,7 +28,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -58,6 +61,8 @@ class PackagesViewModel(
     private var loadJob: Job? = null
 
     private var cachedPackages: List<Package> = emptyList()
+
+
 
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
@@ -122,22 +127,69 @@ class PackagesViewModel(
             filterState = filterState
         )
 
+        // A LOCAL, not a field. loadJob.cancel() unwinds asynchronously, so a shared counter let
+        // the outgoing collection spend the incoming one's budget - the new load began with a
+        // retry already gone, at exactly the 'user just granted root' moment it exists for.
+
+        var retriesSinceSuccess = 0
+
         loadJob = getPackagesUseCase.invoke()
+            // Reset on every good emission, so the budget below is per INCIDENT.
+            //
+            // retryWhen's own `attempt` counter is monotonic for the life of the collection, and
+            // these collections live as long as the screen. Three unrelated transients an hour
+            // apart - each of which recovered on its own - would have exhausted it and killed the
+            // screen for good.
+            .onEach { retriesSinceSuccess = 0 }
+            // A scan can fail transiently on a cold start - root or Shizuku is not granted yet, or
+            // the package service is still coming up. One quiet retry turns that into a short wait
+            // instead of an empty screen the user has to force-stop out of. Bounded on purpose: a
+            // device where the scan really cannot work must reach the message, not spin forever.
+            .retryWhen { cause, _ ->
+                // ONE retry, not two. Every retry re-enters onStart and costs a full serialized
+                // rescan - measured in seconds on a device with hundreds of packages - and both
+                // screens retry independently. Two each meant up to six full scans before either
+                // said anything, spinner throughout. The second retry buys a second of extra grace
+                // for a cold start and changes almost nothing the first did not.
+                val retry = retriesSinceSuccess < 1 && cause !is CancellationException
+                if (retry) {
+                    retriesSinceSuccess++
+                    AppLogger.w(TAG, "Package scan failed (attempt $retriesSinceSuccess), retrying: ${cause.message}")
+                    delay(1000)
+                }
+                retry
+            }
             .catch { error ->
+                // A resource string, not error.message. That message is developer English written
+                // for a log, and it was being shown to the user verbatim in every locale.
+                AppLogger.e(TAG, "Package scan failed after retries", error)
                 _uiState.value = _uiState.value.copy(
                     isLoadingData = false,
                     isRenderingUI = false,
-                    error = error.message
+                    scanFailed = cachedPackages.isEmpty(),
+                    // Always announced, matching FirewallViewModel. Staying quiet over a full list
+                    // was tried and was a false economy: the uninstall, reinstall and batch paths all
+                    // force a reload precisely because the list they show is now wrong, and silence
+                    // there left apps that had just been removed still sitting in the list.
+                    error = getApplication<Application>().getString(R.string.error_package_scan_failed)
                 )
             }
             .onEach { packages ->
                 cachedPackages = packages
-                val filteredPackages = filterPackages(packages, filterState)
+                // Read the filter LIVE, not the `filterState` captured when this collection started.
+                // The packages flow is a shared replay flow and emits again long after that - the
+                // firewall screen invalidating and rescanning is enough - so the captured value goes
+                // stale the moment the user taps a chip, and this list was silently repainted with
+                // the PREVIOUS filter while the chips showed the new one. FirewallViewModel already
+                // corrects this; the mirror here did not.
+                val liveFilter = _uiState.value.filterState
+                val filteredPackages = filterPackages(packages, liveFilter)
                 _uiState.value = _uiState.value.copy(
                     packages = filteredPackages,
                     isLoadingData = false,
                     isRenderingUI = true,
-                    error = null
+                    error = null,
+                    scanFailed = false
                 )
             }
             .launchIn(viewModelScope)
@@ -175,6 +227,15 @@ class PackagesViewModel(
             else -> result
         }
 
+        // No widening. A profile filter that matches nothing shows an EMPTY list, which is the
+        // truth - "no apps in this profile" - and the chip stays visible and selected so the user
+        // can step off it.
+        //
+        // Widening was tried and was worse: it showed every personal app under a highlighted Work
+        // chip, so a self-evidently empty result became a silently wrong one, with nothing on screen
+        // saying the filter had been ignored. The two real defects were never the empty list. They
+        // were that the saved filter got overwritten, and that the chip could vanish leaving no way
+        // out - and both are fixed where they happen.
         result = when (filterState.profileFilter.lowercase()) {
             "personal" -> result.filter { !it.isWorkProfile && !it.isCloneProfile }
             "work" -> result.filter { it.isWorkProfile }
@@ -277,15 +338,13 @@ class PackagesViewModel(
 
     fun setPackageEnabled(packageName: String, userId: Int = 0, enabled: Boolean) {
         viewModelScope.launch {
-            updatePackageInList(packageName, userId) { pkg ->
+            val snapshot = updatePackageInList(packageName, userId) { pkg ->
                 pkg.copy(isEnabled = enabled)
             }
 
             managePackageUseCase.setPackageEnabled(packageName, userId, enabled)
-                .onSuccess {
-                }
-                .onFailure { error ->
-                    loadPackages(forceRefresh = true)
+                                .onFailure { error ->
+                    restoreRow(snapshot)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
                         superuserBannerState.showSuperuserRequiredBanner()
                     }
@@ -451,7 +510,8 @@ class PackagesViewModel(
         _uiState.value = _uiState.value.copy(searchQuery = query)
     }
 
-    private fun updatePackageInList(packageName: String, userId: Int = 0, transform: (Package) -> Package) {
+    /** Returns the row as it was, so the caller can undo exactly this change - see [restoreRow]. */
+    private fun updatePackageInList(packageName: String, userId: Int = 0, transform: (Package) -> Package): Package? {
         val currentPackages = _uiState.value.packages
         val updatedPackages = currentPackages.map { pkg ->
             if (pkg.packageName == packageName && pkg.userId == userId) {
@@ -462,6 +522,10 @@ class PackagesViewModel(
         }
         _uiState.value = _uiState.value.copy(packages = updatedPackages)
 
+        val snapshot = cachedPackages.firstOrNull {
+            it.packageName == packageName && it.userId == userId
+        }
+
         cachedPackages = cachedPackages.map { pkg ->
             if (pkg.packageName == packageName && pkg.userId == userId) {
                 transform(pkg)
@@ -469,6 +533,30 @@ class PackagesViewModel(
                 pkg
             }
         }
+
+        return snapshot
+    }
+
+    /**
+     * Put back the row exactly as the optimistic update returned it, because this write failed.
+     *
+     * The undo travels WITH the write - see FirewallViewModel.restoreRow for why a shared map was
+     * the wrong shape. Unlike the firewall screen, `setPackageEnabled` genuinely does need root or
+     * Shizuku, so its rescan really would need the privilege that was just refused. That is exactly
+     * why the undo must be local.
+     */
+    private fun restoreRow(snapshot: Package?) {
+        if (snapshot == null) return
+        cachedPackages = cachedPackages.map {
+            if (it.packageName == snapshot.packageName && it.userId == snapshot.userId) snapshot else it
+        }
+        _uiState.value = _uiState.value.copy(
+            packages = filterPackages(cachedPackages, _uiState.value.filterState)
+        )
+        // One scan settles any interleaving with another tap on the same row - a whole-row snapshot
+        // cannot tell which field this write owned. loadPackages cancels the previous job, so
+        // repeated taps collapse into one scan.
+        loadPackages(forceRefresh = true)
     }
 
     class Factory(
@@ -511,6 +599,8 @@ data class PackagesUiState(
     val isLoadingData: Boolean = true,
     val isRenderingUI: Boolean = false,
     val error: String? = null,
+    /** See FirewallUiState.scanFailed - the last scan failed and left us with nothing. */
+    val scanFailed: Boolean = false,
     val batchUninstallResult: UninstallBatchResult? = null,
     val batchReinstallResult: ReinstallBatchResult? = null,
     val uninstallSuccess: String? = null,

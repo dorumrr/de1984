@@ -389,6 +389,12 @@ object Constants {
          * - Blocking it breaks notifications system-wide on GMS phones (Issue #66)
          * - Users can still manually block it if desired (degoogled/privacy-focused users)
          * - On degoogled devices without GMS, this entry has no effect
+         *
+         * Google Services Framework is included for the same reason (Issue #101). Play Services
+         * hosts FCM, but the device registration it delivers to lives in GSF, so allowing
+         * com.google.android.gms alone was not enough: push notifications stopped arriving and
+         * the Play Store lost its login after a few days, while the firewall showed exactly what
+         * the user had asked for. Same escape hatch - a degoogled user can still block it.
          */
         val SYSTEM_RECOMMENDED_ALLOW = setOf(
             // WiFi and Connectivity
@@ -408,6 +414,7 @@ object Constants {
 
             // Google Play Services (FCM push notifications)
             "com.google.android.gms",              // Google Play Services - hosts FCM for push notifications
+            "com.google.android.gsf",              // Google Services Framework - device registration FCM and Play Store sign-in depend on
         )
 
         /**

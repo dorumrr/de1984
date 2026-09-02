@@ -23,9 +23,68 @@ data class NetworkPackage(
     val isVpnApp: Boolean = false,
     /** See PackageEntity.hasExplicitRule. Distinguishes a real rule from the default policy. */
     val hasExplicitRule: Boolean = false,
+    /**
+     * The values this row carried BEFORE its blocking flags were replaced by what the running
+     * backend actually enforces - see `asEnforcedBy`. Null on an untouched row.
+     *
+     * The flags above answer "what is happening to this app's traffic", which is what icons, the
+     * Blocked/Allowed filter and the row summary must show. This answers "what did the user ask
+     * for", which is what every CONTROL and every WRITE must use: a switch has to move the rule it
+     * owns, and a batch operation must not skip a row because a neighbour already blocks it.
+     *
+     * Keeping both also makes the masking idempotent. Re-running the check on an already-masked row
+     * used to compare the substituted flags against themselves, decide they matched, and drop the
+     * explanation the row was masked to give.
+     */
+    val savedRule: UidRuleAggregate? = null,
+    /** See PackageEntity.paintedAllowCritical - the settings this row was PAINTED with. */
+    val paintedAllowCritical: Boolean =
+        io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL,
+    val paintedBlockAllDefault: Boolean =
+        io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_FIREWALL_POLICY ==
+            io.github.dorumrr.de1984.utils.Constants.Settings.POLICY_BLOCK_ALL,
     val isWorkProfile: Boolean = false,
     val isCloneProfile: Boolean = false
 ) {
+    /**
+     * This row's OWN saved rule, whether or not the displayed flags have been replaced.
+     *
+     * Read the row itself when nothing was replaced: right after a tap that is the only fresh copy
+     * there is, because the repository flow is an emission behind.
+     */
+    val ownVector: UidRuleAggregate
+        get() = savedRule ?: UidRuleAggregate(
+            wifiBlocked = wifiBlocked,
+            mobileBlocked = mobileBlocked,
+            roamingBlocked = roamingBlocked,
+            lanBlocked = lanBlocked,
+            backgroundBlocked = backgroundBlocked,
+        )
+
+    /**
+     * This row with the user's own values back in the blocking flags.
+     *
+     * For CONTROLS whose mask ADDS blocks - a neighbour in the same uid blocking more than this
+     * app's own rule does. A switch has to show the rule it moves: showing the neighbour's value
+     * made every tap write a value that was already stored, so the switch sprang back and looked
+     * dead. The banner beside it is what explains the neighbour.
+     *
+     * Not for the masks that REMOVE blocks. There the zeroed display is what the switch must show,
+     * because the message next to it asks the user to turn that switch on.
+     */
+    fun asSaved(): NetworkPackage {
+        val saved = savedRule ?: return this
+        return copy(
+            savedRule = null,
+            isNetworkBlocked = saved.wifiBlocked || saved.mobileBlocked,
+            wifiBlocked = saved.wifiBlocked,
+            mobileBlocked = saved.mobileBlocked,
+            roamingBlocked = saved.roamingBlocked,
+            lanBlocked = saved.lanBlocked,
+            backgroundBlocked = saved.backgroundBlocked,
+        )
+    }
+
     val isNetworkAllowed: Boolean
         get() = !isNetworkBlocked
 

@@ -16,6 +16,8 @@ class NetworkPackageRepositoryImpl(
     private val packageDataSource: PackageDataSource
 ) : NetworkPackageRepository {
     
+    override fun invalidatePackageCache() = packageDataSource.invalidateCache()
+
     override fun getNetworkPackages(): Flow<List<NetworkPackage>> {
         return packageDataSource.getPackages()
             .map { entities ->
@@ -198,6 +200,15 @@ class NetworkPackageRepositoryImpl(
     }
 }
 
+/**
+ * The ONLY PackageEntity -> NetworkPackage mapper. Private, and deliberately the only one.
+ *
+ * There used to be a second, public one in data/model/PackageEntity.kt. This file never imported it,
+ * so Kotlin silently resolved both call sites above to this local copy and the other was dead - which
+ * is exactly how two new fields were added to the wrong function and every row came out carrying the
+ * default. It looked like a working change and reversed the meaning of "Allow Firewall Critical
+ * Packages" for every critical app. The duplicate is gone; keep it that way.
+ */
 private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain(): NetworkPackage {
     return NetworkPackage(
         packageName = packageName,
@@ -224,6 +235,8 @@ private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain():
         updateTime = updateTime,
         isVpnApp = isVpnApp,
         hasExplicitRule = hasExplicitRule,
+        paintedAllowCritical = paintedAllowCritical,
+        paintedBlockAllDefault = paintedBlockAllDefault,
         isWorkProfile = isWorkProfile,
         isCloneProfile = isCloneProfile
     )

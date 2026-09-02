@@ -536,14 +536,16 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                         previousObservedAllowCritical != settingsState.allowCriticalPackageFirewall
 
                     if (allowCriticalChanged) {
-                        // Changes what each row LOOKS like and whether its quick toggles respond, but
-                        // not the package data - so updateUI's diff sees nothing to submit. Refresh
-                        // the adapter's cached copy and force a rebind, or critical and VPN rows stay
-                        // dimmed with dead toggles until they scroll off screen and back.
+                        // Changes what each row LOOKS like and whether its quick toggles respond.
+                        // Refresh the adapter's cached copy and force a rebind, or critical and VPN
+                        // rows stay dimmed with dead toggles until they scroll off screen and back.
                         AppLogger.d(TAG, "observeSettingsState: allowCriticalPackageFirewall changed - rebinding rows")
-                        // It also decides whether the shared-uid exemption applies at all, and that
-                        // set lives in the ViewModel because only it holds the unfiltered list.
-                        viewModel.refreshBlockingContext(settingsState.allowCriticalPackageFirewall)
+                        // It ALSO changes the package data, which this comment used to deny: the
+                        // scan paints a critical or VPN package from this same setting. So the
+                        // ViewModel is asked to rescan rather than to recompute - see
+                        // repaintForCriticalPackagesSetting for why publishing without a rescan is
+                        // the one thing that must not happen.
+                        viewModel.repaintForCriticalPackagesSetting()
                         adapter.refreshSettings(requireContext())
                         adapter.notifyDataSetChanged()
                     }
@@ -896,9 +898,17 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             // Not masked here. The list arrives with the ENFORCED flags already applied
             // (FirewallViewModel.filterPackages), and masking a second time is what made this sheet
             // disagree with its own row and with the LAN switch beside it.
-            val wifiBlocked = currentPkg.wifiBlocked
-            val mobileBlocked = currentPkg.mobileBlocked
-            val roamingBlocked = currentPkg.roamingBlocked
+            //
+            // One exception, and only one: when a NEIGHBOUR in the same uid blocks more than this
+            // app's own rule, the mask ADDS blocks. A switch must show the rule it actually moves,
+            // or every tap writes the value already stored and the switch springs back looking
+            // dead. The banner above it is what explains the neighbour. Every other mask REMOVES
+            // blocks, and there the zeroed display is exactly what the switch should show - its
+            // message asks the user to turn that switch on.
+            val controlPkg = currentPkg.asSaved()
+            val wifiBlocked = controlPkg.wifiBlocked
+            val mobileBlocked = controlPkg.mobileBlocked
+            val roamingBlocked = controlPkg.roamingBlocked
 
             binding.wifiToggle.toggleSwitch.isChecked = wifiBlocked
             updateSwitchColors(binding.wifiToggle.toggleSwitch, wifiBlocked)
@@ -911,16 +921,19 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 updateSwitchColors(binding.roamingToggle.toggleSwitch, roamingBlocked)
             }
 
-            val lanBlocked = currentPkg.lanBlocked
+            val lanBlocked = controlPkg.lanBlocked
             binding.lanToggle.toggleSwitch.isChecked = lanBlocked
             if (isIptablesBackend) {
                 updateSwitchColors(binding.lanToggle.toggleSwitch, lanBlocked)
             }
 
-            val allowCriticalForUpdate = settingsViewModel.uiState.value.allowCriticalPackageFirewall
+            // The ROW's value, not the live preference: the row's flags were painted with it and the
+            // blocking context is built from it, so reading the preference here let this screen
+            // answer one question with two different settings for the length of a rescan.
+            val allowCriticalForUpdate = currentPkg.paintedAllowCritical
             // The background toggle is the one switch in this sheet that is enabled unconditionally,
             // so hiding it is the only way to keep it from writing a rule this backend will skip.
-            val shouldShowBackgroundAccess = (!currentPkg.isSystemCritical || allowCriticalForUpdate) && (!currentPkg.isVpnApp || allowCriticalForUpdate) && !currentPkg.isFullyBlocked && !controlsRefused
+            val shouldShowBackgroundAccess = (!controlPkg.isSystemCritical || allowCriticalForUpdate) && (!controlPkg.isVpnApp || allowCriticalForUpdate) && !controlPkg.isFullyBlocked && !controlsRefused
             val wasBackgroundToggleVisible = binding.foregroundOnlyToggle.root.visibility == View.VISIBLE
             AppLogger.d(TAG, "updateTogglesFromPackage: shouldShowBackgroundAccess=$shouldShowBackgroundAccess, wasVisible=$wasBackgroundToggleVisible (isSystemCritical=${currentPkg.isSystemCritical}, isVpnApp=${currentPkg.isVpnApp}, isFullyBlocked=${currentPkg.isFullyBlocked})")
 
@@ -933,7 +946,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     setupNetworkToggle(
                         binding = binding.foregroundOnlyToggle,
                         label = getString(R.string.firewall_network_label_background_access),
-                        isBlocked = !currentPkg.backgroundBlocked,
+                        isBlocked = !controlPkg.backgroundBlocked,
                         enabled = true,
                         invertLabels = true,
                         onToggle = { isChecked ->
@@ -943,10 +956,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                         }
                     )
                 } else {
-                    binding.foregroundOnlyToggle.toggleSwitch.isChecked = !currentPkg.backgroundBlocked
-                    updateSwitchColors(binding.foregroundOnlyToggle.toggleSwitch, !currentPkg.backgroundBlocked, invertColors = true)
+                    binding.foregroundOnlyToggle.toggleSwitch.isChecked = !controlPkg.backgroundBlocked
+                    updateSwitchColors(binding.foregroundOnlyToggle.toggleSwitch, !controlPkg.backgroundBlocked, invertColors = true)
                 }
-                AppLogger.d(TAG, "updateTogglesFromPackage: Background toggle updated - isChecked=${!currentPkg.backgroundBlocked}")
+                AppLogger.d(TAG, "updateTogglesFromPackage: Background toggle updated - isChecked=${!controlPkg.backgroundBlocked}")
             }
 
             isUpdatingProgrammatically = false
@@ -960,7 +973,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             val backendNow = (requireActivity().application as De1984Application)
                 .dependencies.firewallManager.activeBackendType.value
             val iptablesNow = backendNow == FirewallBackendType.IPTABLES
-            val allowCriticalNow = settingsViewModel.uiState.value.allowCriticalPackageFirewall
+            val allowCriticalNow = currentPkg.paintedAllowCritical
 
             unblockableReason = backendNow.unblockableReason(
                 currentPkg, viewModel.uiState.value.blockingContext
@@ -1096,7 +1109,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
         }
 
-        val allowCritical = settingsViewModel.uiState.value.allowCriticalPackageFirewall
+        val allowCritical = pkg.paintedAllowCritical
         val isProtected = (pkg.isSystemCritical || pkg.isVpnApp) && !allowCritical
         // Deliberately NOT extended to controlsRefused. This banner is titled "Protected
         // Package", which such a row is not - it is reachable in principle and refused by the
@@ -1123,10 +1136,16 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding.protectionWarningBanner.root.visibility = View.GONE
         }
 
+        // asSaved for every switch position below. These one-time calls run AFTER the live
+        // collector is registered, so at open they are the last writer - and a masked `pkg` put a
+        // neighbour's block onto switches that move this app's OWN rule. Tapping then wrote the
+        // value already stored and the switch sprang back, looking dead.
+        val controlBase = pkg.asSaved()
+
         setupNetworkToggle(
             binding = binding.wifiToggle,
             label = getString(R.string.firewall_network_label_wifi),
-            isBlocked = pkg.wifiBlocked,
+            isBlocked = controlBase.wifiBlocked,
             enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical) && !controlsRefused,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
@@ -1138,7 +1157,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         setupNetworkToggle(
             binding = binding.mobileToggle,
             label = getString(R.string.firewall_network_label_mobile),
-            isBlocked = pkg.mobileBlocked,
+            isBlocked = controlBase.mobileBlocked,
             enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical) && !controlsRefused,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
@@ -1152,7 +1171,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             setupNetworkToggle(
                 binding = binding.roamingToggle,
                 label = getString(R.string.firewall_network_label_roaming),
-                isBlocked = pkg.roamingBlocked,
+                isBlocked = controlBase.roamingBlocked,
                 enabled = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical) && !controlsRefused,
                 onToggle = { blocked ->
                     if (isUpdatingProgrammatically) return@setupNetworkToggle
@@ -1171,7 +1190,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         setupNetworkToggle(
             binding = binding.lanToggle,
             label = getString(R.string.firewall_network_label_lan),
-            isBlocked = pkg.lanBlocked,
+            isBlocked = controlBase.lanBlocked,
             // isIptablesBackend alone is not enough: an unresolved uid is out of reach for iptables
             // too, and that is the one case where both conditions can be true at once.
             enabled = isIptablesBackend && !controlsRefused &&
@@ -1212,7 +1231,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         val defaultPolicy = viewModel.uiState.value.defaultFirewallPolicy
         val isBlockAllMode = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
-        val shouldShowBackgroundAccess = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical) && !pkg.isFullyBlocked && !controlsRefused
+        val shouldShowBackgroundAccess = (!controlBase.isSystemCritical || allowCritical) && (!controlBase.isVpnApp || allowCritical) && !controlBase.isFullyBlocked && !controlsRefused
 
         AppLogger.d(TAG, "showGranularControlSheet: defaultPolicy=$defaultPolicy, isBlockAllMode=$isBlockAllMode, isFullyBlocked=${pkg.isFullyBlocked}, shouldShowBackgroundAccess=$shouldShowBackgroundAccess")
 
@@ -1223,7 +1242,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             setupNetworkToggle(
                 binding = binding.foregroundOnlyToggle,
                 label = getString(R.string.firewall_network_label_background_access),
-                isBlocked = !pkg.backgroundBlocked, // INVERTED: ON = allowed (not blocked), OFF = blocked
+                isBlocked = !controlBase.backgroundBlocked, // INVERTED: ON = allowed (not blocked), OFF = blocked
                 enabled = true,
                 invertLabels = true,
                 onToggle = { isChecked ->
@@ -1307,64 +1326,85 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val app = requireActivity().application as De1984Application
         val firewallManager = app.dependencies.firewallManager
         val backendType = firewallManager.getActiveBackendType()
-        // See showGranularControlSheet: the line above survives a stop, this one does not, and
-        // "cannot be blocked" is a claim only a RUNNING backend earns.
-        val runningBackendType = firewallManager.activeBackendType.value
-        val allowCriticalSimple = settingsViewModel.uiState.value.allowCriticalPackageFirewall
+        // See showGranularControlSheet: backendType above survives a stop; the running one, which
+        // renderSimpleEnforcementState reads fresh on every pass, does not - and "cannot be
+        // blocked" is a claim only a RUNNING backend earns.
 
-        val unblockableReason = runningBackendType.unblockableReason(
-            pkg, viewModel.uiState.value.blockingContext
-        )
-        // Dead controls only when nothing here can fix it.
-        val controlsRefused = unblockableReason?.fixableHere == false
+        // A function, not a value computed once: it recomputes on every uiState emission. Computed
+        // once, the banner froze at its open-time answer while the switch beside it - which reads
+        // the row live - kept moving, so the two contradicted each other on the one backend that
+        // uses this sheet AND decides by uid, NetworkPolicyManager. Everything it decides is applied
+        // to the views here, so nothing outside needs to hold it.
+        fun renderSimpleEnforcementState(currentPkg: NetworkPackage) {
+            val runningNow = firewallManager.activeBackendType.value
+            val allowCriticalNow = currentPkg.paintedAllowCritical
 
-        // First, ahead of every other branch. The no-internet note promises that blocking now
-        // "will take effect if the app gains internet permission in a future update" - untrue for a
-        // uid this backend can never act on, and several platform components declare no network
-        // permission of their own, so that branch would otherwise win for exactly these rows. The
-        // critical-package branches are outranked too: the "Allow Firewall Critical Packages"
-        // setting changes nothing here, and pointing at it would send the user to a switch that
-        // leaves the app online either way.
-        // The protection SETTING comes first when it is what bites. Otherwise a whitelisted app or
-        // a VPN app was told it "shares a user ID with a protected app" - it IS the protected app -
-        // and the message that names the switch which would unlock it never appeared.
-        val protectedBySetting = (pkg.isSystemCritical || pkg.isVpnApp) && !allowCriticalSimple
-
-        // Then the backend reason. Four situations wear the same disabled switch and need different
-        // words; the reason comes from the same call that decided to disable it, so they cannot drift.
-        val infoMessage: String? = if (protectedBySetting) {
-            if (pkg.isSystemCritical) {
-                getString(R.string.firewall_system_critical_info)
-            } else {
-                getString(R.string.firewall_vpn_app_info)
-            }
-        } else if (unblockableReason != null) {
-            getString(
-                when (unblockableReason) {
-                    UnblockableReason.UNKNOWN_UID -> R.string.firewall_unknown_uid_info
-                    UnblockableReason.OTHER_PROFILE_UNREACHABLE -> R.string.firewall_other_profile_info
-                    UnblockableReason.PLATFORM_REFUSES_SYSTEM_UID -> R.string.firewall_system_uid_info
-                    UnblockableReason.SHARED_WITH_PROTECTED_PACKAGE -> R.string.firewall_shared_uid_info
-                    UnblockableReason.NO_RULE_IN_PROTECTED_UID -> R.string.firewall_no_rule_protected_uid_info
-                    UnblockableReason.SIBLING_RULE_OVERRIDES_DEFAULT -> R.string.firewall_sibling_rule_info
-                }
+            val unblockableReason = runningNow.unblockableReason(
+                currentPkg, viewModel.uiState.value.blockingContext
             )
-        } else if (!pkg.hasInternetPermission) {
-            getString(R.string.firewall_no_internet_info)
-        } else if (pkg.isSystemCritical || pkg.isVpnApp) {
-            // Only reachable with the setting ON - the OFF case is handled above.
-            getString(R.string.firewall_critical_allowed_info)
-        } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER) {
-            getString(R.string.firewall_connectivity_manager_info)
-        } else {
-            null
-        }
+            // Dead controls only when nothing here can fix it.
+            val controlsRefused = unblockableReason?.fixableHere == false
 
-        if (infoMessage != null) {
-            binding.infoMessage.visibility = View.VISIBLE
-            binding.infoMessage.text = infoMessage
-        } else {
-            binding.infoMessage.visibility = View.GONE
+            // First, ahead of every other branch. The no-internet note promises that blocking now
+            // "will take effect if the app gains internet permission in a future update" - untrue
+            // for a uid this backend can never act on, and several platform components declare no
+            // network permission of their own, so that branch would otherwise win for exactly these
+            // rows. The critical-package branches are outranked too: the "Allow Firewall Critical
+            // Packages" setting changes nothing here, and pointing at it would send the user to a
+            // switch that leaves the app online either way.
+            // The protection SETTING comes first when it is what bites. Otherwise a whitelisted app
+            // or a VPN app was told it "shares a user ID with a protected app" - it IS the protected
+            // app - and the message naming the switch that would unlock it never appeared.
+            val protectedBySetting =
+                (currentPkg.isSystemCritical || currentPkg.isVpnApp) && !allowCriticalNow
+
+            val reason = unblockableReason
+            val infoMessage: String? = if (protectedBySetting) {
+                if (currentPkg.isSystemCritical) {
+                    getString(R.string.firewall_system_critical_info)
+                } else {
+                    getString(R.string.firewall_vpn_app_info)
+                }
+            } else if (reason != null) {
+                getString(
+                    when (reason) {
+                        UnblockableReason.UNKNOWN_UID -> R.string.firewall_unknown_uid_info
+                        UnblockableReason.OTHER_PROFILE_UNREACHABLE -> R.string.firewall_other_profile_info
+                        UnblockableReason.PLATFORM_REFUSES_SYSTEM_UID -> R.string.firewall_system_uid_info
+                        UnblockableReason.SHARED_WITH_PROTECTED_PACKAGE -> R.string.firewall_shared_uid_info
+                        UnblockableReason.NO_RULE_IN_PROTECTED_UID -> R.string.firewall_no_rule_protected_uid_info
+                        UnblockableReason.SIBLING_RULE_OVERRIDES_DEFAULT -> R.string.firewall_sibling_rule_info
+                    }
+                )
+            } else if (!currentPkg.hasInternetPermission) {
+                getString(R.string.firewall_no_internet_info)
+            } else if (currentPkg.isSystemCritical || currentPkg.isVpnApp) {
+                // Only reachable with the setting ON - the OFF case is handled above.
+                getString(R.string.firewall_critical_allowed_info)
+            } else if (backendType == io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.CONNECTIVITY_MANAGER) {
+                getString(R.string.firewall_connectivity_manager_info)
+            } else {
+                null
+            }
+
+            if (infoMessage != null) {
+                binding.infoMessage.visibility = View.VISIBLE
+                binding.infoMessage.text = infoMessage
+            } else {
+                binding.infoMessage.visibility = View.GONE
+            }
+
+            binding.internetToggle.toggleSwitch.isEnabled =
+                (!currentPkg.isSystemCritical || allowCriticalNow) &&
+                    (!currentPkg.isVpnApp || allowCriticalNow) &&
+                    !controlsRefused
+            binding.internetToggle.networkTypeSubtitle.visibility = View.VISIBLE
+            binding.internetToggle.networkTypeSubtitle.text = if (controlsRefused) {
+                getString(R.string.firewall_backend_cannot_block_uid)
+            } else {
+                getString(R.string.firewall_internet_access_subtitle)
+            }
+            binding.internetToggle.root.alpha = if (controlsRefused) 0.6f else 1f
         }
 
         var isUpdatingProgrammatically = false
@@ -1372,13 +1412,19 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         fun updateToggleFromPackage(currentPkg: NetworkPackage) {
             isUpdatingProgrammatically = true
 
-            val isBlocked = currentPkg.wifiBlocked || currentPkg.mobileBlocked ||
-                currentPkg.roamingBlocked
+            // asSaved: this switch writes this app's OWN rule, so it has to show that rule. A
+            // neighbour in the same uid blocking more is explained by the banner, not by moving a
+            // control the user cannot reach from here.
+            val saved = currentPkg.asSaved()
+            val isBlocked = saved.wifiBlocked || saved.mobileBlocked ||
+                saved.roamingBlocked
             binding.internetToggle.toggleSwitch.isChecked = isBlocked
             updateSwitchColors(binding.internetToggle.toggleSwitch, isBlocked)
 
             isUpdatingProgrammatically = false
         }
+
+        val simpleBase = pkg.asSaved()
 
         updateToggleFromPackage(pkg)
 
@@ -1394,6 +1440,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 // PackageId is exactly that pair.
                 val updatedPkg = viewModel.enforcedPackage(pkg.id)
                 if (updatedPkg != null && !isUpdatingProgrammatically) {
+                    renderSimpleEnforcementState(updatedPkg)
                     updateToggleFromPackage(updatedPkg)
                 }
             }
@@ -1407,30 +1454,25 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         setupNetworkToggle(
             binding = binding.internetToggle,
             label = getString(R.string.firewall_network_label_internet_access),
-            isBlocked = pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked,
-            enabled = (!pkg.isSystemCritical || allowCriticalSimple) &&
-                (!pkg.isVpnApp || allowCriticalSimple) &&
-                !controlsRefused,
+            isBlocked = simpleBase.wifiBlocked || simpleBase.mobileBlocked || simpleBase.roamingBlocked,
+            // Fail closed. renderSimpleEnforcementState below is what decides this, and it runs on
+            // the very next line - but if the two are ever reordered, a control the backend refuses
+            // must not come up live.
+            enabled = false,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
 
                 viewModel.setAllNetworkBlocking(pkg.packageName, pkg.userId, blocked)
             }
         )
-        binding.internetToggle.networkTypeSubtitle.visibility = View.VISIBLE
-        binding.internetToggle.networkTypeSubtitle.text = if (controlsRefused) {
-            getString(R.string.firewall_backend_cannot_block_uid)
-        } else {
-            getString(R.string.firewall_internet_access_subtitle)
-        }
-        if (controlsRefused) {
-            binding.internetToggle.root.alpha = 0.6f
-        }
+        // After setupNetworkToggle, never before: these one-time calls run AFTER the collector is
+        // registered, so at open they are the last writer and would undo the render.
+        renderSimpleEnforcementState(pkg)
 
         setupNetworkToggle(
             binding = binding.lanToggle,
             label = getString(R.string.firewall_network_label_lan),
-            isBlocked = pkg.lanBlocked,
+            isBlocked = simpleBase.lanBlocked,
             enabled = false,
             onToggle = { }
         )
@@ -1618,15 +1660,14 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private fun onPackageLongClick(pkg: NetworkPackage): Boolean {
         AppLogger.d(TAG, "🔘 Long click on package: ${pkg.packageName}")
 
-        if (!adapter.canSelectPackage(pkg, requireContext())) {
+        if (!adapter.canSelectPackage(pkg)) {
             // Long press is the ONLY way into selection mode, so this toast is the first thing the
             // user sees. It used to say "Critical/VPN packages cannot be selected" for a package
             // that carries neither badge, and pointed at a Settings switch that changes nothing for
             // a uid outside the app range. Pick the same reason the adapter picks on a tap.
             val backend = (requireActivity().application as De1984Application)
                 .dependencies.firewallManager.activeBackendType.value
-            val allowCriticalNow = settingsViewModel.uiState.value.allowCriticalPackageFirewall
-            val protectedBySetting = (pkg.isSystemCritical || pkg.isVpnApp) && !allowCriticalNow
+            val protectedBySetting = (pkg.isSystemCritical || pkg.isVpnApp) && !pkg.paintedAllowCritical
             val unblockable = !protectedBySetting && backend.blockingRefused(
                 pkg, viewModel.uiState.value.blockingContext
             )
@@ -1810,7 +1851,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // "All" outlives a switch to "System" - and the visible remnant was being counted and
         // summarised while every tap applied to the whole selection. Three different counts of one
         // selection were on screen at once.
-        val selectedPkgs = actionableIds.mapNotNull { viewModel.enforcedPackage(it) }
+        // asSaved: these drive switches that WRITE rules. Counting a neighbour's block as this
+        // row's own left the sheet's switch already ON for a selection the user had not blocked,
+        // and the batch guards then skipped those very rows - the sheet could neither block nor
+        // unblock them.
+        val selectedPkgs = actionableIds.mapNotNull { viewModel.enforcedPackage(it)?.asSaved() }
 
         if (selectedPkgs.isEmpty() || actionableIds.isEmpty()) {
             dialog.dismiss()
@@ -1980,7 +2025,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             viewModel.uiState.collect { state ->
                 var changed = false
                 val seenThisEmit = mutableSetOf<PackageId>()
-                state.packages.forEach { pkg ->
+                // asSaved, matching how trackedSelection was seeded. state.packages carries the
+                // ENFORCED flags, so merging them raw repainted every switch from a neighbour's
+                // block on the first emission - undoing the seeding one frame after the sheet
+                // opened. These switches write rules, so they must show the rules they write.
+                state.packages.forEach { masked ->
+                    val pkg = masked.asSaved()
                     if (trackedSelection.containsKey(pkg.id)) {
                         if (trackedSelection[pkg.id] != pkg) changed = true
                         trackedSelection[pkg.id] = pkg
@@ -2098,12 +2148,17 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // showing the dialog and pressing it.
         val granular = supportsGranularControl()
 
+        // The row's OWN rule decides which way this tap goes. Reading the displayed flags on a row
+        // a neighbour blocks made willBlock permanently false, so the toggle could only ever push
+        // toward allow - and where the user's own rule also blocked, each tap silently cleared and
+        // restored that block while the row never moved.
+        val saved = pkg.asSaved()
         val isCurrentlyBlocked = if (!granular) {
-            pkg.wifiBlocked || pkg.mobileBlocked || pkg.roamingBlocked
+            saved.wifiBlocked || saved.mobileBlocked || saved.roamingBlocked
         } else when (networkType) {
-            NetworkType.WIFI -> pkg.wifiBlocked
-            NetworkType.MOBILE -> pkg.mobileBlocked
-            NetworkType.ROAMING -> pkg.roamingBlocked
+            NetworkType.WIFI -> saved.wifiBlocked
+            NetworkType.MOBILE -> saved.mobileBlocked
+            NetworkType.ROAMING -> saved.roamingBlocked
         }
         val willBlock = !isCurrentlyBlocked
 

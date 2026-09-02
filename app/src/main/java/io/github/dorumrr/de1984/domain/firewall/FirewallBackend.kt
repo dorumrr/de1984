@@ -4,6 +4,7 @@ import android.content.Context
 import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
+import io.github.dorumrr.de1984.domain.model.UidRuleAggregate
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.utils.Constants
 
@@ -148,7 +149,7 @@ enum class UnblockableReason(
      * So this rule-less row is really governed by the UNION of its neighbours' rules - blocked on
      * the networks they name, open on the rest - while its painting shows the full Block All
      * default. The one row wearing this reason is not zeroed like the others: [asEnforcedBy]
-     * substitutes [FirewallBackendType.enforcedVector], so a partial neighbour rule shows as a
+     * substitutes [FirewallBackendType.enforcedVectorFor], so a partial neighbour rule shows as a
      * partial block. Giving this package a rule of its own fixes it, which is why this is
      * [fixableHere]. Raised only when the union falls short of the painting; a uid whose rules
      * block everything anyway needs no correction.
@@ -179,7 +180,7 @@ data class BlockingContext(
      * on exactly the networks its neighbours' rules name. Carrying the union lets the screen paint
      * that truth instead of guessing a yes/no.
      */
-    val uidRules: Map<Int, UidRuleAggregate> = emptyMap(),
+    val uidRules: Map<Int, Map<String, UidRuleAggregate>> = emptyMap(),
     /** Settings > "Allow Firewall Critical Packages". */
     val allowCritical: Boolean = false,
     /** The default policy is Block All. */
@@ -187,17 +188,6 @@ data class BlockingContext(
     /** The user De1984 itself runs in. A package-naming backend can reach only this one. */
     val ownUserId: Int = 0,
 )
-
-/** The union of every ENABLED rule in one uid - what a uid-deciding backend enforces on it. */
-data class UidRuleAggregate(
-    val wifiBlocked: Boolean = false,
-    val mobileBlocked: Boolean = false,
-    val roamingBlocked: Boolean = false,
-    val lanBlocked: Boolean = false,
-    val backgroundBlocked: Boolean = false,
-) {
-    val blocksInternet: Boolean get() = wifiBlocked || mobileBlocked || roamingBlocked
-}
 
 /**
  * What THIS backend enforces on a ruled uid, given the union of its rules.
@@ -208,7 +198,7 @@ data class UidRuleAggregate(
  * network takes every network, and it cannot touch LAN at all. Only meaningful for backends whose
  * verdict lands on a uid; the package-naming two never consult it.
  */
-fun FirewallBackendType.enforcedVector(agg: UidRuleAggregate): UidRuleAggregate = when (this) {
+private fun FirewallBackendType.enforcedVector(agg: UidRuleAggregate): UidRuleAggregate = when (this) {
     FirewallBackendType.IPTABLES -> agg
     FirewallBackendType.NETWORK_POLICY_MANAGER -> UidRuleAggregate(
         wifiBlocked = agg.blocksInternet,
@@ -221,16 +211,72 @@ fun FirewallBackendType.enforcedVector(agg: UidRuleAggregate): UidRuleAggregate 
 }
 
 /**
- * Does [vector] block everything the Block All default paints as blocked on this backend?
+ * What a uid-deciding backend really enforces on THIS row, or null when only its own rule decides.
  *
- * The rule-less row under Block All paints WiFi, Mobile, Roaming and LAN as blocked. When the
- * uid's rules enforce all of that anyway, the painting is already the truth and no reason is
- * owed. LAN counts only on iptables - it is the one backend that can block LAN, and the LAN
- * switch is only shown there.
+ * Null means one of: the backend names packages instead of uids, no rule exists anywhere in the
+ * uid, or no OTHER package holds one. The last case is deliberate - without a neighbour there is
+ * nobody for the shared-uid wording to name, and NetworkPolicyManager flattening the row's own
+ * rule to all-or-nothing is a different defect that needs different words.
+ *
+ * Every rule in the uid goes into the union, INCLUDING a neighbour's rule that blocks nothing.
+ * iptables applies the Block All default only while `rulesForUid` is EMPTY, so an allow-everything
+ * neighbour still withdraws that default from the whole uid: skipping it left a rule-less row
+ * painted Blocked, and sitting under the Blocked chip, while its traffic flowed.
+ *
+ * This row's own contribution comes from the ROW, not from the map. Right after a tap
+ * [BlockingContext.uidRules] is one repository emission behind, and a union can only add - so a map
+ * that still held this row's own pre-tap block could never represent the user REMOVING it, and an
+ * unblock snapped straight back to Blocked.
  */
-private fun FirewallBackendType.coversBlockAllPaint(vector: UidRuleAggregate): Boolean =
-    vector.wifiBlocked && vector.mobileBlocked && vector.roamingBlocked &&
-        (vector.lanBlocked || this != FirewallBackendType.IPTABLES)
+fun FirewallBackendType.enforcedVectorFor(
+    pkg: NetworkPackage,
+    context: BlockingContext,
+): UidRuleAggregate? {
+    if (!blocksByUid()) return null
+    val byPackage = context.uidRules[pkg.uid] ?: return null
+    var union = if (pkg.hasExplicitRule) pkg.ownVector else UidRuleAggregate()
+    var hasSibling = false
+    for ((owner, vector) in byPackage) {
+        if (owner == pkg.packageName) continue
+        hasSibling = true
+        union = union union vector
+    }
+    if (!hasSibling) return null
+    return enforcedVector(union)
+}
+
+/**
+ * Does this row already show [vector], so no correction is owed?
+ *
+ * Compares against the row's OWN values, never against a painting guessed from the default policy.
+ * The data source paints a critical or VPN package all-allowed whatever the policy says, so a
+ * guess disagreed with the screen in both directions - a false warning on a quiet row, and silence
+ * on one the backend was really dropping.
+ *
+ * LAN counts only on iptables, the one backend that can block it. Background counts only while its
+ * toggle is on screen, which FirewallFragmentViews hides once the row is fully blocked.
+ */
+private fun FirewallBackendType.displayMatches(
+    pkg: NetworkPackage,
+    vector: UidRuleAggregate,
+): Boolean {
+    val shown = pkg.ownVector
+    // LAN and Background both count on iptables only. That is the one backend with a LAN switch,
+    // and the only sheet with a Background switch is the granular one, which no other backend uses -
+    // supportsGranularControl() is false for NetworkPolicyManager and ConnectivityManager, and they
+    // get the simple sheet's single Internet switch. Comparing Background elsewhere raised the
+    // shared-uid banner over a sheet holding no control the difference could refer to.
+    //
+    // On iptables, Background is compared using the SAME values the UI asks: FirewallFragmentViews
+    // hides that toggle on controlPkg.isFullyBlocked, and controlPkg is the SAVED row.
+    val iptables = this == FirewallBackendType.IPTABLES
+    val backgroundVisible = iptables && !(shown.wifiBlocked && shown.mobileBlocked)
+    return shown.wifiBlocked == vector.wifiBlocked &&
+        shown.mobileBlocked == vector.mobileBlocked &&
+        shown.roamingBlocked == vector.roamingBlocked &&
+        (!backgroundVisible || shown.backgroundBlocked == vector.backgroundBlocked) &&
+        (!iptables || shown.lanBlocked == vector.lanBlocked)
+}
 
 /**
  * Why the RUNNING backend will not act on [uid], or null when it will.
@@ -273,6 +319,17 @@ fun FirewallBackendType?.unblockableReason(
         return if (backend.blocksByUid()) UnblockableReason.SHARED_WITH_PROTECTED_PACKAGE else null
     }
 
+    // A neighbour's rule governs this row on a uid-deciding backend whatever the default policy is,
+    // and whether or not this row has a rule of its own - `rulesForUid.any { }` never asks which
+    // package in the uid asked for the block. So this test comes BEFORE the Block All one, and is
+    // not skipped for a row with its own rule. Raised only when the union really differs from what
+    // the row paints; a uid whose rules match the painting is already telling the truth.
+    val enforced = backend.enforcedVectorFor(pkg, context)
+    if (enforced != null) {
+        return if (backend.displayMatches(pkg, enforced)) null
+        else UnblockableReason.SIBLING_RULE_OVERRIDES_DEFAULT
+    }
+
     // Past here the only thing that can go unenforced is the Block All DEFAULT. An explicit rule is
     // honoured everywhere - on a protected uid with "allow critical" ON as much as on an ordinary
     // one - so a row displaying its own rule needs no correction and gets none.
@@ -286,18 +343,6 @@ fun FirewallBackendType?.unblockableReason(
     // row hasExplicitRule with flags mirroring the insert, while [BlockingContext.uidRules] is one
     // repository emission behind. The row answers for itself and does not wait for the map.
     if (pkg.hasExplicitRule) return null
-
-    // No rule of its own. On a uid-deciding backend, one neighbour's rule withdraws the Block All
-    // default from the WHOLE uid and the rules' union takes over - so this row is really blocked on
-    // exactly the networks [enforcedVector] says, not on the four its default painting shows. Only
-    // when the union covers the full painting is the display already the truth.
-    if (backend.blocksByUid()) {
-        val aggregate = context.uidRules[uid]
-        if (aggregate != null) {
-            return if (backend.coversBlockAllPaint(backend.enforcedVector(aggregate))) null
-            else UnblockableReason.SIBLING_RULE_OVERRIDES_DEFAULT
-        }
-    }
 
     // No rule anywhere in reach: the Block All default is enforced as painted, except on a
     // protected uid, where every backend withholds it for system stability.
@@ -339,10 +384,10 @@ fun NetworkPackage.asEnforcedBy(
     // of its neighbours' rules, shaped by what this backend can enforce. Zeroing it painted a row
     // as fully Allowed while iptables was still dropping its LAN - or its mobile - traffic.
     if (reason == UnblockableReason.SIBLING_RULE_OVERRIDES_DEFAULT && backend != null) {
-        val aggregate = context.uidRules[uid]
-        if (aggregate != null) {
-            val vector = backend.enforcedVector(aggregate)
+        val vector = backend.enforcedVectorFor(this, context)
+        if (vector != null) {
             return copy(
+                savedRule = ownVector,
                 isNetworkBlocked = vector.wifiBlocked || vector.mobileBlocked,
                 wifiBlocked = vector.wifiBlocked,
                 mobileBlocked = vector.mobileBlocked,
@@ -353,7 +398,12 @@ fun NetworkPackage.asEnforcedBy(
         }
     }
 
+    // No savedRule here on purpose. This branch REMOVES blocks, and the row's pre-mask painting is
+    // not something any control should show - the message beside these switches asks the user to
+    // turn one ON. Setting it only in the sibling branch is what lets NetworkPackage.asSaved() mean
+    // one unambiguous thing: give me back the values a neighbour's block hid.
     return copy(
+        savedRule = null,
         isNetworkBlocked = false,
         wifiBlocked = false,
         mobileBlocked = false,

@@ -1,6 +1,5 @@
 package io.github.dorumrr.de1984.data.model
 
-import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.Package
 import io.github.dorumrr.de1984.domain.model.PackageCriticality
 import io.github.dorumrr.de1984.domain.model.PackageType
@@ -38,6 +37,20 @@ data class PackageEntity(
     val criticality: PackageCriticality? = null,
     val category: String? = null,
     val affects: List<String> = emptyList(),
+    /**
+     * The two settings this row's blocking flags were PAINTED with, recorded by the scan that built
+     * it.
+     *
+     * Carried on the row because the painting happens when a scan STARTS, and nothing downstream can
+     * work out afterwards which values it used. Reading the preferences again when the rows arrive
+     * looks equivalent and is not: a scan already in flight when the user flips a setting paints
+     * with the old value and lands after the new one is written. Every context is built from these,
+     * so a row and the verdict drawn over it can never describe different settings - a dropped or
+     * failed rescan then only means the change shows up late, never that a row lies.
+     */
+    val paintedAllowCritical: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL,
+    val paintedBlockAllDefault: Boolean =
+        Constants.Settings.DEFAULT_FIREWALL_POLICY == Constants.Settings.POLICY_BLOCK_ALL,
     val isWorkProfile: Boolean = false,
     val isCloneProfile: Boolean = false
 )
@@ -64,38 +77,6 @@ fun PackageEntity.toDomain(): Package {
         criticality = criticality,
         category = category,
         affects = affects,
-        isWorkProfile = isWorkProfile,
-        isCloneProfile = isCloneProfile
-    )
-}
-
-fun PackageEntity.toNetworkDomain(): NetworkPackage {
-    return NetworkPackage(
-        packageName = packageName,
-        userId = userId,
-        uid = uid,
-        name = name,
-        icon = icon,
-        isEnabled = isEnabled,
-        type = when (type) {
-            Constants.Packages.TYPE_SYSTEM -> PackageType.SYSTEM
-            Constants.Packages.TYPE_USER -> PackageType.USER
-            else -> PackageType.USER
-        },
-        isNetworkBlocked = isNetworkBlocked,
-        wifiBlocked = wifiBlocked,
-        mobileBlocked = mobileBlocked,
-        roamingBlocked = roamingBlocked,
-        backgroundBlocked = backgroundBlocked,
-        lanBlocked = lanBlocked,
-        networkPermissions = permissions.filter {
-            Constants.Firewall.NETWORK_PERMISSIONS.contains(it)
-        },
-        versionName = versionName,
-        versionCode = versionCode,
-        installTime = installTime,
-        updateTime = updateTime,
-        isVpnApp = isVpnApp,
         isWorkProfile = isWorkProfile,
         isCloneProfile = isCloneProfile
     )

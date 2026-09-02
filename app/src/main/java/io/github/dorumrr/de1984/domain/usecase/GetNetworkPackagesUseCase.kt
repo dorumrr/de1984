@@ -12,6 +12,9 @@ class GetNetworkPackagesUseCase constructor(
     private val networkPackageRepository: NetworkPackageRepository
 ) {
 
+    /** See PackageDataSource.invalidateCache. */
+    fun invalidateCache() = networkPackageRepository.invalidatePackageCache()
+
     operator fun invoke(): Flow<List<NetworkPackage>> {
         return networkPackageRepository.getNetworkPackages()
             .map { packages -> packages.map { it.enforceRoamingDependency() } }

@@ -60,6 +60,11 @@ class AndroidPackageDataSource(
     private val loadMutex = Mutex()
     private var isLoading = false
     private var lastLoadTime = 0L
+
+    /**
+     * A rescan was asked for. Survives a scan that is already running - see [invalidateCache].
+     */
+    private var invalidated = false
     private val CACHE_TTL = 1000L
 
     companion object {
@@ -71,9 +76,15 @@ class AndroidPackageDataSource(
             val now = System.currentTimeMillis()
             val cacheExpired = (now - lastLoadTime) > CACHE_TTL
             
-            if (!isLoading && (packagesFlow.replayCache.isEmpty() || cacheExpired)) {
+            // An invalidation WAITS on the mutex instead of being turned away by isLoading.
+            //
+            // Cancelling a load job unwinds asynchronously, so a replacement collector arrives while
+            // isLoading is still true. Skipping there meant the cancelled scan never re-ran, the
+            // request stayed set and unconsumed, and the replay cache handed back the very rows the
+            // invalidation existed to replace - with nothing left to trigger a retry.
+            if (invalidated || (!isLoading && (packagesFlow.replayCache.isEmpty() || cacheExpired))) {
                 loadMutex.withLock {
-                    if (!isLoading && (packagesFlow.replayCache.isEmpty() || (now - lastLoadTime) > CACHE_TTL)) {
+                    if (!isLoading && (invalidated || packagesFlow.replayCache.isEmpty() || (now - lastLoadTime) > CACHE_TTL)) {
                         isLoading = true
                         try {
                             // A failed scan THROWS. It used to return emptyList(), which was emitted
@@ -86,9 +97,29 @@ class AndroidPackageDataSource(
                             //
                             // Both callers already handle a thrown error. Letting it out is what
                             // reaches them. lastLoadTime is not stamped, so the next collector retries.
-                            val packages = loadPackagesInternal()
-                            lastLoadTime = System.currentTimeMillis()
-                            packagesFlow.emit(packages)
+                            // Loops while another invalidation arrives DURING the scan. Without
+                            // this, a caller that invalidated while a scan was in flight was simply
+                            // skipped by the isLoading guard above, and that scan - which read the
+                            // OLD settings - then stamped lastLoadTime and wiped the request. The
+                            // rows stayed painted with values the user had already changed, and
+                            // nothing on the firewall screen ever rescanned.
+                            do {
+                                invalidated = false
+                                var landed = false
+                                try {
+                                    val packages = loadPackagesInternal()
+                                    lastLoadTime = System.currentTimeMillis()
+                                    packagesFlow.emit(packages)
+                                    landed = true
+                                } finally {
+                                    // A scan that threw, or was cancelled when the ViewModel
+                                    // cancelled its load job, satisfied nothing. Leave the request
+                                    // standing so the next collector honours it - otherwise the
+                                    // rows and the policy read off them both stayed at the old
+                                    // setting with nothing left to trigger a rescan.
+                                    if (!landed) invalidated = true
+                                }
+                            } while (invalidated)
                         } finally {
                             isLoading = false
                         }
@@ -97,6 +128,15 @@ class AndroidPackageDataSource(
             }
         }
     
+    override fun invalidateCache() {
+        // Both, and the flag is what makes this reliable. Zeroing the timestamp alone was not
+        // enough: onStart also skips while isLoading is true, and the scan already running would
+        // stamp lastLoadTime on the way out and wipe the request. The flag is checked again after
+        // every scan, so an invalidation raised mid-scan costs one more pass instead of being lost.
+        invalidated = true
+        lastLoadTime = 0L
+    }
+
     /** @throws Exception when the scan fails. A failure is not an empty device - see the caller. */
     private suspend fun loadPackagesInternal(): List<PackageEntity> = withContext(Dispatchers.IO) {
         val flowStartTime = System.currentTimeMillis()
@@ -219,6 +259,10 @@ class AndroidPackageDataSource(
                             val affects = PackageSafetyLoader.getAffects(context, appInfo.packageName)
 
                             PackageEntity(
+                                // Recorded, not re-read later: these are the values THIS scan
+                                // painted the blocking flags with. See PackageEntity.
+                                paintedAllowCritical = allowCritical,
+                                paintedBlockAllDefault = isBlockAllDefault,
                                 packageName = appInfo.packageName,
                                 userId = profile.userId,
                                 uid = absoluteUid,
@@ -269,6 +313,23 @@ class AndroidPackageDataSource(
 
             val flowEndTime = System.currentTimeMillis()
             AppLogger.i(TAG, "⏱️ TIMING: getPackages COMPLETE - Total time: ${flowEndTime - flowStartTime}ms for ${allPackages.size} packages")
+
+            // An EMPTY scan is a failed scan, not an empty device. Every Android device has
+            // packages other than this one, so zero means the enumeration itself did not work -
+            // HiddenApiHelper.getUsers came back with no profiles, or getInstalledApplicationsAsUser
+            // answered empty because root or Shizuku was not granted yet on a fresh install.
+            //
+            // Returning it as a success stamped lastLoadTime and emitted the empty list into a
+            // replay(1) flow, so the screen showed "no apps" with no error and every filter chip
+            // kept showing it - the CACHE_TTL retry never fires because nothing collects again.
+            // Only a force-stop cleared it. Throw instead: the caller leaves lastLoadTime alone and
+            // the collectors' existing .catch reports it.
+            if (allPackages.isEmpty()) {
+                throw IllegalStateException(
+                    "Package scan returned no packages for ${userProfiles.size} profile(s) - " +
+                        "the enumeration failed rather than the device being empty"
+                )
+            }
 
             allPackages.sortedBy { it.name.lowercase() }
         } catch (e: Exception) {
@@ -360,6 +421,10 @@ class AndroidPackageDataSource(
                 val isCloneProfile = userId >= 100
 
                 PackageEntity(
+                    // Recorded for the same reason the main scan records them - every protection
+                    // test in the UI now trusts these rather than re-reading the preferences.
+                    paintedAllowCritical = allowCritical,
+                    paintedBlockAllDefault = isBlockAllDefault,
                     packageName = appInfo.packageName,
                     userId = userId,
                     uid = appInfo.uid,

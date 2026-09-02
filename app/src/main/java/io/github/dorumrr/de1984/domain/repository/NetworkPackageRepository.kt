@@ -9,6 +9,9 @@ interface NetworkPackageRepository {
 
     fun getNetworkPackages(): Flow<List<NetworkPackage>>
 
+    /** See PackageDataSource.invalidateCache. */
+    fun invalidatePackageCache()
+
     fun getNetworkPackagesByType(type: PackageType): Flow<List<NetworkPackage>>
 
     fun getNetworkPackagesByAccessState(state: NetworkAccessState): Flow<List<NetworkPackage>>

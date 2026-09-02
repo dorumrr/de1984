@@ -73,8 +73,6 @@ class NetworkPackageAdapter(
 
     private val iconCache = LruCache<String, Drawable>(ICON_CACHE_SIZE)
 
-    private var cachedAllowCritical: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
-
     /**
      * The running backend, or null while the firewall is stopped. Decides whether a row outside the
      * app-uid range can be blocked at all - see [blockingRefused].
@@ -97,15 +95,6 @@ class NetworkPackageAdapter(
     }
 
     fun refreshSettings(context: Context) {
-        val prefs = context.getSharedPreferences(
-            Constants.Settings.PREFS_NAME,
-            Context.MODE_PRIVATE
-        )
-        cachedAllowCritical = prefs.getBoolean(
-            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
-            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
-        )
-
         // Read here rather than through a setter because the fragment builds the adapter in two
         // places - setupRecyclerView and the icons-changed branch of observeSettingsState - and
         // both call initialize(), which calls this. A setter would have to be repeated at both.
@@ -141,12 +130,10 @@ class NetworkPackageAdapter(
             onPackageClick,
             onPackageLongClick,
             ::isPackageSelected,
-            ::canSelectPackageCached,
             ::togglePackageSelection,
             onQuickToggle,
             iconCache,
             { hasCellular },
-            { cachedAllowCritical },
             ::isRefusedByBackend
         )
     }
@@ -207,22 +194,18 @@ class NetworkPackageAdapter(
         }
     }
 
-    fun canSelectPackage(pkg: NetworkPackage, context: Context): Boolean {
-        val prefs = context.getSharedPreferences(
-            Constants.Settings.PREFS_NAME,
-            Context.MODE_PRIVATE
-        )
-        val allowCritical = prefs.getBoolean(
-            Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
-            Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
-        )
-        if ((pkg.isSystemCritical || pkg.isVpnApp) && !allowCritical) return false
-        if (isRefusedByBackend(pkg)) return false
-        return true
-    }
-
-    private fun canSelectPackageCached(pkg: NetworkPackage): Boolean {
-        if ((pkg.isSystemCritical || pkg.isVpnApp) && !cachedAllowCritical) return false
+    /**
+     * pkg.paintedAllowCritical, never the preference. The row's blocking flags were painted with
+     * that value and the blocking context is built from it, so reading the preference here made this
+     * screen answer one question with two different settings for the length of a rescan - a row
+     * dimmed and unselectable beside a sheet saying its switches work, or the reverse.
+     *
+     * There were two of these, a "cached" one and one that read preferences. Once both took the
+     * answer from the row the bodies were identical, and two names for one rule is the shape that
+     * produced the shadowed-mapper defect in this same change. One function.
+     */
+    fun canSelectPackage(pkg: NetworkPackage): Boolean {
+        if ((pkg.isSystemCritical || pkg.isVpnApp) && !pkg.paintedAllowCritical) return false
         if (isRefusedByBackend(pkg)) return false
         return true
     }
@@ -247,10 +230,10 @@ class NetworkPackageAdapter(
             return
         }
 
-        if (!canSelectPackage(pkg, context)) {
+        if (!canSelectPackage(pkg)) {
             // Protection by the setting comes first: when it applies that is the operative reason,
             // and there is a switch in Settings for it.
-            val protectedBySetting = (pkg.isSystemCritical || pkg.isVpnApp) && !cachedAllowCritical
+            val protectedBySetting = (pkg.isSystemCritical || pkg.isVpnApp) && !pkg.paintedAllowCritical
             val reason = if (!protectedBySetting && isRefusedByBackend(pkg)) {
                 R.string.firewall_multiselect_toast_cannot_select_system_uid
             } else {
@@ -280,12 +263,10 @@ class NetworkPackageAdapter(
         private val onPackageClick: (NetworkPackage) -> Unit,
         private val onPackageLongClick: (NetworkPackage) -> Boolean,
         private val isPackageSelected: (PackageId) -> Boolean,
-        private val canSelectPackage: (NetworkPackage) -> Boolean,
         private val togglePackageSelection: (NetworkPackage, Context) -> Unit,
         private val onQuickToggle: ((NetworkPackage, NetworkType) -> Unit)?,
         private val iconCache: LruCache<String, Drawable>,
         private val getHasCellular: () -> Boolean,
-        private val getAllowCritical: () -> Boolean,
         private val isRefusedByBackend: (NetworkPackage) -> Boolean
     ) : RecyclerView.ViewHolder(itemView) {
 
@@ -346,9 +327,9 @@ class NetworkPackageAdapter(
             // "the toggles here will not respond", and it gates canQuickToggle below, so a row the
             // backend would silently skip stops offering a switch that writes a rule nothing
             // enforces. Tapping the row still opens the sheet, which explains why.
-            // Use cached setting value for performance (no SharedPreferences read per bind)
-            val allowCritical = getAllowCritical()
-            val shouldDim = (!allowCritical && (pkg.isSystemCritical || pkg.isVpnApp)) ||
+            // From the ROW, which records the setting its flags were painted with - no preference
+            // read per bind, and no way for the dimming to describe a different setting than the row.
+            val shouldDim = (!pkg.paintedAllowCritical && (pkg.isSystemCritical || pkg.isVpnApp)) ||
                 isRefusedByBackend(pkg)
             itemView.alpha = if (shouldDim) 0.6f else 1.0f
 

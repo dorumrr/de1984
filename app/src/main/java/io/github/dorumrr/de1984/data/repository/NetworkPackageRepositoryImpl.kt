@@ -52,9 +52,9 @@ class NetworkPackageRepositoryImpl(
             }
     }
     
-    override suspend fun setNetworkAccess(packageName: String, userId: Int, allowed: Boolean): Result<Unit> {
+    override suspend fun setNetworkAccess(packageName: String, userId: Int, allowed: Boolean, stampDefaultOnUntouched: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setNetworkAccess(packageName, userId, allowed)
+            val success = packageDataSource.setNetworkAccess(packageName, userId, allowed, stampDefaultOnUntouched)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -108,9 +108,9 @@ class NetworkPackageRepositoryImpl(
         return getNetworkPackagesByAccessState(NetworkAccessState.ALLOWED)
     }
 
-    override suspend fun setWifiBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
+    override suspend fun setWifiBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setWifiBlocking(packageName, userId, blocked)
+            val success = packageDataSource.setWifiBlocking(packageName, userId, blocked, stampDefaultOnUntouched)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -121,9 +121,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setMobileBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
+    override suspend fun setMobileBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setMobileBlocking(packageName, userId, blocked)
+            val success = packageDataSource.setMobileBlocking(packageName, userId, blocked, stampDefaultOnUntouched)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -134,9 +134,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setRoamingBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
+    override suspend fun setRoamingBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setRoamingBlocking(packageName, userId, blocked)
+            val success = packageDataSource.setRoamingBlocking(packageName, userId, blocked, stampDefaultOnUntouched)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -147,9 +147,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setBackgroundBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
+    override suspend fun setBackgroundBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setBackgroundBlocking(packageName, userId, blocked)
+            val success = packageDataSource.setBackgroundBlocking(packageName, userId, blocked, stampDefaultOnUntouched)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -160,9 +160,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setLanBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
+    override suspend fun setLanBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setLanBlocking(packageName, userId, blocked)
+            val success = packageDataSource.setLanBlocking(packageName, userId, blocked, stampDefaultOnUntouched)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -173,9 +173,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setAllNetworkBlocking(packageName: String, userId: Int, blocked: Boolean): Result<Unit> {
+    override suspend fun setAllNetworkBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setAllNetworkBlocking(packageName, userId, blocked)
+            val success = packageDataSource.setAllNetworkBlocking(packageName, userId, blocked, stampDefaultOnUntouched)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -186,9 +186,9 @@ class NetworkPackageRepositoryImpl(
         }
     }
 
-    override suspend fun setMobileAndRoaming(packageName: String, userId: Int, mobileBlocked: Boolean, roamingBlocked: Boolean): Result<Unit> {
+    override suspend fun setMobileAndRoaming(packageName: String, userId: Int, mobileBlocked: Boolean, roamingBlocked: Boolean, stampDefaultOnUntouched: Boolean): Result<Unit> {
         return try {
-            val success = packageDataSource.setMobileAndRoaming(packageName, userId, mobileBlocked, roamingBlocked)
+            val success = packageDataSource.setMobileAndRoaming(packageName, userId, mobileBlocked, roamingBlocked, stampDefaultOnUntouched)
             if (success) {
                 Result.success(Unit)
             } else {
@@ -226,6 +226,7 @@ private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain():
         wifiBlocked = wifiBlocked,
         mobileBlocked = mobileBlocked,
         roamingBlocked = roamingBlocked,
+        roamingBlockedUnderived = roamingBlocked,
         backgroundBlocked = backgroundBlocked,
         lanBlocked = lanBlocked,
         networkPermissions = permissions,

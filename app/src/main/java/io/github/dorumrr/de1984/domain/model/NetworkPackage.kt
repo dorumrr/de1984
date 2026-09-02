@@ -12,6 +12,27 @@ data class NetworkPackage(
     val wifiBlocked: Boolean = false,
     val mobileBlocked: Boolean = false,
     val roamingBlocked: Boolean = false,
+    /**
+     * Roaming BEFORE GetNetworkPackagesUseCase derives it - the rule's own column when the package
+     * has a rule, the default painting when it does not.
+     *
+     * Deliberately not called "stored": for a rule-less row there is nothing stored, and the mapper
+     * copies what the scan painted.
+     *
+     * `roamingBlocked` above is forced true whenever mobile is blocked, so once derived there is no
+     * way back to what the user chose. Three defects came from that: a batch guard reading the
+     * derived value and skipping the write, so the choice vanished the moment Mobile was unblocked;
+     * a batch unblock inserting allow-all rules; and an optimistic row that showed Roaming blocked
+     * after a Mobile unblock and then flipped when the real value arrived.
+     *
+     * Masked by asEnforcedBy in ONE branch only, and the asymmetry is deliberate. The ZEROING
+     * branch clears it, so a row displaying nothing blocked cannot report "roaming blocked" through
+     * a side channel - a guard that saw it wrote an allow-all rule over the Block All default. The
+     * SIBLING branch leaves it alone: every other flag there is recoverable through `savedRule` and
+     * this one is not, so substituting a neighbour's value destroyed the row's own column and made
+     * "Block Roaming" skip the write entirely. See asEnforcedBy for the same note at the code.
+     */
+    val roamingBlockedUnderived: Boolean = false,
     val backgroundBlocked: Boolean = false,
     val lanBlocked: Boolean = false,
     val networkPermissions: List<String> = emptyList(),

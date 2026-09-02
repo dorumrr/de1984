@@ -27,7 +27,9 @@ class GetNetworkPackagesUseCase constructor(
     private fun NetworkPackage.enforceRoamingDependency(): NetworkPackage {
         return if (mobileBlocked && !roamingBlocked) {
             // Invalid state: mobile blocked but roaming allowed
-            // Fix by blocking roaming too
+            // Fix by blocking roaming too - the DISPLAY only. roamingBlockedUnderived keeps what is
+            // actually written down, because callers that WRITE must not mistake this for a choice
+            // the user made.
             copy(roamingBlocked = true)
         } else {
             this

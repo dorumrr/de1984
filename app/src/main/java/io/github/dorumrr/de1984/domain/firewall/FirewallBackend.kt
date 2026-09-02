@@ -392,6 +392,12 @@ fun NetworkPackage.asEnforcedBy(
                 wifiBlocked = vector.wifiBlocked,
                 mobileBlocked = vector.mobileBlocked,
                 roamingBlocked = vector.roamingBlocked,
+                // roamingBlockedUnderived is deliberately NOT substituted here. Every other flag in
+                // this branch is recoverable through savedRule; this one has no backup, so masking
+                // it replaced the row's OWN roaming column with a neighbour's - and the batch guard,
+                // the only reader that sees a masked row, then skipped writing the column at all.
+                // The zeroing branch below DOES clear it, because there the row displays nothing
+                // blocked and a guard must not think otherwise.
                 lanBlocked = vector.lanBlocked,
                 backgroundBlocked = vector.backgroundBlocked,
             )
@@ -408,6 +414,7 @@ fun NetworkPackage.asEnforcedBy(
         wifiBlocked = false,
         mobileBlocked = false,
         roamingBlocked = false,
+        roamingBlockedUnderived = false,
         lanBlocked = false,
     )
 }

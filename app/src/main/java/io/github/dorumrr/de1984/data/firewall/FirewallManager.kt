@@ -1225,10 +1225,15 @@ class FirewallManager(
             var skippedCount = 0
 
             rules.forEach { rule ->
+                // Roaming DERIVED, exactly as FirewallRule.isBlockedOn answers it - never the raw
+                // column. Blocking Mobile no longer writes blockWhenRoaming, so a fully blocked app
+                // is now wifi=1/mobile=1/roaming=0. Read raw, that looks PARTIAL, and this rewrote
+                // all three to true - persisting a roaming block the user never set and putting back
+                // the very defect that removing the paired write got rid of.
                 val blocks = listOf(
                     rule.wifiBlocked,
                     rule.mobileBlocked,
-                    rule.blockWhenRoaming
+                    rule.blockWhenRoaming || rule.mobileBlocked
                 )
 
                 val hasPartialBlock = blocks.any { it } && blocks.any { !it }
@@ -1243,7 +1248,13 @@ class FirewallManager(
                         rule.copy(
                             wifiBlocked = blockAll,
                             mobileBlocked = blockAll,
-                            blockWhenRoaming = blockAll,
+                            // CARRIED THROUGH, neither invented nor erased. Writing blockAll here
+                            // persisted a roaming block the user never set; writing false erased one
+                            // they did - `(0,0,1)` is reachable by blocking Roaming then unblocking
+                            // Mobile, and an unattended backend switch would have dropped it.
+                            // mobileBlocked already implies roaming everywhere that reads it, so
+                            // keeping the column costs nothing and loses nothing.
+                            blockWhenRoaming = rule.blockWhenRoaming,
                             updatedAt = System.currentTimeMillis()
                         )
                     )

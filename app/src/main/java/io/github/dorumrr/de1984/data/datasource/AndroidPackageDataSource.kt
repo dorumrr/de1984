@@ -955,7 +955,7 @@ class AndroidPackageDataSource(
         return permissions.any { Constants.Firewall.NETWORK_PERMISSIONS.contains(it) }
     }
 
-    override suspend fun setNetworkAccess(packageName: String, userId: Int, allowed: Boolean): Boolean {
+    override suspend fun setNetworkAccess(packageName: String, userId: Int, allowed: Boolean, stampDefaultOnUntouched: Boolean): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val allowCritical = prefs.getBoolean(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
@@ -1008,7 +1008,7 @@ class AndroidPackageDataSource(
         }
     }
 
-    override suspend fun setWifiBlocking(packageName: String, userId: Int, blocked: Boolean): Boolean {
+    override suspend fun setWifiBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val allowCritical = prefs.getBoolean(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
@@ -1050,8 +1050,8 @@ class AndroidPackageDataSource(
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
                         wifiBlocked = blocked,
-                        mobileBlocked = isBlockAllDefault && !blocked,
-                        blockWhenRoaming = isBlockAllDefault && !blocked,
+                        mobileBlocked = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
+                        blockWhenRoaming = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
                         hasInternetPermission = hasNetworkPermissions(packageName, userId)
@@ -1066,7 +1066,7 @@ class AndroidPackageDataSource(
         }
     }
 
-    override suspend fun setMobileBlocking(packageName: String, userId: Int, blocked: Boolean): Boolean {
+    override suspend fun setMobileBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val allowCritical = prefs.getBoolean(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
@@ -1107,9 +1107,9 @@ class AndroidPackageDataSource(
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault && !blocked,
+                        wifiBlocked = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
                         mobileBlocked = blocked,
-                        blockWhenRoaming = isBlockAllDefault && !blocked,
+                        blockWhenRoaming = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
                         hasInternetPermission = hasNetworkPermissions(packageName, userId)
@@ -1124,7 +1124,7 @@ class AndroidPackageDataSource(
         }
     }
 
-    override suspend fun setRoamingBlocking(packageName: String, userId: Int, blocked: Boolean): Boolean {
+    override suspend fun setRoamingBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val allowCritical = prefs.getBoolean(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
@@ -1165,8 +1165,8 @@ class AndroidPackageDataSource(
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault && !blocked,
-                        mobileBlocked = isBlockAllDefault && !blocked,
+                        wifiBlocked = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
+                        mobileBlocked = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
                         blockWhenRoaming = blocked,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
@@ -1182,7 +1182,7 @@ class AndroidPackageDataSource(
         }
     }
 
-    override suspend fun setBackgroundBlocking(packageName: String, userId: Int, blocked: Boolean): Boolean {
+    override suspend fun setBackgroundBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val allowCritical = prefs.getBoolean(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
@@ -1246,7 +1246,7 @@ class AndroidPackageDataSource(
         }
     }
 
-    override suspend fun setLanBlocking(packageName: String, userId: Int, blocked: Boolean): Boolean {
+    override suspend fun setLanBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val allowCritical = prefs.getBoolean(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
@@ -1287,9 +1287,9 @@ class AndroidPackageDataSource(
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault && !blocked,
-                        mobileBlocked = isBlockAllDefault && !blocked,
-                        blockWhenRoaming = isBlockAllDefault && !blocked,
+                        wifiBlocked = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
+                        mobileBlocked = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
+                        blockWhenRoaming = isBlockAllDefault && !blocked && stampDefaultOnUntouched,
                         lanBlocked = blocked,
                         enabled = true,
                         isSystemApp = isSystemApp(appInfo),
@@ -1305,7 +1305,7 @@ class AndroidPackageDataSource(
         }
     }
 
-    override suspend fun setAllNetworkBlocking(packageName: String, userId: Int, blocked: Boolean): Boolean {
+    override suspend fun setAllNetworkBlocking(packageName: String, userId: Int, blocked: Boolean, stampDefaultOnUntouched: Boolean): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val allowCritical = prefs.getBoolean(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
@@ -1354,7 +1354,7 @@ class AndroidPackageDataSource(
         }
     }
 
-    override suspend fun setMobileAndRoaming(packageName: String, userId: Int, mobileBlocked: Boolean, roamingBlocked: Boolean): Boolean {
+    override suspend fun setMobileAndRoaming(packageName: String, userId: Int, mobileBlocked: Boolean, roamingBlocked: Boolean, stampDefaultOnUntouched: Boolean): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val allowCritical = prefs.getBoolean(
             Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL,
@@ -1395,7 +1395,7 @@ class AndroidPackageDataSource(
                         userId = userId,
                         uid = appInfo.uid,
                         appName = getAppName(appInfo),
-                        wifiBlocked = isBlockAllDefault && !(mobileBlocked || roamingBlocked),
+                        wifiBlocked = isBlockAllDefault && !(mobileBlocked || roamingBlocked) && stampDefaultOnUntouched,
                         mobileBlocked = mobileBlocked,
                         blockWhenRoaming = roamingBlocked,
                         enabled = true,

@@ -19,6 +19,8 @@ import io.github.dorumrr.de1984.domain.firewall.BlockingContext
 import io.github.dorumrr.de1984.domain.model.UidRuleAggregate
 import io.github.dorumrr.de1984.domain.firewall.asEnforcedBy
 import io.github.dorumrr.de1984.domain.firewall.blockingRefused
+import io.github.dorumrr.de1984.domain.firewall.UnblockableReason
+import io.github.dorumrr.de1984.domain.firewall.unblockableReason
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.FirewallFilterState
 import io.github.dorumrr.de1984.domain.model.PackageId
@@ -590,14 +592,19 @@ class FirewallViewModel(
 
     fun setWifiBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
-            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+            // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+            // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+            // vector into the union - so asking afterwards described the row the tap had just
+            // created, not the row the user actually saw and tapped.
+            val masked = rowPaintedAllowed(packageName, userId)
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                 AppLogger.d(TAG, "setWifiBlocking: BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                 val updated = pkg.copy(wifiBlocked = blocked)
                 AppLogger.d(TAG, "setWifiBlocking: AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
                 updated
             }
 
-            manageNetworkAccessUseCase.setWifiBlocking(packageName, userId, blocked)
+            manageNetworkAccessUseCase.setWifiBlocking(packageName, userId, blocked, stampDefaultOnUntouched = !masked)
                                 .onFailure { error ->
                     restoreRow(snapshot)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
@@ -611,14 +618,25 @@ class FirewallViewModel(
     fun setMobileBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
             if (blocked) {
-                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageName, userId)
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (false) && !masked) { pkg ->
                     AppLogger.d(TAG, "setMobileBlocking(blocked=true): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                     val updated = pkg.copy(mobileBlocked = true, roamingBlocked = true)
                     AppLogger.d(TAG, "setMobileBlocking(blocked=true): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
                     updated
                 }
 
-                manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = true, roamingBlocked = true)
+                // Mobile ONLY. Roaming is DERIVED, never written alongside it: isBlockedOn
+                // answers `blockWhenRoaming || mobileBlocked` for ROAMING and
+                // enforceRoamingDependency paints the row the same way, so blocking mobile
+                // already blocks roaming in enforcement AND on screen without storing it.
+                // Storing it destroyed the user's own roaming choice - block Mobile then
+                // unblock it, and roaming stayed blocked because nothing put it back.
+                manageNetworkAccessUseCase.setMobileBlocking(packageName, userId, blocked = true, stampDefaultOnUntouched = !masked)
                                         .onFailure { error ->
                         restoreRow(snapshot)
                         if (superuserBannerState.shouldShowBannerForError(error)) {
@@ -632,14 +650,25 @@ class FirewallViewModel(
                         )
                     }
             } else {
-                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = true) { pkg ->
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageName, userId)
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (true) && !masked) { pkg ->
                     AppLogger.d(TAG, "setMobileBlocking(blocked=false): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
-                    val updated = pkg.copy(mobileBlocked = blocked)
+                    // roamingBlocked follows the STORED value. Left at its derived true, the row
+                    // showed Roaming blocked for as long as the write took and then flipped on its
+                    // own when the real value arrived - claiming a block that was not in force.
+                    val updated = pkg.copy(
+                        mobileBlocked = blocked,
+                        roamingBlocked = pkg.roamingBlockedUnderived,
+                    )
                     AppLogger.d(TAG, "setMobileBlocking(blocked=false): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
                     updated
                 }
 
-                manageNetworkAccessUseCase.setMobileBlocking(packageName, userId, blocked)
+                manageNetworkAccessUseCase.setMobileBlocking(packageName, userId, blocked, stampDefaultOnUntouched = !masked)
                                         .onFailure { error ->
                         restoreRow(snapshot)
                         if (superuserBannerState.shouldShowBannerForError(error)) {
@@ -656,18 +685,26 @@ class FirewallViewModel(
             // Per user preference: "enabling Roaming block should auto-enable Mobile block"
             // and "roaming requires mobile" so unblocking roaming also unblocks mobile
             // Both blocking and unblocking affect mobile due to these dependencies
-            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+            // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+            // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+            // vector into the union - so asking afterwards described the row the tap had just
+            // created, not the row the user actually saw and tapped.
+            val masked = rowPaintedAllowed(packageName, userId)
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                 AppLogger.d(TAG, "setRoamingBlocking(blocked=$blocked): BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
+                // roamingBlockedUnderived moves with it: this toggle really does write the column,
+                // and leaving it stale made a follow-up Mobile tap read the pre-tap value and paint
+                // Roaming allowed while iptables was still blocking it.
                 val updated = if (blocked) {
-                    pkg.copy(mobileBlocked = true, roamingBlocked = true)
+                    pkg.copy(mobileBlocked = true, roamingBlocked = true, roamingBlockedUnderived = true)
                 } else {
-                    pkg.copy(mobileBlocked = false, roamingBlocked = false)
+                    pkg.copy(mobileBlocked = false, roamingBlocked = false, roamingBlockedUnderived = false)
                 }
                 AppLogger.d(TAG, "setRoamingBlocking(blocked=$blocked): AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
                 updated
             }
 
-            manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = blocked, roamingBlocked = blocked)
+            manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = blocked, roamingBlocked = blocked, stampDefaultOnUntouched = !masked)
                                 .onFailure { error ->
                     restoreRow(snapshot)
                     if (superuserBannerState.shouldShowBannerForError(error)) {
@@ -695,14 +732,19 @@ class FirewallViewModel(
             // false in BOTH directions: the background insert writes the networks flat, never the
             // Block All default, because this toggle is only shown on a row that is not fully
             // blocked. See the comment on that insert in AndroidPackageDataSource.
-            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
+            // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+            // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+            // vector into the union - so asking afterwards described the row the tap had just
+            // created, not the row the user actually saw and tapped.
+            val masked = rowPaintedAllowed(packageName, userId)
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (false) && !masked) { pkg ->
                 AppLogger.d(TAG, "setBackgroundBlocking: BEFORE copy - pkg.backgroundBlocked=${pkg.backgroundBlocked}")
                 val updated = pkg.copy(backgroundBlocked = blocked)
                 AppLogger.d(TAG, "setBackgroundBlocking: AFTER copy - updated.backgroundBlocked=${updated.backgroundBlocked}")
                 updated
             }
 
-            manageNetworkAccessUseCase.setBackgroundBlocking(packageName, userId, blocked)
+            manageNetworkAccessUseCase.setBackgroundBlocking(packageName, userId, blocked, stampDefaultOnUntouched = !masked)
                 .onSuccess {
                     AppLogger.d(TAG, "setBackgroundBlocking: SUCCESS - persisted to database")
                 }
@@ -720,14 +762,19 @@ class FirewallViewModel(
     fun setLanBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
             AppLogger.d(TAG, "setLanBlocking: packageName=$packageName, userId=$userId, blocked=$blocked")
-            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+            // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+            // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+            // vector into the union - so asking afterwards described the row the tap had just
+            // created, not the row the user actually saw and tapped.
+            val masked = rowPaintedAllowed(packageName, userId)
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                 AppLogger.d(TAG, "setLanBlocking: BEFORE copy - pkg.lanBlocked=${pkg.lanBlocked}")
                 val updated = pkg.copy(lanBlocked = blocked)
                 AppLogger.d(TAG, "setLanBlocking: AFTER copy - updated.lanBlocked=${updated.lanBlocked}")
                 updated
             }
 
-            manageNetworkAccessUseCase.setLanBlocking(packageName, userId, blocked)
+            manageNetworkAccessUseCase.setLanBlocking(packageName, userId, blocked, stampDefaultOnUntouched = !masked)
                 .onSuccess {
                     AppLogger.d(TAG, "setLanBlocking: SUCCESS - persisted to database")
                 }
@@ -747,16 +794,23 @@ class FirewallViewModel(
         AppLogger.d(TAG, "🔥 [TIMING] setAllNetworkBlocking START: pkg=$packageName, userId=$userId, blocked=$blocked, timestamp=$startTime")
 
         viewModelScope.launch {
-            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+            // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+            // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+            // vector into the union - so asking afterwards described the row the tap had just
+            // created, not the row the user actually saw and tapped.
+            val masked = rowPaintedAllowed(packageName, userId)
+            val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                 pkg.copy(
                     wifiBlocked = blocked,
                     mobileBlocked = blocked,
-                    roamingBlocked = blocked
+                    // Writes the roaming column outright, so the underived value moves too.
+                    roamingBlocked = blocked,
+                    roamingBlockedUnderived = blocked,
                 )
             }
             AppLogger.d(TAG, "🔥 [TIMING] UI optimistic update done: +${System.currentTimeMillis() - startTime}ms")
 
-            manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, userId, blocked)
+            manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, userId, blocked, stampDefaultOnUntouched = !masked)
                 .onSuccess {
                     AppLogger.d(TAG, "🔥 [TIMING] UseCase SUCCESS: +${System.currentTimeMillis() - startTime}ms - DB update complete")
                 }
@@ -768,6 +822,40 @@ class FirewallViewModel(
                     _uiState.value = _uiState.value.copy(error = error.message)
                 }
         }
+    }
+
+    /**
+     * Was this row painted all-Allowed by something other than a rule of its own?
+     *
+     * Only such a row must not have the Block All default stamped onto a first rule: it displayed
+     * nothing blocked, and its controls show nothing blocked, so there is nothing to inherit.
+     *
+     * Two sources, and both are needed.
+     *
+     * The five ZEROING reasons - unknown uid, platform refuses, shared with a protected package,
+     * other profile, no rule in a protected uid. Testing only `savedRule != null` caught none of
+     * them, and turning the batch Roaming toggle off on a protected package then wrote wifiBlocked=1
+     * and cut its WiFi.
+     *
+     * SIBLING_RULE_OVERRIDES_DEFAULT is deliberately EXCLUDED. That mask ADDS a neighbour's blocks
+     * to the icons, but the controls still show this row's own saved values - the full Block All
+     * painting, every switch on - so the default IS what the user is looking at when they tap, and
+     * suppressing it stored "allow everything". Delete the neighbour's rule afterwards and the app
+     * was permanently exempt from Block All.
+     *
+     * The critical/VPN painting, which no backend decides: AndroidPackageDataSource paints a
+     * whitelisted or VpnService package with no rule as all-Allowed whatever the settings say. The
+     * reason above cannot see that while the firewall is STOPPED, because a null backend answers
+     * null by design.
+     */
+    private fun rowPaintedAllowed(packageName: String, userId: Int): Boolean {
+        val pkg = cachedPackages.firstOrNull {
+            it.packageName == packageName && it.userId == userId
+        } ?: return false
+        if (!pkg.hasExplicitRule && (pkg.isSystemCritical || pkg.isVpnApp)) return true
+        val reason = firewallManager.activeBackendType.value
+            .unblockableReason(pkg, _uiState.value.blockingContext)
+        return reason != null && reason != UnblockableReason.SIBLING_RULE_OVERRIDES_DEFAULT
     }
 
     private fun updatePackageInList(
@@ -798,6 +886,10 @@ class FirewallViewModel(
                 wifiBlocked = pkg.wifiBlocked && firstRuleKeepsBlockAllDefault,
                 mobileBlocked = pkg.mobileBlocked && firstRuleKeepsBlockAllDefault,
                 roamingBlocked = pkg.roamingBlocked && firstRuleKeepsBlockAllDefault,
+                // Moves with roamingBlocked. Left behind, it kept the painted default after a first
+                // rule had been written for something else, and the next Mobile unblock read it and
+                // painted Roaming blocked over a rule that blocks nothing.
+                roamingBlockedUnderived = pkg.roamingBlockedUnderived && firstRuleKeepsBlockAllDefault,
                 lanBlocked = false,
                 backgroundBlocked = false,
             )
@@ -1017,8 +1109,13 @@ class FirewallViewModel(
                 )
 
                 // setNetworkAccess names all four networks itself, so nothing is left to inherit.
-                val snapshot = updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
-                    pkg.copy(wifiBlocked = true, mobileBlocked = true, roamingBlocked = true, lanBlocked = true)
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageId.packageName, packageId.userId)
+                val snapshot = updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = (false) && !masked) { pkg ->
+                    pkg.copy(wifiBlocked = true, mobileBlocked = true, roamingBlocked = true, roamingBlockedUnderived = true, lanBlocked = true)
                 }
 
                 // Persist. setNetworkAccess, not setAllNetworkBlocking: the button says "Block All
@@ -1030,7 +1127,7 @@ class FirewallViewModel(
                 // clears it through the same path - and those backends ignore lanBlocked entirely.
                 // Hiding rather than disabling unenforceable controls is a settled decision that is
                 // not implemented yet; see PLAN.md, product decision 4.
-                manageNetworkAccessUseCase.setNetworkAccess(packageId.packageName, packageId.userId, allowed = false)
+                manageNetworkAccessUseCase.setNetworkAccess(packageId.packageName, packageId.userId, allowed = false, stampDefaultOnUntouched = !masked)
                     .onSuccess {
                         succeeded.add(packageId.packageName)
                     }
@@ -1073,13 +1170,18 @@ class FirewallViewModel(
                 )
 
                 // setNetworkAccess names all four networks itself, so nothing is left to inherit.
-                val snapshot = updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = false) { pkg ->
-                    pkg.copy(wifiBlocked = false, mobileBlocked = false, roamingBlocked = false, lanBlocked = false)
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageId.packageName, packageId.userId)
+                val snapshot = updatePackageInList(packageId.packageName, packageId.userId, firstRuleKeepsBlockAllDefault = (false) && !masked) { pkg ->
+                    pkg.copy(wifiBlocked = false, mobileBlocked = false, roamingBlocked = false, roamingBlockedUnderived = false, lanBlocked = false)
                 }
 
                 // Persist
                 // Mirrors batchBlockPackages: "Allow All Networks" must clear LAN too.
-                manageNetworkAccessUseCase.setNetworkAccess(packageId.packageName, packageId.userId, allowed = true)
+                manageNetworkAccessUseCase.setNetworkAccess(packageId.packageName, packageId.userId, allowed = true, stampDefaultOnUntouched = !masked)
                     .onSuccess {
                         succeeded.add(packageId.packageName)
                     }
@@ -1124,16 +1226,28 @@ class FirewallViewModel(
                 if (current != null &&
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
                     current.ownVector.wifiBlocked == blocked &&
-                    current.ownVector.mobileBlocked == blocked && current.ownVector.roamingBlocked == blocked
+                    current.ownVector.mobileBlocked == blocked &&
+                    // Underived, not the painted value. Comparing the derived one skipped a
+                    // (1,1,0) row that the single-app path writes, so two rows painted identically
+                    // ended up with different stored columns and answered a later Mobile unblock
+                    // differently.
+                    current.roamingBlockedUnderived == blocked
                 ) continue
-                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageName, userId)
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                     pkg.copy(
                         wifiBlocked = blocked,
                         mobileBlocked = blocked,
-                        roamingBlocked = blocked
+                        // Writes the roaming column outright, so the underived value moves too.
+                        roamingBlocked = blocked,
+                        roamingBlockedUnderived = blocked,
                     )
                 }
-                manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, userId, blocked)
+                manageNetworkAccessUseCase.setAllNetworkBlocking(packageName, userId, blocked, stampDefaultOnUntouched = !masked)
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchSetAllNetworkBlocking: Failed for $packageName (user=$userId): ${error.message}")
                         // Undo this row, and only this row. Snapshotting without ever
@@ -1175,10 +1289,15 @@ class FirewallViewModel(
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
                     current.ownVector.wifiBlocked == blocked
                 ) continue
-                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageName, userId)
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                     pkg.copy(wifiBlocked = blocked)
                 }
-                manageNetworkAccessUseCase.setWifiBlocking(packageName, userId, blocked)
+                manageNetworkAccessUseCase.setWifiBlocking(packageName, userId, blocked, stampDefaultOnUntouched = !masked)
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchSetWifiBlocking: Failed for $packageName (user=$userId): ${error.message}")
                         // Undo this row, and only this row. Snapshotting without ever
@@ -1208,24 +1327,36 @@ class FirewallViewModel(
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
                     current.ownVector.mobileBlocked == blocked
                 ) continue
-                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageName, userId)
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                     if (blocked) {
                         pkg.copy(mobileBlocked = true, roamingBlocked = true)
                     } else {
-                        pkg.copy(mobileBlocked = false)
+                        // roamingBlocked follows the underived value, exactly as the single-tap path
+                        // does. Left derived, the row kept a red Roaming icon for the whole batch and
+                        // then flipped on its own - and sat in a state no rule can produce, which
+                        // feeds the shared-uid banner for every sibling in the same uid.
+                        pkg.copy(
+                            mobileBlocked = false,
+                            roamingBlocked = pkg.roamingBlockedUnderived,
+                        )
                     }
                 }
                 // Both branches resolve the snapshot, same as the other batch setters: undo this
                 // row on failure, retire it on success. This one was missed because its two calls
                 // sit inside an if/else rather than following the shared shape.
                 if (blocked) {
-                    manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = true, roamingBlocked = true)
+                    manageNetworkAccessUseCase.setMobileBlocking(packageName, userId, blocked = true, stampDefaultOnUntouched = !masked)
                         .onFailure { error ->
                             AppLogger.e(TAG, "🔥 batchSetMobileBlocking: Failed for $packageName (user=$userId): ${error.message}")
                             restoreRow(snapshot, reconcile = false)
                         }
                 } else {
-                    manageNetworkAccessUseCase.setMobileBlocking(packageName, userId, blocked = false)
+                    manageNetworkAccessUseCase.setMobileBlocking(packageName, userId, blocked = false, stampDefaultOnUntouched = !masked)
                         .onFailure { error ->
                             AppLogger.e(TAG, "🔥 batchSetMobileBlocking: Failed for $packageName (user=$userId): ${error.message}")
                             restoreRow(snapshot, reconcile = false)
@@ -1244,21 +1375,33 @@ class FirewallViewModel(
         viewModelScope.launch {
             AppLogger.d(TAG, "🔥 batchSetRoamingBlocking: Setting Roaming blocked=$blocked for ${packages.size} packages")
             for ((packageName, userId) in packages) {
-                // Same skip rule as batchSetWifiBlocking: only a row whose state is its own - its
-                // rule, or a default no rule has touched - and never on missing information.
+                // Both columns, both raw, in BOTH directions - this toggle writes mobile and
+                // roaming together, so it is already in the target state only when both are.
+                //
+                // The displayed roamingBlocked cannot be used: it is forced true whenever mobile is
+                // blocked, so testing it skipped "Block Roaming" on every mobile-blocked row and the
+                // column was never written. Dropping the test for the block direction instead was
+                // worse - a MIXED selection renders unchecked, so the tap sends blocked=true to
+                // rule-less rows too, and each got a first rule that opened WiFi and LAN.
                 val current = enforcedPackage(PackageId(packageName, userId))
                 if (current != null &&
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
-                    current.ownVector.roamingBlocked == blocked
+                    current.ownVector.mobileBlocked == blocked &&
+                    current.roamingBlockedUnderived == blocked
                 ) continue
-                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageName, userId)
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                     if (blocked) {
-                        pkg.copy(mobileBlocked = true, roamingBlocked = true)
+                        pkg.copy(mobileBlocked = true, roamingBlocked = true, roamingBlockedUnderived = true)
                     } else {
-                        pkg.copy(mobileBlocked = false, roamingBlocked = false)
+                        pkg.copy(mobileBlocked = false, roamingBlocked = false, roamingBlockedUnderived = false)
                     }
                 }
-                manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = blocked, roamingBlocked = blocked)
+                manageNetworkAccessUseCase.setMobileAndRoaming(packageName, userId, mobileBlocked = blocked, roamingBlocked = blocked, stampDefaultOnUntouched = !masked)
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchSetRoamingBlocking: Failed for $packageName (user=$userId): ${error.message}")
                         // Undo this row, and only this row. Snapshotting without ever
@@ -1288,10 +1431,15 @@ class FirewallViewModel(
                     (current.hasExplicitRule || current.uid !in cachedUidRules) &&
                     current.ownVector.lanBlocked == blocked
                 ) continue
-                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = !blocked) { pkg ->
+                // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule
+                // and the new flags into cachedPackages, and enforcedVectorFor folds a row's own
+                // vector into the union - so asking afterwards described the row the tap had just
+                // created, not the row the user actually saw and tapped.
+                val masked = rowPaintedAllowed(packageName, userId)
+                val snapshot = updatePackageInList(packageName, userId, firstRuleKeepsBlockAllDefault = (!blocked) && !masked) { pkg ->
                     pkg.copy(lanBlocked = blocked)
                 }
-                manageNetworkAccessUseCase.setLanBlocking(packageName, userId, blocked)
+                manageNetworkAccessUseCase.setLanBlocking(packageName, userId, blocked, stampDefaultOnUntouched = !masked)
                     .onFailure { error ->
                         AppLogger.e(TAG, "🔥 batchSetLanBlocking: Failed for $packageName (user=$userId): ${error.message}")
                         // Undo this row, and only this row. Snapshotting without ever

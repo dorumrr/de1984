@@ -1131,7 +1131,6 @@ main() {
             echo -e "${GREEN}What should you use instead?${NC}"
             echo "  • For ALL public distribution: ${YELLOW}./dev.sh release${NC}"
             echo ""
-            echo -e "${BLUE}See FDROID_REPRODUCIBLE_BUILDS_EXPLAINED.md for details${NC}"
             exit 1
             ;;
         "release")

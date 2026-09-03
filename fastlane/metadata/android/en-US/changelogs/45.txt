@@ -1,0 +1,1 @@
+- APK now records the exact source commit it was built from, so anyone can check that a published build really matches the source in this repository. #102

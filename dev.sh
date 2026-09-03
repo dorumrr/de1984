@@ -855,8 +855,75 @@ get_production_sha256() {
 }
 
 # Build and sign release APK (complete workflow)
+# A release APK has to be reproducible from what is published, because IzzyOnDroid rebuilds the
+# tag from source and compares the result to the published APK byte for byte. Gradle compiles the
+# WORKING TREE, not git - so an edited file, an untracked .kt, or a commit that never left this
+# machine all end up inside the APK while being absent from the tag anyone else can fetch. The
+# rebuild then differs and the check fails, and the only clue is a hash mismatch weeks later.
+#
+# Untracked files really do matter here: a new source file that was never `git add`ed compiles in.
+# Files ignored by .gitignore are not reported - git status --porcelain already leaves them out -
+# so build output and scratch files do not trip this.
+check_release_tree_is_published() {
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        log_warn "Not a git repository - cannot check whether this build is reproducible."
+        return 0
+    fi
+
+    local dirty="" upstream="" unpushed="" confirm=""
+
+    dirty=$(git status --porcelain 2>/dev/null || true)
+    upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)
+    if [ -n "$upstream" ]; then
+        unpushed=$(git log --oneline "${upstream}..HEAD" 2>/dev/null || true)
+    fi
+
+    if [ -z "$dirty" ] && [ -z "$unpushed" ] && [ -n "$upstream" ]; then
+        log_success "Working tree is clean and pushed to ${upstream}"
+        return 0
+    fi
+
+    echo ""
+    echo -e "${RED}================================================================${NC}"
+    echo -e "${RED}  RELEASE BLOCKED - this build would not be reproducible${NC}"
+    echo -e "${RED}================================================================${NC}"
+    echo ""
+
+    if [ -n "$dirty" ]; then
+        echo -e "${RED}  Uncommitted changes ($(printf '%s\n' "$dirty" | wc -l | tr -d ' ')):${NC}"
+        printf '%s\n' "$dirty" | sed 's/^/    /'
+        echo ""
+    fi
+
+    if [ -z "$upstream" ]; then
+        echo -e "${RED}  This branch has no upstream, so nothing here has been pushed.${NC}"
+        echo -e "${RED}  Set one with: git push -u origin $(git rev-parse --abbrev-ref HEAD)${NC}"
+        echo ""
+    elif [ -n "$unpushed" ]; then
+        echo -e "${RED}  Commits not pushed to ${upstream} ($(printf '%s\n' "$unpushed" | wc -l | tr -d ' ')):${NC}"
+        printf '%s\n' "$unpushed" | sed 's/^/    /'
+        echo ""
+    fi
+
+    echo -e "${RED}  Anyone rebuilding this version from git will NOT get this APK.${NC}"
+    echo -e "${RED}  Commit and push first, then tag the commit you build from.${NC}"
+    echo ""
+
+    read -p "Continue anyway? (yes/no): " confirm || confirm=""
+    if [ "$confirm" != "yes" ]; then
+        log_error "Release build cancelled - nothing was built."
+        exit 1
+    fi
+
+    log_warn "Building from an unpublished tree at your request. Do not publish this APK."
+    echo ""
+}
+
 build_and_sign_release() {
     log_header "Building and Signing Release APK (Production)"
+
+    # Refuse to build something nobody else could reproduce (see the function above).
+    check_release_tree_is_published
 
     # Validate keystore.properties first
     validate_keystore_properties

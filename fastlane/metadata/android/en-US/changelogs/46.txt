@@ -1,0 +1,1 @@
+- Fixed: Shizuku-compatible apps were reported as "not installed", falling back to VPN mode. It now checks whether a Shizuku service is actually connected #103

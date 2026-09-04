@@ -160,12 +160,32 @@ class ShizukuManager(private val context: Context) {
         AppLogger.d(TAG, "Shizuku status check complete: $newStatus")
     }
 
+    /**
+     * A LIVE BINDER decides, not a package name - issue #103.
+     *
+     * [isShizukuInstalled] recognises three things: Sui, the package
+     * [SHIZUKU_PACKAGE_NAME], and whoever declares [ShizukuProvider.PERMISSION]. A
+     * Shizuku-compatible server that is none of those - Stellar publishes as
+     * roro.stellar.manager and declares its own permission - was reported NOT_INSTALLED
+     * while its binder sat there answering, because this asked "is a known package
+     * present" before "is a server connected". The library itself never cares:
+     * rikka.shizuku.Shizuku touches PackageManager nowhere, pingBinder() reads the binder,
+     * and checkSelfPermission() and requestPermission() both go over it.
+     *
+     * The package check stays, for the two jobs it can still do. It tells
+     * INSTALLED_NOT_RUNNING apart from NOT_INSTALLED once the binder is gone, and calling
+     * it is what registers Shizuku as unblockable ([shizukuOwnerPackage]) - so it is
+     * evaluated on every pass, never short-circuited away, or Block All would cut the
+     * service the user needs to start it again.
+     */
     private fun checkShizukuStatusSync() {
+        val installed = isShizukuInstalled()
         val newStatus = when {
-            !isShizukuInstalled() -> ShizukuStatus.NOT_INSTALLED
-            !isShizukuRunning() -> ShizukuStatus.INSTALLED_NOT_RUNNING
-            !checkShizukuPermissionSync() -> ShizukuStatus.RUNNING_NO_PERMISSION
-            else -> ShizukuStatus.RUNNING_WITH_PERMISSION
+            isShizukuRunning() ->
+                if (checkShizukuPermissionSync()) ShizukuStatus.RUNNING_WITH_PERMISSION
+                else ShizukuStatus.RUNNING_NO_PERMISSION
+            installed -> ShizukuStatus.INSTALLED_NOT_RUNNING
+            else -> ShizukuStatus.NOT_INSTALLED
         }
         _shizukuStatus.value = newStatus
     }
@@ -173,22 +193,23 @@ class ShizukuManager(private val context: Context) {
     private suspend fun checkShizukuStatusInternal(): ShizukuStatus = withContext(Dispatchers.IO) {
         try {
             val source = if (isSuiAvailable) "SUI (Magisk)" else "Shizuku"
-            AppLogger.d(TAG, "Checking if $source is installed... (isSuiAvailable=$isSuiAvailable)")
 
+            // Evaluated first and unconditionally, for its side effect as much as its answer:
+            // it registers the Shizuku package as unblockable. See checkShizukuStatusSync.
             val installed = isShizukuInstalled()
-            if (!installed) {
-                AppLogger.d(TAG, "$source is NOT_INSTALLED")
-                return@withContext ShizukuStatus.NOT_INSTALLED
-            }
 
-            AppLogger.d(TAG, "$source is installed, checking if service is running...")
+            AppLogger.d(TAG, "Checking if a $source server is connected... (isSuiAvailable=$isSuiAvailable, knownPackage=$installed)")
             val running = isShizukuRunning()
             if (!running) {
+                if (!installed) {
+                    AppLogger.d(TAG, "$source is NOT_INSTALLED (no binder, no known package)")
+                    return@withContext ShizukuStatus.NOT_INSTALLED
+                }
                 AppLogger.d(TAG, "$source is INSTALLED_NOT_RUNNING (binder not responding)")
                 return@withContext ShizukuStatus.INSTALLED_NOT_RUNNING
             }
 
-            AppLogger.d(TAG, "$source service is running, checking permission...")
+            AppLogger.d(TAG, "$source server is connected, checking permission...")
             val hasPermission = checkShizukuPermissionSync()
             if (!hasPermission) {
                 AppLogger.d(TAG, "$source is RUNNING_NO_PERMISSION")
@@ -260,8 +281,13 @@ class ShizukuManager(private val context: Context) {
         }
     }
 
+    /**
+     * A live binder is the whole answer - issue #103. Requiring a known package as well
+     * refused every compatible server that is not Sui and not moe.shizuku.privileged.api,
+     * while its binder was answering. [checkShizukuStatusSync] carries the reasoning.
+     */
     fun isShizukuAvailable(): Boolean {
-        return isShizukuInstalled() && isShizukuRunning()
+        return isShizukuRunning()
     }
 
     private fun checkShizukuPermissionSync(): Boolean {

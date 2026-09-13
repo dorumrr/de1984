@@ -204,20 +204,14 @@ class MainActivity : AppCompatActivity() {
                     handleBootFailureRecovery()
                 }
                 Constants.Notifications.ACTION_OPEN_FIREWALL -> {
-                    // Issue #83. NewAppNotificationManager has always put this action and the
-                    // package name on the new-app notification's tap intent, and nothing has ever
-                    // read either of them - so tapping the notification just reopened the app on
-                    // whatever screen it was left on. The navigation it wanted already existed.
-                    //
-                    // userId 0 to match NotificationActionReceiver, which decides the same way for
-                    // the notification's Allow/Block button: these notifications are for apps
-                    // installed into the personal profile.
                     val packageName = intent.getStringExtra(Constants.Notifications.EXTRA_PACKAGE_NAME)
+                    // Absent on a notification posted before the user was sent; that version found the app in De1984's own profile.
+                    val userId = intent.getIntExtra(Constants.Notifications.EXTRA_USER_ID, Constants.Firewall.ownUserId())
                     if (packageName.isNullOrBlank()) {
                         AppLogger.w(TAG, "Open-firewall request carried no package name")
                     } else {
-                        AppLogger.d(TAG, "Opening network access controls for $packageName from its notification")
-                        navigateToFirewallWithApp(packageName, userId = 0)
+                        AppLogger.d(TAG, "Opening network access controls for $packageName (userId=$userId) from its notification")
+                        navigateToFirewallWithApp(packageName, userId)
                     }
                 }
                 Constants.Firewall.ACTION_REQUEST_VPN_PERMISSION -> {

@@ -69,7 +69,7 @@ class PackageChangedReceiver : BroadcastReceiver() {
             }
 
             val uid = intent.getIntExtra(Intent.EXTRA_UID, -1).takeIf { it >= 0 }
-            val userId = uid?.let { it / 100000 } ?: 0
+            val userId = uid?.let { it / 100000 } ?: Constants.Firewall.ownUserId()
 
             AppLogger.i(TAG, "📦 Package $action externally: $packageName (userId=$userId) - triggering refresh")
 

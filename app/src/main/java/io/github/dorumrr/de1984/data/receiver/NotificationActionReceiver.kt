@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.data.service.NewAppNotificationManager
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +17,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "NotificationActionReceiver"
-        private const val NOTIFICATION_ID_BASE = 2000
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
@@ -27,13 +27,15 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
             val packageName = intent.getStringExtra(Constants.Notifications.EXTRA_PACKAGE_NAME)
             val blocked = intent.getBooleanExtra(Constants.Notifications.EXTRA_BLOCKED, false)
+            // Absent on a notification posted before the user was sent; that version found the app in De1984's own profile.
+            val userId = intent.getIntExtra(Constants.Notifications.EXTRA_USER_ID, Constants.Firewall.ownUserId())
 
             if (packageName.isNullOrBlank()) {
                 AppLogger.w(TAG, "Received action with null/blank package name")
                 return
             }
 
-            AppLogger.d(TAG, "Notification action: packageName=$packageName, blocked=$blocked")
+            AppLogger.d(TAG, "Notification action: packageName=$packageName, userId=$userId, blocked=$blocked")
 
             val app = context.applicationContext as De1984Application
             val manageNetworkAccessUseCase = app.dependencies.provideManageNetworkAccessUseCase()
@@ -49,14 +51,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     // "Allow All", so they must cover all four dimensions including LAN. The narrow
                     // call could not clear the lanBlocked that a new app's own Block All rule sets,
                     // so tapping "Allow All" left the app's LAN blocked while the list read Allowed.
-                    //
-                    // Note: For notifications, we use userId=0 (personal profile) as notifications
-                    // are typically for newly installed apps in the main profile
-                    manageNetworkAccessUseCase.setNetworkAccess(packageName, userId = 0, allowed = !blocked)
+                    manageNetworkAccessUseCase.setNetworkAccess(packageName, userId = userId, allowed = !blocked)
                         .onSuccess {
                             AppLogger.d(TAG, "Successfully updated network access for $packageName: blocked=$blocked")
 
-                            dismissNotification(context, packageName)
+                            dismissNotification(context, packageName, userId)
                         }
                         .onFailure { error ->
                             AppLogger.e(TAG, "Failed to update network access for $packageName: ${error.message}")
@@ -73,15 +72,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun dismissNotification(context: Context, packageName: String) {
+    private fun dismissNotification(context: Context, packageName: String, userId: Int) {
         try {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val notificationId = NOTIFICATION_ID_BASE + packageName.hashCode()
-            notificationManager.cancel(notificationId)
-            AppLogger.d(TAG, "Dismissed notification for $packageName")
+            notificationManager.cancel(NewAppNotificationManager.notificationId(packageName, userId))
+            AppLogger.d(TAG, "Dismissed notification for $packageName (userId=$userId)")
         } catch (e: Exception) {
             AppLogger.e(TAG, "Failed to dismiss notification for $packageName", e)
         }
     }
 }
-

@@ -33,7 +33,7 @@ class PackageAddedReceiver : BroadcastReceiver() {
             val newAppNotificationManager = app.dependencies.newAppNotificationManager
 
             val uid = intent?.getIntExtra(Intent.EXTRA_UID, -1)?.takeIf { it >= 0 }
-            val userId = uid?.let { it / 100000 } ?: 0
+            val userId = uid?.let { it / 100000 } ?: Constants.Firewall.ownUserId()
 
             val packageName = validateAndExtractPackageName(context, intent, userId)
             if (packageName == null) {
@@ -52,7 +52,7 @@ class PackageAddedReceiver : BroadcastReceiver() {
                     handleNewAppInstallUseCase.execute(packageName, uid)
                         .onSuccess {
                             if (areNewAppNotificationsEnabled(context)) {
-                                newAppNotificationManager.showNewAppNotification(packageName)
+                                newAppNotificationManager.showNewAppNotification(packageName, userId)
                             }
                         }
                 } catch (e: Exception) {

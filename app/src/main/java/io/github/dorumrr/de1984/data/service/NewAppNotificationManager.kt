@@ -15,6 +15,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import io.github.dorumrr.de1984.R
+import io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
 import io.github.dorumrr.de1984.data.receiver.NotificationActionReceiver
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
@@ -22,21 +23,26 @@ import io.github.dorumrr.de1984.utils.Constants
 class NewAppNotificationManager(
     private val context: Context
 ) {
-    
+
     companion object {
         private const val TAG = "NewAppNotificationManager"
         private const val CHANNEL_ID = "new_app_notifications"
         private const val CHANNEL_NAME = "New App Notifications"
         private const val CHANNEL_DESCRIPTION = "Notifications when new apps are installed"
         private const val NOTIFICATION_ID_BASE = 2000
+
+        // One per app per profile, or the same app in two profiles shares a notification and its intents' extras. User 0 keeps its old values.
+        private fun perProfile(key: String, userId: Int): Int = key.hashCode() + 31 * userId
+
+        fun notificationId(packageName: String, userId: Int): Int = NOTIFICATION_ID_BASE + perProfile(packageName, userId)
     }
-    
+
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    
+
     init {
         createNotificationChannel()
     }
-    
+
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -50,14 +56,14 @@ class NewAppNotificationManager(
 
         notificationManager.createNotificationChannel(channel)
     }
-    
-    fun showNewAppNotification(packageName: String) {
+
+    fun showNewAppNotification(packageName: String, userId: Int) {
         try {
             if (!areNotificationsEnabled()) {
                 return
             }
 
-            val appInfo = getAppInfo(packageName) ?: return
+            val appInfo = getAppInfo(packageName, userId) ?: return
             val appName = appInfo.name
 
             val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -78,23 +84,22 @@ class NewAppNotificationManager(
                     .bigText(context.getString(R.string.new_app_notification_text, appName)))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
-                .setContentIntent(createOpenFirewallIntent(packageName))
+                .setContentIntent(createOpenFirewallIntent(packageName, userId))
 
             if (isBlockAllDefault) {
-                notificationBuilder.addAction(createAllowAllAction(packageName))
+                notificationBuilder.addAction(createAllowAllAction(packageName, userId))
             } else {
-                notificationBuilder.addAction(createBlockAllAction(packageName))
+                notificationBuilder.addAction(createBlockAllAction(packageName, userId))
             }
 
             val notification = notificationBuilder.build()
 
-            val notificationId = NOTIFICATION_ID_BASE + packageName.hashCode()
-            notificationManager.notify(notificationId, notification)
+            notificationManager.notify(notificationId(packageName, userId), notification)
 
         } catch (e: Exception) {
         }
     }
-    
+
     private fun areNotificationsEnabled(): Boolean {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(
@@ -102,14 +107,14 @@ class NewAppNotificationManager(
             Constants.Settings.DEFAULT_NEW_APP_NOTIFICATIONS
         )
     }
-    
-    private fun getAppInfo(packageName: String): AppInfo? {
+
+    private fun getAppInfo(packageName: String, userId: Int): AppInfo? {
         return try {
             val packageManager = context.packageManager
-            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+            val applicationInfo = HiddenApiHelper.getApplicationInfoAsUser(context, packageName, 0, userId) ?: return null
             val appName = packageManager.getApplicationLabel(applicationInfo).toString()
             val appIcon = packageManager.getApplicationIcon(applicationInfo)
-            
+
             AppInfo(appName, appIcon)
         } catch (e: PackageManager.NameNotFoundException) {
             null
@@ -117,32 +122,34 @@ class NewAppNotificationManager(
             null
         }
     }
-    
-    private fun createOpenFirewallIntent(packageName: String): PendingIntent {
+
+    private fun createOpenFirewallIntent(packageName: String, userId: Int): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
             action = Constants.Notifications.ACTION_OPEN_FIREWALL
             putExtra(Constants.Notifications.EXTRA_PACKAGE_NAME, packageName)
+            putExtra(Constants.Notifications.EXTRA_USER_ID, userId)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
         return PendingIntent.getActivity(
             context,
-            packageName.hashCode(),
+            perProfile(packageName, userId),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 
-    private fun createBlockAllAction(packageName: String): NotificationCompat.Action {
+    private fun createBlockAllAction(packageName: String, userId: Int): NotificationCompat.Action {
         val intent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = Constants.Notifications.ACTION_TOGGLE_NETWORK_ACCESS
             putExtra(Constants.Notifications.EXTRA_PACKAGE_NAME, packageName)
             putExtra(Constants.Notifications.EXTRA_BLOCKED, true)
+            putExtra(Constants.Notifications.EXTRA_USER_ID, userId)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            (packageName + "_block").hashCode(),
+            perProfile(packageName + "_block", userId),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -154,16 +161,17 @@ class NewAppNotificationManager(
         ).build()
     }
 
-    private fun createAllowAllAction(packageName: String): NotificationCompat.Action {
+    private fun createAllowAllAction(packageName: String, userId: Int): NotificationCompat.Action {
         val intent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = Constants.Notifications.ACTION_TOGGLE_NETWORK_ACCESS
             putExtra(Constants.Notifications.EXTRA_PACKAGE_NAME, packageName)
             putExtra(Constants.Notifications.EXTRA_BLOCKED, false)
+            putExtra(Constants.Notifications.EXTRA_USER_ID, userId)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            (packageName + "_allow").hashCode(),
+            perProfile(packageName + "_allow", userId),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

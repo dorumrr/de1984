@@ -455,7 +455,7 @@ class FirewallVpnService : VpnService() {
         AppLogger.d(TAG, "blockedAppsFor: loaded ${allRules.size} rules from database")
 
         // The tunnel names packages in De1984's own profile, so another profile's copy would block this one's.
-        val ownUserId = android.os.Process.myUid() / 100000
+        val ownUserId = io.github.dorumrr.de1984.utils.Constants.Firewall.ownUserId()
         val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(this)
             .filter { io.github.dorumrr.de1984.domain.firewall.FirewallBackendType.VPN.reachesUser(it.userId, ownUserId) }
         val allPackages = userProfiles.flatMap { profile ->

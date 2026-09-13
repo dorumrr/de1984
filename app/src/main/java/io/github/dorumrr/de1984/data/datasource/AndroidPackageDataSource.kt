@@ -217,7 +217,7 @@ class AndroidPackageDataSource(
 
                 // Logged, NOT thrown. Emptiness is not a failure signal at profile level:
                 // HiddenApiHelper.getInstalledApplicationsAsUser returns an empty list as its
-                // documented "all methods failed" outcome for any user other than 0, which is what
+                // documented "all methods failed" outcome for any user other than De1984's own, which is what
                 // happens on every device with no root and no Shizuku that has a work or clone
                 // profile. Throwing here replaced a complete personal list with "could not read the
                 // list of apps" for all of those users, permanently. The filter it was protecting is

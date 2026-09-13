@@ -467,6 +467,9 @@ object Constants {
 
         fun isFirewallableAppUid(uid: Int): Boolean = uid % PER_USER_RANGE in APP_APP_ID_RANGE
 
+        /** The profile De1984 runs in. Not always 0: it can be installed in a work profile or for a secondary user. */
+        fun ownUserId(): Int = android.os.Process.myUid() / PER_USER_RANGE
+
         fun isSystemRecommendedAllow(packageName: String): Boolean {
             return SYSTEM_RECOMMENDED_ALLOW.contains(packageName)
         }
@@ -484,6 +487,7 @@ object Constants {
 
         const val EXTRA_PACKAGE_NAME = "package_name"
         const val EXTRA_BLOCKED = "blocked"
+        const val EXTRA_USER_ID = "user_id"
     }
 
     object Navigation {

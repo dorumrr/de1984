@@ -198,9 +198,9 @@ class PackageMonitoringService : Service() {
     }
 
     /**
-     * Is there any profile besides user 0?
+     * Is there any profile besides the one De1984 runs in?
      *
-     * Everything this service can see first is a non-zero profile event. For user 0,
+     * Everything this service can see first is an event in another profile. For De1984's own profile,
      * PackageAddedReceiver and PackageChangedReceiver already deliver installs, removals and
      * enable/disable instantly - so on a single-profile device, which is most devices, this poll had
      * nothing to contribute and was pure cost.
@@ -209,7 +209,8 @@ class PackageMonitoringService : Service() {
      * call - not a shell command.
      */
     private fun secondaryProfilesExist(): Boolean = try {
-        HiddenApiHelper.getUsers(this).any { it.userId != 0 }
+        val ownUserId = Constants.Firewall.ownUserId()
+        HiddenApiHelper.getUsers(this).any { it.userId != ownUserId }
     } catch (e: Exception) {
         AppLogger.w(TAG, "Could not list profiles - assuming none: ${e.message}")
         false
@@ -290,7 +291,7 @@ class PackageMonitoringService : Service() {
     
     private suspend fun checkForNewPackages() {
         // The notification preference used to return here. This service is the ONLY code that sees
-        // installs in other user profiles - a manifest PACKAGE_ADDED receiver in user 0 never does -
+        // installs in other user profiles - a manifest PACKAGE_ADDED receiver in De1984's own profile never does -
         // so with notifications off a work-profile app got no rule at all, and a reinstalled one
         // kept a uid that matches nothing. Only the notification is optional; the rule is not.
         // null means the enumeration itself failed, which is NOT the same as "no packages". It used
@@ -339,12 +340,10 @@ class PackageMonitoringService : Service() {
     private fun getCurrentInstalledPackages(): Set<Pair<String, Int>>? {
         return try {
             val result = mutableSetOf<Pair<String, Int>>()
-            // user 0 is deliberately skipped. PackageAddedReceiver and PackageChangedReceiver
-            // deliver installs, removals and enable/disable for the personal profile instantly, so
-            // enumerating it here found nothing they had not already handled - it just re-listed
-            // every app on the device on every tick. Other profiles get no such broadcast, which is
-            // the entire reason this service exists (#61a).
-            val userProfiles = HiddenApiHelper.getUsers(this).filter { it.userId != 0 }
+            // De1984's own profile is deliberately skipped: PackageAddedReceiver and PackageChangedReceiver
+            // deliver installs, removals and enable/disable for it instantly. Other profiles get no such broadcast.
+            val ownUserId = Constants.Firewall.ownUserId()
+            val userProfiles = HiddenApiHelper.getUsers(this).filter { it.userId != ownUserId }
 
             for (profile in userProfiles) {
                 // Flags 0, not GET_META_DATA. The lambda below reads only .flags and .packageName;
@@ -390,11 +389,10 @@ class PackageMonitoringService : Service() {
      */
     private fun checkForEnabledStateChanges() {
         val profiles = try {
-            // user 0 skipped: ACTION_PACKAGE_CHANGED already reaches PackageChangedReceiver for the
-            // personal profile, which is exactly why #61a was only ever a work-profile bug. Reading
-            // it here cost one `pm list packages -d --user 0` - a root or Shizuku process spawn -
-            // on every tick, for information the system had already pushed to us for free.
-            HiddenApiHelper.getUsers(this).filter { it.userId != 0 }
+            // De1984's own profile skipped: ACTION_PACKAGE_CHANGED already reaches PackageChangedReceiver for it,
+            // and reading it here costs a root or Shizuku process spawn on every tick.
+            val ownUserId = Constants.Firewall.ownUserId()
+            HiddenApiHelper.getUsers(this).filter { it.userId != ownUserId }
         } catch (e: Exception) {
             AppLogger.w(TAG, "Could not list profiles for the enabled-state check: ${e.message}")
             return
@@ -489,7 +487,7 @@ class PackageMonitoringService : Service() {
 
             handleNewAppInstallUseCase.execute(packageName, uid)
                 .onSuccess {
-                    newAppNotificationManager.showNewAppNotification(packageName)
+                    newAppNotificationManager.showNewAppNotification(packageName, userId)
                 }
         } catch (e: Exception) {
             AppLogger.e(TAG, "Error processing new package $packageName: ${e.message}", e)

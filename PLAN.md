@@ -37,7 +37,7 @@ gone, list scrolling is smooth.
 **The bug.** `PackageMonitoringService` compared a set of `(packageName, userId)` pairs. Disabling an
 app does not remove it from the device, so that set never changed and an enable or disable was
 invisible — it could only ever see apps appearing. Meanwhile `ACTION_PACKAGE_CHANGED`, which covers
-this for user 0, never reaches another profile.
+this for the profile De1984 runs in (user 0 on a normal install), never reaches another profile.
 
 **Fixed** by also tracking which packages are disabled per profile
 (`HiddenApiHelper.readDisabledPackagesFresh`, `PackageMonitoringService.checkForEnabledStateChanges`).
@@ -129,7 +129,7 @@ already handle it.
 
 **Shipped 2026-08-28.** `INTERACT_ACROSS_USERS` is declared in the manifest and the app grants it to
 itself in `HiddenApiHelper.ensureCrossUserPermission` — root first, then Shizuku, once per process,
-skipped entirely if already held. Called only for a non-zero userId, since user 0 never needed it.
+skipped entirely if already held. Called only for a profile other than De1984's own, which never needed it.
 
 **Verified on hardware from a revoked state:**
 

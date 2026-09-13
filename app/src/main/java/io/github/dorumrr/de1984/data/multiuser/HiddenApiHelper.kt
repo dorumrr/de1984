@@ -229,7 +229,7 @@ object HiddenApiHelper {
             try {
                 // --user matters: pm grant otherwise targets the shell's own user, and De1984 is not
                 // always installed in user 0.
-                val myUserId = android.os.Process.myUid() / 100000
+                val myUserId = Constants.Firewall.ownUserId()
                 val command =
                     "pm grant --user $myUserId ${context.packageName} $PERM_INTERACT_ACROSS_USERS"
 
@@ -396,8 +396,9 @@ object HiddenApiHelper {
             }
         }
 
-        AppLogger.d(TAG, "All user enumeration methods failed, returning only user 0")
-        return cacheAndReturn(listOf(UserProfile(0, "Personal", isWorkProfile = false, isCloneProfile = false)))
+        val ownUserId = Constants.Firewall.ownUserId()
+        AppLogger.d(TAG, "All user enumeration methods failed, returning only De1984's own user $ownUserId")
+        return cacheAndReturn(listOf(UserProfile(ownUserId, null, isWorkProfile = false, isCloneProfile = false)))
     }
 
     private fun cacheAndReturn(users: List<UserProfile>): List<UserProfile> {
@@ -448,12 +449,13 @@ object HiddenApiHelper {
     ): List<ApplicationInfo> {
         if (!initialized) initialize()
 
-        if (userId == 0) {
+        // The public call answers for De1984's own profile, which is not always user 0.
+        if (userId == Constants.Firewall.ownUserId()) {
             return context.packageManager.getInstalledApplications(flags)
         }
 
-        // Only for OTHER profiles: user 0 never needed permission, and this is the first place that
-        // does. Once per process, and cheap after that.
+        // Only for OTHER profiles: De1984's own never needed permission, and this is the first place
+        // that does. Once per process, and cheap after that.
         ensureCrossUserPermission(context)
 
         val now = System.currentTimeMillis()
@@ -905,7 +907,7 @@ object HiddenApiHelper {
      * Re-reads one profile's disabled set, ignoring whatever is cached, and refreshes the cache with
      * what it finds. Null means the read failed and the caller must not treat that as a change.
      *
-     * This exists for PackageMonitoringService. ACTION_PACKAGE_CHANGED only ever reaches user 0, so
+     * This exists for PackageMonitoringService. ACTION_PACKAGE_CHANGED only ever reaches De1984's own profile, so
      * an app enabled or disabled in a work profile by some other app is invisible to De1984 until
      * something unrelated forces a refresh (issue #61). One `pm list packages -d --user N` per
      * profile is cheap enough to poll; asking per package would not be.
@@ -957,7 +959,7 @@ object HiddenApiHelper {
     ): ApplicationInfo? {
         if (!initialized) initialize()
 
-        if (userId == 0) {
+        if (userId == Constants.Firewall.ownUserId()) {
             return try {
                 context.packageManager.getApplicationInfo(packageName, flags)
             } catch (e: PackageManager.NameNotFoundException) {
@@ -1083,7 +1085,7 @@ object HiddenApiHelper {
         flags: Int,
         userId: Int
     ): PackageInfo? {
-        if (userId != 0) {
+        if (userId != Constants.Firewall.ownUserId()) {
             // Same permission, same reason as getInstalledApplicationsAsUser. Cheap after the first
             // call - a volatile read once granted - and it never blocks, so it is safe on a hot path.
             ensureCrossUserPermission(context)
@@ -1120,11 +1122,11 @@ object HiddenApiHelper {
     ): PackageInfo? {
         if (!initialized) initialize()
 
-        if (userId == 0) {
+        if (userId == Constants.Firewall.ownUserId()) {
             return try {
                 context.packageManager.getPackageInfo(packageName, flags)
             } catch (e: PackageManager.NameNotFoundException) {
-                AppLogger.d(TAG, "Package $packageName not found for user 0")
+                AppLogger.d(TAG, "Package $packageName not found for user $userId")
                 null
             }
         }

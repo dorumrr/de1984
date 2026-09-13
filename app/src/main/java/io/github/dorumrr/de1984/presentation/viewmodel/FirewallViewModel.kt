@@ -276,7 +276,7 @@ class FirewallViewModel(
             uidRules = cachedUidRules,
             allowCritical = allowCritical,
             blockAllDefault = blockAllDefault,
-            ownUserId = android.os.Process.myUid() / 100000
+            ownUserId = io.github.dorumrr.de1984.utils.Constants.Firewall.ownUserId()
         )
     }
 

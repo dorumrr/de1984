@@ -62,7 +62,7 @@ class HandleNewAppInstallUseCase constructor(
     
     suspend fun execute(packageName: String, uid: Int? = null): Result<Unit> {
         return try {
-            val userId = uid?.let { it / 100000 } ?: 0
+            val userId = uid?.let { it / 100000 } ?: Constants.Firewall.ownUserId()
 
             val packageInfo = validatePackage(packageName, userId)
                 ?: return Result.failure(Exception("Package not found or invalid: $packageName"))

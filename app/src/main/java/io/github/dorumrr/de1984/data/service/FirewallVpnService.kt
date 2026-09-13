@@ -63,7 +63,7 @@ class FirewallVpnService : VpnService() {
     private var isServiceActive = false
     private var wasExplicitlyStopped = false
 
-    private var lastAppliedBlockedApps: Set<String> = emptySet()
+    private var lastAppliedBlockedApps: Set<String>? = emptySet()
     private var lastAppliedNetworkType: NetworkType = NetworkType.NONE
     private var lastAppliedScreenState: Boolean = true
 
@@ -316,25 +316,21 @@ class FirewallVpnService : VpnService() {
                     if (newVpnInterface == null) {
                         if (lastBlockedCount >= 0) {
                             AppLogger.e(TAG, "rebuildInterface: VPN interface FAILED (blockedCount=$lastBlockedCount)")
+                            // Null, not empty: an empty record equals a blocked set that became empty, and the retry would skip.
+                            lastAppliedBlockedApps = null
                             handleVpnInterfaceFailure()
                         } else {
                             AppLogger.d(TAG, "rebuildInterface: No apps to block (zero-app optimization)")
-                            consecutiveFailures = 0
-                            retryAttempt = 0
-                            // Still active with nothing to block: VpnFirewallBackend.isActive() reads this flag.
-                            getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                                .edit()
-                                .putBoolean(Constants.Settings.KEY_VPN_INTERFACE_ACTIVE, true)
-                                .commit()
-                            AppLogger.d(TAG, "Zero-app optimization: Set VPN_INTERFACE_ACTIVE=true")
+                            // Nothing to block is a good build: VpnFirewallBackend.isActive() reads the flag this writes.
+                            onVpnInterfaceSuccess()
+                            lastAppliedBlockedApps = emptySet()
                         }
-                        lastAppliedBlockedApps = emptySet()
                     } else {
                         AppLogger.d(TAG, "VPN interface established successfully")
                         onVpnInterfaceSuccess()
                         startPacketDropping()
                         lastAppliedBlockedApps = builtBlockedApps
-                        AppLogger.d(TAG, "Blocking ${lastAppliedBlockedApps.size} apps")
+                        AppLogger.d(TAG, "Blocking ${builtBlockedApps.size} apps")
                     }
 
                     lastAppliedNetworkType = builtNetworkType

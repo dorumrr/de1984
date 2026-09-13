@@ -57,9 +57,6 @@ class FirewallVpnService : VpnService() {
     private var packetForwardingJob: Job? = null
     private var restartDebounceJob: Job? = null
 
-    // One setup at a time: overlapping setups each started a read loop, and nothing closed the first.
-    private val setupMutex = Mutex()
-
     private var currentNetworkType: NetworkType = NetworkType.NONE
     private var isScreenOn: Boolean = true
     @Volatile
@@ -94,6 +91,10 @@ class FirewallVpnService : VpnService() {
 
         const val ACTION_START = "io.github.dorumrr.de1984.action.START_VPN"
         const val ACTION_STOP = "io.github.dorumrr.de1984.action.STOP_VPN"
+
+        // One setup at a time, across service objects: a destroyed object's build still runs,
+        // and its establish() replaces the new object's tunnel. Overlap in one object leaks read loops.
+        private val setupMutex = Mutex()
     }
     
     override fun onCreate() {

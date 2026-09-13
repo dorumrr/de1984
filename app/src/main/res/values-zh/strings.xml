@@ -731,7 +731,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">启用启动保护？</string>
-    <string name="boot_protection_enable_warning_message">⚠️ 继续后您的设备将立即重启。\n\n这将在设备启动期间阻止所有网络流量，直到 De1984 启动。\n\n⚠️ 如果 De1984 无法启动，您的设备将无法联网。\n\n恢复选项：\n1. 打开 De1984 → 设置 → 禁用启动保护\n2. 如果不起作用，使用 ADB：\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ 继续后您的设备将立即重启。\n\n这将在设备启动期间阻止所有网络流量，直到 De1984 启动。\n\n⚠️ 如果 De1984 无法启动，您的设备将无法联网。\n\n恢复选项：\n1. 打开 De1984 → 设置 → 禁用启动保护\n2. 如果不起作用，使用 ADB：\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">禁用启动保护？</string>
     <string name="boot_protection_disable_warning_message">⚠️ 继续后您的设备将立即重启。\n\n网络流量将不再在启动期间被阻止。应用可能在防火墙启动前泄露数据。</string>
     <string name="boot_protection_reboot_failed">启动保护已更改，但设备无法自动重启。请手动重启您的设备。</string>

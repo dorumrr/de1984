@@ -723,7 +723,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Ativar Proteção na Inicialização?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Seu dispositivo será reiniciado imediatamente ao continuar.\n\nIsto bloqueará TODO o tráfego de rede durante a inicialização do dispositivo até o De1984 iniciar.\n\n⚠️ Se o De1984 falhar ao iniciar, seu dispositivo não terá rede.\n\nOpções de recuperação:\n1. Abra De1984 → Configurações → Desativar Proteção na Inicialização\n2. Se isso não funcionar, use ADB:\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Seu dispositivo será reiniciado imediatamente ao continuar.\n\nIsto bloqueará TODO o tráfego de rede durante a inicialização do dispositivo até o De1984 iniciar.\n\n⚠️ Se o De1984 falhar ao iniciar, seu dispositivo não terá rede.\n\nOpções de recuperação:\n1. Abra De1984 → Configurações → Desativar Proteção na Inicialização\n2. Se isso não funcionar, use ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Desativar Proteção na Inicialização?</string>
     <string name="boot_protection_disable_warning_message">⚠️ Seu dispositivo será reiniciado imediatamente ao continuar.\n\nO tráfego de rede não será mais bloqueado durante a inicialização. Apps podem vazar dados antes do firewall iniciar.</string>
     <string name="boot_protection_reboot_failed">A Proteção na Inicialização foi alterada, mas o dispositivo não pôde ser reiniciado automaticamente. Por favor, reinicie o dispositivo manualmente.</string>

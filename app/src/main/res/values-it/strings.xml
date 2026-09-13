@@ -723,7 +723,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Attivare Protezione all\'Avvio?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Il dispositivo si riavvierà immediatamente quando continui.\n\nQuesto bloccherà TUTTO il traffico di rete durante l\'avvio del dispositivo fino a quando De1984 si avvia.\n\n⚠️ Se De1984 non riesce ad avviarsi, il dispositivo non avrà rete.\n\nOpzioni di recupero:\n1. Apri De1984 → Impostazioni → Disattiva Protezione all\'Avvio\n2. Se non funziona, usa ADB:\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Il dispositivo si riavvierà immediatamente quando continui.\n\nQuesto bloccherà TUTTO il traffico di rete durante l\'avvio del dispositivo fino a quando De1984 si avvia.\n\n⚠️ Se De1984 non riesce ad avviarsi, il dispositivo non avrà rete.\n\nOpzioni di recupero:\n1. Apri De1984 → Impostazioni → Disattiva Protezione all\'Avvio\n2. Se non funziona, usa ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Disattivare Protezione all\'Avvio?</string>
     <string name="boot_protection_disable_warning_message">⚠️ Il dispositivo si riavvierà immediatamente quando continui.\n\nIl traffico di rete non sarà più bloccato durante l\'avvio. Le app potrebbero perdere dati prima che il firewall si avvii.</string>
     <string name="boot_protection_reboot_failed">La Protezione all\'Avvio è stata modificata, ma il dispositivo non è stato riavviato automaticamente. Riavvia il dispositivo manualmente.</string>

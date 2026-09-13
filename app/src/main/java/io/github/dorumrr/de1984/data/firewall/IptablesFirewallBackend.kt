@@ -31,7 +31,7 @@ class IptablesFirewallBackend(
         // Custom chain name to avoid conflicts with Android netd
         // Note: We only use OUTPUT chain because the owner module only works for OUTPUT
         // (locally generated packets). INPUT chain cannot match by UID.
-        private const val CHAIN_OUTPUT = "de1984_output"
+        private val CHAIN_OUTPUT = "${Constants.App.ROOT_NAME_PREFIX}_output"
 
         private const val IPTABLES = "iptables"
         private const val IP6TABLES = "ip6tables"

@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984.data.common
 
+import io.github.dorumrr.de1984.BuildConfig
 import io.github.dorumrr.de1984.utils.AppLogger
 import android.content.Context
 import io.github.dorumrr.de1984.utils.Constants
@@ -108,12 +109,12 @@ class BootProtectionManager(
 # very much alive and rewriting the tables. Without the lock wait a collision makes iptables fail,
 # and the block would simply stay up.
 remove_boot_chain() {
-    while iptables -w 5 -D OUTPUT -j de1984_boot 2>/dev/null; do :; done
-    while ip6tables -w 5 -D OUTPUT -j de1984_boot 2>/dev/null; do :; done
-    iptables -w 5 -F de1984_boot 2>/dev/null
-    iptables -w 5 -X de1984_boot 2>/dev/null
-    ip6tables -w 5 -F de1984_boot 2>/dev/null
-    ip6tables -w 5 -X de1984_boot 2>/dev/null
+    while iptables -w 5 -D OUTPUT -j ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null; do :; done
+    while ip6tables -w 5 -D OUTPUT -j ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null; do :; done
+    iptables -w 5 -F ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null
+    iptables -w 5 -X ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null
+    ip6tables -w 5 -F ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null
+    ip6tables -w 5 -X ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null
 }
 
 # If De1984 has been uninstalled this script is orphaned: no app will ever lift the
@@ -123,7 +124,7 @@ remove_boot_chain() {
 # only, a user-0-shaped check finds nothing and deletes a script that should still run.
 # An unmatched glob stays literal in sh, and [ -e ] on a literal is false, so this is safe.
 de1984_present() {
-    for _d in /data/user_de/*/${Constants.App.PACKAGE_NAME} /data/user_de/*/${Constants.App.PACKAGE_NAME_DEBUG}; do
+    for _d in /data/user_de/*/${BuildConfig.APPLICATION_ID}; do
         [ -e "${'$'}_d" ] && return 0
     done
     return 1
@@ -135,12 +136,12 @@ if ! de1984_present; then
 fi
 
 # Create custom chain for boot protection
-iptables -w 5 -N de1984_boot 2>/dev/null || iptables -w 5 -F de1984_boot
-ip6tables -w 5 -N de1984_boot 2>/dev/null || ip6tables -w 5 -F de1984_boot
+iptables -w 5 -N ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null || iptables -w 5 -F ${Constants.BootProtection.BOOT_CHAIN}
+ip6tables -w 5 -N ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null || ip6tables -w 5 -F ${Constants.BootProtection.BOOT_CHAIN}
 
 # Allow loopback traffic (required for system services)
-iptables -w 5 -A de1984_boot -o lo -j ACCEPT
-ip6tables -w 5 -A de1984_boot -o lo -j ACCEPT
+iptables -w 5 -A ${Constants.BootProtection.BOOT_CHAIN} -o lo -j ACCEPT
+ip6tables -w 5 -A ${Constants.BootProtection.BOOT_CHAIN} -o lo -j ACCEPT
 
 # Allow critical system UIDs needed for network connectivity.
 #
@@ -161,13 +162,13 @@ ip6tables -w 5 -A de1984_boot -o lo -j ACCEPT
 #                      It also keeps wireless adb alive as a recovery route. USB adb is
 #                      unaffected either way, since it is not network traffic.
 for uid in 0 1000 1001 1010 1016 1029 1051 1073 2000; do
-    iptables -w 5 -A de1984_boot -m owner --uid-owner ${'$'}uid -j ACCEPT
-    ip6tables -w 5 -A de1984_boot -m owner --uid-owner ${'$'}uid -j ACCEPT
+    iptables -w 5 -A ${Constants.BootProtection.BOOT_CHAIN} -m owner --uid-owner ${'$'}uid -j ACCEPT
+    ip6tables -w 5 -A ${Constants.BootProtection.BOOT_CHAIN} -m owner --uid-owner ${'$'}uid -j ACCEPT
 done
 
 # Block everything else (user apps)
-iptables -w 5 -A de1984_boot -j DROP
-ip6tables -w 5 -A de1984_boot -j DROP
+iptables -w 5 -A ${Constants.BootProtection.BOOT_CHAIN} -j DROP
+ip6tables -w 5 -A ${Constants.BootProtection.BOOT_CHAIN} -j DROP
 
 # Link the chain into OUTPUT - but only if the allow-list actually landed.
 #
@@ -180,12 +181,12 @@ ip6tables -w 5 -A de1984_boot -j DROP
 # The -C guard also stops a re-run stacking a second jump that a single -D would miss.
 link_if_sane() {
     _t="${'$'}1"
-    if ${'$'}_t -w 5 -C de1984_boot -m owner --uid-owner 0 -j ACCEPT 2>/dev/null; then
-        ${'$'}_t -w 5 -C OUTPUT -j de1984_boot 2>/dev/null || ${'$'}_t -w 5 -I OUTPUT -j de1984_boot
+    if ${'$'}_t -w 5 -C ${Constants.BootProtection.BOOT_CHAIN} -m owner --uid-owner 0 -j ACCEPT 2>/dev/null; then
+        ${'$'}_t -w 5 -C OUTPUT -j ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null || ${'$'}_t -w 5 -I OUTPUT -j ${Constants.BootProtection.BOOT_CHAIN}
     else
         echo "de1984: ${'$'}_t allow-list missing, refusing to link a drop-all chain" > /dev/kmsg 2>/dev/null
-        ${'$'}_t -w 5 -F de1984_boot 2>/dev/null
-        ${'$'}_t -w 5 -X de1984_boot 2>/dev/null
+        ${'$'}_t -w 5 -F ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null
+        ${'$'}_t -w 5 -X ${Constants.BootProtection.BOOT_CHAIN} 2>/dev/null
     fi
 }
 
@@ -408,14 +409,14 @@ link_if_sane ip6tables
                     // denial - produced zero teardown attempts.
                     var removed = 0
                     while (removed < MAX_JUMP_REMOVALS &&
-                        executeCommand("$table $XT_WAIT -D OUTPUT -j de1984_boot").first == 0
+                        executeCommand("$table $XT_WAIT -D OUTPUT -j ${Constants.BootProtection.BOOT_CHAIN}").first == 0
                     ) {
                         removed++
                     }
-                    AppLogger.d(TAG, "$table: removed $removed de1984_boot jump(s) from OUTPUT")
+                    AppLogger.d(TAG, "$table: removed $removed ${Constants.BootProtection.BOOT_CHAIN} jump(s) from OUTPUT")
 
-                    executeCommand("$table $XT_WAIT -F de1984_boot")
-                    executeCommand("$table $XT_WAIT -X de1984_boot")
+                    executeCommand("$table $XT_WAIT -F ${Constants.BootProtection.BOOT_CHAIN}")
+                    executeCommand("$table $XT_WAIT -X ${Constants.BootProtection.BOOT_CHAIN}")
                 }
 
                 // Verify the outcome. Exit codes must be read carefully: -C returns 0 when the jump
@@ -425,7 +426,7 @@ link_if_sane ip6tables
                 // teardown on a device that was still fully blocked.
                 val unresolved = mutableListOf<String>()
                 for (table in listOf("iptables", "ip6tables")) {
-                    val code = executeCommand("$table $XT_WAIT -C OUTPUT -j de1984_boot").first
+                    val code = executeCommand("$table $XT_WAIT -C OUTPUT -j ${Constants.BootProtection.BOOT_CHAIN}").first
                     when (code) {
                         0 -> unresolved += "$table (jump still linked)"
                         1, 2 -> Unit

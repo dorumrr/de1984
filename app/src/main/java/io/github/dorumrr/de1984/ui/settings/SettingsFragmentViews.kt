@@ -1534,7 +1534,7 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
         }
 
         val message = if (enable) {
-            getString(R.string.boot_protection_enable_warning_message)
+            getString(R.string.boot_protection_enable_warning_message, Constants.BootProtection.BOOT_SCRIPT_PATH)
         } else {
             getString(R.string.boot_protection_disable_warning_message)
         }

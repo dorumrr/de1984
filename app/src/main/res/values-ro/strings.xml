@@ -725,7 +725,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Activezi Protecția la Pornire?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Dispozitivul tău va reporni imediat când continui.\n\nAceasta va bloca TOT traficul de rețea în timpul pornirii dispozitivului până când De1984 pornește.\n\n⚠️ Dacă De1984 nu reușește să pornească, dispozitivul tău nu va avea rețea.\n\nOpțiuni de recuperare:\n1. Deschide De1984 → Setări → Dezactivează Protecția la Pornire\n2. Dacă asta nu funcționează, folosește ADB:\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Dispozitivul tău va reporni imediat când continui.\n\nAceasta va bloca TOT traficul de rețea în timpul pornirii dispozitivului până când De1984 pornește.\n\n⚠️ Dacă De1984 nu reușește să pornească, dispozitivul tău nu va avea rețea.\n\nOpțiuni de recuperare:\n1. Deschide De1984 → Setări → Dezactivează Protecția la Pornire\n2. Dacă asta nu funcționează, folosește ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Dezactivezi Protecția la Pornire?</string>
     <string name="boot_protection_disable_warning_message">⚠️ Dispozitivul tău va reporni imediat când continui.\n\nTraficul de rețea nu va mai fi blocat în timpul pornirii. Aplicațiile pot scurge date înainte ca firewall-ul să pornească.</string>
     <string name="boot_protection_reboot_failed">Protecția la Pornire a fost modificată, dar dispozitivul nu a putut fi repornit automat. Te rugăm să repornești dispozitivul manual.</string>

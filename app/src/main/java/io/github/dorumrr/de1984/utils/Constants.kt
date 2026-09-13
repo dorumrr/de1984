@@ -1,5 +1,7 @@
 package io.github.dorumrr.de1984.utils
 
+import io.github.dorumrr.de1984.BuildConfig
+
 object Constants {
 
     object UI {
@@ -25,6 +27,9 @@ object Constants {
         const val NAME = "De1984"
         const val PACKAGE_NAME = "io.github.dorumrr.de1984"
         const val PACKAGE_NAME_DEBUG = "io.github.dorumrr.de1984.debug"
+
+        // iptables chains and the boot script are device-wide: shared names let one build delete the other's.
+        val ROOT_NAME_PREFIX = if (BuildConfig.APPLICATION_ID == PACKAGE_NAME_DEBUG) "de1984dbg" else "de1984"
 
         fun isOwnApp(packageName: String): Boolean {
             return packageName == PACKAGE_NAME || packageName == PACKAGE_NAME_DEBUG
@@ -169,8 +174,9 @@ object Constants {
     }
 
     object BootProtection {
-        const val BOOT_SCRIPT_PATH = "/data/adb/post-fs-data.d/de1984_boot_protection.sh"
         const val MAGISK_POST_FS_DIR = "/data/adb/post-fs-data.d"
+        val BOOT_SCRIPT_PATH = "$MAGISK_POST_FS_DIR/${App.ROOT_NAME_PREFIX}_boot_protection.sh"
+        val BOOT_CHAIN = "${App.ROOT_NAME_PREFIX}_boot"
         const val BOOT_SCRIPT_PERMISSIONS = "755"
 
         /**

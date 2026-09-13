@@ -1345,7 +1345,8 @@ class FirewallManager(
                         } else {
                             AppLogger.d(TAG, "Health check: Checking if better backends available (AUTO mode)... (interval: ${currentHealthCheckInterval}ms, consecutive successes: $consecutiveSuccessfulHealthChecks)")
 
-                            rootManager.forceRecheckRootStatus()
+                            // One try per tick: the next tick is the retry, and each extra try spawns su and sh again.
+                            rootManager.forceRecheckRootStatus(retry = false)
                             shizukuManager.checkShizukuStatus()
 
                             // The stored mode, not a hard-coded AUTO. Reaching here on VPN with a

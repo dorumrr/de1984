@@ -31,7 +31,7 @@ class RootManager(private val context: Context) {
         private const val PREFS_NAME = "de1984_root"
         private const val KEY_ROOT_PERMISSION_REQUESTED = "root_permission_requested"
 
-        /** Attempts before a missing root shell is recorded as NOT_ROOTED. See checkRootStatusInternal. */
+        /** Attempts before a missing root shell is recorded as NOT_ROOTED, unless the caller passes retry = false. */
         private const val MAX_ROOT_ATTEMPTS = 3
 
         /** Breathing room for a root manager that is still starting - KernelSU LKM, a slow grant dialog. */
@@ -134,19 +134,22 @@ class RootManager(private val context: Context) {
      *
      * Not free on a device that is NOT rooted: it runs the full retry loop below - three
      * `Shell.getShell()` builds, each a failed `su` exec then a short-lived `sh`, with two 800ms
-     * waits between them. Roughly 1.6s of wall time, though only milliseconds of CPU, since the
-     * waits are `delay` and hold no thread.
+     * waits between them. Measured on hardware: about 1.9s of wall time and 0.46-0.49s of the app's
+     * own CPU, not counting the `su` and `sh` processes.
      *
      * That cost is deliberate and must not be "optimised" with a negative cache. The retry IS the
      * fix for issue #79: KernelSU's LKM can load after boot has completed, so a rooted device that
      * answers NOT_ROOTED at first can start answering correctly a few seconds later. The guard at
      * [checkRootStatus] skips only ROOTED_WITH_PERMISSION for the same reason.
+     *
+     * Pass [retry] = false from a caller that asks again on a timer: its next call is the retry.
+     * A ROOTED_WITH_PERMISSION status still gets every try, so one slow answer cannot demote it.
      */
-    suspend fun forceRecheckRootStatus() {
-        checkRootStatusInternalWithCaching(forceRecheck = true)
+    suspend fun forceRecheckRootStatus(retry: Boolean = true) {
+        checkRootStatusInternalWithCaching(forceRecheck = true, retry = retry)
     }
 
-    private suspend fun checkRootStatusInternalWithCaching(forceRecheck: Boolean) {
+    private suspend fun checkRootStatusInternalWithCaching(forceRecheck: Boolean, retry: Boolean = true) {
         val currentStatus = _rootStatus.value
 
         AppLogger.d(TAG, "=== checkRootStatusInternalWithCaching() called ===")
@@ -165,7 +168,8 @@ class RootManager(private val context: Context) {
             AppLogger.d(TAG, "First check - setting status to CHECKING")
         }
 
-        val newStatus = checkRootStatusInternal()
+        val attempts = if (retry || currentStatus == RootStatus.ROOTED_WITH_PERMISSION) MAX_ROOT_ATTEMPTS else 1
+        val newStatus = checkRootStatusInternal(attempts)
         _rootStatus.value = newStatus
         hasCheckedOnce = true
         AppLogger.d(TAG, "Root status check complete: $newStatus")
@@ -223,7 +227,7 @@ class RootManager(private val context: Context) {
         }
     }
 
-    private suspend fun checkRootStatusInternal(): RootStatus = withContext(Dispatchers.IO) {
+    private suspend fun checkRootStatusInternal(attempts: Int): RootStatus = withContext(Dispatchers.IO) {
         try {
             AppLogger.d(TAG, "🔍 CHECKING ROOT STATUS (using libsu)")
 
@@ -272,8 +276,8 @@ class RootManager(private val context: Context) {
             var shell = Shell.getShell()
             var attempt = 1
 
-            while (!shell.isRoot && attempt < MAX_ROOT_ATTEMPTS) {
-                AppLogger.d(TAG, "No root on attempt $attempt of $MAX_ROOT_ATTEMPTS - the manager may not be ready, retrying")
+            while (!shell.isRoot && attempt < attempts) {
+                AppLogger.d(TAG, "No root on attempt $attempt of $attempts - the manager may not be ready, retrying")
                 delay(ROOT_RETRY_DELAY_MS)
 
                 Shell.getCachedShell()?.let { stale ->

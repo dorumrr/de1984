@@ -336,7 +336,7 @@ class PackagesViewModel(
         applyFilters(newFilterState)
     }
 
-    fun setPackageEnabled(packageName: String, userId: Int = 0, enabled: Boolean) {
+    fun setPackageEnabled(packageName: String, userId: Int, enabled: Boolean) {
         viewModelScope.launch {
             val snapshot = updatePackageInList(packageName, userId) { pkg ->
                 pkg.copy(isEnabled = enabled)
@@ -353,7 +353,7 @@ class PackagesViewModel(
         }
     }
 
-    fun uninstallPackage(packageName: String, userId: Int = 0, appName: String) {
+    fun uninstallPackage(packageName: String, userId: Int, appName: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoadingData = true,
@@ -416,7 +416,7 @@ class PackagesViewModel(
         _uiState.value = _uiState.value.copy(batchUninstallResult = null)
     }
 
-    fun reinstallPackage(packageName: String, userId: Int = 0, appName: String) {
+    fun reinstallPackage(packageName: String, userId: Int, appName: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoadingData = true,
@@ -484,9 +484,9 @@ class PackagesViewModel(
         _uiState.value = _uiState.value.copy(reinstallSuccess = null)
     }
 
-    fun forceStopPackage(packageName: String) {
+    fun forceStopPackage(packageName: String, userId: Int) {
         viewModelScope.launch {
-            managePackageUseCase.forceStopPackage(packageName)
+            managePackageUseCase.forceStopPackage(packageName, userId)
                 .onSuccess {
                 }
                 .onFailure { error ->
@@ -511,7 +511,7 @@ class PackagesViewModel(
     }
 
     /** Returns the row as it was, so the caller can undo exactly this change - see [restoreRow]. */
-    private fun updatePackageInList(packageName: String, userId: Int = 0, transform: (Package) -> Package): Package? {
+    private fun updatePackageInList(packageName: String, userId: Int, transform: (Package) -> Package): Package? {
         val currentPackages = _uiState.value.packages
         val updatedPackages = currentPackages.map { pkg ->
             if (pkg.packageName == packageName && pkg.userId == userId) {

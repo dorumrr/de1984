@@ -8,11 +8,11 @@ class ManagePackageUseCase constructor(
     private val packageRepository: PackageRepository
 ) {
 
-    suspend fun setPackageEnabled(packageName: String, userId: Int = 0, enabled: Boolean): Result<Unit> {
+    suspend fun setPackageEnabled(packageName: String, userId: Int, enabled: Boolean): Result<Unit> {
         return packageRepository.setPackageEnabled(packageName, userId, enabled)
     }
 
-    suspend fun uninstallPackage(packageName: String, userId: Int = 0): Result<Unit> {
+    suspend fun uninstallPackage(packageName: String, userId: Int): Result<Unit> {
         return packageRepository.uninstallPackage(packageName, userId)
     }
 
@@ -20,7 +20,7 @@ class ManagePackageUseCase constructor(
         return packageRepository.uninstallMultiplePackages(packages)
     }
 
-    suspend fun reinstallPackage(packageName: String, userId: Int = 0): Result<Unit> {
+    suspend fun reinstallPackage(packageName: String, userId: Int): Result<Unit> {
         return packageRepository.reinstallPackage(packageName, userId)
     }
 
@@ -28,7 +28,7 @@ class ManagePackageUseCase constructor(
         return packageRepository.reinstallMultiplePackages(packages)
     }
 
-    suspend fun forceStopPackage(packageName: String, userId: Int = 0): Result<Unit> {
+    suspend fun forceStopPackage(packageName: String, userId: Int): Result<Unit> {
         return packageRepository.forceStopPackage(packageName, userId)
     }
 }

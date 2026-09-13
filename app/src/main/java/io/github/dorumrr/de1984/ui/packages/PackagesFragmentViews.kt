@@ -998,7 +998,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             },
             confirmButtonText = getString(io.github.dorumrr.de1984.R.string.action_force_stop),
             onConfirm = {
-                viewModel.forceStopPackage(pkg.packageName)
+                viewModel.forceStopPackage(pkg.packageName, pkg.userId)
             }
         )
     }

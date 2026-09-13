@@ -122,9 +122,10 @@ class FirewallVpnService : VpnService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         AppLogger.d(TAG, "onStartCommand: action=${intent?.action}, wasExplicitlyStopped=$wasExplicitlyStopped")
 
+        // Every stop here passes startId: plain stopSelf() also drops a START the system has already accepted.
         if (wasExplicitlyStopped && intent?.action != ACTION_START) {
             AppLogger.d(TAG, "Service was explicitly stopped and no START action - stopping self")
-            stopSelf()
+            stopSelfResult(startId)
             return START_NOT_STICKY
         }
 
@@ -139,11 +140,12 @@ class FirewallVpnService : VpnService() {
                 AppLogger.d(TAG, "ACTION_STOP received - stopping VPN")
                 wasExplicitlyStopped = true
                 stopVpn()
+                stopSelfResult(startId)
                 return START_NOT_STICKY
             }
             else -> {
                 AppLogger.w(TAG, "Unknown action or null intent - stopping self")
-                stopSelf()
+                stopSelfResult(startId)
                 return START_NOT_STICKY
             }
         }
@@ -658,7 +660,6 @@ class FirewallVpnService : VpnService() {
     private fun stopVpn() {
         isServiceActive = false
 
-        // Update SharedPreferences to indicate VPN service is stopped
         // IMPORTANT: Use commit() instead of apply() to ensure synchronous write
         val prefs = getSharedPreferences(
             io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
@@ -681,7 +682,6 @@ class FirewallVpnService : VpnService() {
             vpnInterface?.close()
             vpnInterface = null
             stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
         } catch (e: Exception) {
         }
     }

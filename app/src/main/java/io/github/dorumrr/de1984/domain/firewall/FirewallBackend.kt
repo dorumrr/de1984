@@ -86,6 +86,9 @@ enum class FirewallBackendType {
         IPTABLES, NETWORK_POLICY_MANAGER -> true
         CONNECTIVITY_MANAGER, VPN -> false
     }
+
+    /** Whether this backend can act on an app in [userId] while De1984 runs in [ownUserId]. A package name reaches only De1984's own profile. */
+    fun reachesUser(userId: Int, ownUserId: Int): Boolean = blocksByUid() || userId == ownUserId
 }
 
 /**
@@ -303,7 +306,7 @@ fun FirewallBackendType?.unblockableReason(
 
     // A package-naming backend can only reach the user it runs in. Checked before the uid-range
     // test, because a work-profile row fails this whatever its appId is.
-    if (!backend.blocksByUid() && pkg.userId != context.ownUserId) {
+    if (!backend.reachesUser(pkg.userId, context.ownUserId)) {
         return UnblockableReason.OTHER_PROFILE_UNREACHABLE
     }
 

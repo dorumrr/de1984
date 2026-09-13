@@ -314,7 +314,7 @@ class FirewallVpnService : VpnService() {
                     }
 
                     if (newVpnInterface == null) {
-                        if (lastBlockedCount > 0) {
+                        if (lastBlockedCount >= 0) {
                             AppLogger.e(TAG, "rebuildInterface: VPN interface FAILED (blockedCount=$lastBlockedCount)")
                             handleVpnInterfaceFailure()
                         } else {
@@ -519,9 +519,7 @@ class FirewallVpnService : VpnService() {
             val rule = rulesMap["$packageName:$userId"]
 
             val shouldBlock = if (rule != null && rule.enabled) {
-                // Has explicit rule - use same logic as applyFirewallRules() for consistency.
-                // The NetworkType.NONE case now lives in FirewallRule.isBlockedOn, so every backend
-                // gets it instead of only this one.
+                // NetworkType.NONE is decided in FirewallRule.isBlockedOn, which every backend shares.
                 when {
                     !screenOn && rule.blockWhenBackground -> true
                     else -> rule.isBlockedOn(networkType)
@@ -548,6 +546,8 @@ class FirewallVpnService : VpnService() {
     }
 
     private fun buildVpnInterface(blockedApps: Set<String>): ParcelFileDescriptor? {
+        // 0 until counted, so a build that throws is sorted as a failure and never as the last build's "nothing to block".
+        lastBlockedCount = 0
         return try {
             val builder = Builder()
                 .setSession("De1984 Firewall")
@@ -583,8 +583,6 @@ class FirewallVpnService : VpnService() {
             lastBlockedCount = blockedCount
             AppLogger.d(TAG, "buildVpnInterface: blockedCount=$blockedCount")
 
-            // If blockedCount is -1, it means no apps need to be blocked
-            // In this case, don't establish VPN to avoid routing all apps through it
             if (blockedCount < 0) {
                 AppLogger.d(TAG, "buildVpnInterface: No apps to block, not establishing VPN")
                 return null
@@ -629,32 +627,27 @@ class FirewallVpnService : VpnService() {
     }
 
     private fun applyFirewallRules(builder: Builder, blockedApps: Set<String>): Int {
-        try {
-            var blockedCount = 0
-            var failedCount = 0
-            for (packageName in blockedApps) {
-                try {
-                    builder.addAllowedApplication(packageName)
-                    blockedCount++
-                } catch (e: PackageManager.NameNotFoundException) {
-                    AppLogger.w(TAG, "  $packageName: NameNotFoundException when adding to VPN")
-                    failedCount++
-                }
+        var blockedCount = 0
+        var failedCount = 0
+        for (packageName in blockedApps) {
+            // Only NameNotFound is caught: establishing a builder after any other error tunnels every app, or the wrong ones.
+            try {
+                builder.addAllowedApplication(packageName)
+                blockedCount++
+            } catch (e: PackageManager.NameNotFoundException) {
+                AppLogger.w(TAG, "  $packageName: NameNotFoundException when adding to VPN")
+                failedCount++
             }
-
-            // With no allowed application added, Android routes every app into the VPN, so never establish it.
-            if (blockedCount == 0) {
-                AppLogger.w(TAG, "applyFirewallRules: No apps to block, returning -1 to skip VPN establishment")
-                return -1
-            }
-
-            AppLogger.d(TAG, "applyFirewallRules: FINAL COUNTS - blocked=$blockedCount, failed=$failedCount")
-            return blockedCount
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "applyFirewallRules: Exception", e)
-            e.printStackTrace()
-            return 0
         }
+
+        // With no allowed application added, Android routes every app into the VPN, so never establish it.
+        if (blockedCount == 0) {
+            AppLogger.w(TAG, "applyFirewallRules: No apps to block, returning -1 to skip VPN establishment")
+            return -1
+        }
+
+        AppLogger.d(TAG, "applyFirewallRules: FINAL COUNTS - blocked=$blockedCount, failed=$failedCount")
+        return blockedCount
     }
     
     private fun stopVpn() {

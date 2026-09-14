@@ -222,6 +222,12 @@ class ConnectivityManagerFirewallBackend(
 
             AppLogger.d(TAG, "Found ${allPackages.size} packages with network permissions across ${userProfiles.size} profiles")
 
+            // The loop below walks packages, so a failed read would apply nothing and still report success.
+            if (allPackages.isEmpty()) {
+                AppLogger.e(TAG, "Network package read failed - refusing to apply, policies keep their last write")
+                return@withContext Result.failure(Exception("Network package read failed"))
+            }
+
             val desiredPolicies = mutableMapOf<String, Boolean>()
 
             val allowCritical = prefs.getBoolean(

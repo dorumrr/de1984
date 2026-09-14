@@ -379,23 +379,15 @@ class IptablesFirewallBackend(
 
             if (isBlockAllDefault) {
                 val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
-                var allPackages = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
+                val allPackages = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
                     .getPackagesWithNetworkPermissions(context)
-
-                // Empty means the read failed: no device has zero apps with network permissions. The empty
-                // answer is cached, so drop the caches and read once more before failing.
-                if (allPackages.isEmpty()) {
-                    AppLogger.w(TAG, "Block All: package enumeration returned nothing - dropping the caches and reading once more")
-                    io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.clearInstalledAppsCache()
-                    allPackages = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackagesWithNetworkPermissions(context)
-                }
 
                 AppLogger.d(TAG, "Block All mode: found ${allPackages.size} packages with network permissions across ${userProfiles.size} profiles")
 
-                // A failure makes a start report down instead of healthy over an empty chain; a running chain keeps its last write.
+                // A failed read makes a start report down instead of healthy over an unwritten chain; a running chain keeps its last write.
                 if (allPackages.isEmpty()) {
-                    AppLogger.e(TAG, "Block All: package enumeration returned nothing twice - refusing to apply, the chain keeps its last write")
-                    return Result.failure(Exception("Block All: package enumeration returned nothing"))
+                    AppLogger.e(TAG, "Block All: network package read failed - refusing to apply, the chain keeps its last write")
+                    return Result.failure(Exception("Network package read failed"))
                 }
 
                 val allowCritical = prefs.getBoolean(

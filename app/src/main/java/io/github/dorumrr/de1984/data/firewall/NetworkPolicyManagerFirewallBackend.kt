@@ -383,6 +383,12 @@ class NetworkPolicyManagerFirewallBackend(
 
             AppLogger.d(TAG, "Found ${allPackages.size} packages with network permissions across ${userProfiles.size} profiles")
 
+            // The loop below walks packages, so a failed read would apply nothing and still report success.
+            if (allPackages.isEmpty()) {
+                AppLogger.e(TAG, "Network package read failed - refusing to apply, policies keep their last write")
+                return@withContext Result.failure(Exception("Network package read failed"))
+            }
+
             // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
             // This is needed because we block by UID, not by package - so if ANY package
             // in a UID is critical with no rule, the entire UID should be allowed

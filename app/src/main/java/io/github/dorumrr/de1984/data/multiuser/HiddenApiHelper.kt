@@ -60,7 +60,7 @@ object HiddenApiHelper {
      * threads while a sweep is writing entries.
      *
      * ONLY ever taken on its own, never while holding [networkPackagesLock]. The reverse nesting is
-     * real - getPackagesWithNetworkPermissions holds that lock and calls
+     * real - sweepPackagesWithNetworkPermissions holds that lock and calls
      * getInstalledApplicationsAsUser underneath it - so taking them the other way round here would
      * be a deadlock.
      */
@@ -564,6 +564,17 @@ object HiddenApiHelper {
     /**
      * Every installed app, across every user profile, that requests a network permission.
      *
+     * Empty means a profile could not be read, even after one retry on fresh caches: no device has zero
+     * such apps, so a caller must treat it as a failed read, never as "nothing to block".
+     */
+    fun getPackagesWithNetworkPermissions(context: Context): List<ApplicationInfo> {
+        sweepPackagesWithNetworkPermissions(context).let { if (it.isNotEmpty()) return it }
+        AppLogger.w(TAG, "📦 Network package read failed - dropping the caches and reading once more")
+        clearInstalledAppsCache()
+        return sweepPackagesWithNetworkPermissions(context)
+    }
+
+    /**
      * All four firewall backends ran this identical filter inline, and it is the dominant cost of
      * applying rules: one `getPackageInfoAsUser` binder call per package, with no caching. Measured
      * on a two-profile device with 466 packages at roughly **8 seconds per rule application** - far
@@ -572,7 +583,7 @@ object HiddenApiHelper {
      * The result changes only when a package is installed or removed, so it shares
      * [INSTALLED_APPS_CACHE_TTL] and is dropped by [clearInstalledAppsCache].
      */
-    fun getPackagesWithNetworkPermissions(context: Context): List<ApplicationInfo> {
+    private fun sweepPackagesWithNetworkPermissions(context: Context): List<ApplicationInfo> {
         val entryTime = System.currentTimeMillis()
         networkPackagesCache?.let { cached ->
             if (entryTime - networkPackagesCacheTime < INSTALLED_APPS_CACHE_TTL) {
@@ -595,9 +606,17 @@ object HiddenApiHelper {
             }
 
         val startTime = System.currentTimeMillis()
-        val packages = getUsers(context).flatMap { profile ->
-            getInstalledApplicationsAsUser(context, PackageManager.GET_META_DATA, profile.userId)
-                .map { appInfo -> appInfo to profile.userId }
+        val appsByUser = getUsers(context).map { profile ->
+            profile.userId to getInstalledApplicationsAsUser(context, PackageManager.GET_META_DATA, profile.userId)
+        }
+        // A profile always has installed system apps, so empty is a failed read. Dropping that profile would
+        // leave its apps unblocked, so the whole answer is refused and not cached.
+        appsByUser.firstOrNull { (_, apps) -> apps.isEmpty() }?.let { (userId, _) ->
+            AppLogger.w(TAG, "📦 Could not read apps for user $userId - refusing a partial network package list")
+            return emptyList()
+        }
+        val packages = appsByUser.flatMap { (userId, apps) ->
+            apps.map { appInfo -> appInfo to userId }
         }.filter { (appInfo, userId) ->
             try {
                 // GET_SERVICES is not read here. It is requested so this shares a cache entry

@@ -3,9 +3,10 @@
 Open work, ordered by harm to the user. This file is the queue, not an archive.
 
 **Trust order: current code first, this file second.** Every entry below was checked against the code
-on 2026-09-14: F12-F15, P7, P8, F2's and F8's updates and the three newest wording bullets at `9765780`
-with the F10/F11 fix staged; the Boot Protection bullet at `b225201`; the rest at `371895e`. Verify
-before acting on any of it.
+on 2026-09-14: P9, the comment note under "Below the bar" and every line cite into a file changed since
+`371895e` (`HiddenApiHelper.kt`, the three firewall backends, `FIREWALL.md`) at `43c2af4`; F13-F15, P7,
+P8, F2's and F8's updates and the three newest wording bullets at `9765780`; the Boot Protection bullet
+at `b225201`; the rest at `371895e`. Verify before acting on any of it.
 
 Status key: `VERIFIED` = read in code, line cited. `NOT VERIFIED` = reasoned, not proven.
 `NEEDS CONFIRMATION` = depends on Android behaviour the repo cannot show. "Runtime" means seen on a
@@ -24,17 +25,6 @@ Released: v2.7.5 (versionCode 46), commit `79b64a6`, tag `v2.7.5`.
 
 # Firewall
 
-## F12. A failed read of one app's details drops that app from Block All — `VERIFIED` in code, not at runtime
-
-The package sweep keeps an app only when its package info lists a network permission
-(`HiddenApiHelper.kt:620-637`); a null package info or an exception counts as "no network permission"
-(`:632`). `getPackageInfoAsUser` (`:1101`) falls back to a copy built from the personal profile
-(`createSyntheticPackageInfo`, `:1176`), which is null for an app installed only in another profile, and
-the cross-profile permission grant runs in the background without being waited for (`:228`). So on a
-cold start a work-only app can be left out of Block All while the start succeeds. Needs design: a null
-read means both "failed" and "app gone", and refusing on it would take the firewall down at every cold
-start until the grant lands.
-
 ## F13. A failed re-apply on a running firewall is only logged — `VERIFIED` in code, not at runtime
 
 When a running firewall re-applies (a rule change, a new install, a network or screen change, a policy
@@ -46,7 +36,7 @@ the user when a running re-apply fails (new text in 7 languages).
 
 ## F2. ConnectivityManager backend: a rule-less copy overwrites another profile's rule — `VERIFIED` in code, not at runtime
 
-The apply loop walks every profile's packages (`HiddenApiHelper.kt:598`) with no `reachesUser` filter
+The apply loop walks every profile's packages (`HiddenApiHelper.kt:628`) with no `reachesUser` filter
 (`ConnectivityManagerFirewallBackend.kt:250-300`), although this backend reaches only De1984's own
 profile (`FirewallBackend.kt:86-92`). `desiredPolicies` is keyed by package name, so the copy read last
 wins, and a copy with no rule writes the default policy over the other copy's rule. Profile order is
@@ -75,9 +65,9 @@ completes later. Either way a tunnel can come up that nothing reports.
 
 ## F8. A cache clear during a package sweep can leave a new app unblocked — `VERIFIED` in code, timing not proven
 
-`clearInstalledAppsCache` (`HiddenApiHelper.kt:540`, comment `:551-558`) nulls `networkPackagesCache`
+`clearInstalledAppsCache` (`HiddenApiHelper.kt:556`, comment `:567-574`) nulls `networkPackagesCache`
 without `networkPackagesLock`. A sweep already inside the lock publishes its pre-clear list with a fresh
-timestamp (`:620-621`), and a caller that waited on the lock takes it whatever its age (`:589-594`).
+timestamp (`:659-660`), and a caller that waited on the lock takes it whatever its age (`:619-622`).
 iptables Block All blocks only packages on that list (`IptablesFirewallBackend.kt:409-452`), so the
 apply triggered by an install during a running sweep can leave the new app unblocked until a later
 apply. Taking the lock is worse: it is held ~9.5 s for 466 packages and two callers are
@@ -121,7 +111,7 @@ app).
 ## F3. Which user the ConnectivityManager command acts on is unknown — `NEEDS CONFIRMATION`
 
 `cmd connectivity set-package-networking-enabled $enabled $packageName` carries no user
-(`ConnectivityManagerFirewallBackend.kt:353`, `:560`). Whether Android applies it to user 0, to the
+(`ConnectivityManagerFirewallBackend.kt:359`, `:566`). Whether Android applies it to user 0, to the
 caller's user, or to every user's copy is not in this repo. It decides the F2 fix. The test phone's ROM
 cannot run this backend.
 
@@ -154,6 +144,16 @@ The write path has no reach check (`ManageNetworkAccessUseCase.kt:13-14`), so af
 work-profile notification's button saves a rule the VPN cannot enforce, and the notification closes as
 if done (`NotificationActionReceiver.kt:54-58`).
 
+## P9. The Firewall list says "No Internet Permission" for an app Block All blocks — `VERIFIED` in code, not at runtime
+
+Each list row's `hasInternetPermission` comes from `hasNetworkPermissions` (`AndroidPackageDataSource.kt:934`,
+set at `:979` and 7 other rows), which reads `getAppPermissions` (`:860`) and gets an empty list when the
+package details cannot be read (`:863`). The row then shows `firewall_no_internet_info` ("will take
+effect if the app gains internet permission", `strings.xml:548`; shown at `FirewallFragmentViews.kt:1113`,
+`:1445`). Since `43c2af4`, the firewall's sweep blocks exactly such an unreadable app under Block All
+on iptables, NetworkPolicyManager and ConnectivityManager, so the row calls a block harmless that is
+already cutting the app's network.
+
 ## P7. Settings marks a working backend "Not supported on this device" after any failed start — `VERIFIED` in code
 
 A backend switch that fails, or that falls back to AUTO, adds the mode to `_startFailedModes`
@@ -174,11 +174,11 @@ no text. New text is needed in 7 languages.
 
 ## P8. A failed profile read also empties that profile outside the firewall — `VERIFIED` in code, effects not run
 
-`getInstalledApplicationsAsUser` still returns an empty list on failure (`HiddenApiHelper.kt:529-530`),
+`getInstalledApplicationsAsUser` still returns an empty list on failure (`HiddenApiHelper.kt:545-546`),
 and three callers take it as the truth: the package list (`AndroidPackageDataSource.kt:207`, the profile
 shows no apps), the package monitor (`PackageMonitoringService.kt:357`, its apps look removed) and the
 smart policy switch (`SmartPolicySwitchUseCase.kt:125`, that profile's VPN apps are not treated as
-critical). `getUsers` also drops a profile whose handle fails to parse (`HiddenApiHelper.kt:317-343`).
+critical). `getUsers` also drops a profile whose handle fails to parse (`HiddenApiHelper.kt:333-359`).
 
 ## P6. Lead: an installed disabled system app can look uninstalled — `NOT VERIFIED`
 
@@ -204,6 +204,11 @@ the test phone.
   and its result is ignored. The method returns false and the user is told "Unable to force stop
   package." (`PackageRepositoryImpl.kt:147-152`), which is true. What the call does across profiles and
   on Android 14+ is `NEEDS CONFIRMATION`.
+- **Stale comment on `PRIVILEGE_ANSWER_TIMEOUT_MS`.** `FirewallManager.kt:79-81` says the 8 s wait is kept
+  under "the ten seconds a FOREGROUND broadcast is allowed", but no broadcast in the app sets
+  `FLAG_RECEIVER_FOREGROUND` (0 uses): the widget sends the toggle through `PendingIntent.getBroadcast`
+  (`FirewallWidget.kt:158`) and the tile through `sendBroadcast` (`FirewallTileService.kt:96`, `:124`).
+  The stated reason does not hold.
 
 ---
 

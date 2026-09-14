@@ -601,9 +601,9 @@ class AndroidPackageDataSource(
                             backgroundBlocked = false,
                             isVpnApp = false,
                             hasExplicitRule = false,
-                            criticality = null,
-                            category = null,
-                            affects = emptyList(),
+                            criticality = PackageSafetyLoader.getCriticality(context, packageName),
+                            category = PackageSafetyLoader.getCategory(context, packageName),
+                            affects = PackageSafetyLoader.getAffects(context, packageName),
                             isWorkProfile = profile.isWorkProfile,
                             isCloneProfile = profile.isCloneProfile
                         )

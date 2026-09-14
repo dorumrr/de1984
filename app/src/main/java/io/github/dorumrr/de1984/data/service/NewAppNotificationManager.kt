@@ -21,7 +21,8 @@ import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
 
 class NewAppNotificationManager(
-    private val context: Context
+    private val context: Context,
+    private val activeBackend: () -> io.github.dorumrr.de1984.domain.firewall.FirewallBackendType?
 ) {
 
     companion object {
@@ -86,10 +87,14 @@ class NewAppNotificationManager(
                 .setAutoCancel(true)
                 .setContentIntent(createOpenFirewallIntent(packageName, userId))
 
-            if (isBlockAllDefault) {
-                notificationBuilder.addAction(createAllowAllAction(packageName, userId))
-            } else {
-                notificationBuilder.addAction(createBlockAllAction(packageName, userId))
+            // No button the running firewall cannot honour; with the firewall off it stays, as the firewall screen does.
+            val backend = activeBackend()
+            if (backend == null || backend.reachesUser(userId, Constants.Firewall.ownUserId())) {
+                if (isBlockAllDefault) {
+                    notificationBuilder.addAction(createAllowAllAction(packageName, userId))
+                } else {
+                    notificationBuilder.addAction(createBlockAllAction(packageName, userId))
+                }
             }
 
             val notification = notificationBuilder.build()

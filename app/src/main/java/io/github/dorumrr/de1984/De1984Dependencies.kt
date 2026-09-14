@@ -251,7 +251,7 @@ class De1984Dependencies(private val context: Context) {
 
 
     val newAppNotificationManager: NewAppNotificationManager by lazy {
-        NewAppNotificationManager(context)
+        NewAppNotificationManager(context) { firewallManager.activeBackendType.value }
     }
 
     val screenStateMonitor: ScreenStateMonitor by lazy {

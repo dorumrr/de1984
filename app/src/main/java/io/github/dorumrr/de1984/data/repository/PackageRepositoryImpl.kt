@@ -6,7 +6,6 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.model.toDomain
 import io.github.dorumrr.de1984.domain.model.Package
-import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.domain.model.ReinstallBatchResult
 import io.github.dorumrr.de1984.domain.model.UninstallBatchResult
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
@@ -28,18 +27,6 @@ class PackageRepositoryImpl(
                     .filter { !Constants.App.isOwnApp(it.packageName) }
                     .map { it.toDomain() }
             }
-    }
-
-    override fun getPackagesByType(type: PackageType): Flow<List<Package>> {
-        return getPackages()
-            .map { packages ->
-                packages.filter { it.type == type }
-            }
-    }
-    
-    override fun getPackagesByEnabledState(enabled: Boolean): Flow<List<Package>> {
-        return getPackages()
-            .map { packages -> packages.filter { it.isEnabled == enabled } }
     }
 
     override suspend fun getUninstalledSystemPackages(): Result<List<Package>> {

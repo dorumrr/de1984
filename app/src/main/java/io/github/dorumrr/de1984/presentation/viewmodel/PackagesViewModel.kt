@@ -60,6 +60,8 @@ class PackagesViewModel(
 
     private var loadJob: Job? = null
 
+    private var uninstalledJob: Job? = null
+
     private var cachedPackages: List<Package> = emptyList()
 
 
@@ -182,15 +184,8 @@ class PackagesViewModel(
                 // stale the moment the user taps a chip, and this list was silently repainted with
                 // the PREVIOUS filter while the chips showed the new one. FirewallViewModel already
                 // corrects this; the mirror here did not.
-                val liveFilter = _uiState.value.filterState
-                val filteredPackages = filterPackages(packages, liveFilter)
-                _uiState.value = _uiState.value.copy(
-                    packages = filteredPackages,
-                    isLoadingData = false,
-                    isRenderingUI = true,
-                    error = null,
-                    scanFailed = false
-                )
+                _uiState.value = _uiState.value.copy(scanFailed = false)
+                showPackages(_uiState.value.filterState)
             }
             .launchIn(viewModelScope)
     }
@@ -202,13 +197,32 @@ class PackagesViewModel(
             filterState = filterState
         )
 
-        val filteredPackages = filterPackages(cachedPackages, filterState)
-        _uiState.value = _uiState.value.copy(
-            packages = filteredPackages,
-            isLoadingData = false,
-            isRenderingUI = true,
-            error = null
-        )
+        showPackages(filterState)
+    }
+
+    private fun showPackages(filterState: PackageFilterState) {
+        uninstalledJob?.cancel()
+        if (filterState.packageState?.lowercase() != io.github.dorumrr.de1984.utils.Constants.Packages.STATE_UNINSTALLED.lowercase()) {
+            _uiState.value = _uiState.value.copy(
+                packages = filterPackages(cachedPackages, filterState),
+                isLoadingData = false,
+                isRenderingUI = true,
+                error = null
+            )
+            return
+        }
+        // The installed scan never holds an uninstalled app; pm lists them, per profile.
+        _uiState.value = _uiState.value.copy(isLoadingData = true)
+        uninstalledJob = viewModelScope.launch {
+            val uninstalled = getPackagesUseCase.uninstalledSystemPackages()
+            if (_uiState.value.filterState != filterState) return@launch
+            _uiState.value = _uiState.value.copy(
+                packages = filterPackages(uninstalled, filterState),
+                isLoadingData = false,
+                isRenderingUI = true,
+                error = null
+            )
+        }
     }
 
     private fun filterPackages(packages: List<Package>, filterState: PackageFilterState): List<Package> {

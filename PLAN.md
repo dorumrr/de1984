@@ -500,7 +500,7 @@ this as a bug.
   back over the user's live selection; the deep-link path passes `foundPkg.type.toString()`
   ("USER", the enum name) which no chip mapper reads back, and persisting it would have made a
   wrong-looking chip permanent; and restoring the "Uninstalled" state filter would have emptied the
-  Packages screen at every launch, because `PackagesViewModel` collects plain `invoke()` which never
+  Packages screen at every launch, because `PackagesViewModel` then collected plain `invoke()` which never
   contains uninstalled system packages. The last two are now normalised at the `FilterPrefs`
   boundary, so any future caller is covered too.
 

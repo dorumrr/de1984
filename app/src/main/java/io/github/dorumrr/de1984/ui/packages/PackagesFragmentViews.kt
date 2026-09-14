@@ -878,6 +878,14 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             binding.firewallRulesDivider.visibility = View.GONE
         }
 
+        val isUninstalled = pkg.versionName == null && !pkg.isEnabled && pkg.type == PackageType.SYSTEM
+        // Not installed in this profile: nothing to stop or enable, only Reinstall applies.
+        val installedOnly = if (isUninstalled) View.GONE else View.VISIBLE
+        binding.forceStopAction.visibility = installedOnly
+        binding.forceStopDivider.visibility = installedOnly
+        binding.enableDisableAction.visibility = installedOnly
+        binding.enableDisableDivider.visibility = installedOnly
+
         binding.forceStopDescription.text = if (pkg.isEnabled) {
             getString(io.github.dorumrr.de1984.R.string.action_sheet_force_stop_desc_running)
         } else {
@@ -907,7 +915,6 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
         val allowCriticalUninstall = settingsViewModel.uiState.value.allowCriticalPackageUninstall
         val isCriticalPackage = pkg.criticality == PackageCriticality.ESSENTIAL ||
                                 pkg.criticality == PackageCriticality.IMPORTANT
-        val isUninstalled = pkg.versionName == null && !pkg.isEnabled && pkg.type == PackageType.SYSTEM
 
         if (isCriticalPackage && !allowCriticalUninstall && !isUninstalled) {
             binding.protectionWarningBanner.root.visibility = View.VISIBLE

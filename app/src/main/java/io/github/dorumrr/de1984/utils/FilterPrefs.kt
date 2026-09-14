@@ -19,9 +19,8 @@ import io.github.dorumrr.de1984.presentation.viewmodel.PackageFilterState
  *    "user" the chips map back from. `filterPackages` lowercases, so the LIST is right while the
  *    chip reads "All" - a mismatch that used to die with the session and would otherwise be
  *    restored on every launch from here on.
- *  - The "Uninstalled" package state. Only `GetPackagesUseCase.getFilteredByState` fetches
- *    uninstalled system packages; `PackagesViewModel` collects plain `invoke()`, which never
- *    contains them. Restoring it means an empty Packages screen at every launch with no clue why.
+ *  - The "Uninstalled" package state. Its list needs root or Shizuku, and a read without them is
+ *    empty, so restoring it can open the Packages screen on "no uninstalled apps" at every launch.
  *
  * A null state filter means "no state chip selected". `putString(key, null)` removes the key and
  * `getString` then returns null, so "never saved" and "explicitly none" collapse - harmless here,
@@ -60,7 +59,7 @@ object FilterPrefs {
         else -> normalisedFirewallType(value)
     }
 
-    /** Drops a state this screen cannot restore. See the note on "Uninstalled" above. */
+    /** Drops the Uninstalled state so it is not restored at launch. See the note on "Uninstalled" above. */
     private fun restorablePackageState(value: String?): String? =
         if (value?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()) null else value
 

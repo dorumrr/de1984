@@ -1,15 +1,8 @@
 package io.github.dorumrr.de1984.domain.usecase
 
-import android.util.Log
 import io.github.dorumrr.de1984.domain.model.Package
-import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.domain.repository.PackageRepository
-import io.github.dorumrr.de1984.presentation.viewmodel.PackageFilterState
-import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 
 class GetPackagesUseCase constructor(
     private val packageRepository: PackageRepository
@@ -19,52 +12,7 @@ class GetPackagesUseCase constructor(
         return packageRepository.getPackages()
     }
 
-    fun getByType(type: PackageType): Flow<List<Package>> {
-        return packageRepository.getPackagesByType(type)
-    }
-
-    fun getByEnabledState(enabled: Boolean): Flow<List<Package>> {
-        return packageRepository.getPackagesByEnabledState(enabled)
-    }
-
-    fun getFilteredByState(filterState: PackageFilterState): Flow<List<Package>> {
-        if (filterState.packageState?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()) {
-            return flow {
-                val result = packageRepository.getUninstalledSystemPackages()
-                result.fold(
-                    onSuccess = { packages -> emit(packages) },
-                    onFailure = { emit(emptyList()) }
-                )
-            }
-        }
-
-        val baseFlow = when (filterState.packageType.lowercase()) {
-            Constants.Packages.TYPE_USER -> getByType(PackageType.USER)
-            Constants.Packages.TYPE_SYSTEM -> getByType(PackageType.SYSTEM)
-            Constants.Packages.TYPE_ALL -> invoke()
-            else -> invoke()
-        }
-
-        val profileFilteredFlow = baseFlow.map { packages ->
-            when (filterState.profileFilter.lowercase()) {
-                "personal" -> packages.filter { !it.isWorkProfile && !it.isCloneProfile }
-                "work" -> packages.filter { it.isWorkProfile }
-                "clone" -> packages.filter { it.isCloneProfile }
-                "all" -> packages
-                else -> packages
-            }
-        }
-
-        return if (filterState.packageState != null) {
-            profileFilteredFlow.map { packages ->
-                when (filterState.packageState.lowercase()) {
-                    Constants.Packages.STATE_ENABLED.lowercase() -> packages.filter { it.isEnabled }
-                    Constants.Packages.STATE_DISABLED.lowercase() -> packages.filter { !it.isEnabled }
-                    else -> packages
-                }
-            }
-        } else {
-            profileFilteredFlow
-        }
-    }
+    // Empty when root or Shizuku cannot read it; the installed scan behind invoke() never holds these apps.
+    suspend fun uninstalledSystemPackages(): List<Package> =
+        packageRepository.getUninstalledSystemPackages().getOrElse { emptyList() }
 }

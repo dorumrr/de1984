@@ -984,7 +984,9 @@ class SettingsViewModel(
                 }
 
                 val result = packageRepository.getUninstalledSystemPackages()
-                val packages = result.getOrNull()
+                // The file carries names only, so it holds De1984's own profile, the one import applies it to.
+                val ownUserId = Constants.Firewall.ownUserId()
+                val packages = result.getOrNull()?.filter { it.userId == ownUserId }
 
                 if (packages.isNullOrEmpty()) {
                     AppLogger.d(TAG, "📤 EXPORT: No uninstalled system packages found")
@@ -1059,7 +1061,9 @@ class SettingsViewModel(
                 }
 
                 val installedPackages = packageRepository.getPackages().first()
-                val installedPackageNames = installedPackages.map { it.packageName }.toSet()
+                // Names without a profile: checked and uninstalled in De1984's own profile only.
+                val ownUserId = Constants.Firewall.ownUserId()
+                val installedPackageNames = installedPackages.filter { it.userId == ownUserId }.map { it.packageName }.toSet()
 
                 val packagesNotFound = packageNames.filter { it !in installedPackageNames }
                 val installedFromFile = packageNames.filter { it in installedPackageNames }
@@ -1078,7 +1082,7 @@ class SettingsViewModel(
                     if (isProtected) packagesProtected.add(name) else packagesToUninstallNames.add(name)
                 }
 
-                val packagesToUninstall = packagesToUninstallNames.map { it to 0 }
+                val packagesToUninstall = packagesToUninstallNames.map { it to ownUserId }
 
                 AppLogger.d(TAG, "📥 IMPORT: Validation - ${packagesToUninstall.size} found, " +
                         "${packagesNotFound.size} not found, ${packagesProtected.size} protected and skipped")

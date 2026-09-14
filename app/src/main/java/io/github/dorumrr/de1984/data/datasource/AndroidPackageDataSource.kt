@@ -572,51 +572,17 @@ class AndroidPackageDataSource(
     override suspend fun getUninstalledSystemPackages(): List<PackageEntity> {
         return withContext(Dispatchers.IO) {
             try {
-                val allSystemPackagesOutput = if (shizukuManager.isShizukuAvailable() && shizukuManager.hasShizukuPermission) {
-                    val (exitCode, output) = shizukuManager.executeShellCommand("pm list packages -u -s")
-                    if (exitCode == 0) output else ""
-                } else {
-                    // stdout regardless of exit code, which is what this has always used. A
-                    // failed run yields an empty string, same as the catch it replaces.
-                    ShellRunner.run("root: pm list packages -u -s") {
-                        Runtime.getRuntime().exec(arrayOf("su", "-c", "pm list packages -u -s"))
-                    }.stdout
-                }
-
-                val installedSystemPackagesOutput = if (shizukuManager.isShizukuAvailable() && shizukuManager.hasShizukuPermission) {
-                    val (exitCode, output) = shizukuManager.executeShellCommand("pm list packages -s")
-                    if (exitCode == 0) output else ""
-                } else {
-                    // stdout regardless of exit code, which is what this has always used. A
-                    // failed run yields an empty string, same as the catch it replaces.
-                    ShellRunner.run("root: pm list packages -s") {
-                        Runtime.getRuntime().exec(arrayOf("su", "-c", "pm list packages -s"))
-                    }.stdout
-                }
-
-                val allSystemPackages = allSystemPackagesOutput.lines()
-                    .filter { it.startsWith("package:") }
-                    .map { it.removePrefix("package:").trim() }
-                    .toSet()
-
-                val installedSystemPackages = installedSystemPackagesOutput.lines()
-                    .filter { it.startsWith("package:") }
-                    .map { it.removePrefix("package:").trim() }
-                    .toSet()
-
-                val uninstalledSystemPackages = allSystemPackages - installedSystemPackages
-
-                // Map to PackageEntity (no need for isSystemPackage() check - already filtered by -s flag)
-                // Note: Uninstalled packages default to userId=0 since we can't determine their original user.
-                // This is acceptable because:
-                // 1. System packages are typically shared across all users
-                // 2. The reinstall command works without specifying a user
-                uninstalledSystemPackages
+                HiddenApiHelper.getUsers(context).flatMap { profile ->
+                    // --user on both reads: without it pm answers for user 0, whichever profile the row is for.
+                    val installed = listSystemPackages("-s --user ${profile.userId}")
+                    // A failed read is empty, and empty would list every system app as uninstalled.
+                    if (installed.isEmpty()) return@flatMap emptyList()
+                    (listSystemPackages("-u -s --user ${profile.userId}") - installed)
                     .filter { !Constants.App.isOwnApp(it) }
                     .map { packageName ->
                         PackageEntity(
                             packageName = packageName,
-                            userId = 0,
+                            userId = profile.userId,
                             uid = 0,
                             name = packageName,
                             icon = "⚙️",
@@ -638,16 +604,31 @@ class AndroidPackageDataSource(
                             criticality = null,
                             category = null,
                             affects = emptyList(),
-                            isWorkProfile = false,
-                            isCloneProfile = false
+                            isWorkProfile = profile.isWorkProfile,
+                            isCloneProfile = profile.isCloneProfile
                         )
                     }
-                    .sortedBy { it.name.lowercase() }
+                }.sortedBy { it.name.lowercase() }
             } catch (e: Exception) {
                 AppLogger.e(TAG, "Failed to get uninstalled system packages: ${e.message}")
                 emptyList()
             }
         }
+    }
+
+    private suspend fun listSystemPackages(args: String): Set<String> {
+        val output = if (shizukuManager.isShizukuAvailable() && shizukuManager.hasShizukuPermission) {
+            val (exitCode, stdout) = shizukuManager.executeShellCommand("pm list packages $args")
+            if (exitCode == 0) stdout else ""
+        } else {
+            ShellRunner.run("root: pm list packages $args") {
+                Runtime.getRuntime().exec(arrayOf("su", "-c", "pm list packages $args"))
+            }.stdout
+        }
+        return output.lines()
+            .filter { it.startsWith("package:") }
+            .map { it.removePrefix("package:").trim() }
+            .toSet()
     }
 
     override suspend fun uninstallPackage(packageName: String, userId: Int): Boolean {

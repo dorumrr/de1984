@@ -166,7 +166,7 @@ class PackagesViewModel(
                 // for a log, and it was being shown to the user verbatim in every locale.
                 AppLogger.e(TAG, "Package scan failed after retries", error)
                 _uiState.value = _uiState.value.copy(
-                    isLoadingData = false,
+                    isLoadingData = uninstalledReadRunning(),
                     isRenderingUI = false,
                     scanFailed = cachedPackages.isEmpty(),
                     // Always announced, matching FirewallViewModel. Staying quiet over a full list
@@ -226,6 +226,9 @@ class PackagesViewModel(
             )
         }
     }
+
+    // Only the Uninstalled read's own write ends its spinner; every other writer defers to a running read.
+    private fun uninstalledReadRunning(): Boolean = uninstalledJob?.isActive == true
 
     private fun filterPackages(packages: List<Package>, filterState: PackageFilterState): List<Package> {
         var result = packages
@@ -389,7 +392,7 @@ class PackagesViewModel(
                     }
 
                     _uiState.value = _uiState.value.copy(
-                        isLoadingData = false,
+                        isLoadingData = uninstalledReadRunning(),
                         isRenderingUI = false,
                         error = error.message
                     )
@@ -410,7 +413,7 @@ class PackagesViewModel(
 
                     _uiState.value = _uiState.value.copy(
                         batchUninstallResult = result,
-                        isLoadingData = false,
+                        isLoadingData = uninstalledReadRunning(),
                         isRenderingUI = false
                     )
                 }
@@ -420,7 +423,7 @@ class PackagesViewModel(
                     }
 
                     _uiState.value = _uiState.value.copy(
-                        isLoadingData = false,
+                        isLoadingData = uninstalledReadRunning(),
                         isRenderingUI = false,
                         error = error.message
                     )
@@ -452,7 +455,7 @@ class PackagesViewModel(
                     }
 
                     _uiState.value = _uiState.value.copy(
-                        isLoadingData = false,
+                        isLoadingData = uninstalledReadRunning(),
                         isRenderingUI = false,
                         error = error.message
                     )
@@ -480,7 +483,7 @@ class PackagesViewModel(
                     }
 
                     _uiState.value = _uiState.value.copy(
-                        isLoadingData = false,
+                        isLoadingData = uninstalledReadRunning(),
                         isRenderingUI = false,
                         error = error.message
                     )

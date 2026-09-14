@@ -185,6 +185,7 @@ The app uses adaptive health check intervals to balance responsiveness and batte
 - Shows VPN icon in status bar
 - Occupies VPN slot (cannot use another VPN simultaneously)
 - Supports granular per-network rules (WiFi/Mobile/Roaming)
+- Builds its app list only from De1984's own profile: no app from a work, clone or other profile is added, whatever its rule says
 - Survives reboot (service restarts automatically)
 
 **How it works:**
@@ -196,6 +197,8 @@ Apps that should be blocked are added to the VPN tunnel. Their traffic goes thro
 **Switch dependencies:**
 - **Roaming requires Mobile**: Roaming is a state of mobile data when outside home network. If user enables Roaming block while Mobile is allowed, Mobile must also be blocked. If user disables Mobile block while Roaming is blocked, Roaming must also be allowed.
 - **Logic**: Roaming cannot be blocked independently - it's always "Mobile + Roaming" or neither.
+
+Both modes below decide only apps in De1984's own profile (see Characteristics).
 
 **Block All mode:**
 - Apps without rules: Blocked (added to VPN, traffic dropped) — except system-critical packages and apps that declare a VPN service, which are never added while Settings > "Allow Firewall Critical Packages" is OFF (the default). With that setting ON they still default to allowed when they have no rule, and so does any app sharing their UID.
@@ -447,9 +450,9 @@ The firewall operates as a state machine with well-defined states and transition
    - UI should show loading indicator
    - This is a transient state (should resolve within 1-2 seconds)
 
-3. **`Running(backend)`**: Backend active and confirmed working
+3. **`Running(backend)`**: Backend active and its start confirmed
    - Backend service is running and `isActive()` returns true
-   - Firewall rules are applied and enforced
+   - The start applied the rules. On iptables, ConnectivityManager and NetworkPolicyManager a later re-apply that fails (a rule, network or screen change) is only logged, so `Running` can stand over a change that is not enforced
    - Health monitoring is active
    - UI toggle should be ON
 

@@ -17,11 +17,12 @@
         so every other detail (which permissions an app requests, whether it is a VPN app) is copied
         from the PERSONAL profile's copy of that app. Wrong for an app that differs between
         profiles, and absent for an app that exists only in the work profile - which then cannot be
-        read, so the firewall's package sweep waits for this grant and blocks such an app anyway.
+        read, so the package sweep of the root and Shizuku backends waits for this grant and blocks
+        such an app anyway.
 
         prot=signature|privileged|development. A normal install CANNOT hold it: the app grants it to
         itself through root or Shizuku (HiddenApiHelper.ensureCrossUserPermission). Without root or
-        Shizuku it stays ungranted, and the sweep blocks apps it cannot read instead of leaving them out.
+        Shizuku it cannot grant it.
     -->
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"
         tools:ignore="ProtectedPermissions" />

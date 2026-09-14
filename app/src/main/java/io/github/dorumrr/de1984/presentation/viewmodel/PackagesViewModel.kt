@@ -24,6 +24,7 @@ import io.github.dorumrr.de1984.domain.usecase.ManagePackageUseCase
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -121,8 +122,7 @@ class PackagesViewModel(
             return
         }
 
-        // Set loading state but keep existing packages visible to preserve scroll position
-        // DiffUtil will handle smooth transition when new data arrives
+        // Rows stay to keep the scroll position; under the Uninstalled chip showPackages empties them for the spinner.
         _uiState.value = _uiState.value.copy(
             isLoadingData = true,
             isRenderingUI = false,
@@ -212,10 +212,12 @@ class PackagesViewModel(
             return
         }
         // The installed scan never holds an uninstalled app; pm lists them, per profile.
-        _uiState.value = _uiState.value.copy(isLoadingData = true)
+        // Emptied first: the rows on screen belong to the previous read, and the spinner only shows over an empty list.
+        _uiState.value = _uiState.value.copy(packages = emptyList(), isLoadingData = true)
         uninstalledJob = viewModelScope.launch {
             val uninstalled = getPackagesUseCase.uninstalledSystemPackages()
-            if (_uiState.value.filterState != filterState) return@launch
+            // A cancelled read still gets here, as an empty list: the data source and repository catch the cancel.
+            if (!isActive || _uiState.value.filterState != filterState) return@launch
             _uiState.value = _uiState.value.copy(
                 packages = filterPackages(uninstalled, filterState),
                 isLoadingData = false,

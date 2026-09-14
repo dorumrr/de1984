@@ -17,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 
 /**
@@ -209,14 +211,7 @@ object HiddenApiHelper {
      * before, and the next one benefits.
      */
     private fun ensureCrossUserPermission(context: Context) {
-        if (crossUserGranted) return
-
-        if (context.checkSelfPermission(PERM_INTERACT_ACROSS_USERS) ==
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            crossUserGranted = true
-            return
-        }
+        if (hasCrossUserPermission(context)) return
 
         if (grantInFlight) return
         val now = System.currentTimeMillis()
@@ -227,52 +222,73 @@ object HiddenApiHelper {
 
         grantScope.launch {
             try {
-                // --user matters: pm grant otherwise targets the shell's own user, and De1984 is not
-                // always installed in user 0.
-                val myUserId = Constants.Firewall.ownUserId()
-                val command =
-                    "pm grant --user $myUserId ${context.packageName} $PERM_INTERACT_ACROSS_USERS"
-
-                val cachedShell = Shell.getCachedShell()
-                if (cachedShell != null && cachedShell.isRoot) {
-                    // Bounded, and no catch: ShellRunner reports every libsu failure as null and
-                    // logs the root cause. The `catch (e: Exception) {}` this replaces also
-                    // swallowed the cancellation of grantScope.
-                    val result = ShellRunner.bounded(
-                        label = "root grant: $command",
-                        timeoutMs = ShellRunner.READ_TIMEOUT_MS,
-                        onAbandon = RootManager::closeRootShellIfIdle
-                    ) {
-                        cachedShell.newJob().add(command).exec()
-                    }
-                    if (result != null && result.isSuccess) {
-                        crossUserGranted = true
-                        AppLogger.i(TAG, "✅ Cross-user permission granted via root")
-                        return@launch
-                    }
-                    AppLogger.d(TAG, "Root pm grant failed: exit ${result?.code ?: "did not finish"}")
-                }
-
-                val manager = shizukuManager
-                if (manager != null && manager.hasShizukuPermission) {
-                    try {
-                        val (exitCode, _) = manager.executeShellCommand(command)
-                        if (exitCode == 0) {
-                            crossUserGranted = true
-                            AppLogger.i(TAG, "✅ Cross-user permission granted via Shizuku")
-                            return@launch
-                        }
-                        AppLogger.d(TAG, "Shizuku pm grant failed: exit $exitCode")
-                    } catch (e: Exception) {
-                        AppLogger.d(TAG, "Shizuku pm grant threw: ${e.message}")
-                    }
-                }
-
-                AppLogger.d(TAG, "Cross-user permission not granted - using the shell fallback, will retry")
+                grantMutex.withLock { if (!hasCrossUserPermission(context)) attemptCrossUserGrant(context) }
             } finally {
                 grantInFlight = false
             }
         }
+    }
+
+    /** One grant attempt, same as [ensureCrossUserPermission], but the caller waits for it. Never on the main thread. */
+    fun awaitCrossUserPermission(context: Context) {
+        if (hasCrossUserPermission(context)) return
+        runBlocking { grantMutex.withLock { if (!hasCrossUserPermission(context)) attemptCrossUserGrant(context) } }
+    }
+
+    private val grantMutex = Mutex()
+
+    private fun hasCrossUserPermission(context: Context): Boolean {
+        if (crossUserGranted) return true
+        if (context.checkSelfPermission(PERM_INTERACT_ACROSS_USERS) == PackageManager.PERMISSION_GRANTED) {
+            crossUserGranted = true
+            return true
+        }
+        return false
+    }
+
+    private suspend fun attemptCrossUserGrant(context: Context) {
+        // --user matters: pm grant otherwise targets the shell's own user, and De1984 is not
+        // always installed in user 0.
+        val myUserId = Constants.Firewall.ownUserId()
+        val command =
+            "pm grant --user $myUserId ${context.packageName} $PERM_INTERACT_ACROSS_USERS"
+
+        val cachedShell = Shell.getCachedShell()
+        if (cachedShell != null && cachedShell.isRoot) {
+            // Bounded, and no catch: ShellRunner reports every libsu failure as null and
+            // logs the root cause. The `catch (e: Exception) {}` this replaces also
+            // swallowed the cancellation of grantScope.
+            val result = ShellRunner.bounded(
+                label = "root grant: $command",
+                timeoutMs = ShellRunner.READ_TIMEOUT_MS,
+                onAbandon = RootManager::closeRootShellIfIdle
+            ) {
+                cachedShell.newJob().add(command).exec()
+            }
+            if (result != null && result.isSuccess) {
+                crossUserGranted = true
+                AppLogger.i(TAG, "✅ Cross-user permission granted via root")
+                return
+            }
+            AppLogger.d(TAG, "Root pm grant failed: exit ${result?.code ?: "did not finish"}")
+        }
+
+        val manager = shizukuManager
+        if (manager != null && manager.hasShizukuPermission) {
+            try {
+                val (exitCode, _) = manager.executeShellCommand(command)
+                if (exitCode == 0) {
+                    crossUserGranted = true
+                    AppLogger.i(TAG, "✅ Cross-user permission granted via Shizuku")
+                    return
+                }
+                AppLogger.d(TAG, "Shizuku pm grant failed: exit $exitCode")
+            } catch (e: Exception) {
+                AppLogger.d(TAG, "Shizuku pm grant threw: ${e.message}")
+            }
+        }
+
+        AppLogger.d(TAG, "Cross-user permission not granted - using the shell fallback, will retry")
     }
 
     fun initialize() {
@@ -562,12 +578,15 @@ object HiddenApiHelper {
     }
 
     /**
-     * Every installed app, across every user profile, that requests a network permission.
+     * Every installed app, across every user profile, that requests a network permission. An app whose
+     * details cannot be read is included, so Block All blocks it instead of leaving it out.
      *
      * Empty means a profile could not be read, even after one retry on fresh caches: no device has zero
      * such apps, so a caller must treat it as a failed read, never as "nothing to block".
      */
     fun getPackagesWithNetworkPermissions(context: Context): List<ApplicationInfo> {
+        // Another profile's app details need the cross-user permission; a read before it lands finds them unreadable.
+        if (getUsers(context).any { it.userId != Constants.Firewall.ownUserId() }) awaitCrossUserPermission(context)
         sweepPackagesWithNetworkPermissions(context).let { if (it.isNotEmpty()) return it }
         AppLogger.w(TAG, "📦 Network package read failed - dropping the caches and reading once more")
         clearInstalledAppsCache()
@@ -628,12 +647,12 @@ object HiddenApiHelper {
                     appInfo.packageName,
                     PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
                     userId
-                )
-                packageInfo?.requestedPermissions?.any { permission ->
+                ) ?: return@filter true // Unreadable is not "no network permission": left out, the app stays unblocked.
+                packageInfo.requestedPermissions?.any { permission ->
                     Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
                 } ?: false
             } catch (e: Exception) {
-                false
+                true
             }
         }.map { (appInfo, _) -> appInfo }
 

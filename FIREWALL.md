@@ -257,7 +257,7 @@ When switching networks, recalculates which UIDs should be blocked based on per-
 
 Multiple apps can share the same UID. The firewall handles shared UIDs as follows:
 
-- **System-critical and VPN app exemption** (applies while Settings > "Allow Firewall Critical Packages" is OFF, the default): if ANY app with a UID is system-critical or a VPN app, the ENTIRE UID is exempted from blocking. This prevents bypass vulnerabilities where non-critical apps share UIDs with system packages. When that setting is ON the exemption is dropped — explicit rules on such UIDs are applied — and only UIDs with no rule at all are still left allowed in Block All mode.
+- **System-critical and VPN app exemption** (applies while Settings > "Allow Firewall Critical Packages" is OFF, the default): if ANY app with a UID is system-critical or a VPN app, the ENTIRE UID is exempted from blocking. An app whose details cannot be read is not recognised as a VPN app, so its UID is not exempted. This prevents bypass vulnerabilities where non-critical apps share UIDs with system packages. When that setting is ON the exemption is dropped — explicit rules on such UIDs are applied — and only UIDs with no rule at all are still left allowed in Block All mode.
 
 - **Block All mode**: For non-exempted UIDs, the UID is blocked if ANY app with that UID should be blocked (no explicit allow rule).
 

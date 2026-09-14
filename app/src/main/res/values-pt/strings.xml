@@ -699,6 +699,11 @@
     <string name="error_unable_to_uninstall_package">Não foi possível desinstalar pacote. Shizuku ou acesso root necessário para gestão de pacotes.</string>
     <string name="error_unable_to_reinstall_package">Não foi possível reinstalar pacote. Shizuku ou acesso root necessário para gestão de pacotes.</string>
     <string name="error_unable_to_force_stop_package">Não foi possível forçar parada do pacote. Shizuku ou acesso root necessário para gestão de pacotes.</string>
+    <string name="error_package_enable_failed">Não foi possível ativar pacote.</string>
+    <string name="error_package_disable_failed">Não foi possível desativar pacote.</string>
+    <string name="error_package_uninstall_failed">Não foi possível desinstalar pacote.</string>
+    <string name="error_package_reinstall_failed">Não foi possível reinstalar pacote.</string>
+    <string name="error_package_force_stop_failed">Não foi possível forçar parada do pacote.</string>
     <string name="error_unknown">Erro desconhecido</string>
 
     <!-- Firewall Error Messages -->

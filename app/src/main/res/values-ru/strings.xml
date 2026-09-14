@@ -707,6 +707,11 @@
     <string name="error_unable_to_uninstall_package">Не удалось удалить пакет. Требуется Shizuku или root-доступ для управления пакетами.</string>
     <string name="error_unable_to_reinstall_package">Не удалось переустановить пакет. Требуется Shizuku или root-доступ для управления пакетами.</string>
     <string name="error_unable_to_force_stop_package">Не удалось принудительно остановить пакет. Требуется Shizuku или root-доступ для управления пакетами.</string>
+    <string name="error_package_enable_failed">Не удалось включить пакет.</string>
+    <string name="error_package_disable_failed">Не удалось отключить пакет.</string>
+    <string name="error_package_uninstall_failed">Не удалось удалить пакет.</string>
+    <string name="error_package_reinstall_failed">Не удалось переустановить пакет.</string>
+    <string name="error_package_force_stop_failed">Не удалось принудительно остановить пакет.</string>
     <string name="error_unknown">Неизвестная ошибка</string>
 
     <!-- Firewall Error Messages -->

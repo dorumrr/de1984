@@ -3,6 +3,7 @@ package io.github.dorumrr.de1984.data.repository
 import android.content.Context
 import android.util.Log
 import io.github.dorumrr.de1984.R
+import io.github.dorumrr.de1984.data.common.De1984Error
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.model.toDomain
 import io.github.dorumrr.de1984.domain.model.Package
@@ -17,9 +18,18 @@ import kotlinx.coroutines.flow.onEach
 class PackageRepositoryImpl(
     private val context: Context,
     private val packageDataSource: PackageDataSource,
+    private val privileged: () -> Boolean,
     private val onDataChanged: (() -> Unit)? = null
 ) : PackageRepository {
     
+    // With root or Shizuku granted, a failure is the command's own: it must not claim missing access or open the access banner.
+    private fun actionFailed(noAccessMessage: Int, failedMessage: Int, operation: String): Result<Unit> =
+        if (privileged()) {
+            Result.failure(De1984Error.SystemAccessFailed(context.getString(failedMessage), operation))
+        } else {
+            Result.failure(SecurityException(context.getString(noAccessMessage)))
+        }
+
     override fun getPackages(): Flow<List<Package>> {
         return packageDataSource.getPackages()
             .map { entities ->
@@ -45,13 +55,10 @@ class PackageRepositoryImpl(
             if (success) {
                 onDataChanged?.invoke()
                 Result.success(Unit)
+            } else if (enabled) {
+                actionFailed(R.string.error_unable_to_enable_package, R.string.error_package_enable_failed, "enable")
             } else {
-                val errorMessage = if (enabled) {
-                    context.getString(R.string.error_unable_to_enable_package)
-                } else {
-                    context.getString(R.string.error_unable_to_disable_package)
-                }
-                Result.failure(SecurityException(errorMessage))
+                actionFailed(R.string.error_unable_to_disable_package, R.string.error_package_disable_failed, "disable")
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -77,8 +84,7 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val errorMessage = context.getString(R.string.error_unable_to_uninstall_package)
-                Result.failure(SecurityException(errorMessage))
+                actionFailed(R.string.error_unable_to_uninstall_package, R.string.error_package_uninstall_failed, "uninstall")
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -110,8 +116,7 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val errorMessage = context.getString(R.string.error_unable_to_reinstall_package)
-                Result.failure(SecurityException(errorMessage))
+                actionFailed(R.string.error_unable_to_reinstall_package, R.string.error_package_reinstall_failed, "reinstall")
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -143,8 +148,7 @@ class PackageRepositoryImpl(
             if (success) {
                 Result.success(Unit)
             } else {
-                val errorMessage = context.getString(R.string.error_unable_to_force_stop_package)
-                Result.failure(SecurityException(errorMessage))
+                actionFailed(R.string.error_unable_to_force_stop_package, R.string.error_package_force_stop_failed, "force stop")
             }
         } catch (e: Exception) {
             Result.failure(e)

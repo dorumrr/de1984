@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984
 
+import io.github.dorumrr.de1984.data.common.hasPrivilegedAccess
 import android.content.Context
 import io.github.dorumrr.de1984.utils.AppLogger
 import androidx.room.Room
@@ -242,7 +243,11 @@ class De1984Dependencies(private val context: Context) {
     }
 
     val packageRepository: PackageRepository by lazy {
-        PackageRepositoryImpl(context, packageDataSource) { notifyPackageDataChanged() }
+        PackageRepositoryImpl(
+            context,
+            packageDataSource,
+            privileged = { hasPrivilegedAccess(rootManager.rootStatus.value, shizukuManager.shizukuStatus.value) }
+        ) { notifyPackageDataChanged() }
     }
 
     val networkPackageRepository: NetworkPackageRepository by lazy {

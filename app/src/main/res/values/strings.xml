@@ -708,6 +708,11 @@
     <string name="error_unable_to_uninstall_package">Unable to uninstall package. Shizuku or root access required for package management.</string>
     <string name="error_unable_to_reinstall_package">Unable to reinstall package. Shizuku or root access required for package management.</string>
     <string name="error_unable_to_force_stop_package">Unable to force stop package. Shizuku or root access required for package management.</string>
+    <string name="error_package_enable_failed">Unable to enable package.</string>
+    <string name="error_package_disable_failed">Unable to disable package.</string>
+    <string name="error_package_uninstall_failed">Unable to uninstall package.</string>
+    <string name="error_package_reinstall_failed">Unable to reinstall package.</string>
+    <string name="error_package_force_stop_failed">Unable to force stop package.</string>
     <string name="error_unknown">Unknown error</string>
 
     <!-- Firewall Error Messages -->

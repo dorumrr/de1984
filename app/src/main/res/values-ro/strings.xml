@@ -701,6 +701,11 @@
     <string name="error_unable_to_uninstall_package">Nu se poate dezinstala pachetul. Shizuku sau acces root necesar pentru gestionarea pachetelor.</string>
     <string name="error_unable_to_reinstall_package">Nu se poate reinstala pachetul. Shizuku sau acces root necesar pentru gestionarea pachetelor.</string>
     <string name="error_unable_to_force_stop_package">Nu se poate opri forțat pachetul. Shizuku sau acces root necesar pentru gestionarea pachetelor.</string>
+    <string name="error_package_enable_failed">Nu se poate activa pachetul.</string>
+    <string name="error_package_disable_failed">Nu se poate dezactiva pachetul.</string>
+    <string name="error_package_uninstall_failed">Nu se poate dezinstala pachetul.</string>
+    <string name="error_package_reinstall_failed">Nu se poate reinstala pachetul.</string>
+    <string name="error_package_force_stop_failed">Nu se poate opri forțat pachetul.</string>
     <string name="error_unknown">Eroare necunoscută</string>
 
     <!-- Firewall Error Messages -->

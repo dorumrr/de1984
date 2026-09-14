@@ -16,6 +16,7 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.RootStatus
+import io.github.dorumrr.de1984.data.common.hasPrivilegedAccess
 import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
@@ -2903,9 +2904,7 @@ class FirewallManager(
         val currentMode = getCurrentMode()
         val currentBackendType = activeBackendType.value
 
-        val hasPrivileges =
-            rootStatus == RootStatus.ROOTED_WITH_PERMISSION ||
-                shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION
+        val hasPrivileges = hasPrivilegedAccess(rootStatus, shizukuStatus)
 
         if (currentMode == FirewallMode.AUTO) {
             AppLogger.d(TAG, "AUTO mode: Computing plan to check if backend should switch...")

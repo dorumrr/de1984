@@ -24,6 +24,9 @@ enum class RootStatus {
     CHECKING
 }
 
+fun hasPrivilegedAccess(rootStatus: RootStatus, shizukuStatus: ShizukuStatus): Boolean =
+    rootStatus == RootStatus.ROOTED_WITH_PERMISSION || shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION
+
 class RootManager(private val context: Context) {
 
     companion object {

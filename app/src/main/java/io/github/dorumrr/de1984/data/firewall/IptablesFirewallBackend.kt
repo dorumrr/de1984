@@ -379,31 +379,23 @@ class IptablesFirewallBackend(
 
             if (isBlockAllDefault) {
                 val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
-                val allPackages = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
+                var allPackages = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
                     .getPackagesWithNetworkPermissions(context)
+
+                // Empty means the read failed: no device has zero apps with network permissions. The empty
+                // answer is cached, so drop the caches and read once more before failing.
+                if (allPackages.isEmpty()) {
+                    AppLogger.w(TAG, "Block All: package enumeration returned nothing - dropping the caches and reading once more")
+                    io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.clearInstalledAppsCache()
+                    allPackages = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackagesWithNetworkPermissions(context)
+                }
 
                 AppLogger.d(TAG, "Block All mode: found ${allPackages.size} packages with network permissions across ${userProfiles.size} profiles")
 
-                // An empty answer here is a FAILED READ, never a real one. Block All decides what to
-                // block by enumerating packages, so an empty list computes "block nothing" - and
-                // then the resync below faithfully writes an empty chain, leaving every app on the
-                // device with open network while the UI still says the firewall is on. Fail-open,
-                // silently, which is the worst way for a firewall to be wrong.
-                //
-                // It is reachable: getInstalledApplicationsAsUser returns emptyList() when all three
-                // of its strategies fail (HiddenApiHelper.kt), and getPackagesWithNetworkPermissions
-                // shares a 5-second cache TTL, so the re-fetch that can fail happens constantly.
-                //
-                // The existing guard further down does not cover this. It requires the RULE list to
-                // be empty too, and in Block All the user typically has rules - so with 22 rules and
-                // a failed enumeration it does not fire.
-                //
-                // No device has zero packages with network permissions. Keep whatever the chain
-                // already holds, leave chainNeedsResync armed so the next apply retries, and do not
-                // pretend this pass succeeded in changing anything.
+                // A failure makes a start report down instead of healthy over an empty chain; a running chain keeps its last write.
                 if (allPackages.isEmpty()) {
-                    AppLogger.e(TAG, "Block All: package enumeration returned nothing - refusing to clear the chain, leaving it armed for the next apply")
-                    return Result.success(Unit)
+                    AppLogger.e(TAG, "Block All: package enumeration returned nothing twice - refusing to apply, the chain keeps its last write")
+                    return Result.failure(Exception("Block All: package enumeration returned nothing"))
                 }
 
                 val allowCritical = prefs.getBoolean(

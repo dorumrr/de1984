@@ -10,6 +10,9 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -26,6 +29,13 @@ enum class RootStatus {
 
 fun hasPrivilegedAccess(rootStatus: RootStatus, shizukuStatus: ShizukuStatus): Boolean =
     rootStatus == RootStatus.ROOTED_WITH_PERMISSION || shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION
+
+fun privilegeProbesAnswered(rootStatus: RootStatus, shizukuStatus: ShizukuStatus): Boolean =
+    rootStatus != RootStatus.CHECKING && shizukuStatus != ShizukuStatus.CHECKING
+
+// False unless both probes answered within timeoutMs; CHECKING is not an answer.
+suspend fun awaitPrivilegeProbes(rootStatus: StateFlow<RootStatus>, shizukuStatus: StateFlow<ShizukuStatus>, timeoutMs: Long): Boolean =
+    withTimeoutOrNull(timeoutMs) { combine(rootStatus, shizukuStatus, ::privilegeProbesAnswered).first { it } } != null
 
 class RootManager(private val context: Context) {
 

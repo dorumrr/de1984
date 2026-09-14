@@ -18,16 +18,16 @@ import kotlinx.coroutines.flow.onEach
 class PackageRepositoryImpl(
     private val context: Context,
     private val packageDataSource: PackageDataSource,
-    private val privileged: () -> Boolean,
+    private val accessMissing: suspend () -> Boolean,
     private val onDataChanged: (() -> Unit)? = null
 ) : PackageRepository {
     
-    // With root or Shizuku granted, a failure is the command's own: it must not claim missing access or open the access banner.
-    private fun actionFailed(noAccessMessage: Int, failedMessage: Int, operation: String): Result<Unit> =
-        if (privileged()) {
-            Result.failure(De1984Error.SystemAccessFailed(context.getString(failedMessage), operation))
-        } else {
+    // Only a known lack of root and Shizuku may be reported as missing access: it opens the access banner and dialog.
+    private suspend fun actionFailed(noAccessMessage: Int, failedMessage: Int, operation: String): Result<Unit> =
+        if (accessMissing()) {
             Result.failure(SecurityException(context.getString(noAccessMessage)))
+        } else {
+            Result.failure(De1984Error.SystemAccessFailed(context.getString(failedMessage), operation))
         }
 
     override fun getPackages(): Flow<List<Package>> {

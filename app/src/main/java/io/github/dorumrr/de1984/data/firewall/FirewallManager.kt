@@ -16,7 +16,9 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.ErrorHandler
 import io.github.dorumrr.de1984.data.common.RootManager
 import io.github.dorumrr.de1984.data.common.RootStatus
+import io.github.dorumrr.de1984.data.common.awaitPrivilegeProbes
 import io.github.dorumrr.de1984.data.common.hasPrivilegedAccess
+import io.github.dorumrr.de1984.data.common.privilegeProbesAnswered
 import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
@@ -40,7 +42,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -80,7 +81,7 @@ class FirewallManager(
          * goAsync(), so a longer wait there would be killed by the system rather than by us.
          * The probe measured about five seconds on a cold start, so this leaves margin.
          */
-        private const val PRIVILEGE_ANSWER_TIMEOUT_MS = 8_000L
+        const val PRIVILEGE_ANSWER_TIMEOUT_MS = 8_000L
     }
 
     private val scope = CoroutineScope(SupervisorJob())
@@ -416,8 +417,7 @@ class FirewallManager(
      * than before this existed. Only ever reached when another VPN is already up.
      */
     private suspend fun awaitPrivilegeAnswer(): Boolean {
-        fun answered() = rootManager.rootStatus.value != RootStatus.CHECKING &&
-            shizukuManager.shizukuStatus.value != ShizukuStatus.CHECKING
+        fun answered() = privilegeProbesAnswered(rootManager.rootStatus.value, shizukuManager.shizukuStatus.value)
 
         if (answered()) {
             return true
@@ -430,11 +430,7 @@ class FirewallManager(
                 "before judging a VPN conflict"
         )
 
-        val inTime = withTimeoutOrNull(PRIVILEGE_ANSWER_TIMEOUT_MS) {
-            combine(rootManager.rootStatus, shizukuManager.shizukuStatus) { root, shizuku ->
-                root != RootStatus.CHECKING && shizuku != ShizukuStatus.CHECKING
-            }.first { it }
-        } != null
+        val inTime = awaitPrivilegeProbes(rootManager.rootStatus, shizukuManager.shizukuStatus, PRIVILEGE_ANSWER_TIMEOUT_MS)
 
         if (inTime) {
             AppLogger.d(

@@ -1,5 +1,6 @@
 package io.github.dorumrr.de1984
 
+import io.github.dorumrr.de1984.data.common.awaitPrivilegeProbes
 import io.github.dorumrr.de1984.data.common.hasPrivilegedAccess
 import android.content.Context
 import io.github.dorumrr.de1984.utils.AppLogger
@@ -246,7 +247,10 @@ class De1984Dependencies(private val context: Context) {
         PackageRepositoryImpl(
             context,
             packageDataSource,
-            privileged = { hasPrivilegedAccess(rootManager.rootStatus.value, shizukuManager.shizukuStatus.value) }
+            accessMissing = {
+                awaitPrivilegeProbes(rootManager.rootStatus, shizukuManager.shizukuStatus, FirewallManager.PRIVILEGE_ANSWER_TIMEOUT_MS) &&
+                    !hasPrivilegedAccess(rootManager.rootStatus.value, shizukuManager.shizukuStatus.value)
+            }
         ) { notifyPackageDataChanged() }
     }
 

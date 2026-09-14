@@ -2,8 +2,9 @@
 
 Open work, ordered by harm to the user. This file is the queue, not an archive.
 
-**Trust order: current code first, this file second.** Every entry below was audited against the code
-on 2026-09-14 at `371895e`. Verify before acting on any of it.
+**Trust order: current code first, this file second.** Every entry below was checked against the code
+on 2026-09-14: F10, F11, F8's iptables lines and the Boot Protection bullet at `b225201`, the rest at
+`371895e`. Verify before acting on any of it.
 
 Status key: `VERIFIED` = read in code, line cited. `NOT VERIFIED` = reasoned, not proven.
 `NEEDS CONFIRMATION` = depends on Android behaviour the repo cannot show. "Runtime" means seen on a
@@ -22,13 +23,24 @@ Released: v2.7.5 (versionCode 46), commit `79b64a6`, tag `v2.7.5`.
 
 # Firewall
 
-## F6. Block All start with an empty package read shows healthy ON while nothing is blocked — `VERIFIED` in code, not at runtime
+## F10. One profile's failed package read leaves that profile's apps unblocked under Block All — `VERIFIED` in code, not at runtime
 
-A start creates the chains fresh (`IptablesFirewallBackend.startInternal`, `:136-160`); a stop deleted
-them (`:190-215`), so the chain starts empty. If the Block All package read then returns nothing, the
-guard at `:404-406` writes nothing and returns success. The same-backend start path then sets Running
-and reports healthy (`FirewallManager.kt:594-598`; the switch path was not re-read). Until the next
-apply every app has network while the app says it is protected. Only a log line records it.
+`getInstalledApplicationsAsUser` returns an empty list for a profile when every read method fails, and
+caches nothing (`HiddenApiHelper.kt:529-530`; the cache is written only on success, `:503`, `:520`).
+`getPackagesWithNetworkPermissions` merges the profiles with `flatMap` (`:598`), so when only one profile
+fails the list is not empty and the retry-then-fail guard (`IptablesFirewallBackend.kt:387-399`) passes.
+iptables Block All blocks only listed packages (`:417-460`), so that profile's apps keep their network,
+and the apply drops the DROP rules they already had, while the app shows Block All running. Needs a
+decision: whether a profile can truly have zero apps with network permissions.
+
+## F11. NetworkPolicyManager and ConnectivityManager backends report success on an empty package list — `VERIFIED` in code, not at runtime
+
+Both loop over `getPackagesWithNetworkPermissions` (`NetworkPolicyManagerFirewallBackend.kt:381-382`,
+`ConnectivityManagerFirewallBackend.kt:220-221`) with no empty check, so an empty read writes no policy
+and returns success in either default policy, because their loops walk packages, not rules. A start
+then shows Running with nothing blocked (inferred from the shared start path): the case `b225201` fixed
+for iptables with a retry, then a failure. Proof needs a Shizuku phone for NetworkPolicyManager; the test
+phone's ROM cannot run ConnectivityManager.
 
 ## F2. ConnectivityManager backend: a rule-less copy overwrites another profile's rule — `VERIFIED` in code, not at runtime
 
@@ -62,7 +74,7 @@ completes later. Either way a tunnel can come up that nothing reports.
 `clearInstalledAppsCache` (`HiddenApiHelper.kt:540`, comment `:551-558`) nulls `networkPackagesCache`
 without `networkPackagesLock`. A sweep already inside the lock publishes its pre-clear list with a fresh
 timestamp (`:620-621`), and a caller that waited on the lock takes it whatever its age (`:589-594`).
-iptables Block All blocks only packages on that list (`IptablesFirewallBackend.kt:424-466`), so the
+iptables Block All blocks only packages on that list (`IptablesFirewallBackend.kt:417-460`), so the
 apply triggered by an install during a running sweep can leave the new app unblocked until a later
 apply. Taking the lock is worse: it is held ~9.5 s for 466 packages and two callers are
 BroadcastReceivers (ANR). Fix: a generation counter the sweep checks before publishing.
@@ -164,6 +176,10 @@ the test phone.
 - The uninstall and reinstall dialogs (`strings.xml:614`, `:621`, `:625`) and the action sheet's
   uninstall line (`:105`) say "your device" for a profile-only action. The disable dialogs do not.
 - Settings export and import do not say they use De1984's own profile (`strings.xml:408-431`).
+- Boot Protection promises no network when De1984 fails to start (`strings.xml:740`) and blocking "until
+  firewall activates" (`:378`), in all 7 languages. A failed boot start lifts the block
+  (`BootWorker.kt:143-155`, `BootReceiver.kt:212-224`), and the script expires itself after about 120 s
+  (`FIREWALL.md:391`).
 - `fastlane/metadata/android/en-US/changelogs/18.txt` describes old health-check behaviour. It is the
   release note of versionCode 18, a record of that release.
 

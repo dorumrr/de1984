@@ -1,5 +1,5 @@
-• Fixed process stream leaks in root/Shizuku command execution preventing memory accumulation
-• Optimized firewall performance with intelligent caching - only updates changed packages instead of all packages
-• Fixed critical memory leaks in ConnectivityManager and NetworkPolicyManager backends causing Shizuku crashes
-• Implemented differential rule application reducing redundant operations by 95-99% (shell commands and reflection calls)
-• Added Captive Portal Controller to view/modify Android's connectivity check servers (Google, GrapheneOS, Kuketz, Cloudflare)
+• Fixed process stream leaks in root/Shizuku commands
+• Faster firewall with caching: only changed packages are updated
+• Fixed memory leaks in ConnectivityManager and NetworkPolicyManager backends that crashed Shizuku
+• Differential rule application: 95-99% fewer redundant shell commands and reflection calls
+• New Captive Portal Controller: view/change Android's connectivity check servers (Google, GrapheneOS, Kuketz, Cloudflare)

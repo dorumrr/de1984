@@ -1,5 +1,5 @@
 - Fixed: turning the VPN firewall off and on quickly could leave it off.
 - Fixed: with Block All on root or Shizuku, apps could stay unblocked while the firewall showed as on. A start that cannot read the app list now reports the firewall as down.
 - Fixed: package actions could wrongly say root or Shizuku was missing.
-- Fixed: VPN mode drained the battery. The tunnel kept CPU cores busy, and root checks ran too often.
+- Fixed: VPN mode drained the battery.
 - Fixed: for work and clone profile apps, VPN rules, Force stop, Reinstall and new-app notifications could act on your personal profile.

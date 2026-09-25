@@ -1,5 +1,5 @@
-- Fixed: push notifications stopped arriving under "Firewall Blocks All by Default". Google Services Framework is now allowed by default, next to Play Services. Block it yourself if you do not want it #101
-- Fixed: unblocking Mobile left Roaming blocked, and nothing on screen said so.
-- Fixed: blocking one network for the first time also applied the Block All default to the networks you had not touched.
-- Fixed: the app list could come up empty on first launch and stay empty until you restarted the app. A failed scan now says so and tries again.
-- Apps that share a user ID now show the state that is really enforced, even when the app blocking them is not a protected one.
+- Fixed: push notifications stopped under Block All. Google Services Framework is now allowed by default, like Play Services; block it yourself if you prefer #101
+- Fixed: unblocking Mobile left Roaming blocked, with no sign on screen.
+- Fixed: a first block on one network also blocked the networks you had not touched.
+- Fixed: the app list could stay empty after first launch. A failed scan now says so and retries.
+- Apps that share a user ID now show the state that is really enforced.

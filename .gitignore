@@ -4,6 +4,7 @@ RULES.md
 .claude
 .artifacts
 PLAN.md
+SYSTEM_CONTEXT.md
 
 # Built application files
 *.apk

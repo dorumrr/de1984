@@ -1,5 +1,5 @@
-- Fixed: push notifications stopped under Block All. Google Services Framework is now allowed by default, like Play Services; block it yourself if you prefer #101
-- Fixed: unblocking Mobile left Roaming blocked, with no sign on screen.
-- Fixed: a first block on one network also blocked the networks you had not touched.
-- Fixed: the app list could stay empty after first launch. A failed scan now says so and retries.
-- Apps that share a user ID now show the state that is really enforced.
+- Fixed: push notifications stopped with Block All. Google Services Framework is now allowed by default like Play Services; block it if you like #101
+- Fixed: unblocking Mobile silently left Roaming blocked.
+- Fixed: a first block on one network applied the Block All default to untouched networks.
+- Fixed: the app list could stay empty after first launch until restart; a failed scan now says so and retries.
+- Shared-UID apps now show the real state, even when their blocker is not protected.

@@ -52,12 +52,12 @@ A `cmd connectivity set-package-networking-enabled` that exits non-zero or throw
 ## F2. ConnectivityManager backend: a rule-less copy overwrites another profile's rule — `VERIFIED` in code, not at runtime
 
 The apply loop walks every profile's packages (`HiddenApiHelper.kt:628`) with no `reachesUser` filter
-(`ConnectivityManagerFirewallBackend.kt:250-300`), although this backend reaches only De1984's own
+(`ConnectivityManagerFirewallBackend.kt:253-303`), although this backend reaches only De1984's own
 profile (`FirewallBackend.kt:86-92`). `desiredPolicies` is keyed by package name, so the copy read last
 wins, and a copy with no rule writes the default policy over the other copy's rule. Profile order is
 inferred. Keying by package plus user alone cannot fix it: the command names only a package (F3). Since
 the F10 fix, this backend also fails an apply when a profile it cannot reach fails to read
-(`ConnectivityManagerFirewallBackend.kt:227`).
+(`ConnectivityManagerFirewallBackend.kt:230`).
 
 ## F1. Reinstalled blocked app escapes the VPN tunnel — `VERIFIED` in code, not at runtime
 
@@ -160,7 +160,7 @@ app).
 ## F3. Which user the ConnectivityManager command acts on is unknown — `NEEDS CONFIRMATION`
 
 `cmd connectivity set-package-networking-enabled $enabled $packageName` carries no user
-(`ConnectivityManagerFirewallBackend.kt:359`, `:566`). Whether Android applies it to user 0, to the
+(`ConnectivityManagerFirewallBackend.kt:610`). Whether Android applies it to user 0, to the
 caller's user, or to every user's copy is not in this repo. It decides the F2 fix. The test phone's ROM
 cannot run this backend.
 

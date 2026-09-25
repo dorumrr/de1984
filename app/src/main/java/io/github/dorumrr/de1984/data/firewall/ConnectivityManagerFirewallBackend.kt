@@ -45,6 +45,9 @@ class ConnectivityManagerFirewallBackend(
          */
         private const val RESTORE_DEADLINE_MS = 60_000L
 
+        // Android's exit-255 answer to an enable when the app holds no denial: the goal state, not a failure.
+        private const val NO_DENIAL_ANSWER = "sUidOwnerMap does not have entry for uid"
+
         /**
          * Process-wide, NOT per-instance.
          *
@@ -354,12 +357,9 @@ class ConnectivityManagerFirewallBackend(
                 AppLogger.d(TAG, "🔍 [CACHE DEBUG] APPLYING $packageName: currentPolicy=$currentPolicy → shouldBlock=$shouldBlock")
 
                 try {
-                    val enabled = !shouldBlock
-                    val (exitCode, output) = shizukuManager.executeShellCommand(
-                        "cmd connectivity set-package-networking-enabled $enabled $packageName"
-                    )
+                    val (done, output) = setPackageNetworking(packageName, enabled = !shouldBlock)
 
-                    if (exitCode == 0) {
+                    if (done) {
                         appliedCount++
                         appliedPolicies[packageName] = shouldBlock
                         val ruleStatus = if (rulesByPackageAndUser.keys.any { it.startsWith("$packageName:") }) "has rule" else "no rule (default policy)"
@@ -562,10 +562,8 @@ class ConnectivityManagerFirewallBackend(
             }
 
             try {
-                val (exitCode, output) = shizukuManager.executeShellCommand(
-                    "cmd connectivity set-package-networking-enabled true $packageName"
-                )
-                if (exitCode == 0) {
+                val (done, output) = setPackageNetworking(packageName, enabled = true)
+                if (done) {
                     restored.add(packageName)
                     appliedPolicies.remove(packageName)
                     AppLogger.d(TAG, "Restored networking for $packageName")
@@ -605,6 +603,13 @@ class ConnectivityManagerFirewallBackend(
         // snapshot would erase whatever it recorded in the meantime.
         saveBlockedPackages(loadBlockedPackages() - restored, durable = true)
         return failed
+    }
+
+    private suspend fun setPackageNetworking(packageName: String, enabled: Boolean): Pair<Boolean, String> {
+        val (exitCode, output) = shizukuManager.executeShellCommand(
+            "cmd connectivity set-package-networking-enabled $enabled $packageName"
+        )
+        return (exitCode == 0 || (enabled && output.contains(NO_DENIAL_ANSWER))) to output
     }
 
     /**

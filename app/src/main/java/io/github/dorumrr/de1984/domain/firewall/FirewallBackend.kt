@@ -256,24 +256,22 @@ fun FirewallBackendType.enforcedVectorFor(
  * guess disagreed with the screen in both directions - a false warning on a quiet row, and silence
  * on one the backend was really dropping.
  *
- * LAN counts only on iptables, the one backend that can block it. Background counts only while its
- * toggle is on screen, which FirewallFragmentViews hides once the row is fully blocked.
+ * LAN counts only on iptables, the one backend that can block it. The screen-off value counts only
+ * while its switch is on screen, which FirewallFragmentViews.bindScreenOffToggle decides.
  */
 private fun FirewallBackendType.displayMatches(
     pkg: NetworkPackage,
     vector: UidRuleAggregate,
 ): Boolean {
     val shown = pkg.ownVector
-    // LAN and Background both count on iptables only. That is the one backend with a LAN switch,
-    // and the only sheet with a Background switch is the granular one, which no other backend uses -
-    // supportsGranularControl() is false for NetworkPolicyManager and ConnectivityManager, and they
-    // get the simple sheet's single Internet switch. Comparing Background elsewhere raised the
-    // shared-uid banner over a sheet holding no control the difference could refer to.
-    //
-    // On iptables, Background is compared using the SAME values the UI asks: FirewallFragmentViews
-    // hides that toggle on controlPkg.isFullyBlocked, and controlPkg is the SAVED row.
     val iptables = this == FirewallBackendType.IPTABLES
-    val backgroundVisible = iptables && !(shown.wifiBlocked && shown.mobileBlocked)
+    // Must match bindScreenOffToggle's blockedEverywhere for the sheet each backend gets.
+    val backgroundVisible = when (this) {
+        FirewallBackendType.IPTABLES -> !(shown.wifiBlocked && shown.mobileBlocked)
+        FirewallBackendType.NETWORK_POLICY_MANAGER ->
+            !(shown.wifiBlocked || shown.mobileBlocked || shown.roamingBlocked)
+        else -> false
+    }
     return shown.wifiBlocked == vector.wifiBlocked &&
         shown.mobileBlocked == vector.mobileBlocked &&
         shown.roamingBlocked == vector.roamingBlocked &&

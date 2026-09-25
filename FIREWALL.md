@@ -175,6 +175,10 @@ The app uses adaptive health check intervals to balance responsiveness and batte
 - Privileged backends: Monitor in PrivilegedFirewallService (foreground service)
 - VPN backend: Monitor internally in FirewallVpnService
 
+### Screen-off switch (every backend)
+
+Each app has an "Allow while screen off" switch. Turned off, the app is blocked whenever the screen is off, by the same mechanism and with the same limits as that backend's other blocks (apps a backend leaves open stay open, and NetworkPolicyManager may block metered background data only; see each backend's section). While the screen is on the switch adds no block. It is De1984's switch, not Android's per-app "Background data" setting; on NetworkPolicyManager, though, a block is a per-UID policy, and its metered-only fallback is the same value that setting writes. The app sheet shows it unless the app is fully blocked, protected or refused. On iptables and NetworkPolicyManager, which block by UID, one app's setting applies to its whole UID, and the other apps in that UID show the shared-UID note.
+
 ---
 
 ## 1. VPN Backend
@@ -294,7 +298,7 @@ Uses Android system commands to enable or disable networking for entire apps. Th
 The ConnectivityManager firewall chain API operates at the app level, not the network interface level. When you disable networking for an app, Android blocks it from accessing ANY network interface (WiFi, Mobile, VPN, Ethernet, etc.). There is no API to selectively block only certain network types. This is a fundamental limitation of the Android ConnectivityManager API.
 
 **Switch dependencies:**
-- **No WiFi/Mobile/Roaming switches**: This backend cannot do per-network blocking, so the UI does not offer separate WiFi/Mobile/Roaming controls. The single-app sheet and the multi-select sheet each show one "Internet Access" toggle that sets all three flags together. The list row still draws three network icons as indicators, but a tap on any of them applies to all three.
+- **No WiFi/Mobile/Roaming switches**: This backend cannot do per-network blocking, so the UI does not offer separate WiFi/Mobile/Roaming controls. The single-app sheet and the multi-select sheet each show one "Internet Access" toggle that sets all three flags together; the single-app sheet also has the screen-off switch (see "Screen-off switch" above). The list row still draws three network icons as indicators, but a tap on any of them applies to all three.
 - **Migration from granular backends**: When switching from VPN or iptables (which have separate switches), convert rules using this logic:
   - **Partially blocked** (1-2 networks blocked): Treat as **fully blocked** (block all networks)
   - **Mixed** (some networks blocked, some allowed): Treat as **fully blocked** — `migrateRulesToSimple` sets all three flags to `true` whenever any one of them is blocked. Migration never converts a rule to fully allowed.
@@ -315,7 +319,7 @@ The ConnectivityManager firewall chain API operates at the app level, not the ne
 
 Rules are re-applied on every network change: `PrivilegedFirewallService` observes the network type and calls `applyRules`. The network type does **not** affect the outcome for this backend. `applyRules` evaluates `rule.isBlockedOnAnyNetwork()`, so an app is blocked if its rule blocks on WiFi, Mobile **or** Roaming, whichever network is live.
 
-This is what makes "all-or-nothing" true in practice. A non-uniform rule — one that survived a switch from VPN or iptables where `migrateRulesToSimple` did not run — used to leave the app blocked on one network and open on another, while the single Block Network toggle said blocked either way. It now resolves toward blocking. LAN is excluded from that test: it is a separate axis that only iptables enforces.
+This is what makes "all-or-nothing" true in practice. A non-uniform rule — one that survived a switch from VPN or iptables where `migrateRulesToSimple` did not run — used to leave the app blocked on one network and open on another, while the single Internet Access toggle said blocked either way. It now resolves toward blocking. LAN is excluded from that test: it is a separate axis that only iptables enforces.
 
 **Example (Block All):**
 - Chrome (no rule) → Blocked everywhere

@@ -992,40 +992,16 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 updateSwitchColors(binding.lanToggle.toggleSwitch, lanBlocked)
             }
 
-            // The ROW's value, not the live preference: the row's flags were painted with it and the
-            // blocking context is built from it, so reading the preference here let this screen
-            // answer one question with two different settings for the length of a rescan.
-            val allowCriticalForUpdate = currentPkg.paintedAllowCritical
-            // The background toggle is the one switch in this sheet that is enabled unconditionally,
-            // so hiding it is the only way to keep it from writing a rule this backend will skip.
-            val shouldShowBackgroundAccess = (!controlPkg.isSystemCritical || allowCriticalForUpdate) && (!controlPkg.isVpnApp || allowCriticalForUpdate) && !controlPkg.isFullyBlocked && !controlsRefused
-            val wasBackgroundToggleVisible = binding.foregroundOnlyToggle.root.visibility == View.VISIBLE
-            AppLogger.d(TAG, "updateTogglesFromPackage: shouldShowBackgroundAccess=$shouldShowBackgroundAccess, wasVisible=$wasBackgroundToggleVisible (isSystemCritical=${currentPkg.isSystemCritical}, isVpnApp=${currentPkg.isVpnApp}, isFullyBlocked=${currentPkg.isFullyBlocked})")
-
-            binding.foregroundOnlyDivider.visibility = if (shouldShowBackgroundAccess) View.VISIBLE else View.GONE
-            binding.foregroundOnlyToggle.root.visibility = if (shouldShowBackgroundAccess) View.VISIBLE else View.GONE
-
-            if (shouldShowBackgroundAccess) {
-                if (!wasBackgroundToggleVisible) {
-                    AppLogger.d(TAG, "updateTogglesFromPackage: Background toggle just became visible - setting up listener")
-                    setupNetworkToggle(
-                        binding = binding.foregroundOnlyToggle,
-                        label = getString(R.string.firewall_network_label_background_access),
-                        isBlocked = !controlPkg.backgroundBlocked,
-                        enabled = true,
-                        invertLabels = true,
-                        onToggle = { isChecked ->
-                            if (isUpdatingProgrammatically) return@setupNetworkToggle
-                            AppLogger.d(TAG, "updateTogglesFromPackage: Background toggle clicked - isChecked=$isChecked, setting backgroundBlocked=${!isChecked}")
-                            viewModel.setBackgroundBlocking(currentPkg.packageName, currentPkg.userId, !isChecked)
-                        }
-                    )
-                } else {
-                    binding.foregroundOnlyToggle.toggleSwitch.isChecked = !controlPkg.backgroundBlocked
-                    updateSwitchColors(binding.foregroundOnlyToggle.toggleSwitch, !controlPkg.backgroundBlocked, invertColors = true)
-                }
-                AppLogger.d(TAG, "updateTogglesFromPackage: Background toggle updated - isChecked=${!controlPkg.backgroundBlocked}")
-            }
+            // The ROW's value, not the live preference: the row's flags were painted with it.
+            bindScreenOffToggle(
+                toggle = binding.foregroundOnlyToggle,
+                divider = binding.foregroundOnlyDivider,
+                saved = controlPkg,
+                allowCritical = currentPkg.paintedAllowCritical,
+                blockedEverywhere = controlPkg.isFullyBlocked,
+                controlsRefused = controlsRefused,
+                isUpdating = { isUpdatingProgrammatically },
+            )
 
             isUpdatingProgrammatically = false
         }
@@ -1294,33 +1270,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
         }
 
-        val defaultPolicy = viewModel.uiState.value.defaultFirewallPolicy
-        val isBlockAllMode = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
-        val shouldShowBackgroundAccess = (!controlBase.isSystemCritical || allowCritical) && (!controlBase.isVpnApp || allowCritical) && !controlBase.isFullyBlocked && !controlsRefused
-
-        AppLogger.d(TAG, "showGranularControlSheet: defaultPolicy=$defaultPolicy, isBlockAllMode=$isBlockAllMode, isFullyBlocked=${pkg.isFullyBlocked}, shouldShowBackgroundAccess=$shouldShowBackgroundAccess")
-
-        if (shouldShowBackgroundAccess) {
-            binding.foregroundOnlyDivider.visibility = View.VISIBLE
-            binding.foregroundOnlyToggle.root.visibility = View.VISIBLE
-
-            setupNetworkToggle(
-                binding = binding.foregroundOnlyToggle,
-                label = getString(R.string.firewall_network_label_background_access),
-                isBlocked = !controlBase.backgroundBlocked, // INVERTED: ON = allowed (not blocked), OFF = blocked
-                enabled = true,
-                invertLabels = true,
-                onToggle = { isChecked ->
-                    if (isUpdatingProgrammatically) return@setupNetworkToggle
-                    // isChecked=true means switch is ON, which means "allowed" for this toggle
-                    // So we need to set backgroundBlocked to the opposite: !isChecked
-                    viewModel.setBackgroundBlocking(pkg.packageName, pkg.userId, !isChecked)
-                }
-            )
-        } else {
-            binding.foregroundOnlyDivider.visibility = View.GONE
-            binding.foregroundOnlyToggle.root.visibility = View.GONE
-        }
+        bindScreenOffToggle(
+            toggle = binding.foregroundOnlyToggle,
+            divider = binding.foregroundOnlyDivider,
+            saved = controlBase,
+            allowCritical = allowCritical,
+            blockedEverywhere = controlBase.isFullyBlocked,
+            controlsRefused = controlsRefused,
+            isUpdating = { isUpdatingProgrammatically },
+        )
 
         // Dimming, subtitles, enabled-state and the info message, from the same single answer the
         // collector repaints with. One code path at open and on every later change.
@@ -1395,6 +1353,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // renderSimpleEnforcementState reads fresh on every pass, does not - and "cannot be
         // blocked" is a claim only a RUNNING backend earns.
 
+        var controlsRefused = firewallManager.activeBackendType.value
+            .unblockableReason(pkg, viewModel.uiState.value.blockingContext)?.fixableHere == false
+
         // A function, not a value computed once: it recomputes on every uiState emission. Computed
         // once, the banner froze at its open-time answer while the switch beside it - which reads
         // the row live - kept moving, so the two contradicted each other on the one backend that
@@ -1408,7 +1369,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 currentPkg, viewModel.uiState.value.blockingContext
             )
             // Dead controls only when nothing here can fix it.
-            val controlsRefused = unblockableReason?.fixableHere == false
+            controlsRefused = unblockableReason?.fixableHere == false
 
             // First, ahead of every other branch. The no-internet note promises that blocking now
             // "will take effect if the app gains internet permission in a future update" - untrue
@@ -1485,6 +1446,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 saved.roamingBlocked
             binding.internetToggle.toggleSwitch.isChecked = isBlocked
             updateSwitchColors(binding.internetToggle.toggleSwitch, isBlocked)
+            bindScreenOffToggle(
+                toggle = binding.foregroundOnlyToggle,
+                divider = binding.foregroundOnlyDivider,
+                saved = saved,
+                allowCritical = currentPkg.paintedAllowCritical,
+                blockedEverywhere = isBlocked,
+                controlsRefused = controlsRefused,
+                isUpdating = { isUpdatingProgrammatically },
+            )
 
             isUpdatingProgrammatically = false
         }
@@ -1558,6 +1528,37 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             // Allow the sheet to be dragged, but nested scrolling will take priority
             // This ensures content scrolls first before the sheet starts dragging
         }
+    }
+
+    // The only switch enabled unconditionally, so hiding it is what stops it writing a rule the
+    // backend will skip. One copy for both sheets: they must hide and show it the same way.
+    private fun bindScreenOffToggle(
+        toggle: NetworkTypeToggleBinding,
+        divider: View,
+        saved: NetworkPackage,
+        allowCritical: Boolean,
+        blockedEverywhere: Boolean,
+        controlsRefused: Boolean,
+        isUpdating: () -> Boolean,
+    ) {
+        val show = (!saved.isSystemCritical || allowCritical) && (!saved.isVpnApp || allowCritical) &&
+            !blockedEverywhere && !controlsRefused
+        divider.visibility = if (show) View.VISIBLE else View.GONE
+        toggle.root.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+        // Detached first: setupNetworkToggle sets the position, and a still-attached listener would write it.
+        toggle.toggleSwitch.setOnCheckedChangeListener(null)
+        setupNetworkToggle(
+            binding = toggle,
+            label = getString(R.string.firewall_network_label_background_access),
+            isBlocked = !saved.backgroundBlocked,
+            enabled = true,
+            invertLabels = true,
+            onToggle = { allowed ->
+                if (isUpdating()) return@setupNetworkToggle
+                viewModel.setBackgroundBlocking(saved.packageName, saved.userId, !allowed)
+            }
+        )
     }
 
     private fun setupNetworkToggle(

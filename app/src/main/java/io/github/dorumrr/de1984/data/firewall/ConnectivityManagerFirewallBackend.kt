@@ -10,6 +10,7 @@ import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.utils.Constants
@@ -51,7 +52,7 @@ class ConnectivityManagerFirewallBackend(
         /**
          * Process-wide, NOT per-instance.
          *
-         * Everything this backend guards - the OEM_DENY_3 chain, the system's per-package denials,
+         * Everything this backend guards - the OEM_DENY_3 chain, the system's per-uid denials,
          * the on-disk record - is shared by every instance. FirewallManager.cleanupAllBackends()
          * builds a second instance while the privileged service may still be inside applyRules, and
          * a per-instance lock let the sweep restore every package and write an empty record while
@@ -217,7 +218,9 @@ class ConnectivityManagerFirewallBackend(
             var systemUidCount = 0
             var untouchedCount = 0
 
-            val rulesByPackageAndUser = rules.filter { it.enabled }.associateBy { "${it.packageName}:${it.userId}" }
+            val enabledRules = rules.filter { it.enabled }
+            val rulesByUid = enabledRules.groupBy { it.uid }
+            val ruledPackages = enabledRules.mapTo(HashSet()) { it.packageName }
 
             val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)
             val allPackages = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
@@ -231,6 +234,12 @@ class ConnectivityManagerFirewallBackend(
                 return@withContext Result.failure(Exception("Network package read failed"))
             }
 
+            // One verdict per package name: a command acts on that app in every profile, so decide the own copy.
+            val ownUserId = Constants.Firewall.ownUserId()
+            val ownPackages = allPackages.filter {
+                FirewallBackendType.CONNECTIVITY_MANAGER.reachesUser(it.uid / 100000, ownUserId)
+            }
+
             val desiredPolicies = mutableMapOf<String, Boolean>()
 
             val allowCritical = prefs.getBoolean(
@@ -238,75 +247,29 @@ class ConnectivityManagerFirewallBackend(
                 Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
             )
 
-            // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
-            // Even though this backend operates per-package, Android's network permissions are UID-based
-            // So if ANY package in a UID is critical with no rule, all packages in that UID should be allowed
-            val uidsWithCritical = if (allowCritical) {
-                allPackages
-                    .filter { Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName, it.uid / 100000) }
-                    .map { it.uid }
-                    .toSet()
-            } else {
-                emptySet()
-            }
+            val criticalOrVpnUids = ownPackages
+                .filter { Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName, it.uid / 100000) }
+                .map { it.uid }
+                .toSet()
 
-            // First pass: Calculate what the policy should be for each package
-            // NOTE: ConnectivityManager backend has limited multi-user support because
-            // "cmd connectivity set-package-networking-enabled" operates on package names
-            // in the current user context. Work profile apps may not be blocked correctly.
-            // For full multi-user support, use iptables backend (root) or NetworkPolicyManager.
-            allPackages.forEach { appInfo ->
-                val packageName = appInfo.packageName
-                val uid = appInfo.uid
-                val userId = uid / 100000
-
+            // Android applies each command to the package's whole uid, so a uid gets one verdict.
+            ownPackages.groupBy { it.uid }.forEach { (uid, packagesInUid) ->
                 if (!Constants.Firewall.isFirewallableAppUid(uid)) {
-                    systemUidCount++
+                    systemUidCount += packagesInUid.size
                     return@forEach
                 }
 
-                if (Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
-                    desiredPolicies[packageName] = false
-                    return@forEach
-                }
+                val protectedUid = uid in criticalOrVpnUids
+                // Not per network: this backend shows one switch per app, so a rule left over from
+                // iptables or VPN with one network blocked must block every network, as the switch says.
+                val shouldBlock = !(protectedUid && !allowCritical) && uidBlockedNow(
+                    rulesByUid[uid], isBlockAllDefault, protectedUid,
+                    perNetwork = false, networkType = networkType, screenOn = screenOn,
+                )
+                AppLogger.d(TAG, "🔍 [RULE DEBUG] UID $uid ${packagesInUid.map { it.packageName }}: " +
+                        "${rulesByUid[uid]?.size ?: 0} rule(s), protected=$protectedUid → shouldBlock=$shouldBlock")
 
-                if (hasVpnService(packageName, userId) && !allowCritical) {
-                    desiredPolicies[packageName] = false
-                    return@forEach
-                }
-
-                val rule = rulesByPackageAndUser["$packageName:$userId"]
-
-                val shouldBlock = if (rule != null) {
-                    // Has explicit rule - use it.
-                    //
-                    // isBlockedOnAnyNetwork(), NOT isBlockedOn(networkType). This backend reports
-                    // supportsGranularControl() == false and has one switch per app, so asking about
-                    // the CURRENT network made it silently granular: a rule left behind by iptables
-                    // or VPN with only Mobile blocked left the app blocked on mobile and wide open on
-                    // WiFi, while the single "Internet Access" toggle this backend shows said blocked
-                    // either way. The code and its own comment disagreed.
-                    val result = when {
-                        !screenOn && rule.blockWhenBackground -> true
-                        rule.isBlockedOnAnyNetwork() -> true
-                        else -> false
-                    }
-                    AppLogger.d(TAG, "🔍 [RULE DEBUG] $packageName: found rule wifi=${rule.wifiBlocked}, mobile=${rule.mobileBlocked}, " +
-                            "roaming=${rule.blockWhenRoaming}, anyNetwork=${rule.isBlockedOnAnyNetwork()} → shouldBlock=$result")
-                    result
-                } else {
-                    if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
-                        val isSelfCritical = Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName, userId)
-                        if (!isSelfCritical) {
-                            AppLogger.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
-                        }
-                        false
-                    } else {
-                        isBlockAllDefault
-                    }
-                }
-
-                desiredPolicies[packageName] = shouldBlock
+                packagesInUid.forEach { desiredPolicies[it.packageName] = shouldBlock }
             }
 
             AppLogger.d(TAG, "🔍 [CACHE DEBUG] appliedPolicies cache size: ${appliedPolicies.size}, desiredPolicies size: ${desiredPolicies.size}")
@@ -348,7 +311,7 @@ class ConnectivityManagerFirewallBackend(
 
                 if (currentPolicy == shouldBlock) {
                     skippedCount++
-                    if (rulesByPackageAndUser.keys.any { it.startsWith("$packageName:") }) {
+                    if (packageName in ruledPackages) {
                         AppLogger.d(TAG, "🔍 [CACHE DEBUG] SKIPPED $packageName: currentPolicy=$currentPolicy, shouldBlock=$shouldBlock (has rule)")
                     }
                     return@forEach
@@ -362,7 +325,7 @@ class ConnectivityManagerFirewallBackend(
                     if (done) {
                         appliedCount++
                         appliedPolicies[packageName] = shouldBlock
-                        val ruleStatus = if (rulesByPackageAndUser.keys.any { it.startsWith("$packageName:") }) "has rule" else "no rule (default policy)"
+                        val ruleStatus = if (packageName in ruledPackages) "has rule" else "no rule (default policy)"
                         AppLogger.d(TAG, "Applied policy for $packageName ($ruleStatus): " +
                                 "policy=${if (shouldBlock) "BLOCK (all networks)" else "ALLOW"}")
                     } else {

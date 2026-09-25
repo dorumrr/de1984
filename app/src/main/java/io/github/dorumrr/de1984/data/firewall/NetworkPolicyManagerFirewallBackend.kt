@@ -10,6 +10,7 @@ import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.utils.Constants
@@ -418,39 +419,17 @@ class NetworkPolicyManagerFirewallBackend(
                 // Never block UIDs that contain system-critical packages or VPN apps
                 // This prevents shared UID bypass (e.g., Gboard sharing UID with system package)
                 if (isUidExempted(uid, allPackages)) {
+                    // Set, not skipped: a block written before the uid became exempt must be lifted.
+                    desiredPolicies[uid] = false
                     return@forEach
                 }
 
-                val rulesForUid = rulesByUid[uid]
-
-                val shouldBlock = if (rulesForUid != null && rulesForUid.isNotEmpty()) {
-                    // Has explicit rules - use them
-                    // For shared UIDs, block if ANY rule says to block (most restrictive)
-                    // isBlockedOnAnyNetwork(), NOT isBlockedOn(networkType) - same reason as the
-                    // ConnectivityManager backend. This one reports supportsGranularControl() ==
-                    // false too (WiFi blocking does not work here on stock Android), so honouring a
-                    // per-network rule meant an app the UI showed as blocked still had WiFi.
-                    rulesForUid.any { rule ->
-                        when {
-                            !screenOn && rule.blockWhenBackground -> true
-                            rule.isBlockedOnAnyNetwork() -> true
-                            else -> false
-                        }
-                    }
-                } else {
-                    if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
-                        val packagesInUid = allPackages.filter { it.uid == uid }.map { it.packageName }
-                        val criticalInUid = packagesInUid.filter { Constants.Firewall.isSystemCritical(it) || hasVpnService(it, uid / 100000) }
-                        if (criticalInUid.isNotEmpty() && packagesInUid.size > 1) {
-                            AppLogger.d(TAG, "  UID $uid: allowing (shares UID with critical: ${criticalInUid.joinToString()})")
-                        }
-                        false
-                    } else {
-                        isBlockAllDefault
-                    }
-                }
-
-                desiredPolicies[uid] = shouldBlock
+                // Not per network: one switch per app here, and WiFi blocking does not work on stock
+                // Android, so a per-network rule would leave an app the UI shows blocked on WiFi.
+                desiredPolicies[uid] = uidBlockedNow(
+                    rulesByUid[uid], isBlockAllDefault, protectedUid = uid in uidsWithCritical,
+                    perNetwork = false, networkType = networkType, screenOn = screenOn,
+                )
             }
 
             var skippedCount = 0

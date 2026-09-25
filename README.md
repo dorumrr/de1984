@@ -70,7 +70,7 @@
 
 **If you use VPN mode, turn OFF "Block connections without VPN"**
 
-In Android's VPN settings, De1984 must not have "Block connections without VPN" (also called lockdown) enabled. De1984's VPN routes only the apps you have *blocked* through its tunnel — allowed apps deliberately bypass it and use the network directly. Lockdown tells Android to drop anything that does not go through the VPN, so it blocks exactly those allowed apps. On recent Android versions this switch is turned on automatically when you grant a VPN, so it is worth checking.
+In Android's VPN settings, De1984 must not have "Block connections without VPN" (also called lockdown) enabled. De1984's VPN routes only the apps you have *blocked* through its tunnel — allowed apps deliberately bypass it and use the network directly. Apps that share a user ID share one verdict, so an allowed app that shares one with an app whose rule blocks goes through the tunnel too. Lockdown tells Android to drop anything that does not go through the VPN, so it blocks exactly those allowed apps. On recent Android versions this switch is turned on automatically when you grant a VPN, so it is worth checking.
 
 **iptables needs real root, not ADB-mode Shizuku**
 

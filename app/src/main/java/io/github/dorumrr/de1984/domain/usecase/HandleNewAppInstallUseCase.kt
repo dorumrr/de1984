@@ -22,9 +22,9 @@ class HandleNewAppInstallUseCase constructor(
          * Return [rule] pointed at the app as it is installed right now, or [rule] itself if
          * nothing changed or the package is not installed for that user.
          *
-         * A reinstall keeps the package name and hands the app a NEW uid. IptablesFirewallBackend
-         * and NetworkPolicyManagerFirewallBackend both group rules by uid, so a stale uid matches
-         * no installed app: the rule is enforced against nothing, and under Block All the app falls
+         * A reinstall keeps the package name and hands the app a NEW uid. Every backend groups rules
+         * by uid (uidBlockedNow), so a stale uid matches no installed app: the rule is enforced against
+         * nothing, and under Block All the app falls
          * through to the default and is blocked with no way back. Restoring a backup is the one
          * path that writes rules without coming through here, which is issue #81.
          *
@@ -104,8 +104,8 @@ class HandleNewAppInstallUseCase constructor(
             val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
             if (existingRule != null) {
                 // The old rule is kept on purpose - the user configured it - but its UID must be
-                // re-read. Android hands a reinstalled app a NEW uid, and the privileged backends
-                // block by uid: a stale one matches nothing, so the app showed "Blocked" in the UI
+                // re-read. Android hands a reinstalled app a NEW uid, and every backend
+                // blocks by uid: a stale one matches nothing, so the app showed "Blocked" in the UI
                 // while its traffic flowed. The label is refreshed for the same reason.
                 refreshRuleIdentity(existingRule, packageInfo)
                 return Result.success(Unit)

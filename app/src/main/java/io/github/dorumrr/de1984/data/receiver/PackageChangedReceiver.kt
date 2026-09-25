@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
  * PackageAddedReceiver: on TrebleDroid / Android 14, measured 2026-08-23, a real install delivers
  * ACTION_PACKAGE_ADDED to other apps but never to ours, while ACTION_PACKAGE_CHANGED arrives
  * reliably. Without this a reinstalled app kept the uid from its previous install - and the
- * privileged backends block by uid, so it was enforced against nothing while the UI read "Blocked".
+ * backends block by uid, so it was enforced against nothing while the UI read "Blocked".
  * Both receivers run the same use case, which is idempotent: whichever arrives first does the work.
  */
 class PackageChangedReceiver : BroadcastReceiver() {

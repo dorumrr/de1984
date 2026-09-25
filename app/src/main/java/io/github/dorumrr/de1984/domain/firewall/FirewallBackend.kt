@@ -68,27 +68,31 @@ enum class FirewallBackendType {
         CONNECTIVITY_MANAGER, NETWORK_POLICY_MANAGER -> false
     }
 
-    /**
-     * Whether this backend's verdict lands on a UID rather than on a package.
-     *
-     * It decides who is affected by the shared-uid exemption. While Settings > "Allow Firewall
-     * Critical Packages" is OFF - the default - a UID-based backend skips the WHOLE uid as soon as
-     * any package in it is whitelisted or declares a VpnService, so an ordinary app that happens to
-     * share that uid cannot be blocked either: IptablesFirewallBackend.isUidExempted and
-     * NetworkPolicyManagerFirewallBackend.isUidExempted.
-     *
-     * ConnectivityManager and VPN name a package, so the exemption there removes only the protected
-     * package itself and its neighbours are still commanded. (They have the opposite problem - the
-     * platform applies a per-package command to the whole uid - which is a separate defect and not
-     * what this answers.)
-     */
-    fun blocksByUid(): Boolean = when (this) {
+    /** Whether this backend can act on an app in [userId] while De1984 runs in [ownUserId]. A backend that names packages decides only De1984's own profile. */
+    fun reachesUser(userId: Int, ownUserId: Int): Boolean = when (this) {
         IPTABLES, NETWORK_POLICY_MANAGER -> true
-        CONNECTIVITY_MANAGER, VPN -> false
+        CONNECTIVITY_MANAGER, VPN -> userId == ownUserId
     }
+}
 
-    /** Whether this backend can act on an app in [userId] while De1984 runs in [ownUserId]. A package name reaches only De1984's own profile. */
-    fun reachesUser(userId: Int, ownUserId: Int): Boolean = blocksByUid() || userId == ownUserId
+/**
+ * The block every backend applies to a uid it has not exempted: its enabled rules if it has any, else
+ * the Block All default, which a protected uid never gets. Android enforces even a per-app command per uid.
+ */
+fun uidBlockedNow(
+    rulesForUid: List<FirewallRule>?,
+    blockAllDefault: Boolean,
+    protectedUid: Boolean,
+    perNetwork: Boolean,
+    networkType: NetworkType,
+    screenOn: Boolean,
+): Boolean {
+    val enabled = rulesForUid.orEmpty().filter { it.enabled }
+    if (enabled.isEmpty()) return blockAllDefault && !protectedUid
+    return enabled.any { rule ->
+        (!screenOn && rule.blockWhenBackground) ||
+            if (perNetwork) rule.isBlockedOn(networkType) else rule.isBlockedOnAnyNetwork()
+    }
 }
 
 /**
@@ -118,20 +122,15 @@ enum class UnblockableReason(
      */
     PLATFORM_REFUSES_SYSTEM_UID(fixableHere = false),
 
-    /**
-     * A UID-based backend skips the whole uid because a package in it is protected - see
-     * [FirewallBackendType.blocksByUid].
-     */
+    /** Every backend skips the whole uid because a package in it is protected: Android blocks per uid. */
     SHARED_WITH_PROTECTED_PACKAGE(fixableHere = false),
 
     /**
      * The row belongs to another profile and the running backend names packages rather than uids,
-     * so it resolves that name in the user IT runs in and never finds this one.
+     * so it decides only apps in the profile De1984 runs in, never by this row's own rule.
      *
-     * FirewallVpnService counts the NameNotFoundException from addAllowedApplication as a failure
-     * and leaves the app outside the tunnel; ConnectivityManagerFirewallBackend says the same in
-     * its own words - "cmd connectivity set-package-networking-enabled operates on package names in
-     * the current user context. Work profile apps may not be blocked correctly."
+     * FirewallVpnService and ConnectivityManagerFirewallBackend both build their app list from
+     * De1984's own profile only; a ConnectivityManager command for the same package still reaches this copy.
      */
     OTHER_PROFILE_UNREACHABLE(fixableHere = false),
 
@@ -144,18 +143,16 @@ enum class UnblockableReason(
     NO_RULE_IN_PROTECTED_UID(fixableHere = true),
 
     /**
-     * A neighbour in the same uid has a rule, and the uid backends stop applying the Block All
-     * default to the WHOLE uid the moment any rule exists - `rulesByUid =
-     * rules.filter { it.enabled }.groupBy { it.uid }` then `rulesForUid.any { }` in
-     * IptablesFirewallBackend.applyRules and its NetworkPolicyManager sibling.
+     * A neighbour in the same uid has a rule, and every backend stops applying the Block All default
+     * to the WHOLE uid the moment any rule exists - see [uidBlockedNow].
      *
      * So this rule-less row is really governed by the UNION of its neighbours' rules - blocked on
      * the networks they name, open on the rest - while its painting shows the full Block All
      * default. The one row wearing this reason is not zeroed like the others: [asEnforcedBy]
      * substitutes [FirewallBackendType.enforcedVectorFor], so a partial neighbour rule shows as a
-     * partial block. Giving this package a rule of its own fixes it, which is why this is
-     * [fixableHere]. Raised only when the union falls short of the painting; a uid whose rules
-     * block everything anyway needs no correction.
+     * partial block. A rule of its own can only add to the union: it fixes a default painting, not
+     * a neighbour's block, and the switches stay [fixableHere] because they set this app's own rule.
+     * Raised only when the union differs from the painting.
      */
     SIBLING_RULE_OVERRIDES_DEFAULT(fixableHere = true),
 }
@@ -176,50 +173,49 @@ data class BlockingContext(
      * Per uid, the union of what its ENABLED rules block - keyed presence doubles as "this uid has
      * a rule at all".
      *
-     * A set of uids cannot answer the screen's question. The uid backends branch on rule PRESENCE
-     * (any rule at all withdraws the Block All default from the whole uid) and then enforce the
-     * rules' UNION - iptables per current network plus a LAN pass, NetworkPolicyManager
-     * all-or-nothing. So a rule-less package in a ruled uid is not simply "allowed": it is blocked
-     * on exactly the networks its neighbours' rules name. Carrying the union lets the screen paint
-     * that truth instead of guessing a yes/no.
+     * A set of uids cannot answer the screen's question. Every backend branches on rule PRESENCE
+     * (any rule at all withdraws the Block All default from the whole uid) and then enforces the
+     * rules' UNION - iptables and VPN per current network, iptables plus a LAN pass,
+     * NetworkPolicyManager and ConnectivityManager all-or-nothing. So a rule-less package in a ruled
+     * uid is not simply "allowed": it is blocked on exactly the networks its neighbours' rules name.
+     * Carrying the union lets the screen paint that truth instead of guessing a yes/no.
      */
     val uidRules: Map<Int, Map<String, UidRuleAggregate>> = emptyMap(),
     /** Settings > "Allow Firewall Critical Packages". */
     val allowCritical: Boolean = false,
     /** The default policy is Block All. */
     val blockAllDefault: Boolean = false,
-    /** The user De1984 itself runs in. A package-naming backend can reach only this one. */
+    /** The user De1984 itself runs in. A package-naming backend decides only this one. */
     val ownUserId: Int = 0,
 )
 
 /**
  * What THIS backend enforces on a ruled uid, given the union of its rules.
  *
- * iptables honours the rules per network (IptablesFirewallBackend.applyRules tests
- * `isBlockedOn(networkType)`, and a separate pass blocks LAN for the uid when any rule names it).
- * NetworkPolicyManager is all-or-nothing: it tests `isBlockedOnAnyNetwork()`, so one blocked
- * network takes every network, and it cannot touch LAN at all. Only meaningful for backends whose
- * verdict lands on a uid; the package-naming two never consult it.
+ * iptables and VPN honour the rules per network ([uidBlockedNow] with perNetwork), and only iptables
+ * blocks LAN for the uid in a separate pass when any rule names it. NetworkPolicyManager and
+ * ConnectivityManager are all-or-nothing: one blocked network takes every network, and neither has a
+ * LAN block of its own.
  */
 private fun FirewallBackendType.enforcedVector(agg: UidRuleAggregate): UidRuleAggregate = when (this) {
     FirewallBackendType.IPTABLES -> agg
-    FirewallBackendType.NETWORK_POLICY_MANAGER -> UidRuleAggregate(
+    FirewallBackendType.VPN -> agg.copy(lanBlocked = false)
+    FirewallBackendType.NETWORK_POLICY_MANAGER, FirewallBackendType.CONNECTIVITY_MANAGER -> UidRuleAggregate(
         wifiBlocked = agg.blocksInternet,
         mobileBlocked = agg.blocksInternet,
         roamingBlocked = agg.blocksInternet,
         lanBlocked = false,
         backgroundBlocked = agg.backgroundBlocked,
     )
-    FirewallBackendType.CONNECTIVITY_MANAGER, FirewallBackendType.VPN -> agg
 }
 
 /**
- * What a uid-deciding backend really enforces on THIS row, or null when only its own rule decides.
+ * What the running backend really enforces on THIS row, or null when only its own rule decides.
  *
- * Null means one of: the backend names packages instead of uids, no rule exists anywhere in the
- * uid, or no OTHER package holds one. The last case is deliberate - without a neighbour there is
- * nobody for the shared-uid wording to name, and NetworkPolicyManager flattening the row's own
- * rule to all-or-nothing is a different defect that needs different words.
+ * Null means one of: no rule exists anywhere in the uid, no OTHER package holds one, or this row
+ * has a rule and the others change nothing this backend enforces. The last two are deliberate - no
+ * neighbour then causes what the row gets wrong, and an all-or-nothing backend flattening the row's
+ * own rule is a different defect that needs different words.
  *
  * Every rule in the uid goes into the union, INCLUDING a neighbour's rule that blocks nothing.
  * iptables applies the Block All default only while `rulesForUid` is EMPTY, so an allow-everything
@@ -235,9 +231,9 @@ fun FirewallBackendType.enforcedVectorFor(
     pkg: NetworkPackage,
     context: BlockingContext,
 ): UidRuleAggregate? {
-    if (!blocksByUid()) return null
     val byPackage = context.uidRules[pkg.uid] ?: return null
-    var union = if (pkg.hasExplicitRule) pkg.ownVector else UidRuleAggregate()
+    val own = if (pkg.hasExplicitRule) pkg.ownVector else UidRuleAggregate()
+    var union = own
     var hasSibling = false
     for ((owner, vector) in byPackage) {
         if (owner == pkg.packageName) continue
@@ -245,8 +241,13 @@ fun FirewallBackendType.enforcedVectorFor(
         union = union union vector
     }
     if (!hasSibling) return null
-    return enforcedVector(union)
+    val enforced = enforcedVector(union)
+    return if (pkg.hasExplicitRule && enforced.effective() == enforcedVector(own).effective()) null else enforced
 }
+
+/** A screen-off block adds nothing to a uid already blocked on every network. */
+private fun UidRuleAggregate.effective(): UidRuleAggregate =
+    if (wifiBlocked && mobileBlocked && roamingBlocked) copy(backgroundBlocked = false) else this
 
 /**
  * Does this row already show [vector], so no correction is owed?
@@ -267,10 +268,9 @@ private fun FirewallBackendType.displayMatches(
     val iptables = this == FirewallBackendType.IPTABLES
     // Must match bindScreenOffToggle's blockedEverywhere for the sheet each backend gets.
     val backgroundVisible = when (this) {
-        FirewallBackendType.IPTABLES -> !(shown.wifiBlocked && shown.mobileBlocked)
-        FirewallBackendType.NETWORK_POLICY_MANAGER ->
+        FirewallBackendType.IPTABLES, FirewallBackendType.VPN -> !(shown.wifiBlocked && shown.mobileBlocked)
+        FirewallBackendType.NETWORK_POLICY_MANAGER, FirewallBackendType.CONNECTIVITY_MANAGER ->
             !(shown.wifiBlocked || shown.mobileBlocked || shown.roamingBlocked)
-        else -> false
     }
     return shown.wifiBlocked == vector.wifiBlocked &&
         shown.mobileBlocked == vector.mobileBlocked &&
@@ -291,7 +291,7 @@ private fun FirewallBackendType.displayMatches(
  * told that a switch which will work does nothing.
  *
  * [context] carries the two facts the backends compute per pass and the two settings that decide
- * how they are used; the package supplies its own rule state, which the per-package backends need.
+ * how they are used; the package supplies its own rule state.
  */
 fun FirewallBackendType?.unblockableReason(
     pkg: NetworkPackage,
@@ -302,7 +302,7 @@ fun FirewallBackendType?.unblockableReason(
 
     if (uid < 0) return UnblockableReason.UNKNOWN_UID
 
-    // A package-naming backend can only reach the user it runs in. Checked before the uid-range
+    // A package-naming backend decides only the user it runs in. Checked before the uid-range
     // test, because a work-profile row fails this whatever its appId is.
     if (!backend.reachesUser(pkg.userId, context.ownUserId)) {
         return UnblockableReason.OTHER_PROFILE_UNREACHABLE
@@ -314,17 +314,10 @@ fun FirewallBackendType?.unblockableReason(
 
     val inProtectedUid = uid in context.criticalOrVpnUids
 
-    if (inProtectedUid && !context.allowCritical) {
-        // The whole uid is skipped, but only by a backend whose verdict lands on a uid.
-        // ConnectivityManager and VPN name the package, so a neighbour is still commanded.
-        return if (backend.blocksByUid()) UnblockableReason.SHARED_WITH_PROTECTED_PACKAGE else null
-    }
+    if (inProtectedUid && !context.allowCritical) return UnblockableReason.SHARED_WITH_PROTECTED_PACKAGE
 
-    // A neighbour's rule governs this row on a uid-deciding backend whatever the default policy is,
-    // and whether or not this row has a rule of its own - `rulesForUid.any { }` never asks which
-    // package in the uid asked for the block. So this test comes BEFORE the Block All one, and is
-    // not skipped for a row with its own rule. Raised only when the union really differs from what
-    // the row paints; a uid whose rules match the painting is already telling the truth.
+    // Before the Block All test, and not skipped for a row with its own rule: a neighbour's rule
+    // governs this row either way. Raised only where the union differs from what the row paints.
     val enforced = backend.enforcedVectorFor(pkg, context)
     if (enforced != null) {
         return if (backend.displayMatches(pkg, enforced)) null

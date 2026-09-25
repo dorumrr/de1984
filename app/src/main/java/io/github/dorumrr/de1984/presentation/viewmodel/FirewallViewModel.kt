@@ -179,10 +179,8 @@ class FirewallViewModel(
         firewallRepository.getAllRules()
             .onEach { rules ->
                 // ENABLED rules only, grouped per uid, then the union of what they block - the
-                // exact shape both uid backends enforce. IptablesFirewallBackend.applyRules builds
-                // `rules.filter { it.enabled }.groupBy { it.uid }`, stops applying the Block All
-                // default to a uid the moment that map has an entry for it, and takes
-                // rulesForUid.any{} per network (plus a LAN pass and a screen-off pass). The union
+                // exact shape every backend enforces through uidBlockedNow, which stops applying the
+                // Block All default to a uid the moment that map has an entry for it. The union
                 // carries every flag so unblockableReason and asEnforcedBy can paint a rule-less
                 // sibling with the block that is REALLY on its uid, partial ones included.
                 val aggregates = rules.filter { it.enabled }
@@ -235,9 +233,8 @@ class FirewallViewModel(
     }
 
     /**
-     * The pair of facts every backend consults, mirroring
-     * IptablesFirewallBackend.applyRules (:409-423), its isUidExempted (:1266) and
-     * NetworkPolicyManagerFirewallBackend.isUidExempted (:855).
+     * The pair of facts every backend consults, mirroring each backend's protected-uid exemption
+     * and uidBlockedNow.
      *
      * Costs nothing extra: isSystemCritical is a set lookup, isVpnApp is already on the model - put
      * there by the same hasVpnService check the backends run - and hasExplicitRule is `rule != null`
@@ -1273,7 +1270,7 @@ class FirewallViewModel(
                 // A batch reaches rows that are ALREADY in the requested state - the sheet renders a
                 // mixed selection as unchecked, so one tap sends "block" to rows that are blocked
                 // already. Writing a first rule for those replaces the Block All default with an
-                // explicit rule, and the uid backends switch to rule-based the moment any rule
+                // explicit rule, and every backend switches to rule-based the moment any rule
                 // exists - silently ALLOWING the networks the new rule does not name. Skip them -
                 // but only rows whose state is their OWN: their rule, or a default no rule has
                 // touched. A rule-less row in a ruled uid displays its NEIGHBOURS' union

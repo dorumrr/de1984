@@ -16,6 +16,7 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
 import io.github.dorumrr.de1984.data.monitor.ScreenStateMonitor
+import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
@@ -450,7 +451,7 @@ class FirewallVpnService : VpnService() {
 
         AppLogger.d(TAG, "blockedAppsFor: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
 
-        val rulesMap = allRules.associateBy { "${it.packageName}:${it.userId}" }
+        val rulesByUid = allRules.filter { it.enabled }.groupBy { it.uid }
 
         AppLogger.d(TAG, "blockedAppsFor: loaded ${allRules.size} rules from database")
 
@@ -486,57 +487,21 @@ class FirewallVpnService : VpnService() {
             io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL
         )
 
-        // Pre-compute UIDs that contain critical packages (for UID-level exemption checks)
-        // Even though VPN backend operates per-package, Android's network permissions are UID-based
-        val uidsWithCritical = if (allowCritical) {
-            allPackages
-                .filter { io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName, it.uid / 100000) }
-                .map { it.uid }
-                .toSet()
-        } else {
-            emptySet()
-        }
+        val criticalOrVpnUids = allPackages
+            .filter { io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(it.packageName) || hasVpnService(it.packageName, it.uid / 100000) }
+            .map { it.uid }
+            .toSet()
 
-        for (appInfo in allPackages) {
-            val packageName = appInfo.packageName
-            val uid = appInfo.uid
-            val userId = uid / 100000
-
-            if (io.github.dorumrr.de1984.utils.Constants.App.isOwnApp(packageName)) {
+        // Android routes the whole uid of each added package into the tunnel, so a uid gets one verdict.
+        for ((uid, packagesInUid) in allPackages.groupBy { it.uid }) {
+            val protectedUid = uid in criticalOrVpnUids
+            if (protectedUid && !allowCritical) continue
+            if (!uidBlockedNow(rulesByUid[uid], isBlockAllDefault, protectedUid, perNetwork = true, networkType = networkType, screenOn = screenOn)) {
                 continue
             }
-
-            if (io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) && !allowCritical) {
-                continue
-            }
-
-            if (hasVpnService(packageName, userId) && !allowCritical) {
-                continue
-            }
-
-            val rule = rulesMap["$packageName:$userId"]
-
-            val shouldBlock = if (rule != null && rule.enabled) {
-                // NetworkType.NONE is decided in FirewallRule.isBlockedOn, which every backend shares.
-                when {
-                    !screenOn && rule.blockWhenBackground -> true
-                    else -> rule.isBlockedOn(networkType)
-                }
-            } else {
-                if (isBlockAllDefault && allowCritical && uidsWithCritical.contains(uid)) {
-                    val isSelfCritical = io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName, userId)
-                    if (!isSelfCritical) {
-                        AppLogger.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
-                    }
-                    false
-                } else {
-                    isBlockAllDefault
-                }
-            }
-
-            if (shouldBlock) {
-                blockedApps.add(packageName)
-            }
+            packagesInUid
+                .filterNot { io.github.dorumrr.de1984.utils.Constants.App.isOwnApp(it.packageName) }
+                .forEach { blockedApps.add(it.packageName) }
         }
 
         AppLogger.d(TAG, "blockedAppsFor: returning ${blockedApps.size} blocked apps")

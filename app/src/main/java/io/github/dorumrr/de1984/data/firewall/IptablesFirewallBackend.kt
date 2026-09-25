@@ -10,6 +10,7 @@ import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.utils.Constants
@@ -372,9 +373,7 @@ class IptablesFirewallBackend(
 
             val uidsToBlock = mutableSetOf<Int>()
 
-            // Group rules by UID to handle shared UIDs correctly
-            // Multiple apps can share the same UID (sharedUserId in manifest)
-            // For security, we use the most restrictive rule (block if ANY app with that UID should be blocked)
+            // Apps can share a uid (sharedUserId) and the chain matches the uid: one verdict per uid.
             val rulesByUid = rules.filter { it.enabled }.groupBy { it.uid }
 
             if (isBlockAllDefault) {
@@ -408,7 +407,6 @@ class IptablesFirewallBackend(
 
                 for (appInfo in allPackages) {
                     val uid = appInfo.uid
-                    val packageName = appInfo.packageName
 
                     // Never block UIDs that contain system-critical packages or VPN apps
                     // This prevents shared UID bypass (e.g., Gboard sharing UID with system package)
@@ -416,35 +414,11 @@ class IptablesFirewallBackend(
                         continue
                     }
 
-                    val rulesForUid = rulesByUid[uid]
-
-                    val shouldBlock = if (rulesForUid != null && rulesForUid.isNotEmpty()) {
-                        val blockDecision = rulesForUid.any { rule ->
-                            when {
-                                !screenOn && rule.blockWhenBackground -> true
-                                rule.isBlockedOn(networkType) -> true
-                                else -> false
-                            }
-                        }
-                        AppLogger.d(TAG, "  $packageName (UID $uid): has rule, shouldBlock=$blockDecision")
-                        blockDecision
-                    } else {
-                        // No rule - check if this UID contains ANY critical package with allowCritical enabled
-                        // When allowCritical is ON and no explicit rule exists, default to ALLOW for system stability
-                        // IMPORTANT: Check at UID level because we block by UID, not by package
-                        if (allowCritical && uidsWithCritical.contains(uid)) {
-                            val isSelfCritical = Constants.Firewall.isSystemCritical(packageName) || hasVpnService(packageName, uid / 100000)
-                            if (isSelfCritical) {
-                                AppLogger.d(TAG, "  $packageName (UID $uid): no rule, critical package → allowing")
-                            } else {
-                                AppLogger.d(TAG, "  $packageName (UID $uid): no rule, shares UID with critical package → allowing")
-                            }
-                            false
-                        } else {
-                            AppLogger.d(TAG, "  $packageName (UID $uid): no rule, blocking by default")
-                            true
-                        }
-                    }
+                    val shouldBlock = uidBlockedNow(
+                        rulesByUid[uid], isBlockAllDefault, protectedUid = uid in uidsWithCritical,
+                        perNetwork = true, networkType = networkType, screenOn = screenOn,
+                    )
+                    AppLogger.d(TAG, "  ${appInfo.packageName} (UID $uid): ${rulesByUid[uid]?.size ?: 0} rule(s), shouldBlock=$shouldBlock")
 
                     if (shouldBlock) {
                         uidsToBlock.add(uid)
@@ -472,13 +446,10 @@ class IptablesFirewallBackend(
                         continue
                     }
 
-                    val shouldBlock = rulesForUid.any { rule ->
-                        when {
-                            !screenOn && rule.blockWhenBackground -> true
-                            rule.isBlockedOn(networkType) -> true
-                            else -> false
-                        }
-                    }
+                    val shouldBlock = uidBlockedNow(
+                        rulesForUid, blockAllDefault = false, protectedUid = false,
+                        perNetwork = true, networkType = networkType, screenOn = screenOn,
+                    )
 
                     if (shouldBlock) {
                         uidsToBlock.add(uid)

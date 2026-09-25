@@ -62,7 +62,7 @@ If a manually selected backend becomes unavailable (e.g., Shizuku stops, user re
 
 When backend availability changes (e.g., user grants Shizuku, device gets rooted, Shizuku crashes, SuperUser permission is revoked, etc), the app must switch backends seamlessly without creating security breaches.
 
-**Critical Security Rule**: When switching backends, there must be NO gap where apps are unblocked. The transition must be atomic and as fail-safe as possible.
+**Critical Security Rule**: When switching backends, there must be NO gap where apps are unblocked. The transition must be atomic and as fail-safe as possible. VPN and ConnectivityManager decide only apps in De1984's own profile, so while either runs, the rules of apps in other profiles are not enforced.
 
 **Switching scenarios**:
 
@@ -177,7 +177,7 @@ The app uses adaptive health check intervals to balance responsiveness and batte
 
 ### Screen-off switch (every backend)
 
-Each app has an "Allow while screen off" switch. Turned off, the app is blocked whenever the screen is off, by the same mechanism and with the same limits as that backend's other blocks (apps a backend leaves open stay open, and NetworkPolicyManager may block metered background data only; see each backend's section). While the screen is on the switch adds no block. It is De1984's switch, not Android's per-app "Background data" setting; on NetworkPolicyManager, though, a block is a per-UID policy, and its metered-only fallback is the same value that setting writes. The app sheet shows it unless the app is fully blocked, protected or refused. On iptables and NetworkPolicyManager, which block by UID, one app's setting applies to its whole UID, and the other apps in that UID show the shared-UID note.
+Each app has an "Allow while screen off" switch. Turned off, the app is blocked whenever the screen is off, by the same mechanism and with the same limits as that backend's other blocks (apps a backend leaves open stay open, and NetworkPolicyManager may block metered background data only; see each backend's section). While the screen is on the switch adds no block. It is De1984's switch, not Android's per-app "Background data" setting; on NetworkPolicyManager, though, a block is a per-UID policy, and its metered-only fallback is the same value that setting writes. The app sheet shows it unless the app is fully blocked, protected or refused. Every backend blocks per UID, so one app's setting applies to its whole UID (see "Shared UIDs" in section 2).
 
 ---
 
@@ -194,7 +194,7 @@ Each app has an "Allow while screen off" switch. Turned off, the app is blocked 
 
 **How it works:**
 
-Apps that should be blocked are added to the VPN tunnel. Their traffic goes through the VPN where packets are dropped. Apps that should be allowed are NOT added to the VPN, so they bypass it completely and use the normal network connection.
+Apps that should be blocked are added to the VPN tunnel. Their traffic goes through the VPN where packets are dropped. Apps that should be allowed are NOT added to the VPN, so they bypass it completely and use the normal network connection. Android routes the whole UID of an added app into the tunnel, so De1984 decides per UID: it adds every app of a blocked UID and none of an allowed one (see "Shared UIDs" in section 2).
 
 **Critical rule:** If zero apps need blocking, the VPN must NOT be started at all. If we fiddle with switches and we reach to all Allowed, same thing, no need to have firewall up. Android's default behavior is to route ALL apps through the VPN if no apps are explicitly added (blocked) and starting a VPN with zero apps would accidentally block everything.
 
@@ -205,7 +205,7 @@ Apps that should be blocked are added to the VPN tunnel. Their traffic goes thro
 Both modes below decide only apps in De1984's own profile (see Characteristics).
 
 **Block All mode:**
-- Apps without rules: Blocked (added to VPN, traffic dropped) — except system-critical packages and apps that declare a VPN service, which are never added while Settings > "Allow Firewall Critical Packages" is OFF (the default). With that setting ON they still default to allowed when they have no rule, and so does any app sharing their UID.
+- Apps without rules: Blocked (added to VPN, traffic dropped)
 - Apps with explicit "allow" rule for current network: Allowed (bypass VPN)
 - Apps with explicit "block" rule for current network: Blocked (added to VPN)
 
@@ -240,7 +240,7 @@ When switching to Mobile data, Firefox becomes blocked and Telegram becomes allo
 
 **How it works:**
 
-Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app UID. Creates firewall rules that drop all IPv4 and IPv6 packets for blocked app UIDs. Multiple apps can share the same UID - if any app with that UID should be blocked, the entire UID gets blocked. (explained again later in this document)
+Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app UID. Creates firewall rules that drop all IPv4 and IPv6 packets for blocked app UIDs. Apps that share a UID share one verdict (see "Shared UIDs" below).
 
 **Switch dependencies:**
 - **Roaming requires Mobile**: Same as VPN backend. If user enables Roaming block while Mobile is allowed, Mobile must also be blocked. If user disables Mobile block while Roaming is blocked, Roaming must also be allowed.
@@ -260,15 +260,17 @@ Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app 
 
 When switching networks, recalculates which UIDs should be blocked based on per-network rules. Removes firewall rules for UIDs that should no longer be blocked. Adds firewall rules for UIDs that should now be blocked. Uses diff-based updates for efficiency.
 
-**Shared UIDs:**
+**Shared UIDs (every backend):**
 
-Multiple apps can share the same UID. The firewall handles shared UIDs as follows:
+Multiple apps can share the same UID, and Android enforces every backend's block per UID: iptables and NetworkPolicyManager act on the UID itself, and a ConnectivityManager command or a VPN tunnel entry names one app but Android applies it to that app's whole UID. So each UID gets one verdict, decided the same way on every backend. Each backend's Block All and Allow All bullets describe an ordinary app alone in its UID; a protected app, and every app that shares its UID, follow this section instead. It applies only to UIDs a backend decides: VPN and ConnectivityManager decide only apps in De1984's own profile, and ConnectivityManager and NetworkPolicyManager never act on a system UID (see their sections).
 
-- **System-critical and VPN app exemption** (applies while Settings > "Allow Firewall Critical Packages" is OFF, the default): if ANY app with a UID is system-critical or a VPN app, the ENTIRE UID is exempted from blocking. An app whose details cannot be read is not recognised as a VPN app, so its UID is not exempted. This prevents bypass vulnerabilities where non-critical apps share UIDs with system packages. When that setting is ON the exemption is dropped — explicit rules on such UIDs are applied — and only UIDs with no rule at all are still left allowed in Block All mode.
+- **System-critical and VPN app exemption** (applies while Settings > "Allow Firewall Critical Packages" is OFF, the default): if ANY app with a UID is system-critical or a VPN app, the ENTIRE UID is exempted from blocking. An app whose details cannot be read is not recognised as a VPN app, so its UID is not exempted. Blocking such a UID would cut the protected app too; the price is that an ordinary app sharing it cannot be blocked either. When that setting is ON the exemption is dropped — explicit rules on such UIDs are applied — and only UIDs with no rule at all are still left allowed in Block All mode.
 
-- **Block All mode**: For non-exempted UIDs, the UID is blocked if ANY app with that UID should be blocked (no explicit allow rule).
+- **A UID with at least one enabled rule**: its rules decide for every app in it, and the Block All default no longer applies. The UID is blocked wherever ANY of its rules blocks: per network on iptables and VPN, on every network on ConnectivityManager and NetworkPolicyManager, and while the screen is off when a rule's screen-off switch is off. An app with no rule of its own follows its neighbours' rules, in both modes.
 
-- **Allow All mode**: For non-exempted UIDs, the UID is blocked if ANY app with that UID has an explicit block rule for the current network.
+- **A UID with no rule**: the default policy decides. Blocked in Block All mode, allowed in Allow All mode. The exception is a protected UID with the setting ON, which Block All leaves allowed (see the first bullet).
+
+An app whose own switches differ from what a neighbour's rule makes its UID do shows the shared-UID note in its sheet.
 
 **Example (Block All, WiFi):**
 - Chrome (UID 10100, no rule) → Blocked
@@ -291,7 +293,7 @@ When switching to Mobile, Firefox becomes blocked and Telegram becomes allowed. 
 
 **How it works:**
 
-Uses Android system commands to enable or disable networking for entire apps. This is all-or-nothing: an app is either allowed on ALL networks or blocked on ALL networks. Cannot block an app on WiFi while allowing it on Mobile.
+Uses Android system commands to enable or disable networking for an app. Android applies each command to the app's whole UID, and to that app in every profile (measured on Android 15 and 16), so De1984 sends the same command to every app of a UID and names only apps in its own profile (see "Shared UIDs" in section 2). This is all-or-nothing: an app is either allowed on ALL networks or blocked on ALL networks. Cannot block an app on WiFi while allowing it on Mobile.
 
 **Why no granular control:**
 
@@ -304,6 +306,8 @@ The ConnectivityManager firewall chain API operates at the app level, not the ne
   - **Mixed** (some networks blocked, some allowed): Treat as **fully blocked** — `migrateRulesToSimple` sets all three flags to `true` whenever any one of them is blocked. Migration never converts a rule to fully allowed.
   - **Fully blocked** (all 3 networks blocked): Keep as fully blocked
   - **Fully allowed** (all 3 networks allowed): Keep as fully allowed
+
+Both modes below decide only apps in De1984's own profile (see "How it works").
 
 **Block All mode:**
 - Apps without rules: Blocked on all networks
@@ -347,7 +351,7 @@ Android packs a UID as `userId * 100000 + appId`, and refuses a firewall policy 
 
 **How it works:**
 
-Reaches `INetworkPolicyManager` over the Shizuku binder by reflection and calls `setUidPolicy(uid, policy)`. Blocking is per UID, not per package, so apps sharing a UID share a verdict.
+Reaches `INetworkPolicyManager` over the Shizuku binder by reflection and calls `setUidPolicy(uid, policy)`. Blocking is per UID, not per package, so apps sharing a UID share a verdict (see "Shared UIDs" in section 2).
 
 **The blocking value is decided at runtime, not hard-coded:**
 

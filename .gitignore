@@ -94,8 +94,9 @@ screenshots/
 *.jks
 *.keystore
 release-keystore.jks
-release-keystore.jks.backup
+release-keystore.jks.backup*
 
 keystore.properties
+keystore.properties.backup*
 # Local, one-off working output (audits, mockups, reports)
 artifacts/

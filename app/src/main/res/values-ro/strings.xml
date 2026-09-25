@@ -603,7 +603,7 @@
     <string name="uninstall_dialog_button_uninstall">Dezinstalează</string>
 
     <string name="uninstall_dialog_title_important">⚠️ Avertisment: Pachet important</string>
-    <string name="uninstall_dialog_message_important">Dezinstalarea %1$s poate cauza oprirea funcționării unor capabilități majore ale sistemului.\n\n%2$sAceasta poate necesita resetare la fabrică pentru a restabili funcționalitatea.\n\Confirmi?</string>
+    <string name="uninstall_dialog_message_important">Dezinstalarea %1$s poate cauza oprirea funcționării unor capabilități majore ale sistemului.\n\n%2$sAceasta poate necesita resetare la fabrică pentru a restabili funcționalitatea.\n\nConfirmi?</string>
 
     <string name="uninstall_dialog_title_optional">Dezinstalezi %s?</string>
     <string name="uninstall_dialog_message_optional_with_affects">Aceasta poate afecta:\n%s\n\nConfirmi?</string>

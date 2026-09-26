@@ -538,6 +538,8 @@
     <string name="firewall_system_uid_info">⚠️ 这是 Android 系统本身的一部分，而不是普通应用。Shizuku 无法拦截它 — Android 拒绝对自身组件应用防火墙规则。使用 Root 可以，但如果其用户 ID 与受保护的应用（例如设置）共用，则还需在设置中启用“允许防火墙关键软件包”，并且拦截也会影响这些应用。</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 无法确定此应用在其配置文件中的用户 ID，因此无法对其应用任何防火墙规则。</string>
     <string name="firewall_other_profile_info">⚠️ 此应用位于另一个用户配置文件中。当前防火墙模式按 De1984 所在配置文件内的应用名称工作，因此无法触及它。Root 权限按用户 ID 拦截，可以覆盖所有配置文件。</string>
+    <string name="firewall_other_profile_follows_info">⚠️ 此应用位于另一个用户配置文件中。当前防火墙模式会在所有配置文件中同时拦截同一应用，因此此副本跟随 De1984 所在配置文件中同一应用的开关。Root 权限可以分别拦截每个配置文件。</string>
+    <string name="firewall_other_profile_follows_subtitle">在 De1984 所在配置文件中设置</string>
     <string name="firewall_shared_uid_info">⚠️ 此应用与一个受保护的应用共用同一个用户 ID，而当前防火墙模式按用户 ID 拦截，而不是按应用拦截。拦截它同时会切断受保护的应用，因此 De1984 不会触碰整个用户 ID。若仍要拦截，请先在设置中启用“允许防火墙关键软件包”，然后打开此应用的开关。</string>
     <string name="firewall_no_rule_protected_uid_info">⚠️ De1984 保护此应用的用户 ID，因此不会对它套用“全部拦截”的默认策略 — 否则可能切断受保护的系统应用。启用“允许防火墙关键软件包”后仍可拦截它：打开此应用的开关即可。</string>
     <string name="firewall_sibling_rule_info">⚠️ 另一个应用与此应用共用同一用户 ID，并且有自己的防火墙规则。当前防火墙模式按用户 ID 阻止，因此该规则同样适用于此应用，包括屏幕关闭时的任何阻止。此窗口中的开关是此应用自己的设置。</string>

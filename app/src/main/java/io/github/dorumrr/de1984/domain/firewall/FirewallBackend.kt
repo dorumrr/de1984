@@ -73,6 +73,12 @@ enum class FirewallBackendType {
         IPTABLES, NETWORK_POLICY_MANAGER -> true
         CONNECTIVITY_MANAGER, VPN -> userId == ownUserId
     }
+
+    /** Whether the verdict this backend gives an app in De1984's own profile also reaches that app's copy in every other profile. */
+    fun ownProfileVerdictReachesEveryProfile(): Boolean = when (this) {
+        CONNECTIVITY_MANAGER -> true
+        IPTABLES, NETWORK_POLICY_MANAGER, VPN -> false
+    }
 }
 
 /**
@@ -155,9 +161,15 @@ enum class UnblockableReason(
      * so it decides only apps in the profile De1984 runs in, never by this row's own rule.
      *
      * FirewallVpnService and ConnectivityManagerFirewallBackend both build their app list from
-     * De1984's own profile only; a ConnectivityManager command for the same package still reaches this copy.
+     * De1984's own profile only. Under ConnectivityManager this is raised only for an app absent there.
      */
     OTHER_PROFILE_UNREACHABLE(fixableHere = false),
+
+    /**
+     * As [OTHER_PROFILE_UNREACHABLE], but the same app is in De1984's profile and the backend's
+     * command for it reaches this copy too, so [asEnforcedBy] paints that copy's verdict here.
+     */
+    OTHER_PROFILE_FOLLOWS_OWN_PROFILE(fixableHere = false),
 
     /**
      * "Allow Firewall Critical Packages" is ON, so the uid is no longer exempt - but under the
@@ -212,6 +224,8 @@ data class BlockingContext(
     val blockAllDefault: Boolean = false,
     /** The user De1984 itself runs in. A package-naming backend decides only this one. */
     val ownUserId: Int = 0,
+    /** The unmasked rows of [ownUserId], by package name: the rows whose verdict another profile's copy may follow. */
+    val ownProfilePackages: Map<String, NetworkPackage> = emptyMap(),
 )
 
 /**
@@ -330,7 +344,12 @@ fun FirewallBackendType?.unblockableReason(
     // A package-naming backend decides only the user it runs in. Checked before the uid-range
     // test, because a work-profile row fails this whatever its appId is.
     if (!backend.reachesUser(pkg.userId, context.ownUserId)) {
-        return UnblockableReason.OTHER_PROFILE_UNREACHABLE
+        // Only a copy the backend can act on is followed; a system, unknown or protected twin is blocked in no profile.
+        val ownCopy = context.ownProfilePackages[pkg.packageName]
+        val followsOwnCopy = ownCopy != null && backend.ownProfileVerdictReachesEveryProfile() &&
+            backend.unblockableReason(ownCopy, context).let { it == null || it.fixableHere }
+        return if (followsOwnCopy) UnblockableReason.OTHER_PROFILE_FOLLOWS_OWN_PROFILE
+        else UnblockableReason.OTHER_PROFILE_UNREACHABLE
     }
 
     if (!backend.canBlockSystemUids() && !Constants.Firewall.isFirewallableAppUid(uid)) {
@@ -419,6 +438,23 @@ fun NetworkPackage.asEnforcedBy(
                 // blocked and a guard must not think otherwise.
                 lanBlocked = vector.lanBlocked,
                 backgroundBlocked = vector.backgroundBlocked,
+            )
+        }
+    }
+
+    // savedRule stays null: this row's own rule is never enforced, and its dead switches show the copy's verdict.
+    if (reason == UnblockableReason.OTHER_PROFILE_FOLLOWS_OWN_PROFILE) {
+        val enforced = context.ownProfilePackages[packageName]?.asEnforcedBy(backend, context)
+        if (enforced != null) {
+            return copy(
+                savedRule = null,
+                isNetworkBlocked = enforced.wifiBlocked || enforced.mobileBlocked,
+                wifiBlocked = enforced.wifiBlocked,
+                mobileBlocked = enforced.mobileBlocked,
+                roamingBlocked = enforced.roamingBlocked,
+                roamingBlockedUnderived = enforced.roamingBlockedUnderived,
+                lanBlocked = enforced.lanBlocked,
+                backgroundBlocked = enforced.backgroundBlocked,
             )
         }
     }

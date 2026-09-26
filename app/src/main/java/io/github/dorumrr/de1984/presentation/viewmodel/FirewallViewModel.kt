@@ -258,6 +258,7 @@ class FirewallViewModel(
             Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
             Constants.Settings.DEFAULT_FIREWALL_POLICY
         ) == Constants.Settings.POLICY_BLOCK_ALL)
+        val ownUserId = io.github.dorumrr.de1984.utils.Constants.Firewall.ownUserId()
 
         return BlockingContext(
             criticalOrVpnUids = packages
@@ -267,7 +268,8 @@ class FirewallViewModel(
             uidRules = cachedUidRules,
             allowCritical = allowCritical,
             blockAllDefault = blockAllDefault,
-            ownUserId = io.github.dorumrr.de1984.utils.Constants.Firewall.ownUserId()
+            ownUserId = ownUserId,
+            ownProfilePackages = packages.filter { it.userId == ownUserId }.associateBy { it.packageName }
         )
     }
 

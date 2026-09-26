@@ -1023,7 +1023,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
             val canToggle = (!currentPkg.isSystemCritical || allowCriticalNow) &&
                 (!currentPkg.isVpnApp || allowCriticalNow) && !controlsRefused
-            val refusedText = getString(R.string.firewall_backend_cannot_block_uid)
+            val refusedText = getString(refusedSubtitle(unblockableReason))
 
             listOfNotNull(
                 binding.wifiToggle,
@@ -1078,6 +1078,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     when (reason) {
                         UnblockableReason.UNKNOWN_UID -> R.string.firewall_unknown_uid_info
                         UnblockableReason.OTHER_PROFILE_UNREACHABLE -> R.string.firewall_other_profile_info
+                        UnblockableReason.OTHER_PROFILE_FOLLOWS_OWN_PROFILE -> R.string.firewall_other_profile_follows_info
                         UnblockableReason.PLATFORM_REFUSES_SYSTEM_UID -> R.string.firewall_system_uid_info
                         UnblockableReason.SHARED_WITH_PROTECTED_PACKAGE -> R.string.firewall_shared_uid_info
                         UnblockableReason.NO_RULE_IN_PROTECTED_UID -> R.string.firewall_no_rule_protected_uid_info
@@ -1396,6 +1397,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     when (reason) {
                         UnblockableReason.UNKNOWN_UID -> R.string.firewall_unknown_uid_info
                         UnblockableReason.OTHER_PROFILE_UNREACHABLE -> R.string.firewall_other_profile_info
+                        UnblockableReason.OTHER_PROFILE_FOLLOWS_OWN_PROFILE -> R.string.firewall_other_profile_follows_info
                         UnblockableReason.PLATFORM_REFUSES_SYSTEM_UID -> R.string.firewall_system_uid_info
                         UnblockableReason.SHARED_WITH_PROTECTED_PACKAGE -> R.string.firewall_shared_uid_info
                         UnblockableReason.NO_RULE_IN_PROTECTED_UID -> R.string.firewall_no_rule_protected_uid_info
@@ -1426,7 +1428,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     !controlsRefused
             binding.internetToggle.networkTypeSubtitle.visibility = View.VISIBLE
             binding.internetToggle.networkTypeSubtitle.text = if (controlsRefused) {
-                getString(R.string.firewall_backend_cannot_block_uid)
+                getString(refusedSubtitle(unblockableReason))
             } else {
                 getString(R.string.firewall_internet_access_subtitle)
             }
@@ -1529,6 +1531,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             // This ensures content scrolls first before the sheet starts dragging
         }
     }
+
+    private fun refusedSubtitle(reason: UnblockableReason?): Int =
+        if (reason == UnblockableReason.OTHER_PROFILE_FOLLOWS_OWN_PROFILE) R.string.firewall_other_profile_follows_subtitle
+        else R.string.firewall_backend_cannot_block_uid
 
     // The only switch enabled unconditionally, so hiding it is what stops it writing a rule the
     // backend will skip. One copy for both sheets: they must hide and show it the same way.

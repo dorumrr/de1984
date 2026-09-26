@@ -612,16 +612,6 @@ class FirewallManager(
             val isGranular = newBackend.supportsGranularControl()
             val needsMigration = wasGranular && !isGranular
 
-            if (needsMigration) {
-                AppLogger.d(TAG, "Backend transition: granular ($oldBackendType) → simple ($newBackendType), migrating rules...")
-                migrateRulesToSimple()
-            } else if (oldBackend != null) {
-                AppLogger.d(
-                    TAG,
-                    "Backend transition: $oldBackendType → $newBackendType, no migration needed (both granular or both simple)"
-                )
-            }
-
             // ATOMIC SWITCH: Start new backend FIRST, then stop old backend
             // This prevents security gap where apps are unblocked during transition
             AppLogger.d(TAG, "Starting new backend ($newBackendType) BEFORE stopping old backend...")
@@ -690,6 +680,18 @@ class FirewallManager(
                     )
                 }
                 return Result.failure(error)
+            }
+
+            // Not before the new backend enforces: the rewrite cannot be undone, and every failure above keeps the old one.
+            // Not after stopMonitoring(): this can run inside the health job, which that call cancels.
+            if (needsMigration) {
+                AppLogger.d(TAG, "Backend transition: granular ($oldBackendType) → simple ($newBackendType), migrating rules...")
+                migrateRulesToSimple()
+            } else if (oldBackend != null) {
+                AppLogger.d(
+                    TAG,
+                    "Backend transition: $oldBackendType → $newBackendType, no migration needed (both granular or both simple)"
+                )
             }
 
             AppLogger.d(TAG, "New backend ($newBackendType) is active, now stopping old backend ($oldBackendType)...")

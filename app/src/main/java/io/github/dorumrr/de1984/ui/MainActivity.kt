@@ -729,11 +729,7 @@ class MainActivity : AppCompatActivity() {
             FirewallHealthAction.RETRY -> {
                 val prepareIntent = firewallViewModel.startFirewall()
                 if (prepareIntent != null) {
-                    // vpnPermissionContext is sticky and is never reset, so a previous "Enable VPN"
-                    // tap would otherwise send this result down the VPN-fallback branch and the
-                    // retry would silently never happen.
-                    vpnPermissionContext = VpnPermissionContext.FIREWALL_START
-                    vpnPermissionLauncher.launch(prepareIntent)
+                    launchVpnConsent(prepareIntent, VpnPermissionContext.FIREWALL_START)
                 }
             }
 
@@ -769,11 +765,17 @@ class MainActivity : AppCompatActivity() {
         updateFirewallBadges()
     }
 
+    // The result is routed by this context, so every launch must name its own.
+    private fun launchVpnConsent(intent: Intent, context: VpnPermissionContext) {
+        vpnPermissionContext = context
+        vpnPermissionLauncher.launch(intent)
+    }
+
     private fun onFirewallToggleChanged(enabled: Boolean) {
         if (enabled) {
             val prepareIntent = firewallViewModel.startFirewall()
             if (prepareIntent != null) {
-                vpnPermissionLauncher.launch(prepareIntent)
+                launchVpnConsent(prepareIntent, VpnPermissionContext.FIREWALL_START)
             }
         } else {
             showFirewallStopDialog()
@@ -789,7 +791,7 @@ class MainActivity : AppCompatActivity() {
             onConfirm = {
                 val prepareIntent = firewallViewModel.startFirewall()
                 if (prepareIntent != null) {
-                    vpnPermissionLauncher.launch(prepareIntent)
+                    launchVpnConsent(prepareIntent, VpnPermissionContext.FIREWALL_START)
                 }
             },
             cancelButtonText = getString(R.string.dialog_firewall_start_skip)
@@ -872,8 +874,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (prepareIntent != null) {
-            vpnPermissionContext = VpnPermissionContext.VPN_FALLBACK
-            vpnPermissionLauncher.launch(prepareIntent)
+            launchVpnConsent(prepareIntent, VpnPermissionContext.VPN_FALLBACK)
         } else {
             startVpnFallbackAfterPermission()
         }
@@ -906,8 +907,7 @@ class MainActivity : AppCompatActivity() {
 
         if (prepareIntent != null) {
             AppLogger.d(TAG, "VPN permission not granted, requesting...")
-            vpnPermissionContext = VpnPermissionContext.BOOT_FAILURE_RECOVERY
-            vpnPermissionLauncher.launch(prepareIntent)
+            launchVpnConsent(prepareIntent, VpnPermissionContext.BOOT_FAILURE_RECOVERY)
         } else {
             AppLogger.d(TAG, "VPN permission already granted, starting firewall...")
             startFirewallAfterBootFailure()

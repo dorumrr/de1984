@@ -381,6 +381,18 @@ class FirewallManager(
             startStopMutex.withLock { startFirewallInternal(mode) }
         }
 
+    /** False once the user stopped the firewall or turned it off. */
+    fun isMeantToBeOn(): Boolean =
+        _firewallState.value !is FirewallState.Stopped &&
+            context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
+
+    /** Checks [isMeantToBeOn] under the start/stop lock, so a stop already running wins. Null when it no longer holds. */
+    suspend fun startFirewallIfMeantToBeOn(): Result<FirewallBackendType>? =
+        withContext(Dispatchers.IO) {
+            startStopMutex.withLock { if (isMeantToBeOn()) startFirewallInternal(getCurrentMode()) else null }
+        }
+
     /**
      * Internal start method without mutex (for callers that already hold the lock).
      *

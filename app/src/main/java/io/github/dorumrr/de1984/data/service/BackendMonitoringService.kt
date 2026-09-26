@@ -25,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
@@ -43,7 +44,7 @@ import kotlinx.coroutines.launch
  * - Automatically attempts backend switch when Shizuku becomes available
  * - Provides manual retry option via notification action button
  * - Shows toast and updates notification on success/failure
- * - Stops itself after successful backend switch or timeout
+ * - Stops itself after a successful switch, a timeout, or once the firewall is turned off
  */
 class BackendMonitoringService : Service() {
 
@@ -153,9 +154,10 @@ class BackendMonitoringService : Service() {
             }
         }
 
+        // The state as well as the backend: a stop from the tile writes the user's wish only after it returns.
         backendMonitoringJob = serviceScope.launch {
-            firewallManager.activeBackendType.collect { backendType ->
-                AppLogger.d(TAG, "Active backend changed: $backendType")
+            combine(firewallManager.activeBackendType, firewallManager.firewallState) { backendType, _ -> backendType }.collect { backendType ->
+                AppLogger.d(TAG, "Firewall changed: backend=$backendType")
 
                 if (!isAttemptingSwitch) {
                     if (!shouldContinueMonitoring()) {
@@ -176,15 +178,13 @@ class BackendMonitoringService : Service() {
     private fun shouldContinueMonitoring(): Boolean {
         val currentMode = firewallManager.getCurrentMode()
         val activeBackend = firewallManager.activeBackendType.value
+        val firewallOff = !firewallManager.isMeantToBeOn()
 
-        // Continue monitoring if:
-        // 1. Mode is AUTO (not manually selected VPN)
-        // 2. Backend is VPN (waiting for better backend) OR null (switching backends)
-        // Note: null backend means atomic switch in progress - don't stop during switch!
-        val shouldContinue = currentMode == FirewallMode.AUTO &&
+        // A null backend while the firewall is still on is a switch in progress, which the monitor must outlive.
+        val shouldContinue = !firewallOff && currentMode == FirewallMode.AUTO &&
             (activeBackend == FirewallBackendType.VPN || activeBackend == null)
 
-        AppLogger.d(TAG, "shouldContinueMonitoring: mode=$currentMode, backend=$activeBackend, result=$shouldContinue")
+        AppLogger.d(TAG, "shouldContinueMonitoring: mode=$currentMode, backend=$activeBackend, firewallOff=$firewallOff, result=$shouldContinue")
         return shouldContinue
     }
 
@@ -204,14 +204,26 @@ class BackendMonitoringService : Service() {
             return
         }
 
+        if (!shouldContinueMonitoring()) {
+            AppLogger.d(TAG, "Firewall is off or no longer waiting on VPN - not starting it")
+            stopSelf()
+            return
+        }
+
         isAttemptingSwitch = true
         AppLogger.d(TAG, "Attempting backend switch...")
 
         updateSwitchingNotification()
 
         try {
-            val result = firewallManager.startFirewall()
-            
+            val result = firewallManager.startFirewallIfMeantToBeOn()
+            if (result == null) {
+                AppLogger.d(TAG, "Firewall was turned off while the switch waited - not starting it")
+                notificationManager.cancel(Constants.BackendMonitoring.NOTIFICATION_ID)
+                stopSelf()
+                return
+            }
+
             result.onSuccess { backendType ->
                 AppLogger.d(TAG, "Backend switch result: $backendType")
                 

@@ -726,7 +726,7 @@ Notifications inform users about firewall state changes and issues.
    - Message: "Firewall using VPN. Will switch to iptables when Shizuku is ready."
    - Action: "Retry Now" (attempts backend switch)
    - Dismissible: Yes
-   - Auto-stops after 5 minutes or when Shizuku becomes available
+   - Stops itself after a successful switch, after 10 minutes if Shizuku is not installed, or once the firewall is turned off
 
 4. **Silent Notifications** (no sound/vibration):
    - Backend switch success: "Firewall switched to [backend]"

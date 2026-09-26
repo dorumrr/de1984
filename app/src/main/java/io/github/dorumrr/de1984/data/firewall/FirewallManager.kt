@@ -1514,7 +1514,25 @@ class FirewallManager(
      *   stored preference: a manual mode whose backend is gone makes it fall back to AUTO. Carried
      *   all the way to VpnPermissionActivity so that fallback is not recomputed and lost.
      */
+    /** A background restore that threw before [startFirewall] could report; silent while a backend enforces. */
+    suspend fun reportStartFailedFromBackground(error: Throwable) = withContext(Dispatchers.IO) {
+        startStopMutex.withLock {
+            if (currentBackend?.isActive() != true) {
+                reportStartFailure(
+                    reason = FirewallHealth.Down.Reason.START_FAILED,
+                    backend = _activeBackendType.value,
+                    stateMessage = "Failed to start firewall: ${error.message}"
+                )
+            }
+        }
+    }
+
     fun reportVpnPermissionRequiredFromBackground(resolvedMode: FirewallMode) {
+        // Another path may have started a backend since the caller planned; that one is protecting.
+        if (isActive()) {
+            AppLogger.d(TAG, "VPN permission report skipped - ${activeBackendType.value} is already enforcing")
+            return
+        }
         AppLogger.w(TAG, "Widget/tile start needs VPN permission (mode=$resolvedMode) - a receiver cannot open the dialog, notifying instead")
         reportFirewallDown(
             reason = FirewallHealth.Down.Reason.VPN_PERMISSION_REQUIRED,

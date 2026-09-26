@@ -2,7 +2,6 @@ package io.github.dorumrr.de1984.ui
 
 import android.app.Activity
 import android.content.Intent
-import android.net.VpnService
 import android.os.Bundle
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
@@ -30,15 +29,16 @@ class VpnPermissionActivity : Activity() {
         
         window?.setBackgroundDrawableResource(android.R.color.transparent)
         
-        val prepareIntent = VpnService.prepare(this)
-        AppLogger.d(TAG, "VpnService.prepare() returned: ${if (prepareIntent == null) "null (permission granted)" else "Intent (need permission)"}")
+        // Null while another VPN is up, so the start below reports the conflict instead of taking its slot.
+        val prepareIntent = (application as De1984Application).dependencies.firewallManager.vpnConsentIntent()
+        AppLogger.d(TAG, "Consent dialog needed: ${prepareIntent != null}")
         
         if (prepareIntent != null) {
             AppLogger.d(TAG, "🔐 Requesting VPN permission via system dialog...")
             @Suppress("DEPRECATION")
             startActivityForResult(prepareIntent, REQUEST_VPN_PERMISSION)
         } else {
-            AppLogger.d(TAG, "✅ VPN permission already granted, starting firewall silently...")
+            AppLogger.d(TAG, "No consent dialog (granted, or another VPN is up) - starting firewall")
             startFirewallAndFinish()
         }
     }

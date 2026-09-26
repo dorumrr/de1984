@@ -1,19 +1,14 @@
 package io.github.dorumrr.de1984.data.receiver
 
 import io.github.dorumrr.de1984.utils.AppLogger
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import io.github.dorumrr.de1984.De1984Application
-import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.service.BackendMonitoringService
 import io.github.dorumrr.de1984.data.service.PackageMonitoringService
@@ -21,7 +16,6 @@ import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.data.worker.BootWorker
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
-import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -142,8 +136,22 @@ class BootReceiver : BroadcastReceiver() {
 
                             kotlinx.coroutines.delay(500)
 
-                            AppLogger.d(TAG, "🚀 Starting firewall after $trigger...")
-                            val result = firewallManager.startFirewall()
+                            val persistedMode = firewallManager.getCurrentMode()
+                            val plan = firewallManager.computeStartPlan(persistedMode).getOrNull()
+                            val mode = plan?.mode ?: persistedMode
+                            // A receiver cannot open the consent dialog; the notification's tap can. Null while
+                            // another VPN is up, so a conflict still reaches startFirewall and is reported there.
+                            val needsVpnConsent = plan?.selectedBackendType == FirewallBackendType.VPN &&
+                                firewallManager.vpnConsentIntent() != null
+
+                            val result: Result<FirewallBackendType> = if (needsVpnConsent) {
+                                AppLogger.w(TAG, "🔐 VPN permission required after $trigger - notifying instead of starting")
+                                firewallManager.reportVpnPermissionRequiredFromBackground(mode)
+                                Result.failure(IllegalStateException("VPN permission required"))
+                            } else {
+                                AppLogger.d(TAG, "🚀 Starting firewall after $trigger (mode=$mode)...")
+                                firewallManager.startFirewall(mode)
+                            }
                             result.onSuccess { backendType ->
                                 AppLogger.d(TAG, "✅ FIREWALL RESTORED SUCCESSFULLY | Trigger: $trigger | Backend: $backendType")
 
@@ -220,8 +228,7 @@ class BootReceiver : BroadcastReceiver() {
                                 } catch (e: Exception) {
                                     AppLogger.e(TAG, "Failed to lift boot protection block", e)
                                 }
-
-                                showBootFailureNotification(context)
+                                // No notification here: FirewallManager already reported this failure with its cause.
                             }
                         } catch (e: kotlinx.coroutines.CancellationException) {
                             // Not a failure. Swallowing it here would log a boot-restore error and
@@ -241,7 +248,11 @@ class BootReceiver : BroadcastReceiver() {
                             } catch (lift: Exception) {
                                 AppLogger.e(TAG, "Failed to lift boot protection block after a throw", lift)
                             }
-                            showBootFailureNotification(context)
+                            try {
+                                firewallManager.reportStartFailedFromBackground(e)
+                            } catch (report: Exception) {
+                                AppLogger.e(TAG, "Could not report the failed restore after a throw", report)
+                            }
                         } finally {
                             pendingResult.finish()
                         }
@@ -284,52 +295,6 @@ class BootReceiver : BroadcastReceiver() {
         } catch (e: Exception) {
             AppLogger.e(TAG, "❌ ERROR IN BOOT RECEIVER | Trigger: $trigger | Error: ${e.message}")
             AppLogger.e(TAG, "Stack trace:", e)
-        }
-    }
-
-    private fun showBootFailureNotification(context: Context) {
-        try {
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    Constants.BootFailure.CHANNEL_ID,
-                    Constants.BootFailure.CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Notifications when firewall fails to start at boot"
-                    setShowBadge(true)
-                }
-                notificationManager.createNotificationChannel(channel)
-            }
-
-            val openAppIntent = Intent(context, MainActivity::class.java).apply {
-                action = Constants.Notifications.ACTION_BOOT_FAILURE_RECOVERY
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            val pendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                openAppIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val notification = NotificationCompat.Builder(context, Constants.BootFailure.CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Firewall failed to start")
-                .setContentText("Tap to open De1984 and grant VPN permission")
-                .setStyle(NotificationCompat.BigTextStyle()
-                    .bigText("The firewall could not start after boot. This usually happens when VPN permission needs to be re-granted. Tap to open De1984 and enable the firewall."))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-                .build()
-
-            notificationManager.notify(Constants.BootFailure.NOTIFICATION_ID, notification)
-            AppLogger.d(TAG, "Boot failure notification shown")
-
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "Failed to show boot failure notification", e)
         }
     }
 

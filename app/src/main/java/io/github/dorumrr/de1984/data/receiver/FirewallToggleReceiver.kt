@@ -107,26 +107,14 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                         AppLogger.w(TAG, "Persisted mode $persistedMode is unavailable; plan resolved to ${plan.mode}")
                     }
                     AppLogger.d(TAG, "computeStartPlan result: $plan")
-                    // Not running, so a VPN that is up is another app's even while a stale VPN backend is current.
-                    // A direct start would take its tunnel; only the notification's tap may.
+                    // Null while another VPN is up, so the start below reports the conflict instead of asking for its slot.
                     val needsUserForVpn = plan?.selectedBackendType == FirewallBackendType.VPN &&
-                        (firewallManager.isVpnActive() || firewallManager.vpnConsentIntent() != null)
+                        firewallManager.vpnConsentIntent() != null
                     AppLogger.d(TAG, "needsUserForVpn: $needsUserForVpn")
 
                     if (needsUserForVpn) {
-                        // This used to start VpnPermissionActivity directly. It cannot work from
-                        // here: with targetSdk 34, Android 14 blocks a background activity launch
-                        // from a BroadcastReceiver (BAL_BLOCK), so tapping the widget or the tile
-                        // did nothing whatsoever - no dialog, no error, no notification.
-                        //
-                        // A notification gets there instead, because the user tapping it is a
-                        // gesture Android accepts as a reason to open an activity. FirewallManager
-                        // already owns that notification and the state that goes with it.
-                        //
-                        // The notification's tap lands in VpnPermissionActivity - transparent,
-                        // shows only the system dialog, then finishes - and carries `mode`, which
-                        // is the mode resolved ABOVE, not the stored preference. The AUTO fallback
-                        // computed a few lines up would otherwise be recomputed and lost.
+                        // Android 14 blocks a receiver from opening the consent dialog (BAL_BLOCK); a notification tap may,
+                        // and it carries `mode` as resolved above so the AUTO fallback is not recomputed and lost.
                         AppLogger.w(TAG, "🔐 VPN permission required - a receiver cannot open the dialog, notifying instead")
                         firewallManager.reportVpnPermissionRequiredFromBackground(mode)
                     } else {

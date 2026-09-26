@@ -864,9 +864,9 @@ class FirewallManager(
      * it can - VpnFirewallBackend proves a live tunnel - throwing the proof away is the app choosing
      * not to know.
      *
-     * So: stop, and if that fails, run the sweep, which does the real teardown and re-checks. Only a
-     * failure that survives BOTH is reported, which keeps a slow VPN tunnel from raising a false
-     * alarm on every backend change.
+     * So: stop, and if that fails or cannot reach the old backend, run the sweep, which does the real
+     * teardown and re-checks. Only a failure that survives BOTH is reported, which keeps a slow VPN
+     * tunnel from raising a false alarm on every backend change.
      *
      * @param runningBackendType the backend already enforcing in its place; the sweep must not undo it.
      * @return the surviving failure, or null when the old backend is provably gone.
@@ -880,10 +880,13 @@ class FirewallManager(
 
         var failure: Throwable? = null
         oldBackend.stop().onFailure { failure = it }
-        if (failure == null) return null
-
-        AppLogger.w(TAG, "Old backend ($oldBackendType) did not stop cleanly - sweeping to confirm: ${failure?.message}")
         val sweptType = oldBackend.getType()
+        // PrivilegedFirewallService runs one backend and drops a stop for a type it no longer runs.
+        val stopDropped = sweptType != FirewallBackendType.VPN &&
+            runningBackendType != null && runningBackendType != FirewallBackendType.VPN
+        if (failure == null && !stopDropped) return null
+
+        AppLogger.w(TAG, "Old backend ($oldBackendType) not proven gone - sweeping to confirm: ${failure?.message ?: "the privileged service now runs $runningBackendType"}")
         val sweep = cleanupAllBackends(reportFailureFor = sweptType, spare = runningBackendType)
         val surviving = sweep?.takeIf { it.backend == sweptType }?.error
         if (surviving == null) {

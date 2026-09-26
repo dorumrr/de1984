@@ -1949,15 +1949,13 @@ class FirewallManager(
             val result = startFirewallInternal(plan.mode)
             result.onSuccess { backendType ->
                 AppLogger.d(TAG, "✅ VPN fallback successful via planner: backend=$backendType")
-                // Say so. startFirewallInternal ends on Healthy, which is true but not the whole
-                // truth: the user is on VPN, not the backend they picked, and nothing else in the
-                // app states that. This is also the only producer of fromManualMode=true -
-                // startVpnFallback's one caller hard-codes false, so the manual message existed
-                // with no way to reach it.
-                _firewallHealth.value = FirewallHealth.SwitchedToVpn(
-                    failedBackend = failedBackendType,
-                    fromManualMode = wasManualSelection
-                )
+                // startFirewallInternal ends on Healthy; say the switch, unless VPN itself failed and was only restarted.
+                if (failedBackendType != FirewallBackendType.VPN) {
+                    _firewallHealth.value = FirewallHealth.SwitchedToVpn(
+                        failedBackend = failedBackendType,
+                        fromManualMode = wasManualSelection
+                    )
+                }
             }.onFailure { error ->
                 AppLogger.e(TAG, "❌ VPN fallback FAILED via planner: ${error.message}")
                 currentBackend = null
@@ -1993,7 +1991,7 @@ class FirewallManager(
      * specifically expect a direct VPN start. Internal health/privilege handling
      * should prefer planner-based [startFirewall] and [handleBackendFailure].
      */
-    private suspend fun startVpnFallback(wasManualSelection: Boolean, failedBackendType: FirewallBackendType) {
+    private suspend fun startVpnFallback(wasManualSelection: Boolean, failedBackendType: FirewallBackendType?) {
         try {
             stopMonitoring()
 
@@ -2041,18 +2039,17 @@ class FirewallManager(
             prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
 
             // Protection is restored - clear the down state and both failure notifications.
-            // The health value set below then downgrades this to the informational "switched" state.
             reportFirewallHealthy()
             dismissVpnFallbackNotification()
 
             applyRules()
 
-            _firewallHealth.value = FirewallHealth.SwitchedToVpn(
-                failedBackend = failedBackendType,
-                fromManualMode = wasManualSelection
-            )
-
-
+            if (failedBackendType != null) {
+                _firewallHealth.value = FirewallHealth.SwitchedToVpn(
+                    failedBackend = failedBackendType,
+                    fromManualMode = wasManualSelection
+                )
+            }
         } catch (e: Exception) {
             AppLogger.e(TAG, "❌ CRITICAL: Exception during VPN fallback", e)
 
@@ -2067,24 +2064,8 @@ class FirewallManager(
     }
 
     /**
-     * Ask the user for VPN permission through a notification.
-     *
-     * Two different situations arrive here and they must not be told the same story.
-     *
-     * [resolvedMode] null - a privileged backend that WAS running died, and VPN is the fallback.
-     * The words say a backend failed, because one did, and the tap opens MainActivity, which is
-     * where the user is already looking and where the in-app banner's "Enable VPN" button goes.
-     *
-     * [resolvedMode] set - the user tapped the widget or the tile to START the firewall, and the
-     * plan needs VPN because there is no root and no Shizuku. Nothing failed. Sending that through
-     * the fallback path claimed "privileged backend failed" to a user who never had one, and landed
-     * in startVpnFallbackManually, which publishes SwitchedToVpn(failedBackend = VPN) - a banner
-     * reading "VPN failed, so we switched to VPN".
-     *
-     * So this case goes to VpnPermissionActivity instead: transparent, noHistory, shows only the
-     * system dialog, starts the firewall in the mode the RECEIVER resolved, and finishes. That mode
-     * matters - a manual mode whose backend is gone makes the receiver fall back to AUTO, and
-     * MainActivity's path would recompute from the stored preference and lose it.
+     * [resolvedMode] null: a running backend died, so the tap opens MainActivity's "Enable VPN". Set: a widget/tile
+     * start where nothing failed, so the tap goes to VpnPermissionActivity, which starts in the mode the receiver resolved.
      */
     private fun showVpnFallbackNotification(resolvedMode: FirewallMode? = null) {
         val fromBackgroundStart = resolvedMode != null
@@ -2300,7 +2281,10 @@ class FirewallManager(
             return@withLock
         }
 
-        startVpnFallback(wasManualSelection = false, failedBackendType = FirewallBackendType.VPN)
+        // Only a privileged backend's failure is a switch; a VPN that lacked consent or lost its slot just starts.
+        val failedBackend = (_firewallHealth.value as? FirewallHealth.Down)?.backend
+            ?.takeIf { it != FirewallBackendType.VPN }
+        startVpnFallback(wasManualSelection = false, failedBackendType = failedBackend)
     } }
 
     private fun startVpnPermissionMonitoring() {
@@ -2980,6 +2964,12 @@ class FirewallManager(
 
         if (stillViable) {
             AppLogger.d(TAG, "Manual mode $currentMode with backend $currentBackendType still viable after privilege change; keeping manual selection")
+            return
+        }
+
+        // A privilege change cannot break a running VPN fallback; a dead one still fails over below.
+        if (currentBackendType == FirewallBackendType.VPN && isActive()) {
+            AppLogger.d(TAG, "Manual backend $currentMode still unavailable after privilege change; staying on the VPN fallback")
             return
         }
 

@@ -822,6 +822,7 @@ class FirewallManager(
             // Clear firewall down flag and any stale warning - the user stopped it on purpose,
             // so this is not a failure and must not leave a "your apps are unblocked" banner behind
             reportFirewallHealthy()
+            dismissVpnConflictSwitchNotification()
 
             AppLogger.d(TAG, "Firewall stopped successfully")
             Result.success(Unit)
@@ -1588,6 +1589,7 @@ class FirewallManager(
         _firewallHealth.value = FirewallHealth.Down(reason, backend)
         _firewallState.value = FirewallState.Error(message = stateMessage, lastBackend = backend)
         emitStateChangeBroadcast(_firewallState.value)
+        dismissVpnConflictSwitchNotification()
 
         _isFirewallDown.value = userWantsFirewallOn
         if (!userWantsFirewallOn) {
@@ -1628,6 +1630,8 @@ class FirewallManager(
         dismissBackendFailedNotification()
         dismissVpnFallbackNotification()
         dismissStopFailedNotification()
+        // A tile/widget stop posts this after its stop returns, so a stop never cancels its own notice here.
+        notificationManager.cancel(Constants.FirewallStopped.NOTIFICATION_ID)
     }
 
     /**

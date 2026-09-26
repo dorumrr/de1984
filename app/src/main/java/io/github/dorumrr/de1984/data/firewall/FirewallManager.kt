@@ -461,39 +461,10 @@ class FirewallManager(
         return try {
             AppLogger.d(TAG, "Starting firewall with mode: $mode")
 
-            // CRITICAL: Check if another VPN is active AND we don't have privileged access
-            // This prevents killing user's third-party VPN (like Proton VPN) during:
-            // 1. App updates (ACTION_MY_PACKAGE_REPLACED)
-            // 2. Device boot (ACTION_BOOT_COMPLETED)
-            // 3. Any other scenario where startFirewall() is called before root status is checked
-            //
-            // If another VPN is active but we have root/Shizuku, we can still use iptables/CM backend.
-            // Only fail if another VPN is active AND we don't have privileged access (would need VPN backend).
-            if (isAnotherVpnActive()) {
-                // CHECKING is not an answer - see awaitPrivilegeAnswer. Without this the two reads
-                // below return false while the probes are still running, and a device with working
-                // root was told it had none.
-                awaitPrivilegeAnswer()
-
-                val hasRoot = rootManager.hasRootPermission
-                val hasShizuku = shizukuManager.hasShizukuPermission
-                val hasPrivilegedAccess = hasRoot || hasShizuku
-
-                if (!hasPrivilegedAccess) {
-                    AppLogger.w(TAG, "startFirewall: Another VPN is active and no privileged access - cannot start firewall")
-                    AppLogger.w(TAG, "startFirewall: User needs to disconnect their VPN or grant root/Shizuku access")
-
-                    val error = Exception("Another VPN is active and no privileged access")
-                    reportStartFailure(
-                        reason = FirewallHealth.Down.Reason.VPN_CONFLICT,
-                        backend = activeBackendType.value,
-                        stateMessage = "Another VPN is active"
-                    )
-                    return Result.failure(error)
-                } else {
-                    AppLogger.d(TAG, "startFirewall: Another VPN is active but we have privileged access - will use iptables/CM backend")
-                }
-            }
+            // With another VPN up only a privileged backend may start, so the plan must see real
+            // privileges: CHECKING is waited out first (see awaitPrivilegeAnswer).
+            val anotherVpnActive = isAnotherVpnActive()
+            if (anotherVpnActive) awaitPrivilegeAnswer()
 
             val planResult = computeStartPlan(mode)
             if (planResult.isFailure) {
@@ -512,6 +483,17 @@ class FirewallManager(
                 TAG,
                 "startFirewall: Using plan → mode=${plan.mode}, backend=${plan.selectedBackendType}"
             )
+
+            // A consented VPN start takes the other app's tunnel with no tap; only the conflict banner may.
+            if (anotherVpnActive && plan.selectedBackendType == FirewallBackendType.VPN) {
+                AppLogger.w(TAG, "startFirewall: Another VPN is active and the plan needs the VPN backend - not starting")
+                reportStartFailure(
+                    reason = FirewallHealth.Down.Reason.VPN_CONFLICT,
+                    backend = activeBackendType.value,
+                    stateMessage = "Another VPN is active"
+                )
+                return Result.failure(Exception("Another VPN is active"))
+            }
 
             val oldBackend = currentBackend
             val wasGranular = oldBackend?.supportsGranularControl() ?: false

@@ -26,7 +26,7 @@ When in AUTO mode, the app selects the best available backend using this priorit
 
 3. **VPN** (fallback, always available)
    - **Requires**: Only VPN permission (user grants via system dialog)
-   - **Not unconditional**: the VPN slot must be free. If a third-party VPN is connected and De1984 has no root/Shizuku, the start is refused with "Another VPN is active" and the firewall goes to `Error` instead of taking the slot
+   - **Not unconditional**: the VPN slot must be free. If a third-party VPN is connected and the plan needs the VPN backend (no root/Shizuku, or manual VPN mode), the start is refused with the VPN-conflict banner ("Replace VPN") instead of taking the slot
    - **Use as last resort**: When no privileged access available ✅
 
 ### Manual Mode

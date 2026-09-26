@@ -79,6 +79,8 @@ class PackageMonitoringService : Service() {
 
         /** After a failed tick. Unchanged. */
         private const val POLL_ERROR_BACKOFF_MS = 60_000L
+
+        private const val FRESH_INSTALL_WINDOW_MS = 10 * 60_000L
         
         fun startMonitoring(context: Context) {
             val intent = Intent(context, PackageMonitoringService::class.java).apply {
@@ -269,7 +271,10 @@ class PackageMonitoringService : Service() {
                 Intent.ACTION_SCREEN_ON -> screenOnSignal.trySend(Unit)
                 // An app back in this profile with its old uid (restored, unhidden) writes no rule, so nothing else re-applies.
                 Intent.ACTION_PACKAGE_ADDED ->
-                    if (!intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) announcePackageSetChange()
+                    if (!intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) {
+                        announcePackageSetChange()
+                        intent.data?.schemeSpecificPart?.let { pkg -> serviceScope.launch { processOwnProfileInstall(pkg) } }
+                    }
             }
         }
     }
@@ -380,10 +385,7 @@ class PackageMonitoringService : Service() {
                 )
 
                 packages
-                    .filter { appInfo ->
-                        (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 &&
-                        hasInternetPermission(appInfo.packageName, profile.userId)
-                    }
+                    .filter { appInfo -> isWatchedApp(appInfo, profile.userId) }
                     .forEach { appInfo ->
                         result.add(appInfo.packageName to profile.userId)
                     }
@@ -461,6 +463,24 @@ class PackageMonitoringService : Service() {
             HiddenApiHelper.clearInstalledAppsCache()
             (application as De1984Application).dependencies.notifyPackageDataChanged()
         }
+    }
+
+    private fun isWatchedApp(appInfo: android.content.pm.ApplicationInfo, userId: Int): Boolean =
+        (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 &&
+            hasInternetPermission(appInfo.packageName, userId)
+
+    /** Unhiding or restoring an app sends the same broadcast as installing it; only a recent first install is new. */
+    private suspend fun processOwnProfileInstall(packageName: String) {
+        val userId = Constants.Firewall.ownUserId()
+        val info = try {
+            HiddenApiHelper.getPackageInfoAsUser(this, packageName, 0, userId)
+        } catch (e: Exception) {
+            null
+        } ?: return
+        val appInfo = info.applicationInfo ?: return
+        if (System.currentTimeMillis() - info.firstInstallTime > FRESH_INSTALL_WINDOW_MS) return
+        if (!isWatchedApp(appInfo, userId)) return
+        processNewPackage(packageName, userId)
     }
 
     private fun hasInternetPermission(packageName: String, userId: Int = 0): Boolean {

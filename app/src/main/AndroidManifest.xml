@@ -210,17 +210,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Package added receiver for new app notifications -->
-        <receiver
-            android:name=".data.receiver.PackageAddedReceiver"
-            android:exported="true"
-            android:enabled="true">
-            <intent-filter android:priority="500">
-                <action android:name="android.intent.action.PACKAGE_ADDED" />
-                <data android:scheme="package" />
-            </intent-filter>
-        </receiver>
-
         <!-- Package changed receiver for external app enable/disable -->
         <receiver
             android:name=".data.receiver.PackageChangedReceiver"

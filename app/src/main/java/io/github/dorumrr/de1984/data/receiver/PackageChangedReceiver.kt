@@ -21,12 +21,8 @@ import kotlinx.coroutines.launch
  * Note: When de1984 enables/disables packages internally, it triggers
  * SharedFlow refresh directly without needing this broadcast.
  *
- * It also carries the firewall rule for a package that is still installed. That is a safety net for
- * PackageAddedReceiver: on TrebleDroid / Android 14, measured 2026-08-23, a real install delivers
- * ACTION_PACKAGE_ADDED to other apps but never to ours, while ACTION_PACKAGE_CHANGED arrives
- * reliably. Without this a reinstalled app kept the uid from its previous install in the table,
- * which the backends still use for a profile whose app list cannot be read (rulesByCurrentUid).
- * Both receivers run the same use case, which is idempotent: whichever arrives first does the work.
+ * It also writes the rule for a package that is still installed: a manifest receiver never gets
+ * ACTION_PACKAGE_ADDED, while ACTION_PACKAGE_CHANGED arrives on install and re-points a reinstall's uid.
  */
 class PackageChangedReceiver : BroadcastReceiver() {
 
@@ -94,9 +90,8 @@ class PackageChangedReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 app.dependencies.applicationScope.launch(Dispatchers.IO) {
                     try {
-                        // Creates the rule if the package has none, and re-points an existing rule at
-                        // the app's current uid and label. No notification is shown from here; that
-                        // stays with PackageAddedReceiver, which owns the "new app" story.
+                        // No notification from here: PackageMonitoringService's registered receiver owns
+                        // the new-app notification and runs this same idempotent use case.
                         app.dependencies.provideHandleNewAppInstallUseCase()
                             .execute(packageName, uid)
                     } catch (e: Exception) {

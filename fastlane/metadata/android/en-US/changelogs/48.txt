@@ -1,0 +1,6 @@
+- Fixed: stop could keep failing after ConnectivityManager was used #107
+- "Allow in Background" is now "Allow while screen off", on all backends #105
+- One verdict per shared user ID on all backends; VPN Block All no longer cuts off Android System, Bluetooth, NFC
+- Fixed: a removed app's rule could block its user ID; a reinstalled app keeps its rule
+- Fixed: a restart loop when picking VPN or AUTO, and taking another VPN's tunnel unasked
+- Fixed: no new-app notifications for the main profile

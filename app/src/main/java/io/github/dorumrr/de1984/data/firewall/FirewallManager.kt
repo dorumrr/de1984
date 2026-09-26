@@ -688,7 +688,7 @@ class FirewallManager(
             var switchOrphan: Throwable? = null
             if (oldBackend != null) {
                 stopMonitoring()
-                switchOrphan = tearDownSwitchedAwayBackend(oldBackend, oldBackendType)
+                switchOrphan = tearDownSwitchedAwayBackend(oldBackend, oldBackendType, runningBackendType = newBackendType)
             }
 
             currentBackend = newBackend
@@ -839,20 +839,6 @@ class FirewallManager(
     }
 
     /**
-     * @param reportFailureFor the backend that was actually running, or null.
-     *
-     * The sweep is best-effort for every OTHER backend - it also runs for backends the user has no
-     * privilege for, so reporting those would be a stream of false alarms. For the one that was
-     * running, a failure here IS the teardown failing: these calls are what remove the rules.
-     *
-     * This matters most on a retry. The privileged backends do their real teardown inside
-     * PrivilegedFirewallService, which has already stopped itself by then, so `backend.stop()` fires
-     * an intent nobody answers and reports success. The sweep is the only thing still doing work,
-     * and swallowing its failure is what let "Stop again" claim success over live rules.
-     *
-     * @return the failure for [reportFailureFor], or null.
-     */
-    /**
      * Tear down the backend we are switching AWAY from, and prove it actually went.
      *
      * A switch is not a stop: the firewall stays up on the new backend, so a failure here is not
@@ -861,18 +847,20 @@ class FirewallManager(
      *
      * Every switch site used to call backend.stop() and either ignore the Result or log it and
      * "continue anyway". That was survivable while stop() could not report a real failure. Now that
-     * it can - VpnFirewallBackend proves a live tunnel, IptablesFirewallBackend probes the kernel -
-     * throwing the proof away is the app choosing not to know.
+     * it can - VpnFirewallBackend proves a live tunnel - throwing the proof away is the app choosing
+     * not to know.
      *
-     * So: stop, and if that fails, run the sweep for that backend, which does the real teardown and
-     * re-checks. Only a failure that survives BOTH is reported, which keeps a slow VPN tunnel or an
-     * intent-only privileged stop from raising a false alarm on every backend change.
+     * So: stop, and if that fails, run the sweep, which does the real teardown and re-checks. Only a
+     * failure that survives BOTH is reported, which keeps a slow VPN tunnel from raising a false
+     * alarm on every backend change.
      *
+     * @param runningBackendType the backend already enforcing in its place; the sweep must not undo it.
      * @return the surviving failure, or null when the old backend is provably gone.
      */
     private suspend fun tearDownSwitchedAwayBackend(
         oldBackend: FirewallBackend?,
-        oldBackendType: FirewallBackendType?
+        oldBackendType: FirewallBackendType?,
+        runningBackendType: FirewallBackendType? = null
     ): Throwable? {
         if (oldBackend == null) return null
 
@@ -881,8 +869,9 @@ class FirewallManager(
         if (failure == null) return null
 
         AppLogger.w(TAG, "Old backend ($oldBackendType) did not stop cleanly - sweeping to confirm: ${failure?.message}")
-        val sweep = cleanupAllBackends(reportFailureFor = oldBackendType)
-        val surviving = sweep?.takeIf { it.backend == oldBackendType }?.error
+        val sweptType = oldBackend.getType()
+        val sweep = cleanupAllBackends(reportFailureFor = sweptType, spare = runningBackendType)
+        val surviving = sweep?.takeIf { it.backend == sweptType }?.error
         if (surviving == null) {
             AppLogger.d(TAG, "Sweep confirmed $oldBackendType is gone - the switch is clean")
             return null
@@ -892,8 +881,21 @@ class FirewallManager(
         return surviving
     }
 
-    private suspend fun cleanupAllBackends(reportFailureFor: FirewallBackendType? = null): SweepFailure? {
-        AppLogger.d(TAG, "Cleaning up all backend types to ensure no orphaned rules...")
+    /**
+     * @param reportFailureFor the backend that was actually running, or null.
+     * @param spare a backend type to leave alone because it is running, or null to sweep every type.
+     *
+     * On a retry the privileged backends' `stop()` fires an intent at a service that has already
+     * stopped itself, so this sweep is what removes their rules, and its failure must be reported.
+     *
+     * @return the failure for [reportFailureFor] if it failed, else the first other failure, or null.
+     */
+    private suspend fun cleanupAllBackends(
+        reportFailureFor: FirewallBackendType? = null,
+        spare: FirewallBackendType? = null
+    ): SweepFailure? {
+        AppLogger.d(TAG, "Cleaning up all backend types${spare?.let { " except $it" } ?: ""} to ensure no orphaned rules...")
+        fun sweeps(type: FirewallBackendType) = type != spare
 
         // Every failure is kept, not just the running backend's. Each branch below can only fail
         // when it has EVIDENCE - iptables saw its chain, or created chains it can no longer see;
@@ -909,7 +911,7 @@ class FirewallManager(
         // Clean up iptables rules (if any exist)
         // This is the most important cleanup because iptables rules persist in the kernel
         // even after the app is closed or crashes
-        try {
+        if (sweeps(FirewallBackendType.IPTABLES)) try {
             // stopInternal(), NOT stop(). stop() only fires ACTION_STOP at PrivilegedFirewallService
             // and returns success immediately - and on a retry that service has already stopped
             // itself, so the intent goes nowhere. The sweep would then "succeed" without touching a
@@ -933,7 +935,7 @@ class FirewallManager(
         // Android persists these in /data/system/netpolicy.xml, so they survive the process, a
         // reboot and an uninstall. The backend keeps the uid list in SharedPreferences, so a fresh
         // instance here can still revert what an earlier one blocked.
-        try {
+        if (sweeps(FirewallBackendType.NETWORK_POLICY_MANAGER)) try {
             val npmBackend = NetworkPolicyManagerFirewallBackend(
                 context,
                 shizukuManager,
@@ -962,7 +964,7 @@ class FirewallManager(
         // system state, and the only record of what we denied lived in an in-memory map. A crash,
         // a force-stop or a backend switch left denied apps with no network and nothing to undo it.
         // The record is now on disk, so this fresh instance can put it back.
-        try {
+        if (sweeps(FirewallBackendType.CONNECTIVITY_MANAGER)) try {
             val cmBackend = ConnectivityManagerFirewallBackend(
                 context,
                 shizukuManager,
@@ -993,7 +995,7 @@ class FirewallManager(
         // Guarded by isActive() so the normal case costs one check and starts nothing. isActive()
         // reads our own service flags and looks for our own service class, and the stop intent is
         // explicit to FirewallVpnService, so this can never touch another app's VPN.
-        try {
+        if (sweeps(FirewallBackendType.VPN)) try {
             val vpnBackend = VpnFirewallBackend(context)
             if (vpnBackend.isActive()) {
                 AppLogger.w(TAG, "VPN tunnel still up during cleanup - stopping it")

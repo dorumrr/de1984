@@ -24,8 +24,8 @@ import kotlinx.coroutines.launch
  * It also carries the firewall rule for a package that is still installed. That is a safety net for
  * PackageAddedReceiver: on TrebleDroid / Android 14, measured 2026-08-23, a real install delivers
  * ACTION_PACKAGE_ADDED to other apps but never to ours, while ACTION_PACKAGE_CHANGED arrives
- * reliably. Without this a reinstalled app kept the uid from its previous install - and the
- * backends block by uid, so it was enforced against nothing while the UI read "Blocked".
+ * reliably. Without this a reinstalled app kept the uid from its previous install in the table,
+ * which the backends still use for a profile whose app list cannot be read (rulesByCurrentUid).
  * Both receivers run the same use case, which is idempotent: whichever arrives first does the work.
  */
 class PackageChangedReceiver : BroadcastReceiver() {
@@ -79,6 +79,14 @@ class PackageChangedReceiver : BroadcastReceiver() {
 
             val app = context.applicationContext as De1984Application
             app.dependencies.notifyPackageDataChanged()
+
+            // A removed app's rule stops counting for its uid (rulesByCurrentUid) only when the firewall re-applies.
+            // FULLY_REMOVED is the one this app is sure to get; some ROMs also deliver REMOVED.
+            if (action == Intent.ACTION_PACKAGE_FULLY_REMOVED ||
+                (action == Intent.ACTION_PACKAGE_REMOVED && !intent.getBooleanExtra(Intent.EXTRA_REPLACING, false))
+            ) {
+                context.sendBroadcast(Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED").setPackage(context.packageName))
+            }
 
             // Only for a package that still exists. The two removal actions land here too, and there
             // is nothing to look up for a package that is gone.

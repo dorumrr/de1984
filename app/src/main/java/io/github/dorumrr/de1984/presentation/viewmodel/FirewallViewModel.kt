@@ -21,6 +21,8 @@ import io.github.dorumrr.de1984.domain.firewall.asEnforcedBy
 import io.github.dorumrr.de1984.domain.firewall.blockingRefused
 import io.github.dorumrr.de1984.domain.firewall.UnblockableReason
 import io.github.dorumrr.de1984.domain.firewall.unblockableReason
+import io.github.dorumrr.de1984.domain.firewall.rulesByCurrentUid
+import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.FirewallFilterState
 import io.github.dorumrr.de1984.domain.model.PackageId
@@ -50,6 +52,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FirewallViewModel(
     application: Application,
@@ -82,16 +85,13 @@ class FirewallViewModel(
 
 
     /**
-     * Per uid, the union of what its ENABLED rules block, read from the SAME query the backends
-     * are handed - firewallRepository.getAllRules(), exactly as FirewallManager.applyRules does.
-     *
-     * Not derived from the package list. A rule outlives the package it was written for: uninstall
-     * or disable an app and the row disappears while its rule stays in the table, and the UID
-     * backends group by rulesByUid, so they would still see a rule where a package-derived map saw
-     * none. That mismatch made a row claim "the Block All default does not reach this app" for a
-     * uid the backend was in fact ruling on.
+     * Per uid, each ENABLED rule's blocks, grouped exactly as the backends group them: the same rule
+     * query, through rulesByCurrentUid over the same installed-app lists. Never the rows: the list
+     * drops disabled apps, whose rules the backends still count.
      */
     private var cachedUidRules: Map<Int, Map<String, UidRuleAggregate>> = emptyMap()
+    private var cachedRules: List<FirewallRule> = emptyList()
+    private var cachedInstalledUids: Map<Int, Map<String, Int>> = emptyMap()
 
     val showRootBanner: StateFlow<Boolean>
         get() = superuserBannerState.showBanner
@@ -178,36 +178,8 @@ class FirewallViewModel(
     private fun observeRuleUids() {
         firewallRepository.getAllRules()
             .onEach { rules ->
-                // ENABLED rules only, grouped per uid, then the union of what they block - the
-                // exact shape every backend enforces through uidBlockedNow, which stops applying the
-                // Block All default to a uid the moment that map has an entry for it. The union
-                // carries every flag so unblockableReason and asEnforcedBy can paint a rule-less
-                // sibling with the block that is REALLY on its uid, partial ones included.
-                val aggregates = rules.filter { it.enabled }
-                    .groupBy { it.uid }
-                    // Kept per PACKAGE, not pre-unioned. The screen has to be able to take a
-                    // union that EXCLUDES one package - see FirewallBackendType.enforcedVectorFor -
-                    // and a union that has already been taken cannot be un-ORed.
-                    .mapValues { (_, uidRules) ->
-                        uidRules.associate { rule ->
-                            rule.packageName to UidRuleAggregate(
-                                wifiBlocked = rule.wifiBlocked,
-                                mobileBlocked = rule.mobileBlocked,
-                                // Blocking Mobile blocks Roaming with it. FirewallRule.isBlockedOn
-                                // answers `blockWhenRoaming || mobileBlocked` for ROAMING, and
-                                // GetNetworkPackagesUseCase patches every ROW the same way - so
-                                // taking the raw column here made one rule mean two different
-                                // things: its own row painted roaming blocked, a sibling's row
-                                // painted it open over traffic iptables was dropping.
-                                roamingBlocked = rule.blockWhenRoaming || rule.mobileBlocked,
-                                lanBlocked = rule.lanBlocked,
-                                backgroundBlocked = rule.blockWhenBackground,
-                            )
-                        }
-                    }
-
-                if (aggregates == cachedUidRules) return@onEach
-                cachedUidRules = aggregates
+                cachedRules = rules
+                if (!rebuildUidRules()) return@onEach
                 if (cachedPackages.isEmpty()) return@onEach
                 val context = computeBlockingContext(cachedPackages)
                 _uiState.value = _uiState.value.copy(
@@ -216,6 +188,29 @@ class FirewallViewModel(
                 )
             }
             .launchIn(viewModelScope)
+    }
+
+    /** Rebuilds [cachedUidRules] from the latest rules and installed-app uids; true when it changed. */
+    private fun rebuildUidRules(): Boolean {
+        val aggregates = rulesByCurrentUid(cachedRules, cachedInstalledUids)
+            // Kept per PACKAGE, not pre-unioned: enforcedVectorFor takes a union that EXCLUDES one
+            // package, and a union already taken cannot be un-ORed.
+            .mapValues { (_, uidRules) ->
+                uidRules.associate { rule ->
+                    rule.packageName to UidRuleAggregate(
+                        wifiBlocked = rule.wifiBlocked,
+                        mobileBlocked = rule.mobileBlocked,
+                        // Derived as FirewallRule.isBlockedOn(ROAMING) and every row derive it; the raw
+                        // column painted a sibling's roaming open over traffic iptables was dropping.
+                        roamingBlocked = rule.blockWhenRoaming || rule.mobileBlocked,
+                        lanBlocked = rule.lanBlocked,
+                        backgroundBlocked = rule.blockWhenBackground,
+                    )
+                }
+            }
+        if (aggregates == cachedUidRules) return false
+        cachedUidRules = aggregates
+        return true
     }
 
     private fun observeActiveBackendType() {
@@ -441,6 +436,11 @@ class FirewallViewModel(
             }
             .onEach { packages ->
                 cachedPackages = packages
+                cachedInstalledUids = withContext(Dispatchers.IO) {
+                    runCatching { io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledUids(getApplication()) }
+                        .getOrDefault(cachedInstalledUids)
+                }
+                rebuildUidRules()
 
                 // Read the filter LIVE, not the `filterState` captured when this job was started.
                 // The packages flow is a shared replay flow and emits again long after that - the

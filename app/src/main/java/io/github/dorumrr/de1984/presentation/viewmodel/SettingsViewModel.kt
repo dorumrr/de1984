@@ -855,10 +855,10 @@ class SettingsViewModel(
                     return@launch
                 }
 
-                // Re-point every rule at the uid its package holds NOW. The file carries the uid
-                // from export time, and a reinstall since then changed it - every backend
-                // groups rules by uid, so a stale one matches no app and Block All then blocks it
-                // with no way back from the UI. See issue #81.
+                // Re-point every rule at the uid its package holds NOW. The file carries the uid from
+                // export time, and a reinstall since then changed it; the backends fall back to that
+                // stored uid wherever a profile's app list cannot be read (rulesByCurrentUid), and it
+                // could then match no app or another one.
                 val rules = withContext(Dispatchers.IO) {
                     backup.rules.map { HandleNewAppInstallUseCase.withCurrentIdentity(context, it) }
                 }

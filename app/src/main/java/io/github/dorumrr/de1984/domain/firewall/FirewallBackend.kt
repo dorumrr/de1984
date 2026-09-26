@@ -96,6 +96,31 @@ fun uidBlockedNow(
 }
 
 /**
+ * Enabled rules grouped by the uid their app has now, per [installedUids] (user -> package -> uid, empty when
+ * unread). A rule counts nowhere only once every profile was read and its app is in none; else it keeps a uid.
+ */
+fun rulesByCurrentUid(
+    rules: List<FirewallRule>,
+    installedUids: Map<Int, Map<String, Int>>,
+): Map<Int, List<FirewallRule>> {
+    val everyProfileRead = installedUids.isNotEmpty() && installedUids.values.none { it.isEmpty() }
+    return rules
+        .filter { it.enabled }
+        .mapNotNull { rule ->
+            val listed = installedUids[rule.userId]
+            val uid = when {
+                listed.isNullOrEmpty() -> rule.uid
+                rule.packageName in listed -> listed.getValue(rule.packageName)
+                else -> installedUids.values.firstNotNullOfOrNull { it[rule.packageName] }
+                    ?.let { Constants.Firewall.uidForUser(rule.userId, it) }
+                    ?: if (everyProfileRead) return@mapNotNull null else rule.uid
+            }
+            uid to rule
+        }
+        .groupBy({ it.first }, { it.second })
+}
+
+/**
  * Why the block a row displays is not the block in force. Each one needs different words on screen,
  * and [fixableHere] decides whether the switches stay usable.
  */

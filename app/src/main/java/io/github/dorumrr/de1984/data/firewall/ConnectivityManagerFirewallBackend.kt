@@ -10,6 +10,7 @@ import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.rulesByCurrentUid
 import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
@@ -219,7 +220,7 @@ class ConnectivityManagerFirewallBackend(
             var untouchedCount = 0
 
             val enabledRules = rules.filter { it.enabled }
-            val rulesByUid = enabledRules.groupBy { it.uid }
+            val rulesByUid = rulesByCurrentUid(rules, io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledUids(context))
             val ruledPackages = enabledRules.mapTo(HashSet()) { it.packageName }
 
             val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)

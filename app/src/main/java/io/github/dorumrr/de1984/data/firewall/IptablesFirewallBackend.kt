@@ -10,6 +10,7 @@ import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.rulesByCurrentUid
 import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
@@ -374,7 +375,7 @@ class IptablesFirewallBackend(
             val uidsToBlock = mutableSetOf<Int>()
 
             // Apps can share a uid (sharedUserId) and the chain matches the uid: one verdict per uid.
-            val rulesByUid = rules.filter { it.enabled }.groupBy { it.uid }
+            val rulesByUid = rulesByCurrentUid(rules, io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledUids(context))
 
             if (isBlockAllDefault) {
                 val userProfiles = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getUsers(context)

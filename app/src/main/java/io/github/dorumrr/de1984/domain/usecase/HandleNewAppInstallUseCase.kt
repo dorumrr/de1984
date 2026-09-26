@@ -22,11 +22,11 @@ class HandleNewAppInstallUseCase constructor(
          * Return [rule] pointed at the app as it is installed right now, or [rule] itself if
          * nothing changed or the package is not installed for that user.
          *
-         * A reinstall keeps the package name and hands the app a NEW uid. Every backend groups rules
-         * by uid (uidBlockedNow), so a stale uid matches no installed app: the rule is enforced against
-         * nothing, and under Block All the app falls
-         * through to the default and is blocked with no way back. Restoring a backup is the one
-         * path that writes rules without coming through here, which is issue #81.
+         * A reinstall keeps the package name and hands the app a NEW uid. The backends resolve a rule
+         * to the uid its app has now (rulesByCurrentUid), but keep the stored uid for a profile whose
+         * app list cannot be read - there a stale uid can match nothing or another app, and under Block
+         * All the app falls through to the default. Restoring a backup re-points its rules through this
+         * function too.
          *
          * Pass [appInfo] when the caller already has it; the lookup can go through a shell command
          * for a non-zero userId.
@@ -103,10 +103,10 @@ class HandleNewAppInstallUseCase constructor(
 
             val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
             if (existingRule != null) {
-                // The old rule is kept on purpose - the user configured it - but its UID must be
-                // re-read. Android hands a reinstalled app a NEW uid, and every backend
-                // blocks by uid: a stale one matches nothing, so the app showed "Blocked" in the UI
-                // while its traffic flowed. The label is refreshed for the same reason.
+                // The old rule is kept on purpose - the user configured it - but its UID is re-read.
+                // Android hands a reinstalled app a NEW uid, and where a profile's app list cannot be
+                // read the backends fall back to the stored uid (rulesByCurrentUid), which could then
+                // match nothing or another app. The label is refreshed for the same reason.
                 refreshRuleIdentity(existingRule, packageInfo)
                 return Result.success(Unit)
             }

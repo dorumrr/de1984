@@ -150,7 +150,7 @@ class PackageMonitoringService : Service() {
                 hasBaseline = true
             }
         }
-        registerScreenOnReceiver()
+        registerEventReceiver()
 
         monitoringJob = serviceScope.launch {
             while (isActive) {
@@ -200,10 +200,10 @@ class PackageMonitoringService : Service() {
     /**
      * Is there any profile besides the one De1984 runs in?
      *
-     * Everything this service can see first is an event in another profile. For De1984's own profile,
-     * PackageAddedReceiver and PackageChangedReceiver already deliver installs, removals and
-     * enable/disable instantly - so on a single-profile device, which is most devices, this poll had
-     * nothing to contribute and was pure cost.
+     * Everything this poll can see first is an event in another profile. For De1984's own profile,
+     * PackageChangedReceiver delivers installs, full uninstalls and enable/disable instantly, and
+     * [eventReceiver] an app's return - so on a single-profile device, which is most devices, this poll
+     * had nothing to contribute and was pure cost.
      *
      * Cheap to ask: HiddenApiHelper.getUsers caches, and reads UserManager.getUserProfiles, a binder
      * call - not a shell command.
@@ -231,6 +231,7 @@ class PackageMonitoringService : Service() {
                 hasBaseline = false
                 lastKnownDisabled.clear()
                 hadSecondaryProfiles = false
+                announcePackageSetChange()
             }
             return
         }
@@ -244,6 +245,7 @@ class PackageMonitoringService : Service() {
                 lastKnownPackages = it
                 hasBaseline = true
             }
+            announcePackageSetChange()
             return
         }
 
@@ -261,32 +263,38 @@ class PackageMonitoringService : Service() {
         kotlinx.coroutines.channels.Channel.CONFLATED
     )
 
-    private val screenOnReceiver = object : android.content.BroadcastReceiver() {
+    private val eventReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action != Intent.ACTION_SCREEN_ON) return
-            screenOnSignal.trySend(Unit)
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_ON -> screenOnSignal.trySend(Unit)
+                // An app back in this profile with its old uid (restored, unhidden) writes no rule, so nothing else re-applies.
+                Intent.ACTION_PACKAGE_ADDED ->
+                    if (!intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) announcePackageSetChange()
+            }
         }
     }
-    private var screenOnReceiverRegistered = false
+    private var eventReceiverRegistered = false
 
-    private fun registerScreenOnReceiver() {
-        if (screenOnReceiverRegistered) return
+    private fun registerEventReceiver() {
+        if (eventReceiverRegistered) return
         runCatching {
-            registerReceiver(screenOnReceiver, android.content.IntentFilter(Intent.ACTION_SCREEN_ON))
-            screenOnReceiverRegistered = true
-        }.onFailure { AppLogger.w(TAG, "Could not register the screen-on receiver: ${it.message}") }
+            registerReceiver(eventReceiver, android.content.IntentFilter(Intent.ACTION_SCREEN_ON))
+            eventReceiverRegistered = true
+            // Android sends ACTION_PACKAGE_ADDED without FLAG_RECEIVER_INCLUDE_BACKGROUND: manifest receivers never get it.
+            registerReceiver(eventReceiver, android.content.IntentFilter(Intent.ACTION_PACKAGE_ADDED).apply { addDataScheme("package") })
+        }.onFailure { AppLogger.w(TAG, "Could not register the screen-on and package-added receiver: ${it.message}") }
     }
 
-    private fun unregisterScreenOnReceiver() {
-        if (!screenOnReceiverRegistered) return
-        runCatching { unregisterReceiver(screenOnReceiver) }
-        screenOnReceiverRegistered = false
+    private fun unregisterEventReceiver() {
+        if (!eventReceiverRegistered) return
+        runCatching { unregisterReceiver(eventReceiver) }
+        eventReceiverRegistered = false
     }
     
     private fun stopMonitoring() {
         monitoringJob?.cancel()
         monitoringJob = null
-        unregisterScreenOnReceiver()
+        unregisterEventReceiver()
     }
     
     private suspend fun checkForNewPackages() {
@@ -298,7 +306,7 @@ class PackageMonitoringService : Service() {
         // to return an empty set on any exception, and the baseline was then overwritten with it -
         // so one Shizuku or binder hiccup made every installed app look new on the very next tick,
         // firing a rule write and a "new app" notification for each of them. Keep the old baseline
-        // and try again in 15 seconds.
+        // and try again on the next tick.
         val currentPackages = getCurrentInstalledPackages()
         if (currentPackages == null) {
             AppLogger.w(TAG, "Package enumeration failed - keeping the previous baseline")
@@ -325,10 +333,21 @@ class PackageMonitoringService : Service() {
 
         checkForEnabledStateChanges()
 
+        val setChanged = currentPackages != lastKnownPackages
         // Updated unconditionally. Inside the branch above, an uninstall left the package in the
         // baseline, so it was never "new" again and a reinstall was never processed - the exact
         // case the stale-uid refresh exists for.
         lastKnownPackages = currentPackages
+
+        if (setChanged) announcePackageSetChange()
+    }
+
+    /** An install or uninstall changes which rules count for a uid (rulesByCurrentUid), and nothing else re-applies for it. */
+    private fun announcePackageSetChange() {
+        HiddenApiHelper.clearInstalledAppsCache()
+        sendBroadcast(Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED").setPackage(packageName))
+        // The screen groups rules by the same installed-app lists, so it rescans with the firewall.
+        (application as De1984Application).dependencies.notifyPackageDataChanged()
     }
 
     /**
@@ -340,8 +359,8 @@ class PackageMonitoringService : Service() {
     private fun getCurrentInstalledPackages(): Set<Pair<String, Int>>? {
         return try {
             val result = mutableSetOf<Pair<String, Int>>()
-            // De1984's own profile is deliberately skipped: PackageAddedReceiver and PackageChangedReceiver
-            // deliver installs, removals and enable/disable for it instantly. Other profiles get no such broadcast.
+            // De1984's own profile is deliberately skipped: PackageChangedReceiver and eventReceiver deliver
+            // installs, returns, full uninstalls and enable/disable for it instantly. Other profiles get no such broadcast.
             val ownUserId = Constants.Firewall.ownUserId()
             val userProfiles = HiddenApiHelper.getUsers(this).filter { it.userId != ownUserId }
 

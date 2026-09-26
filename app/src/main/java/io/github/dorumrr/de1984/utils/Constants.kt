@@ -467,6 +467,9 @@ object Constants {
 
         fun isFirewallableAppUid(uid: Int): Boolean = uid % PER_USER_RANGE in APP_APP_ID_RANGE
 
+        /** The uid that [uid]'s app has in [userId]: same appId, that user's range. */
+        fun uidForUser(userId: Int, uid: Int): Int = userId * PER_USER_RANGE + uid % PER_USER_RANGE
+
         /** The profile De1984 runs in. Not always 0: it can be installed in a work profile or for a secondary user. */
         fun ownUserId(): Int = android.os.Process.myUid() / PER_USER_RANGE
 

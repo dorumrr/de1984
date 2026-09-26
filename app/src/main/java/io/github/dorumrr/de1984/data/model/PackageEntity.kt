@@ -29,7 +29,7 @@ data class PackageEntity(
     /**
      * An ENABLED rule row exists for this package, as opposed to the blocking flags above being
      * the default policy showing through. `rule?.enabled == true`, matching what the backends see -
-     * every backend builds `rules.filter { it.enabled }.groupBy { it.uid }` before testing
+     * every backend groups only enabled rules (rulesByCurrentUid) before testing
      * presence, so a disabled rule does not count for them and must not count here. (A disabled
      * rule also paints from the default branch, not from its own flags.)
      */

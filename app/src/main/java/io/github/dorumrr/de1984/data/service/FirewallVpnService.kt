@@ -16,6 +16,7 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.datasource.PackageDataSource
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
 import io.github.dorumrr.de1984.data.monitor.ScreenStateMonitor
+import io.github.dorumrr.de1984.domain.firewall.rulesByCurrentUid
 import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
@@ -451,7 +452,7 @@ class FirewallVpnService : VpnService() {
 
         AppLogger.d(TAG, "blockedAppsFor: defaultPolicy=$defaultPolicy, isBlockAllDefault=$isBlockAllDefault")
 
-        val rulesByUid = allRules.filter { it.enabled }.groupBy { it.uid }
+        val rulesByUid = rulesByCurrentUid(allRules, io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getInstalledUids(this))
 
         AppLogger.d(TAG, "blockedAppsFor: loaded ${allRules.size} rules from database")
 

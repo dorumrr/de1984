@@ -270,7 +270,7 @@ Multiple apps can share the same UID, and Android enforces every backend's block
 
 - **A UID with no rule**: the default policy decides. Blocked in Block All mode, allowed in Allow All mode. The exception is a protected UID with the setting ON, which Block All leaves allowed (see the first bullet).
 
-An app whose own switches differ from what a neighbour's rule makes its UID do shows the shared-UID note in its sheet.
+An app whose own switches differ from what a neighbour's rule makes its UID do shows the shared-UID note in its sheet. A rule counts for the UID its app has now. The rule of an app that is gone from every profile is kept for a reinstall but counts nowhere; an app that is hidden or frozen, or uninstalled for one profile but still in another, keeps its rule counting. If any profile's app list cannot be read, nothing is dropped and the stored UID is used. De1984 re-applies at once when an app is uninstalled from its own profile, and when one is installed, restored or unhidden there while its package watcher runs (it starts when the app is opened or the firewall starts at boot); at its next check (about every 30 seconds while the screen is on) when the set of user apps with internet permission in another profile changes, or when the first other profile appears or the last one goes; and otherwise at the next screen or network change.
 
 **Example (Block All, WiFi):**
 - Chrome (UID 10100, no rule) → Blocked

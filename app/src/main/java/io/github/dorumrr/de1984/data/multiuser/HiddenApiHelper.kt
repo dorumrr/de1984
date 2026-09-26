@@ -578,6 +578,38 @@ object HiddenApiHelper {
     }
 
     /**
+     * Per profile, every app still on the device for that user and its current uid (hidden apps and
+     * per-user-uninstalled system apps included); an unreadable profile maps to empty. Read fresh, never cached.
+     */
+    fun getInstalledUids(context: Context): Map<Int, Map<String, Int>> {
+        if (!initialized) initialize()
+        val ownUserId = Constants.Firewall.ownUserId()
+        // Another profile's list needs the cross-user permission; read before it lands, that profile would fall back.
+        if (getUsers(context).any { it.userId != ownUserId }) awaitCrossUserPermission(context)
+        return getUsers(context).mapNotNull { profile ->
+            val apps = try {
+                if (profile.userId == ownUserId) {
+                    context.packageManager.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
+                } else if (hiddenApiAvailable) {
+                    ensureCrossUserPermission(context)
+                    val method = context.packageManager.javaClass.getMethod(
+                        "getInstalledApplicationsAsUser", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType
+                    )
+                    @Suppress("UNCHECKED_CAST")
+                    method.invoke(context.packageManager, PackageManager.MATCH_UNINSTALLED_PACKAGES, profile.userId)
+                        as? List<ApplicationInfo>
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                AppLogger.d(TAG, "Installed uids unreadable for user ${profile.userId}: ${e.message}")
+                null
+            }
+            profile.userId to apps.orEmpty().associate { it.packageName to it.uid }
+        }.toMap()
+    }
+
+    /**
      * Every installed app, across every user profile, that requests a network permission. An app whose
      * details cannot be read is included, so Block All blocks it instead of leaving it out.
      *

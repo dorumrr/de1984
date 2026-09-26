@@ -8,7 +8,8 @@ paused work profile also on the phone); P9, the comment note under "Below the ba
 `371895e` (`HiddenApiHelper.kt`, the three firewall backends, `FIREWALL.md`) at `43c2af4`; F13-F15, P7,
 P8, F2's and F8's updates and the three newest wording bullets at `9765780`; the Boot Protection bullet
 at `b225201`; the rest at `371895e`; F2 and every line cite into the four firewall backends,
-`FirewallBackend.kt` and `FIREWALL.md` again on 2026-09-25. Verify before acting on any of it.
+`FirewallBackend.kt` and `FIREWALL.md` again on 2026-09-25; F1, F8, F16, F21, F22, F23, P13, P14, P15
+and every line cite into a file changed since `b6c6c92` on 2026-09-26. Verify before acting on any of it.
 
 Status key: `VERIFIED` = read in code, line cited. `NOT VERIFIED` = reasoned, not proven.
 `NEEDS CONFIRMATION` = depends on Android behaviour the repo cannot show. "Runtime" means seen on a
@@ -38,38 +39,44 @@ the user when a running re-apply fails (new text in 7 languages).
 
 ## F17. NetworkPolicyManager reports a successful apply after some apps failed — `VERIFIED` in code, not at runtime
 
-Inside `applyRules`, an app whose original policy could not be read is refused (`NetworkPolicyManagerFirewallBackend.kt:495-498`)
-and a `setUidPolicy` that throws is caught (`:540-544`); both only raise `errorCount`, and the apply still
-returns success (`:555`). A start therefore reports Running while those apps, shown as blocked, keep their
-network. The refusal at `:495` is deliberate (it protects a policy it cannot record), but it is not
+Inside `applyRules`, an app whose original policy could not be read is refused (`NetworkPolicyManagerFirewallBackend.kt:496-499`)
+and a `setUidPolicy` that throws is caught (`:541-545`); both only raise `errorCount`, and the apply still
+returns success (`:556`). A start therefore reports Running while those apps, shown as blocked, keep their
+network. The refusal at `:496` is deliberate (it protects a policy it cannot record), but it is not
 reported. Same at v2.7.5. How often `getUidPolicy` or `setUidPolicy` fail is `NEEDS CONFIRMATION`.
 
 ## F18. ConnectivityManager reports a successful apply after some apps failed — `VERIFIED` in code, not at runtime
 
 A `cmd connectivity set-package-networking-enabled` that exits non-zero or throws only raises
-`errorCount` (`ConnectivityManagerFirewallBackend.kt:325-338`), and the apply still returns success
-(`:354`), so the app reports Running with that app unblocked. Same at v2.7.5.
+`errorCount` (`ConnectivityManagerFirewallBackend.kt:326-339`), and the apply still returns success
+(`:355`), so the app reports Running with that app unblocked. Same at v2.7.5.
 
 ## F2. ConnectivityManager: an app's copy in another profile follows the own-profile copy, but its row says the mode cannot reach it — `VERIFIED` at runtime (the command) and in code (the row)
 
-The apply loop commands only De1984's own profile (`ConnectivityManagerFirewallBackend.kt:237-241`), so a
+The apply loop commands only De1984's own profile (`ConnectivityManagerFirewallBackend.kt:238-242`), so a
 copy in another profile no longer overwrites the own copy's verdict. But one
 `set-package-networking-enabled` command acts on the app in every profile: on the Pixel 9a emulator
 (API 36), disabling `io.test.pairA` denied uid 10216 (user 0) and 1010216 (user 10), and enabling it
 lifted both; the API 35 emulator did the same. Which user Android resolves the name in is not measured. So an app installed in both profiles follows the own-profile copy everywhere, while the other
-profile's row shows OTHER_PROFILE_UNREACHABLE (`FirewallBackend.kt:307`) and paints no block
+profile's row shows OTHER_PROFILE_UNREACHABLE (`FirewallBackend.kt:332`) and paints no block
 (`asEnforcedBy`), which is untrue whenever the own-profile copy is blocked. Fixing the row needs new
-wording. This backend also fails an apply when a profile it cannot reach fails to read
-(`ConnectivityManagerFirewallBackend.kt:233`).
+wording. If the own-profile copy is uninstalled while blocked, no later apply names the package, so the
+other copy keeps the denial; whether a stop's enable resolves the name then is `NOT VERIFIED`. This
+backend also fails an apply when a profile it cannot reach fails to read
+(`ConnectivityManagerFirewallBackend.kt:234`).
 
-## F1. Reinstalled blocked app escapes the VPN tunnel — `VERIFIED` in code, not at runtime
+## F1. A blocked app that returns while the package watcher is not running has network until the next re-apply — `NOT VERIFIED` at runtime
 
-The rebuild decision compares package names only: `lastAppliedBlockedApps` is a `Set<String>`
-(`FirewallVpnService.kt:67`), compared at `:434` against `blockedAppsFor` (`:437`). Uninstall triggers
-no rebuild (`packageDataChanged` only refreshes the lists). The reinstall's rule update writes the new
-uid (`HandleNewAppInstallUseCase.kt:183`) and does trigger `restartVpn`, which then skips because the
-names are equal. That Android binds the old uid at establish is `NEEDS CONFIRMATION`. Likely fix:
-compare package plus uid.
+Removing an app from De1984's profile re-applies at once, also when a copy stays in another profile
+(PACKAGE_FULLY_REMOVED, measured on the API 36 emulator). The VPN and iptables Block All then stop
+covering its uid, and Android clears a removed uid's NetworkPolicyManager policy. A return with the same
+uid (`pm install-existing`, an unhide) writes no rule (`HandleNewAppInstallUseCase.kt:175`), so only
+`PackageMonitoringService` re-applies (`PackageMonitoringService.kt:271`). That service starts when the
+app is opened or the firewall starts at boot (`MainActivity.kt:167`, `BootWorker.kt:111`,
+`BootReceiver.kt:181`), not on a widget or tile start. Without it the app has network until the next
+screen or network change. The VPN rebuild also still compares package names only
+(`FirewallVpnService.kt:68`, `:435`). Likely fix: start the watcher with the firewall, and compare
+package plus uid.
 
 ## F4. A VPN start that times out leaves the service retrying, unreported — `VERIFIED` in code, not at runtime
 
@@ -78,17 +85,18 @@ compare package plus uid.
 `START_FAILED` (the enabled setting is written false, `FirewallManager.kt:1552-1555`) and return
 without `stop()`: same backend `:544-551`, switch `:619-631`. The wait at `:556-563` and the `stop()` at
 `:635-637` run only after `start()` succeeded. The service keeps going: a failed build retries (1 s,
-2 s, 5 s, then every 30 s while `isServiceActive`, `FirewallVpnService.kt:370-388`), and a slow build
+2 s, 5 s, then every 30 s while `isServiceActive`, `FirewallVpnService.kt:371-389`), and a slow build
 completes later. Either way a tunnel can come up that nothing reports.
 
 ## F8. A cache clear during a package sweep can leave a new app unblocked — `VERIFIED` in code, timing not proven
 
 `clearInstalledAppsCache` (`HiddenApiHelper.kt:556`, comment `:567-574`) nulls `networkPackagesCache`
 without `networkPackagesLock`. A sweep already inside the lock publishes its pre-clear list with a fresh
-timestamp (`:659-660`), and a caller that waited on the lock takes it whatever its age (`:619-622`).
-iptables Block All blocks only packages on that list (`IptablesFirewallBackend.kt:408-426`), so the
+timestamp (`:691-692`), and a caller that waited on the lock takes it whatever its age (`:651-654`).
+iptables Block All blocks only packages on that list (`IptablesFirewallBackend.kt:409-427`), so the
 apply triggered by an install during a running sweep can leave the new app unblocked until a later
-apply. Taking the lock is worse: it is held ~9.5 s for 466 packages and two callers are
+apply; the re-apply when an app returns to De1984's profile (`PackageMonitoringService.kt:271`) can
+meet the same stale list. Taking the lock is worse: it is held ~9.5 s for 466 packages and two callers are
 BroadcastReceivers (ANR). Fix: a generation counter the sweep checks before publishing.
 
 ## F16. With two profiles besides De1984's own, the second one's app list never expires — `VERIFIED` in code, not at runtime
@@ -99,14 +107,26 @@ profile's expired refetch makes the second one's old list look fresh, every time
 in that second profile (for example a clone profile or Private Space next to a work profile) is missing
 from Block All while the firewall reports Running. The package monitor reads the same cache, so it misses
 the install too. The list is dropped only by a full app-list scan (`AndroidPackageDataSource.kt:173`), an
-enabled-state change the monitor sees (`PackageMonitoringService.kt:442`), or a package event in De1984's
-own profile (`PackageAddedReceiver.kt:28`, `PackageChangedReceiver.kt:52`). Same at v2.7.5. Not seen on
+enabled-state change the monitor sees (`PackageMonitoringService.kt:461`), an install, removal or profile change it sees (`announcePackageSetChange`), or a package event in De1984's
+own profile (`PackageChangedReceiver.kt:52`; `PackageAddedReceiver.kt:28` never runs, see P15). Same at v2.7.5. Not seen on
 the test phone, which has one other profile.
+
+## F21. The package watcher misses some changes in other profiles, and their rules wait for the next re-apply — `VERIFIED` in code, not at runtime
+
+The watcher's poll lists only user apps with internet permission (`PackageMonitoringService.kt:384-385`)
+and compares package names per profile (`:325`), and its profile check sees only the first other
+profile appear and the last one go (`:225-250`). In another profile it therefore misses a system app
+hidden, unhidden, removed or restored there, an app without internet permission that shares a uid, an
+uninstall plus reinstall inside one poll tick (a new uid under the same name), and a second profile
+that appears or goes holding no user app with internet permission. The backends count or drop those
+rules only at the next screen or network change, so until then such an app can have network
+on iptables or NetworkPolicyManager while its row reads Blocked. VPN and ConnectivityManager do not
+reach other profiles.
 
 ## F14. A cold-process start plans before Shizuku's first check answers and falls back to VPN — `VERIFIED` at runtime
 
 `computeStartPlan` calls `selectBackend` at once (`FirewallManager.kt:325`), and NetworkPolicyManager's
-`checkAvailability` reads `hasShizukuPermission` with no wait (`NetworkPolicyManagerFirewallBackend.kt:610`);
+`checkAvailability` reads `hasShizukuPermission` with no wait (`NetworkPolicyManagerFirewallBackend.kt:611`);
 the only wait for the root and Shizuku checks is on the another-VPN path (`FirewallManager.kt:467`). Seen
 on the phone: "No Shizuku permission" at 22:29:43.776, Shizuku RUNNING_WITH_PERMISSION at 22:29:45.338,
 the plan fell back to AUTO and VPN, and the app reported FIREWALL DOWN (VPN_PERMISSION_REQUIRED) with
@@ -156,16 +176,33 @@ The notification's tap does start it. Boot restore uses another path (not checke
 
 `FirewallManager.kt:2529-2545` returns false whenever a VPN transport is up and the active backend type
 is VPN, so the conflict branch at `:2626` cannot fire then. With nothing to block, De1984 builds no
-tunnel (`FirewallVpnService.kt:323-327`), so a VPN that is up belongs to another app. Whether Android
+tunnel (`FirewallVpnService.kt:324-328`), so a VPN that is up belongs to another app. Whether Android
 revokes a never-established De1984 VPN when another app prepares is `NEEDS CONFIRMATION` (second VPN
 app).
 
 ## F15. After a failed start apply, DOWN is reported only after the service's own queued apply — `VERIFIED` at runtime
 
-The manager's `stop()` takes the backend lock (`IptablesFirewallBackend.kt:170`), and the service's apply
+The manager's `stop()` takes the backend lock (`IptablesFirewallBackend.kt:171`), and the service's apply
 that queued on the same lock takes it first and runs its own sweeps. Seen on the phone: the start apply
 failed at 22:19:13.786, the service's sweep ran at 22:19:18.727, and DOWN came after it. The app shows
 Starting meanwhile, never Running.
+
+## F22. Lead: a ROM that leaves an installed app out of De1984's app lists would lift its block — `NEEDS CONFIRMATION`
+
+`rulesByCurrentUid` drops a rule whose app is missing from every profile's list once every list is
+non-empty (`FirewallBackend.kt:106`, `:116`). Stock Android lists every app to a holder of
+QUERY_ALL_PACKAGES, which De1984 declares, so testing this needs a ROM with an app-hiding feature. Likely
+fix: confirm a missing app with a direct lookup before dropping its rule.
+
+## F23. With a profile De1984 cannot read, an uninstalled app's rule can land on a new app — `NEEDS CONFIRMATION`
+
+`rulesByCurrentUid` drops nothing while any profile's list is unreadable and keeps the stored uid
+(`FirewallBackend.kt:106`, `:116`). That is the normal state on the VPN backend with a work profile or
+Private Space when root or Shizuku was never granted. A rule whose app was uninstalled then keeps
+counting on its old uid, and if Android gives that uid to a new app (after a reboot), the new app gets
+the old rule's verdict with no row to change it. Whether Android reuses a freed uid after a reboot is
+`NEEDS CONFIRMATION`. Likely fix: drop the rule when a readable profile lists its stored uid under
+another package that is not in a shared-uid group.
 
 ---
 
@@ -221,7 +258,7 @@ no text. New text is needed in 7 languages.
 
 `getInstalledApplicationsAsUser` still returns an empty list on failure (`HiddenApiHelper.kt:545-546`),
 and three callers take it as the truth: the package list (`AndroidPackageDataSource.kt:207`, the profile
-shows no apps), the package monitor (`PackageMonitoringService.kt:357`, its apps look removed) and the
+shows no apps), the package monitor (`PackageMonitoringService.kt:376`, its apps look removed) and the
 smart policy switch (`SmartPolicySwitchUseCase.kt:125`, that profile's VPN apps are not treated as
 critical). `getUsers` also drops a profile whose handle fails to parse (`HiddenApiHelper.kt:333-359`).
 
@@ -250,6 +287,31 @@ timeout. If a profile chip (Personal for a work-profile app) or a state chip hid
 ends, `pendingDialogPackageId` stays set, and the controls pop up later when the user changes chips. Same
 code at v2.7.5; since `55bf680` work-profile notifications carry user 10, so a saved Personal chip now
 reaches it, where v2.7.5 looked up user 0 and opened nothing or the personal copy.
+
+## P13. "Allow Network" on a new-app notification cannot unblock an app whose uid a neighbour's rule blocks — `VERIFIED` in code, not at runtime
+
+The button writes only this app's own rule (`NotificationActionReceiver.kt:54`) and then dismisses the
+notification as done (`:58`). Every backend decides a uid by the union of its apps' rules, so a
+neighbour's block keeps the uid blocked, and the notification, unlike the app's sheet, has no shared-UID
+note to say so.
+
+## P14. Unfreezing an app or adding a second profile posts "new app" notifications for apps already there — `VERIFIED` in code, not at runtime
+
+A frozen (hidden) app drops out of the watcher's list, so on unfreeze it looks newly installed
+(`PackageMonitoringService.kt:325`) and gets the new-app notification (`:509`) for an app that was
+there all along. A second profile that appears next to an existing one is diffed the same way, so each
+of its user apps with internet permission gets one.
+
+## P15. Installs in De1984's own profile never get the new-app notification — `VERIFIED` at runtime
+
+Android keeps ACTION_PACKAGE_ADDED from the manifest receivers of apps that target Android 8 or later,
+and `PackageAddedReceiver` is declared only in the manifest (`AndroidManifest.xml:214-222`). The API 36
+emulator's broadcast history lists it as "skipped by policy at enqueue: Background execution not
+allowed" for every install, and no new-app notification was posted with the setting on. It is the only
+caller of `showNewAppNotification` for De1984's own profile (`PackageAddedReceiver.kt:55`; the watcher's
+call, `PackageMonitoringService.kt:509`, covers other profiles). The rule is still created through
+PACKAGE_CHANGED (`PackageChangedReceiver.kt:100`). Likely fix: run PackageAddedReceiver's work from the
+watcher's registered receiver (`PackageMonitoringService.kt:271`), which does get the broadcast.
 
 ## P6. Lead: an installed disabled system app can look uninstalled — `NOT VERIFIED`
 
@@ -314,7 +376,9 @@ the test phone.
 
 Each decides a fix above.
 
-- **F1:** block an app on the VPN backend, uninstall and reinstall it, check its traffic.
+- **F1:** after a reboot with the firewall off, start it from the widget so `dumpsys activity services`
+  lists no `PackageMonitoringService`, remove a blocked app from De1984's profile only, restore it with
+  `pm install-existing`, check its traffic.
 - **F7:** another VPN app starting while De1984's VPN has no tunnel.
 - **P3:** what `killBackgroundProcesses` reaches, below and on Android 14.
 - **P6:** `versionName` for a system app whose manifest has none.
@@ -325,7 +389,7 @@ Each decides a fix above.
   (`cmd package install-existing --user N`) unhides it decides whether the row's label and button are true.
   `pm hide` a test system app, check the list, tap Reinstall, then `pm unhide`.
 - **Locked Private Space (Android 15):** the package sweep refuses the whole list when any profile reads
-  zero apps (`HiddenApiHelper.kt:633-636`), and `getUserProfiles` lists every enabled profile. A paused
+  zero apps (`HiddenApiHelper.kt:665-668`), and `getUserProfiles` lists every enabled profile. A paused
   work profile is fine on the Android 14 test phone (2026-09-15: quiet flag set, 216 apps read through
   the hidden API, iptables Block All Running with 79 DROP rules). Whether a locked Private Space reads
   zero apps, which would make every Block All start on root or Shizuku report DOWN, needs an Android 15

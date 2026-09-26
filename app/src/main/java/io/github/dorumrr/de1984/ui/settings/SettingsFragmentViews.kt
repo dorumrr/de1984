@@ -121,12 +121,16 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
                     getString(io.github.dorumrr.de1984.R.string.vpn_permission_denied),
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
-                val allBackends = getAllBackends()
-                val autoIndex = allBackends.indexOfFirst { it.mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO }
-                if (autoIndex >= 0) {
-                    binding.backendSelectionDropdown.setText(allBackends[autoIndex].displayName, false)
+                // Only a refused VPN pick falls back to AUTO. Any other mode reached VPN through AUTO
+                // already, and keeps the user's pick.
+                if (viewModel.uiState.value.firewallMode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.VPN) {
+                    val allBackends = getAllBackends()
+                    val autoIndex = allBackends.indexOfFirst { it.mode == io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO }
+                    if (autoIndex >= 0) {
+                        binding.backendSelectionDropdown.setText(allBackends[autoIndex].displayName, false)
+                    }
+                    viewModel.setFirewallMode(io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO, forceEvenIfOtherVpnActive = true)
                 }
-                viewModel.setFirewallMode(io.github.dorumrr.de1984.domain.firewall.FirewallMode.AUTO, forceEvenIfOtherVpnActive = true)
             }
         }
     }

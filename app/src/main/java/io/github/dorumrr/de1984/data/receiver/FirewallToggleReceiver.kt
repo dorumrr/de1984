@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.ui.widget.FirewallWidget
 import io.github.dorumrr.de1984.utils.AppLogger
@@ -106,9 +107,13 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                         AppLogger.w(TAG, "Persisted mode $persistedMode is unavailable; plan resolved to ${plan.mode}")
                     }
                     AppLogger.d(TAG, "computeStartPlan result: $plan")
-                    AppLogger.d(TAG, "requiresVpnPermission: ${plan?.requiresVpnPermission}")
+                    // Not running, so a VPN that is up is another app's even while a stale VPN backend is current.
+                    // A direct start would take its tunnel; only the notification's tap may.
+                    val needsUserForVpn = plan?.selectedBackendType == FirewallBackendType.VPN &&
+                        (firewallManager.isVpnActive() || firewallManager.vpnConsentIntent() != null)
+                    AppLogger.d(TAG, "needsUserForVpn: $needsUserForVpn")
 
-                    if (plan?.requiresVpnPermission == true) {
+                    if (needsUserForVpn) {
                         // This used to start VpnPermissionActivity directly. It cannot work from
                         // here: with targetSdk 34, Android 14 blocks a background activity launch
                         // from a BroadcastReceiver (BAL_BLOCK), so tapping the widget or the tile

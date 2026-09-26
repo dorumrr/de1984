@@ -313,8 +313,7 @@ class FirewallManager(
     }
     data class FirewallStartPlan(
         val mode: FirewallMode,
-        val selectedBackendType: FirewallBackendType,
-        val requiresVpnPermission: Boolean
+        val selectedBackendType: FirewallBackendType
     )
 
     /** Runs on Dispatchers.IO: [selectBackend] probes root and Shizuku. */
@@ -350,18 +349,16 @@ class FirewallManager(
 
         val backend = backendResult.getOrThrow()
         val backendType = backend.getType()
-        val requiresVpnPermission = backendType == FirewallBackendType.VPN
 
         AppLogger.d(
             TAG,
-            "computeStartPlan: requested=$mode, resolved=$effectiveMode, backendType=$backendType, requiresVpnPermission=$requiresVpnPermission"
+            "computeStartPlan: requested=$mode, resolved=$effectiveMode, backendType=$backendType"
         )
 
         Result.success(
             FirewallStartPlan(
                 mode = effectiveMode,
-                selectedBackendType = backendType,
-                requiresVpnPermission = requiresVpnPermission
+                selectedBackendType = backendType
             )
         )
     }
@@ -501,7 +498,7 @@ class FirewallManager(
             val plan = planResult.getOrThrow()
             AppLogger.d(
                 TAG,
-                "startFirewall: Using plan → mode=${plan.mode}, backend=${plan.selectedBackendType}, requiresVpn=${plan.requiresVpnPermission}"
+                "startFirewall: Using plan → mode=${plan.mode}, backend=${plan.selectedBackendType}"
             )
 
             val oldBackend = currentBackend
@@ -1898,9 +1895,9 @@ class FirewallManager(
         }
 
         val plan = planResult.getOrThrow()
-        AppLogger.d(TAG, "handleBackendFailure: planner selected backend ${plan.selectedBackendType} (requiresVpn=${plan.requiresVpnPermission})")
+        AppLogger.d(TAG, "handleBackendFailure: planner selected backend ${plan.selectedBackendType}")
 
-        if (!plan.requiresVpnPermission || plan.selectedBackendType != FirewallBackendType.VPN) {
+        if (plan.selectedBackendType != FirewallBackendType.VPN) {
             val result = startFirewallInternal(plan.mode)
             result.onSuccess { backendType ->
                 AppLogger.d(TAG, "✅ Backend failure handled via planner: switched to $backendType")
@@ -2317,6 +2314,8 @@ class FirewallManager(
 
             while (_isFirewallDown.value && retryCount < maxRetries) {
                 delay(delayMs)
+                // Another path may have restored protection during the delay; a pass now would re-post a stale conflict.
+                if (!_isFirewallDown.value) break
                 retryCount++
 
                 AppLogger.d(TAG, "VPN permission monitoring: attempt $retryCount/$maxRetries")
@@ -2328,23 +2327,6 @@ class FirewallManager(
                 if (isAnotherVpnActive) {
                     AppLogger.d(TAG, "Another VPN still active - skipping permission check")
                     showVpnConflictNotification()
-                    
-                    // On first retry, check if we have VPN permission to determine if situation is hopeless:
-                    // - If we have permission: keep trying (user may disconnect their VPN)
-                    // - If no permission AND VPN conflict: exit monitoring (can't proceed without both)
-                    if (retryCount == 1) {
-                        val prepareIntent = try {
-                            VpnService.prepare(context)
-                        } catch (e: Exception) {
-                            AppLogger.w(TAG, "VPN permission check failed: ${e.message}")
-                            null
-                        }
-
-                        if (prepareIntent != null) {
-                            AppLogger.w(TAG, "No VPN permission and another VPN active - stopping monitoring (situation is hopeless)")
-                            break
-                        }
-                    }
                     continue
                 }
 
@@ -2541,6 +2523,20 @@ class FirewallManager(
 
         AppLogger.d(TAG, "isAnotherVpnActive: Another VPN app is active (currentBackend=$currentBackendType)")
         return true
+    }
+
+    /**
+     * The consent dialog the VPN backend still needs, or null when it can start as it is.
+     * Never calls prepare() while another VPN is up: for a consented app that disconnects the other VPN.
+     */
+    fun vpnConsentIntent(): Intent? {
+        if (isAnotherVpnActive()) return null
+        return try {
+            VpnService.prepare(context)
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to check VPN permission", e)
+            null
+        }
     }
 
     /**

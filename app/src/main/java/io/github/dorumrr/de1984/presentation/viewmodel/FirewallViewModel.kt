@@ -4,7 +4,6 @@ import io.github.dorumrr.de1984.utils.AppLogger
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import android.net.VpnService
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -985,9 +984,7 @@ class FirewallViewModel(
             }
         )
 
-        val needsVpnPermission = planResult?.let { plan ->
-            plan.selectedBackendType == FirewallBackendType.VPN && plan.requiresVpnPermission
-        } ?: false
+        val needsVpnPermission = planResult?.selectedBackendType == FirewallBackendType.VPN
 
         if (needsVpnPermission) {
             // Check if another VPN is active before calling VpnService.prepare()
@@ -1007,7 +1004,7 @@ class FirewallViewModel(
                 return null
             }
 
-            val prepareIntent = VpnService.prepare(getApplication())
+            val prepareIntent = firewallManager.vpnConsentIntent()
             if (prepareIntent != null) {
                 // Permission dialog must be shown by the Activity. We do NOT
                 // start the firewall here; onVpnPermissionGranted() will be

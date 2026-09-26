@@ -621,6 +621,8 @@ When the app starts (or returns from background), it must recover the correct fi
   VPN dialog: with targetSdk 34, Android 14 refuses the launch with `BAL_BLOCK`
 - The receiver reports `Down(VPN_PERMISSION_REQUIRED)` instead, which raises the VPN
   fallback notification. Tapping a notification is a gesture Android accepts
+- It takes that route only when consent is missing or another VPN holds the slot, and starts
+  directly otherwise. With another VPN up, a direct start would take that VPN's tunnel
 - `VpnPermissionActivity` therefore has no launcher today - see PLAN.md
 
 ---

@@ -652,12 +652,7 @@ class SettingsViewModel(
         return shizukuManager.isShizukuRootMode()
     }
 
-    fun checkVpnPermissionNeeded(): android.content.Intent? {
-        val mode = _uiState.value.firewallMode
-        if (mode != FirewallMode.VPN) return null
-        
-        return android.net.VpnService.prepare(context)
-    }
+    fun checkVpnPermissionNeeded(): android.content.Intent? = android.net.VpnService.prepare(context)
 
     fun onVpnPermissionGranted() {
         viewModelScope.launch {
@@ -685,6 +680,18 @@ class SettingsViewModel(
                 }
             }
 
+            // computeStartPlan falls back to AUTO by itself when this device cannot run the pick,
+            // so a plan whose mode differs from newMode is how a substitution is seen.
+            val plan = firewallManager.computeStartPlan(newMode).getOrNull()
+            val substituted = plan != null && plan.mode != newMode
+
+            // Asked before the stop, so a refused dialog leaves the running backend in place.
+            if (plan?.selectedBackendType == FirewallBackendType.VPN && firewallManager.vpnConsentIntent() != null) {
+                AppLogger.d(TAG, "The VPN backend needs consent - asking before stopping the current backend")
+                _uiState.value = _uiState.value.copy(vpnPermissionRequired = true)
+                return
+            }
+
             // A failed stop must ABORT the switch. This used to discard the Result and start the
             // new backend anyway, which was wrong twice over: the old backend is still enforcing,
             // so two sets of rules end up live with only one of them visible or undoable - and the
@@ -706,25 +713,6 @@ class SettingsViewModel(
                 return
             }
             delay(500)
-
-            // Ask what will actually happen before doing it. computeStartPlan falls back to AUTO
-            // on its own when this device cannot run the chosen backend, and reports the mode it
-            // settled on - so comparing the two is how we learn the user's pick was substituted.
-            // Without this the start would quietly succeed on a different backend and say nothing.
-            val plan = firewallManager.computeStartPlan(newMode).getOrNull()
-            val substituted = plan != null && plan.mode != newMode
-
-            // AUTO can land on the VPN backend, which needs the system consent dialog. Starting it
-            // without asking just burns the activation timeout and fails - no prompt, and no way to
-            // reach one from here. The guard further up only covers an explicit VPN pick.
-            // Not gated on `substituted`. The guard above only catches an explicit VPN pick, so a
-            // straight AUTO choice that resolves to the VPN backend fell between the two and
-            // started without ever asking for consent.
-            if (plan?.requiresVpnPermission == true) {
-                AppLogger.d(TAG, "Fallback would need VPN permission - asking instead of failing silently")
-                _uiState.value = _uiState.value.copy(vpnPermissionRequired = true)
-                return
-            }
 
             val result = firewallManager.startFirewall(newMode)
 
@@ -753,7 +741,12 @@ class SettingsViewModel(
                 // preference. The manual choice is load-bearing - handlePrivilegeChange restarts
                 // exactly that backend when privileges come back - and a start can fail for reasons
                 // that pass, like a Magisk prompt dismissed once.
-                _startFailedModes.value = _startFailedModes.value + newMode
+                // Another VPN holding the slot a VPN plan needed passes too, and says nothing about this mode.
+                val blockedByOtherVpn = plan?.selectedBackendType == FirewallBackendType.VPN &&
+                    firewallManager.isAnotherVpnActive()
+                if (!blockedByOtherVpn) {
+                    _startFailedModes.value = _startFailedModes.value + newMode
+                }
                 _uiState.value = _uiState.value.copy(
                     error = context.getString(io.github.dorumrr.de1984.R.string.error_firewall_restart_failed, error.message ?: context.getString(io.github.dorumrr.de1984.R.string.error_unknown))
                 )

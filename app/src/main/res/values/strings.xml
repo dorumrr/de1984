@@ -306,8 +306,8 @@
     <string name="firewall_switched_title">Backend switched</string>
     <string name="firewall_switched_message_auto">The %1$s backend failed. De1984 switched to VPN and is still protecting you.</string>
     <string name="firewall_switched_message_manual">The %1$s backend failed. De1984 switched to AUTO mode and is using VPN.</string>
-    <!-- Firewall would not stop: the mirror of "firewall down". The user asked for no blocking and
-         may still be getting some, with every control showing OFF. -->
+    <!-- StopFailed: a stop that left rules live, and also a backend switched away from that is still
+         enforcing under the new one, where the controls show ON. -->
     <string name="firewall_stop_failed_title">Firewall did not stop</string>
     <string name="firewall_stop_failed_message">The %1$s backend would not shut down. Some apps may still be blocked. Try again, or restart the device.</string>
     <string name="firewall_stop_failed_message_unknown">The firewall would not shut down. Some apps may still be blocked. Try again, or restart the device.</string>

@@ -399,14 +399,6 @@ class FirewallManager(
         }
 
     /**
-     * Internal start method without mutex (for callers that already hold the lock).
-     *
-     * [handleBackendFailure] runs inside [startStopMutex] and must reach this, not [startFirewall].
-     * kotlinx Mutex is not reentrant, so going through the public method there suspended forever
-     * while still holding the lock, hanging every later start, stop and toggle for the rest of the
-     * process.
-     */
-    /**
      * Waits until the root and Shizuku probes have said something other than CHECKING.
      *
      * CHECKING is not an answer. `hasRootPermission` and `hasShizukuPermission` are plain
@@ -462,6 +454,7 @@ class FirewallManager(
         return inTime
     }
 
+    /** For callers already holding [startStopMutex]: it is not reentrant, so [startFirewall] from inside it hangs forever. */
     private suspend fun startFirewallInternal(mode: FirewallMode): Result<FirewallBackendType> {
         return try {
             AppLogger.d(TAG, "Starting firewall with mode: $mode")
@@ -846,23 +839,8 @@ class FirewallManager(
     }
 
     /**
-     * Tear down the backend we are switching AWAY from, and prove it actually went.
-     *
-     * A switch is not a stop: the firewall stays up on the new backend, so a failure here is not
-     * "the firewall would not stop" - it is an ORPHAN. The old backend is still enforcing its own
-     * rules underneath the new one, invisibly, and the user has no control that touches it.
-     *
-     * Every switch site used to call backend.stop() and either ignore the Result or log it and
-     * "continue anyway". That was survivable while stop() could not report a real failure. Now that
-     * it can - VpnFirewallBackend proves a live tunnel - throwing the proof away is the app choosing
-     * not to know.
-     *
-     * So: stop, and if that fails or cannot reach the old backend, run the sweep, which does the real
-     * teardown and re-checks. Only a failure that survives BOTH is reported, which keeps a slow VPN
-     * tunnel from raising a false alarm on every backend change.
-     *
-     * @param runningBackendType the backend already enforcing in its place; the sweep must not undo it.
-     * @return the surviving failure, or null when the old backend is provably gone.
+     * Returns only a failure the sweep confirms, so a slow VPN teardown does not alarm on every switch.
+     * [runningBackendType] already enforces in the old backend's place, so the sweep must spare it.
      */
     private suspend fun tearDownSwitchedAwayBackend(
         oldBackend: FirewallBackend?,
@@ -1541,27 +1519,6 @@ class FirewallManager(
         )
     }
 
-    /**
-     * The widget or the tile asked to start the firewall, and the plan needs VPN permission.
-     *
-     * Both of those arrive through FirewallToggleReceiver, and a BroadcastReceiver cannot open the
-     * permission dialog: with targetSdk 34, Android 14 refuses the launch with BAL_BLOCK and the tap
-     * did nothing at all, silently. A notification CAN get there, because tapping one is a user
-     * gesture, and [showVpnFallbackNotification] already exists and already opens MainActivity with
-     * ACTION_ENABLE_VPN_FALLBACK.
-     *
-     * Routed through [reportFirewallDown] rather than calling the notification directly, so the
-     * badge, the banner and the widget all describe the same situation - the user asked for the
-     * firewall and did not get it, which is exactly what Down means.
-     *
-     * This runs on every Android version, not only 14+. The direct launch still works below 14, but
-     * keeping it would be a second way to do one thing, and the notification works everywhere. The
-     * cost is one extra tap on older devices.
-     *
-     * @param resolvedMode the mode the receiver actually planned with, which is NOT always the
-     *   stored preference: a manual mode whose backend is gone makes it fall back to AUTO. Carried
-     *   all the way to VpnPermissionActivity so that fallback is not recomputed and lost.
-     */
     /** A background restore that threw before [startFirewall] could report; silent while a backend enforces. */
     suspend fun reportStartFailedFromBackground(error: Throwable) = withContext(Dispatchers.IO) {
         startStopMutex.withLock {
@@ -1575,6 +1532,10 @@ class FirewallManager(
         }
     }
 
+    /**
+     * A widget, tile or boot start that needs VPN consent: a receiver cannot open the dialog (BAL_BLOCK), a notification tap can.
+     * [resolvedMode] is what the caller planned with, carried to VpnPermissionActivity so an AUTO fallback is not recomputed and lost.
+     */
     fun reportVpnPermissionRequiredFromBackground(resolvedMode: FirewallMode) {
         // Another path may have started a backend since the caller planned; that one is protecting.
         if (isActive()) {
@@ -1701,20 +1662,8 @@ class FirewallManager(
     }
 
     /**
-     * The user asked to stop and the backend would not tear down, so its rules may still be live.
-     *
-     * [_isFirewallDown] is cleared on purpose: that flag arms automatic recovery, which restarts the
-     * firewall. Arming it here would fight the user, who just asked for the opposite. The stale
-     * failure notifications go too - whatever was wrong before, "will not stop" is the live problem
-     * now, and the banner carries it.
-     */
-    /**
-     * Tell the user a backend we switched away from is still enforcing.
-     *
-     * Same warning surface as a failed stop - the user's problem is identical: apps are blocked and
-     * no control in the app touches the thing blocking them. But [_firewallState] is deliberately
-     * left alone, because the firewall IS running, on the new backend. Writing Error here would put
-     * the widget and the tile into a failed state for a firewall that is up and working.
+     * A backend switched away from is still enforcing. [_firewallState] is left alone: the firewall is
+     * up on the new backend, and Error would put the widget and tile into a failed state.
      */
     private fun reportOrphanedBackend(backend: FirewallBackendType?, error: Throwable) {
         AppLogger.e(TAG, "⚠️ ORPHANED BACKEND ($backend): its rules may still be enforced", error)
@@ -1724,6 +1673,10 @@ class FirewallManager(
         showStopFailedNotification(backend)
     }
 
+    /**
+     * A stop left rules live. [_isFirewallDown] is cleared because it arms automatic recovery, which
+     * would restart the firewall the user just stopped.
+     */
     private fun reportStopFailed(backend: FirewallBackendType?, error: Throwable) {
         AppLogger.e(TAG, "⚠️ FIREWALL WOULD NOT STOP (backend=$backend): rules may still be enforced", error)
 
@@ -1746,23 +1699,7 @@ class FirewallManager(
         showStopFailedNotification(backend)
     }
 
-    /**
-     * Tell the user, outside the app, that the firewall would not shut down.
-     *
-     * Same wording as the banner, through the same presenter, so the two cannot drift apart.
-     * Its own notification id: [dismissBackendFailedNotification] must not cancel it, because a
-     * later "backend healthy" is not evidence that the stuck rules were removed.
-     */
-    /**
-     * Whether stopping the firewall from the tile or the widget should ask first.
-     *
-     * ON by default: stopping hands every app on the device network access at once, which is worth
-     * one tap of friction. The reporter of issue #91 wanted the opposite, so it is a setting rather
-     * than a decision made for everyone.
-     *
-     * Defined ONCE here because both the tile and the widget's receiver ask the same question, and a
-     * rule like this written in two places is how the two drift apart.
-     */
+    /** ON by default, since a stop opens the network to every app; defined once because the tile and the widget's receiver both ask. */
     fun shouldConfirmStop(): Boolean =
         context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean(
@@ -1809,6 +1746,10 @@ class FirewallManager(
         notificationManager.notify(Constants.FirewallStopped.NOTIFICATION_ID, notification)
     }
 
+    /**
+     * Own notification id, so [dismissBackendFailedNotification] cannot cancel it: a later healthy
+     * backend is no evidence that the stuck rules were removed.
+     */
     private fun showStopFailedNotification(backend: FirewallBackendType?) {
         AppLogger.d(TAG, "Showing stop-failed notification (backend=$backend)")
 
@@ -1844,12 +1785,8 @@ class FirewallManager(
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOnlyAlertOnce(true)
-            // NOT autoCancel. FirewallHealth.StopFailed lives only in memory and resets to Healthy on
-            // process death, so this notification is the only record that survives - which is the
-            // whole reason it is posted. With autoCancel, the ordinary "tap to open the app" gesture
-            // destroyed it, and if the process had already died the app would open showing Healthy
-            // with the rules still enforced. It is dismissed deliberately instead, by
-            // dismissStopFailedNotification, once a stop or a start has genuinely succeeded.
+            // StopFailed is in memory only, so this is the one record that outlives the process; only a real stop or start
+            // clears it (dismissStopFailedNotification), never a tap.
             .setAutoCancel(false)
             .setOngoing(false)
             .setContentIntent(pendingIntent)

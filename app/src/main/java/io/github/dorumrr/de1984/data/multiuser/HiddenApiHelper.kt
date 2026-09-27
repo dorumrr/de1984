@@ -578,8 +578,8 @@ object HiddenApiHelper {
     }
 
     /**
-     * Per profile, every app still on the device for that user and its current uid (hidden apps and
-     * per-user-uninstalled system apps included); an unreadable profile maps to empty. Read fresh, never cached.
+     * Per profile, every app still on the device for that user and its current uid, hidden and per-user-uninstalled
+     * system apps included; an unreadable profile maps to empty. Apps are read fresh, profiles via cached [getUsers].
      */
     fun getInstalledUids(context: Context): Map<Int, Map<String, Int>> {
         if (!initialized) initialize()
@@ -679,7 +679,7 @@ object HiddenApiHelper {
                     appInfo.packageName,
                     PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
                     userId
-                ) ?: return@filter true // Unreadable is not "no network permission": left out, the app stays unblocked.
+                ) ?: return@filter true // Unreadable is not "no network permission": kept, or the app would stay unblocked.
                 packageInfo.requestedPermissions?.any { permission ->
                     Constants.Firewall.NETWORK_PERMISSIONS.contains(permission)
                 } ?: false

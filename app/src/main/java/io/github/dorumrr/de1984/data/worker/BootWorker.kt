@@ -39,14 +39,8 @@ class BootWorker(
                 return Result.failure()
             }
 
-            // The boot block is lifted once the outcome is known, never before. Lifting it up front
-            // left the device unprotected for the whole restore window - root wake, Shizuku wake and
-            // the start itself - which is precisely the gap boot protection exists to close. This now
-            // matches BootReceiver, which is the ≤ API 30 path; the two used to disagree, and this
-            // one silently disabled the feature on every modern device.
-            //
-            // Every exit below still lifts it, so the block cannot outlive this worker. The script's
-            // own 120-second timer remains the backstop if this worker never runs at all.
+            // The boot block is lifted once the outcome is known, never before, or the restore window
+            // goes unprotected. The app == null exit above cannot lift it; the script's timer does.
             if (!wasEnabled) {
                 AppLogger.d(TAG, "ℹ️  FIREWALL WAS NOT ENABLED | Nothing will take over - lifting any boot block")
                 app.dependencies.bootProtectionManager.clearBootBlockIfInstalled()
@@ -161,8 +155,8 @@ class BootWorker(
             AppLogger.e(TAG, "❌ ERROR IN BOOT WORKER | Error: ${e.message}")
             AppLogger.e(TAG, "Stack trace:", e)
 
-            // Every exit lifts the block, this one included. A throw anywhere above would otherwise
-            // leave the device blocked until the script's own timer fires.
+            // A throw anywhere above would otherwise leave the device blocked until the script's own
+            // timer fires.
             try {
                 (applicationContext as? De1984Application)
                     ?.dependencies?.bootProtectionManager?.clearBootBlockIfInstalled()

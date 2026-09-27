@@ -62,14 +62,8 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                         AppLogger.d(TAG, "🔴 Firewall is active and confirmation is off - stopping directly")
                         firewallManager.stopFirewall()
                             .onSuccess {
-                                // Record the intent, the mirror of what the start branch below does.
-                                // KEY_FIREWALL_ENABLED is user intent, and stopFirewallInternal
-                                // deliberately never touches it. Without this write the pref still
-                                // said "on" after a direct stop, so FirewallManager's startup probe
-                                // (:252, "should be running but no backend detected") restarted the
-                                // firewall on the next cold start, BootReceiver/BootWorker restored
-                                // it after a reboot, and FirewallWidget painted ON throughout - the
-                                // stop the user asked for, silently undone.
+                                // stopFirewallInternal never clears user intent; left true, the startup
+                                // probe, boot restore and widget would each undo or hide this stop.
                                 val prefs = context.getSharedPreferences(
                                     Constants.Settings.PREFS_NAME,
                                     Context.MODE_PRIVATE

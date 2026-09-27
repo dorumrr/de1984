@@ -556,9 +556,8 @@ class FirewallVpnService : VpnService() {
             if (prepareIntent != null) {
                 AppLogger.e(TAG, "VPN permission not granted - cannot establish VPN interface")
 
-                // Update SharedPreferences to indicate VPN service is not running
-                // IMPORTANT: Do NOT clear KEY_FIREWALL_ENABLED here!
-                // We want to preserve user intent so handlePrivilegeChange() can attempt recovery.
+                // KEY_FIREWALL_ENABLED stays: a revoked VPN permission is not the user stopping the
+                // firewall, and the startup probe and boot restore read it to start it again.
                 val prefs = getSharedPreferences(
                     io.github.dorumrr.de1984.utils.Constants.Settings.PREFS_NAME,
                     Context.MODE_PRIVATE

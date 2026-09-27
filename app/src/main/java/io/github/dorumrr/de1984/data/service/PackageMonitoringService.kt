@@ -399,14 +399,8 @@ class PackageMonitoringService : Service() {
     }
 
     /**
-     * Notices an app being enabled or disabled in ANY profile, which nothing else here can see.
-     *
-     * One `pm list packages -d --user N` per profile, not one call per package - that is what makes
-     * this cheap enough to sit in a 15-second poll. No notification is raised: this is not a new
-     * app, it is the same app in a different state, so the only job is to tell the UI to re-read.
-     *
-     * A profile whose read fails is skipped rather than recorded, so a temporary shell failure does
-     * not first look like "everything got enabled" and then like "everything got disabled again".
+     * One `pm list packages -d` per profile, not per package, keeps this cheap enough for every tick.
+     * A failed read keeps the old snapshot, or it would look like every app enabled then disabled again.
      */
     private fun checkForEnabledStateChanges() {
         val profiles = try {

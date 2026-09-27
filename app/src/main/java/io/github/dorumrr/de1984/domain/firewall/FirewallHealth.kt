@@ -44,13 +44,8 @@ sealed interface FirewallHealth {
     }
 
     /**
-     * Rules are still being enforced, but through VPN after the preferred backend failed.
-     *
-     * Protection is intact, so this is informational.
-     *
-     * It persists until the firewall is stopped or restarted. The only path that sets it,
-     * FirewallManager.startVpnFallback, stops health monitoring and never restarts it, so there is
-     * no "next successful check" to clear it.
+     * VPN took over from a failed privileged backend (FirewallManager.handleBackendFailure, startVpnFallback).
+     * Informational; the next start, stop or passing health check clears it.
      */
     data class SwitchedToVpn(
         val failedBackend: FirewallBackendType,

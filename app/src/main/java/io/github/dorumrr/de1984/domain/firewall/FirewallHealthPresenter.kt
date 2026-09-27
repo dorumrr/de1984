@@ -20,15 +20,8 @@ enum class FirewallHealthAction(@StringRes val label: Int) {
 }
 
 /**
- * Turns a [FirewallHealth] into the words a user reads.
- *
- * Single source for this wording. The in-app banner and the notification both come through here, so
- * they can never drift apart, and every sentence stays translatable - the reason the data layer
- * stopped composing English strings of its own.
- *
- * Lives in domain, not ui, because FirewallManager needs it for the notification text. Putting it in
- * ui would make the data layer depend on the UI layer. Holding a Context to resolve strings matches
- * what the other domain models here already do (see CaptivePortalMode.getDisplayName).
+ * Wording for the banner and the Down and StopFailed notifications; VPN conflict and VPN permission
+ * keep their own notifications. In domain, not ui, because FirewallManager builds notifications from it.
  */
 object FirewallHealthPresenter {
 

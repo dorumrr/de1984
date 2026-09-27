@@ -1,401 +1,110 @@
-# De1984 — Work List
-
-Open work, ordered by harm to the user. This file is the queue, not an archive.
-
-**Trust order: current code first, this file second.** Every entry below was checked against the code
-on 2026-09-14 and 2026-09-15: F16-F20 and P10-P12 at `b1bf739` (release audit of v2.7.5..HEAD, F20 and the
-paused work profile also on the phone); P9, the comment note under "Below the bar" and every line cite into a file changed since
-`371895e` (`HiddenApiHelper.kt`, the three firewall backends, `FIREWALL.md`) at `43c2af4`; F13-F15, P7,
-P8, F2's and F8's updates and the three newest wording bullets at `9765780`; the Boot Protection bullet
-at `b225201`; the rest at `371895e`; F2 and every line cite into the four firewall backends,
-`FirewallBackend.kt` and `FIREWALL.md` again on 2026-09-25; F1, F8, F16, F21, F22, F23, P13, P14, P15
-and every line cite into a file changed since `b6c6c92` on 2026-09-26. Verify before acting on any of it.
-
-Status key: `VERIFIED` = read in code, line cited. `NOT VERIFIED` = reasoned, not proven.
-`NEEDS CONFIRMATION` = depends on Android behaviour the repo cannot show. "Runtime" means seen on a
-device.
-
-Everything finished was cleared on 2026-09-14. It is in git:
-
-```
-git show 0330f7e:PLAN.md      # the last full version
-git log --follow -p PLAN.md   # everything removed, and when
-```
-
-Released: v2.7.5 (versionCode 46), commit `79b64a6`, tag `v2.7.5`.
-
----
-
-# Firewall
-
-## F13. A failed re-apply on a running firewall is only logged — `VERIFIED` in code, not at runtime
-
-When a running firewall re-applies (a rule change, a new install, a network or screen change, a policy
-switch) and the apply fails, the service logs it and returns (`PrivilegedFirewallService.kt:634`). The
-health loop checks only availability and `isActive` (`FirewallManager.kt:1401`, `:1441`), so the app
-stays ON and healthy while that change is not enforced. The rules keep their last write, which was the
-chosen behaviour for F6 and F10; since the F10 fix a failed profile read is one such failure. Fix: tell
-the user when a running re-apply fails (new text in 7 languages).
-
-## F17. NetworkPolicyManager reports a successful apply after some apps failed — `VERIFIED` in code, not at runtime
-
-Inside `applyRules`, an app whose original policy could not be read is refused (`NetworkPolicyManagerFirewallBackend.kt:496-499`)
-and a `setUidPolicy` that throws is caught (`:541-545`); both only raise `errorCount`, and the apply still
-returns success (`:556`). A start therefore reports Running while those apps, shown as blocked, keep their
-network. The refusal at `:496` is deliberate (it protects a policy it cannot record), but it is not
-reported. Same at v2.7.5. How often `getUidPolicy` or `setUidPolicy` fail is `NEEDS CONFIRMATION`.
-
-## F18. ConnectivityManager reports a successful apply after some apps failed — `VERIFIED` in code, not at runtime
-
-A `cmd connectivity set-package-networking-enabled` that exits non-zero or throws only raises
-`errorCount` (`ConnectivityManagerFirewallBackend.kt:326-339`), and the apply still returns success
-(`:355`), so the app reports Running with that app unblocked. Same at v2.7.5.
-
-## F2. ConnectivityManager: an app's copy in another profile follows the own-profile copy, but its row says the mode cannot reach it — `VERIFIED` at runtime (the command) and in code (the row)
-
-The apply loop commands only De1984's own profile (`ConnectivityManagerFirewallBackend.kt:238-242`), so a
-copy in another profile no longer overwrites the own copy's verdict. But one
-`set-package-networking-enabled` command acts on the app in every profile: on the Pixel 9a emulator
-(API 36), disabling `io.test.pairA` denied uid 10216 (user 0) and 1010216 (user 10), and enabling it
-lifted both; the API 35 emulator did the same. Which user Android resolves the name in is not measured. So an app installed in both profiles follows the own-profile copy everywhere, while the other
-profile's row shows OTHER_PROFILE_UNREACHABLE (`FirewallBackend.kt:332`) and paints no block
-(`asEnforcedBy`), which is untrue whenever the own-profile copy is blocked. Fixing the row needs new
-wording. If the own-profile copy is uninstalled while blocked, no later apply names the package, so the
-other copy keeps the denial; whether a stop's enable resolves the name then is `NOT VERIFIED`. This
-backend also fails an apply when a profile it cannot reach fails to read
-(`ConnectivityManagerFirewallBackend.kt:234`).
-
-## F1. A blocked app that returns while the package watcher is not running has network until the next re-apply — `NOT VERIFIED` at runtime
-
-Removing an app from De1984's profile re-applies at once, also when a copy stays in another profile
-(PACKAGE_FULLY_REMOVED, measured on the API 36 emulator). The VPN and iptables Block All then stop
-covering its uid, and Android clears a removed uid's NetworkPolicyManager policy. A return with the same
-uid (`pm install-existing`, an unhide) writes no rule (`HandleNewAppInstallUseCase.kt:175`), so only
-`PackageMonitoringService` re-applies (`PackageMonitoringService.kt:271`). That service starts when the
-app is opened or the firewall starts at boot (`MainActivity.kt:167`, `BootWorker.kt:111`,
-`BootReceiver.kt:181`), not on a widget or tile start. Without it the app has network until the next
-screen or network change. The VPN rebuild also still compares package names only
-(`FirewallVpnService.kt:68`, `:435`). Likely fix: start the watcher with the firewall, and compare
-package plus uid.
-
-## F4. A VPN start that times out leaves the service retrying, unreported — `VERIFIED` in code, not at runtime
-
-`VpnFirewallBackend.start()` itself waits up to 10 s for the tunnel and returns a failure
-(`VpnFirewallBackend.kt:52-61`). Both start paths handle that in `start().getOrElse`, report
-`START_FAILED` (the enabled setting is written false, `FirewallManager.kt:1552-1555`) and return
-without `stop()`: same backend `:544-551`, switch `:619-631`. The wait at `:556-563` and the `stop()` at
-`:635-637` run only after `start()` succeeded. The service keeps going: a failed build retries (1 s,
-2 s, 5 s, then every 30 s while `isServiceActive`, `FirewallVpnService.kt:371-389`), and a slow build
-completes later. Either way a tunnel can come up that nothing reports.
-
-## F8. A cache clear during a package sweep can leave a new app unblocked — `VERIFIED` in code, timing not proven
-
-`clearInstalledAppsCache` (`HiddenApiHelper.kt:556`, comment `:567-574`) nulls `networkPackagesCache`
-without `networkPackagesLock`. A sweep already inside the lock publishes its pre-clear list with a fresh
-timestamp (`:691-692`), and a caller that waited on the lock takes it whatever its age (`:651-654`).
-iptables Block All blocks only packages on that list (`IptablesFirewallBackend.kt:409-427`), so the
-apply triggered by an install during a running sweep can leave the new app unblocked until a later
-apply; the re-apply when an app returns to De1984's profile (`PackageMonitoringService.kt:271`) can
-meet the same stale list. Taking the lock is worse: it is held ~9.5 s for 466 packages and two callers are
-BroadcastReceivers (ANR). Fix: a generation counter the sweep checks before publishing.
-
-## F16. With two profiles besides De1984's own, the second one's app list never expires — `VERIFIED` in code, not at runtime
-
-`installedAppsCacheTime` is one timestamp for every profile (`HiddenApiHelper.kt:72`), checked at `:479`
-and reset by every profile's refetch (`:552`). A sweep reads the profiles in order, so the first other
-profile's expired refetch makes the second one's old list look fresh, every time. An app installed later
-in that second profile (for example a clone profile or Private Space next to a work profile) is missing
-from Block All while the firewall reports Running. The package monitor reads the same cache, so it misses
-the install too. The list is dropped only by a full app-list scan (`AndroidPackageDataSource.kt:173`), an
-enabled-state change the monitor sees (`PackageMonitoringService.kt:461`), an install, removal or profile change it sees (`announcePackageSetChange`), or a package event in De1984's
-own profile (`PackageChangedReceiver.kt:52`; `PackageAddedReceiver.kt:28` never runs, see P15). Same at v2.7.5. Not seen on
-the test phone, which has one other profile.
-
-## F21. The package watcher misses some changes in other profiles, and their rules wait for the next re-apply — `VERIFIED` in code, not at runtime
-
-The watcher's poll lists only user apps with internet permission (`PackageMonitoringService.kt:384-385`)
-and compares package names per profile (`:325`), and its profile check sees only the first other
-profile appear and the last one go (`:225-250`). In another profile it therefore misses a system app
-hidden, unhidden, removed or restored there, an app without internet permission that shares a uid, an
-uninstall plus reinstall inside one poll tick (a new uid under the same name), and a second profile
-that appears or goes holding no user app with internet permission. The backends count or drop those
-rules only at the next screen or network change, so until then such an app can have network
-on iptables or NetworkPolicyManager while its row reads Blocked. VPN and ConnectivityManager do not
-reach other profiles.
-
-## F14. A cold-process start plans before Shizuku's first check answers and falls back to VPN — `VERIFIED` at runtime
-
-`computeStartPlan` calls `selectBackend` at once (`FirewallManager.kt:325`), and NetworkPolicyManager's
-`checkAvailability` reads `hasShizukuPermission` with no wait (`NetworkPolicyManagerFirewallBackend.kt:611`);
-the only wait for the root and Shizuku checks is on the another-VPN path (`FirewallManager.kt:467`). Seen
-on the phone: "No Shizuku permission" at 22:29:43.776, Shizuku RUNNING_WITH_PERMISSION at 22:29:45.338,
-the plan fell back to AUTO and VPN, and the app reported FIREWALL DOWN (VPN_PERMISSION_REQUIRED) with
-Shizuku granted. A widget, tile or boot start in NetworkPolicyManager mode can hit it; ConnectivityManager
-mode likely too (not checked).
-
-## F5. The allow-critical firewall toggle does not re-apply rules — `VERIFIED` in code
-
-`setAllowCriticalPackageFirewall` (`SettingsViewModel.kt:559-561`) only saves the pref, and its callers
-(`SettingsFragmentViews.kt:454-458`, `:1517-1520`) do nothing else. The backends read the pref at apply
-time, and the app has no `OnSharedPreferenceChangeListener`, so the change lands at the next unrelated
-rebuild. The Firewall screen repaints from the new value meanwhile.
-
-## F9. Banner can read "The VPN backend failed. De1984 switched to VPN" — `VERIFIED` in code
-
-`startVpnFallbackManually` passes `failedBackendType = FirewallBackendType.VPN`
-(`FirewallManager.kt:2305`), and `startVpnFallback` publishes it as `SwitchedToVpn` (`:2052`), shown
-with `firewall_switched_message_auto`. Every route reaches it through
-`MainActivity.handleVpnFallbackRequest` (`:864-878`): the fallback notification, the VPN conflict
-notification (`FirewallManager.kt:2194`) and the banner's ENABLE_VPN and REPLACE_VPN buttons
-(`MainActivity.kt:745`), with or without a permission prompt. Commit `7bb0772` fixed only the widget and
-tile start.
-
-## F19. The home-screen widget can show ON after a failed start — `VERIFIED` in code, timing not proven
-
-A failed start leaves the enabled setting true on purpose: the boot path writes nothing on failure
-(`BootWorker.kt:143-155`) and neither does the widget or tile start (`FirewallToggleReceiver.kt:146`). The
-DOWN broadcast repaints the widget OFF (`FirewallWidget.kt:68-100`), but a later system update of the
-widget passes no state (`:58`) and paints from that setting (`:122-123`), so it can show ON over a firewall
-that is down, and a tap then asks to stop it. The tile reads the live state instead
-(`FirewallTileService.kt:52`). Same code at v2.7.5; since the F6 and F10 fixes a failed package read is one
-more way to get there, where v2.7.5 reported Running with nothing applied. Whether a system update lands
-after the DOWN broadcast is `NEEDS CONFIRMATION`.
-
-## F20. A widget or tile start in VPN mode always reports "VPN permission required" and DOWN — `VERIFIED` at runtime
-
-The start plan sets `requiresVpnPermission` from the backend type alone (`FirewallManager.kt:353`), without
-asking Android whether consent exists. The toggle receiver then never starts VPN: it calls
-`reportVpnPermissionRequiredFromBackground` (`FirewallToggleReceiver.kt:111-126`), which reports FIREWALL
-DOWN with "VPN permission required" and posts the permission notification (`FirewallManager.kt:1518-1525`).
-Seen on the phone on 2026-09-15 at 00:19:59-00:20:00 with the debug app's `ACTIVATE_VPN` app-op at
-`allow`: plan `requiresVpnPermission=true`, then `FIREWALL DOWN (VPN_PERMISSION_REQUIRED, backend=VPN)`.
-The notification's tap does start it. Boot restore uses another path (not checked). Same at v2.7.5
-(`FirewallManager.kt:351`; receiver unchanged).
-
-## F7. `isAnotherVpnActive` reads any VPN as De1984's own while the VPN backend is current — `VERIFIED` in code, not at runtime
-
-`FirewallManager.kt:2529-2545` returns false whenever a VPN transport is up and the active backend type
-is VPN, so the conflict branch at `:2626` cannot fire then. With nothing to block, De1984 builds no
-tunnel (`FirewallVpnService.kt:324-328`), so a VPN that is up belongs to another app. Whether Android
-revokes a never-established De1984 VPN when another app prepares is `NEEDS CONFIRMATION` (second VPN
-app).
-
-## F15. After a failed start apply, DOWN is reported only after the service's own queued apply — `VERIFIED` at runtime
-
-The manager's `stop()` takes the backend lock (`IptablesFirewallBackend.kt:171`), and the service's apply
-that queued on the same lock takes it first and runs its own sweeps. Seen on the phone: the start apply
-failed at 22:19:13.786, the service's sweep ran at 22:19:18.727, and DOWN came after it. The app shows
-Starting meanwhile, never Running.
-
-## F22. Lead: a ROM that leaves an installed app out of De1984's app lists would lift its block — `NEEDS CONFIRMATION`
-
-`rulesByCurrentUid` drops a rule whose app is missing from every profile's list once every list is
-non-empty (`FirewallBackend.kt:106`, `:116`). Stock Android lists every app to a holder of
-QUERY_ALL_PACKAGES, which De1984 declares, so testing this needs a ROM with an app-hiding feature. Likely
-fix: confirm a missing app with a direct lookup before dropping its rule.
-
-## F23. With a profile De1984 cannot read, an uninstalled app's rule can land on a new app — `NEEDS CONFIRMATION`
-
-`rulesByCurrentUid` drops nothing while any profile's list is unreadable and keeps the stored uid
-(`FirewallBackend.kt:106`, `:116`). That is the normal state on the VPN backend with a work profile or
-Private Space when root or Shizuku was never granted. A rule whose app was uninstalled then keeps
-counting on its old uid, and if Android gives that uid to a new app (after a reboot), the new app gets
-the old rule's verdict with no row to change it. Whether Android reuses a freed uid after a reboot is
-`NEEDS CONFIRMATION`. Likely fix: drop the rule when a readable profile lists its stored uid under
-another package that is not in a shared-uid group.
-
----
-
-# Packages and notifications
-
-## P4. One brief safety-data failure unlocks Uninstall for critical apps — `VERIFIED` in code, never triggered
-
-`getCriticality`, `getCategory` and `getAffects` each re-run the load when nothing is cached
-(`PackageSafetyLoader.kt:83-108`), and the scan calls all three for each app
-(`AndroidPackageDataSource.kt:295-297`, `:604-606`). One brief failure therefore uses all 3 attempts
-within milliseconds and the process gives up until restart (`PackageSafetyLoader.kt:64-77`), which the
-retry described at `:20-26` meant to prevent. Every row built while the load fails stores UNKNOWN: the
-protection that disables Uninstall for ESSENTIAL and IMPORTANT apps (`PackagesFragmentViews.kt:914-944`)
-is skipped and Uninstall is enabled (`:946-950`). Only the generic "unknown system package" danger
-dialog remains (`:1103`).
-
-## P2. A new-app notification keeps its Block/Allow button after a backend switch — `VERIFIED` in code
-
-Reachability is checked once, when the notification is posted (`NewAppNotificationManager.kt:91-96`).
-The write path has no reach check (`ManageNetworkAccessUseCase.kt:13-14`), so after a fallback to VPN or ConnectivityManager a
-work-profile notification's button saves a rule the VPN cannot enforce, and the notification closes as
-if done (`NotificationActionReceiver.kt:54-58`).
-
-## P9. The Firewall list says "No Internet Permission" for an app Block All blocks — `VERIFIED` in code, not at runtime
-
-Each list row's `hasInternetPermission` comes from `hasNetworkPermissions` (`AndroidPackageDataSource.kt:934`,
-set at `:979` and 7 other rows), which reads `getAppPermissions` (`:860`) and gets an empty list when the
-package details cannot be read (`:863`). The row then shows `firewall_no_internet_info` ("will take
-effect if the app gains internet permission", `strings.xml:548`; shown at `FirewallFragmentViews.kt:1113`,
-`:1445`). Since `43c2af4`, the firewall's sweep blocks exactly such an unreadable app under Block All
-on iptables, NetworkPolicyManager and ConnectivityManager, so the row calls a block harmless that is
-already cutting the app's network.
-
-## P7. Settings marks a working backend "Not supported on this device" after any failed start — `VERIFIED` in code
-
-A backend switch that fails, or that falls back to AUTO, adds the mode to `_startFailedModes`
-(`SettingsViewModel.kt:738`, `:756`), and the picker then disables it with "Not supported on this device"
-(`SettingsFragmentViews.kt:799-802`) until a root or Shizuku status emits (`SettingsViewModel.kt:169`,
-`:179`). A passing failure, such as a failed package read or F14's race, labels a backend the device
-supports as unsupported.
-
-## P5. Uninstalled chip empty text is often untrue — `VERIFIED` in code, wording is a product choice
-
-`PackagesFragmentViews.kt:538-539` shows "No uninstalled system apps" whenever the Uninstalled list is
-empty after the ViewModel filters: when Bloatware or a profile filter leaves nothing, and when there is
-no root and no Shizuku. In that last case both `pm` reads return nothing and the read returns an empty
-list with no error (`AndroidPackageDataSource.kt:577-579`, `:617-624`); nothing checks access before
-the read (`PackagesViewModel.kt:203-229`). A search that matches nothing is different: the empty state is
-decided before search (`PackagesFragmentViews.kt:523`, search `:560-567`), so it shows a blank list with
-no text. New text is needed in 7 languages.
-
-## P8. A failed profile read also empties that profile outside the firewall — `VERIFIED` in code, effects not run
-
-`getInstalledApplicationsAsUser` still returns an empty list on failure (`HiddenApiHelper.kt:545-546`),
-and three callers take it as the truth: the package list (`AndroidPackageDataSource.kt:207`, the profile
-shows no apps), the package monitor (`PackageMonitoringService.kt:376`, its apps look removed) and the
-smart policy switch (`SmartPolicySwitchUseCase.kt:125`, that profile's VPN apps are not treated as
-critical). `getUsers` also drops a profile whose handle fails to parse (`HiddenApiHelper.kt:333-359`).
-
-## P10. A failed firewall toggle says "Root access required" and opens the root banner — `VERIFIED` in code, not at runtime
-
-Any `false` from the data source's `setNetworkAccess` becomes a `SecurityException` carrying
-`error_unable_to_allow_network` or `error_unable_to_block_network` ("... Root access required for firewall
-operations.", `strings.xml:719-720`) at `NetworkPackageRepositoryImpl.kt:61-66`. That text matches
-`SuperuserBannerState.kt:51-54`, so a failure that has nothing to do with access (an app uninstalled while
-its sheet is open, a rule write that throws) tells the user they lack root and shows the grant banner,
-even on the VPN backend or with root present. Package actions no longer do this since `75f07f9`; firewall
-writes still do. Same at v2.7.5.
-
-## P11. A failed Uninstalled read makes Export say there is nothing to export — `VERIFIED` in code
-
-Export takes `getOrNull()` of the Uninstalled read (`SettingsViewModel.kt:986-991`) and reports "No
-uninstalled system packages found" when it is null or empty (`:992`), and the data source returns an empty
-list on any failure (`AndroidPackageDataSource.kt:613`). A read that failed is told to the user as a device
-with nothing uninstalled, and no file is written. Same at v2.7.5.
-
-## P12. A new-app notification can open the Firewall tab without the app's controls — `VERIFIED` in code, not at runtime
-
-When the row is not on screen, the tap path compares only the type chip with the app's type
-(`FirewallFragmentViews.kt:798-809`) and then waits for the row in the filtered list (`:810-824`), with no
-timeout. If a profile chip (Personal for a work-profile app) or a state chip hides the row, the wait never
-ends, `pendingDialogPackageId` stays set, and the controls pop up later when the user changes chips. Same
-code at v2.7.5; since `55bf680` work-profile notifications carry user 10, so a saved Personal chip now
-reaches it, where v2.7.5 looked up user 0 and opened nothing or the personal copy.
-
-## P13. "Allow Network" on a new-app notification cannot unblock an app whose uid a neighbour's rule blocks — `VERIFIED` in code, not at runtime
-
-The button writes only this app's own rule (`NotificationActionReceiver.kt:54`) and then dismisses the
-notification as done (`:58`). Every backend decides a uid by the union of its apps' rules, so a
-neighbour's block keeps the uid blocked, and the notification, unlike the app's sheet, has no shared-UID
-note to say so.
-
-## P14. Unfreezing an app or adding a second profile posts "new app" notifications for apps already there — `VERIFIED` in code, not at runtime
-
-A frozen (hidden) app drops out of the watcher's list, so on unfreeze it looks newly installed
-(`PackageMonitoringService.kt:325`) and gets the new-app notification (`:509`) for an app that was
-there all along. A second profile that appears next to an existing one is diffed the same way, so each
-of its user apps with internet permission gets one.
-
-## P15. Installs in De1984's own profile never get the new-app notification — `VERIFIED` at runtime
-
-Android keeps ACTION_PACKAGE_ADDED from the manifest receivers of apps that target Android 8 or later,
-and `PackageAddedReceiver` is declared only in the manifest (`AndroidManifest.xml:214-222`). The API 36
-emulator's broadcast history lists it as "skipped by policy at enqueue: Background execution not
-allowed" for every install, and no new-app notification was posted with the setting on. It is the only
-caller of `showNewAppNotification` for De1984's own profile (`PackageAddedReceiver.kt:55`; the watcher's
-call, `PackageMonitoringService.kt:509`, covers other profiles). The rule is still created through
-PACKAGE_CHANGED (`PackageChangedReceiver.kt:100`). Likely fix: run PackageAddedReceiver's work from the
-watcher's registered receiver (`PackageMonitoringService.kt:271`), which does get the broadcast.
-
-## P6. Lead: an installed disabled system app can look uninstalled — `NOT VERIFIED`
-
-"Uninstalled" is inferred from `versionName == null && !isEnabled && type == SYSTEM` at
-`PackagesFragmentViews.kt:881` and `PackageAdapter.kt:248` (`PackagesViewModel.kt:272` applies the same
-test only to the pm-listed set, so it cannot mislabel an installed app). List rows get `versionName`
-from `getPackageMetadataBatch` (`AndroidPackageDataSource.kt:247`, `:311`), which returns null when the
-read fails (`:767-776`). A system app whose manifest has no versionName would match too
-(`NEEDS CONFIRMATION`). The row then gets the uninstalled sheet, which hides Enable. 0 apps affected on
-the test phone.
-
-## Below the bar: true message, no lost control
-
-- **P1. The no-access dialog opens only in English.** `PackagesFragmentViews.showError` (`:1128-1129`)
-  matches the English text "Shizuku or root access required", which no translation contains, so other
-  languages get a plain error dialog with the same true text. Every language already gets the
-  permission setup dialog, because `SuperuserBannerState.shouldShowBannerForError` matches the word
-  "Shizuku" (`SuperuserBannerState.kt:48-54`, then `PackagesFragmentViews.kt:508-510`); English gets
-  both dialogs. `state.error` is a String by then (`PackagesViewModel.kt:512-515`), so matching the
-  exception type needs the ViewModel to carry it.
-- **P3. The Force Stop fallback has no user.** When Shizuku and root both fail,
-  `killBackgroundProcesses(packageName)` (`AndroidPackageDataSource.kt:734`) runs with no user parameter
-  and its result is ignored. The method returns false and the user is told "Unable to force stop
-  package." (`PackageRepositoryImpl.kt:147-152`), which is true. What the call does across profiles and
-  on Android 14+ is `NEEDS CONFIRMATION`.
-- **Stale comment on `PRIVILEGE_ANSWER_TIMEOUT_MS`.** `FirewallManager.kt:79-81` says the 8 s wait is kept
-  under "the ten seconds a FOREGROUND broadcast is allowed", but no broadcast in the app sets
-  `FLAG_RECEIVER_FOREGROUND` (0 uses): the widget sends the toggle through `PendingIntent.getBroadcast`
-  (`FirewallWidget.kt:158`) and the tile through `sendBroadcast` (`FirewallTileService.kt:96`, `:124`).
-  The stated reason does not hold.
-
----
-
-# Wording and design — product choices
-
-- The action sheet and dialogs never say which profile they act on (Work, Clone).
-- The uninstall and reinstall dialogs (`strings.xml:614`, `:621`, `:625`) and the action sheet's
-  uninstall line (`:105`) say "your device" for a profile-only action. The disable dialogs do not.
-- Settings export and import do not say they use De1984's own profile (`strings.xml:408-431`).
-- Boot Protection promises no network when De1984 fails to start (`strings.xml:740`) and blocking "until
-  firewall activates" (`:378`), in all 7 languages. A failed boot start lifts the block
-  (`BootWorker.kt:143-155`, `BootReceiver.kt:212-224`), and the script expires itself after about 120 s
-  (`FIREWALL.md:402`).
-- The other-profile warning (`strings.xml:534`, all 7 languages) says only root blocks by user ID and
-  reaches every profile; NetworkPolicyManager (Shizuku) blocks by user ID too (`FirewallBackend.kt:71-75`).
-- The VPN permission texts (`strings.xml:135`, `:147`) promise an automatic VPN fallback that "ensures
-  firewall stays active"; a failed start reports DOWN (START_FAILED) and does not fall back.
-- "Nothing is blocking network access" (`strings.xml:300`) follows every failed start, but
-  NetworkPolicyManager blocks survive a reboot (`FIREWALL.md:423`); whether a failed boot start restores
-  them before that text shows is `NEEDS CONFIRMATION`.
-- `fastlane/metadata/android/en-US/changelogs/18.txt` describes old health-check behaviour. It is the
-  release note of versionCode 18, a record of that release.
-
-# Needs a person
-
-- **#73 lock/unlock:** scroll the firewall list, lock, unlock, look. adb cannot drive the pattern lock.
-- **#91 quick-settings tile:** tap the real tile with "Confirm Firewall Stop" off. Only the receiver it
-  hands over to was tested.
-- **VPN `onRevoke`:** needs a second VPN app on the test phone.
-
-# Needs a device or the Android source
-
-Each decides a fix above.
-
-- **F1:** after a reboot with the firewall off, start it from the widget so `dumpsys activity services`
-  lists no `PackageMonitoringService`, remove a blocked app from De1984's profile only, restore it with
-  `pm install-existing`, check its traffic.
-- **F7:** another VPN app starting while De1984's VPN has no tunnel.
-- **P3:** what `killBackgroundProcesses` reaches, below and on Android 14.
-- **P6:** `versionName` for a system app whose manifest has none.
-- **`strings.xml:300` on NetworkPolicyManager:** fail a boot start, then read the per-app policies.
-- **Hidden system app in the Uninstalled list:** `pm list packages -u -s --user N` also lists an app that
-  is installed but hidden (`pm hide`, or a work-profile admin), and `AndroidPackageDataSource.kt:580`
-  subtracts only the `-s` list, so it shows as Uninstalled. Whether Reinstall
-  (`cmd package install-existing --user N`) unhides it decides whether the row's label and button are true.
-  `pm hide` a test system app, check the list, tap Reinstall, then `pm unhide`.
-- **Locked Private Space (Android 15):** the package sweep refuses the whole list when any profile reads
-  zero apps (`HiddenApiHelper.kt:665-668`), and `getUserProfiles` lists every enabled profile. A paused
-  work profile is fine on the Android 14 test phone (2026-09-15: quiet flag set, 216 apps read through
-  the hidden API, iptables Block All Running with 79 DROP rules). Whether a locked Private Space reads
-  zero apps, which would make every Block All start on root or Shizuku report DOWN, needs an Android 15
-  device.
-
-# Backlog
-
-- **#57 — Firewall Profile System.** The only open GitHub issue. A public reply gated it on #61, which
-  closed on 2026-08-28. No profile code exists yet.
+# De1984: work list
+
+Tier: 3
+
+Open work from the audit of backend switching and package events on 2026-09-26. Every item was
+already in v2.7.7. All of it is fixed before release 48 (2.7.8), high first. Line cites are at
+`12eed26`; verify before acting.
+
+Status: `[ ]` not started, `[~]` in progress, `[x]` done.
+
+## High
+
+- [x] H1. A switch whose old VPN stop times out also removes the new backend's rules.
+  `FirewallManager.kt:691` -> `tearDownSwitchedAwayBackend` (`:873-893`) -> `cleanupAllBackends`
+  (`:895-1022`) sweeps every backend, the new one too, and the app shows Running and Healthy.
+  Done when: a VPN-to-privileged switch with a stalled VPN stop keeps the new backend's rules, on a
+  device, red before and green after.
+- [x] H2. The backend monitor restarts a firewall the user stopped.
+  `BackendMonitoringService.kt:176-189`, `:213`. Its notification and Retry also stay.
+  Done when: stop the firewall while the monitor waits for Shizuku, grant Shizuku, and the firewall
+  stays off, on a device.
+
+## Medium
+
+- [x] M1. A switch from a per-network backend to a simple one rewrites partial rules to block-all
+  before the new backend starts, and a failed start keeps the rewrite. `FirewallManager.kt:603-605`,
+  `:1214`. Done when: a failed switch leaves the stored rules as they were.
+- [x] M2. A switch between two privileged backends drops the old backend's stop, so its rules stay
+  in force while the app shows Healthy. `PrivilegedFirewallService.kt:183-187`, `:320-328`.
+  Done when: the old backend's rules are gone, or reported, after such a switch.
+- [x] M3. ConnectivityManager: an app's copy in another profile shows Allowed and "cannot reach"
+  while its uid is denied. `FirewallBackend.kt:332-333`, `strings.xml:534`. Needs new wording in
+  7 languages. Done when: the row shows the verdict the device enforces.
+- [x] M4. With another VPN up and no root or Shizuku, the switch ON and the banner's "Try again" do
+  nothing and say nothing. `FirewallViewModel.kt:995-1004`. Done when: the user is told why, and the
+  switch shows OFF.
+- [x] M5. A VPN consent answer goes down a stale branch: the switch and the start dialog never reset
+  `vpnPermissionContext`. `MainActivity.kt:776`, `:792`, `:132-134`, `:917-944`.
+  Done when: a refusal or grant from the switch always reaches the view model.
+- [x] M6. "Enable VPN" and "Replace VPN" end on "The VPN backend failed". `FirewallManager.kt:2302`,
+  `strings.xml:307`. Done when: the banner names the backend that failed, or none.
+- [x] M7. Per-package apply failures are only logged, and the rows show the rule as applied.
+  `ConnectivityManagerFirewallBackend.kt:332-338`, `:355`; `NetworkPolicyManagerFirewallBackend.kt:541-545`,
+  `:556`; `PrivilegedFirewallService.kt:633-635`. Needs new wording in 7 languages.
+  Done when: a failed apply is shown to the user.
+- [x] M8. Notification 1007 ("switched to keep protecting you") stays after a stop.
+  `FirewallManager.kt:2762-2775`. Done when: a stop or a Down clears it.
+- [x] M9. The boot failure notification is hard-coded English and always blames VPN permission, and
+  its tap runs a raw `VpnService.prepare()`. `BootReceiver.kt:319-322`, `MainActivity.kt:896`.
+  Done when: the text is translated and names the real cause, and the tap never takes another
+  VPN's slot.
+
+## Docs
+
+- [x] D1. Correct what the audit found stale. `FIREWALL.md:65-72`, `:87-97`, `:130`, `:168`, `:173`,
+  `:463`, `:590`, `:596`, `:616-626`, `:671`, `:716-729`; the `FirewallManager.kt:864` KDoc and the
+  two KDocs above the wrong functions (`:858-872`, `:1632-1647`); `FirewallToggleReceiver.kt:69`;
+  `FirewallVpnService.kt:560-561`; `FirewallHealthPresenter.kt:22-23`; `FirewallHealth.kt:51-53`;
+  the `strings.xml:309-310` comment; `HiddenApiHelper.kt:582`, `:682`;
+  `PackageMonitoringService.kt:405`; `BootWorker.kt:48`.
+- [x] D2. Doc lines the fixes found stale. `FIREWALL.md:53`, `:161`, `:168`, `:596`, `:643-671` (manual
+  mode falls back to VPN; the VPN health check reads flags, not the interface), `:731-748` (notification
+  section: the switched notice is ongoing, `firewall_alerts_channel` missing); `FirewallHealth.kt`
+  SwitchedToVpn KDoc ("the only path that sets it").
+
+## Low (next release)
+
+Found while fixing H1-M9; none is caused by those fixes. Line cites are at `8d9ab3f`.
+
+- [ ] L1. Orphan warnings: a live StopFailed is wiped by `reportFirewallHealthy` and overwritten by
+  SwitchedToVpn (`FirewallManager.kt:1953`); never re-checked; dropped when the next start fails;
+  null-type label; third-backend proof dropped. The Down title "your apps are unblocked" shows while a
+  dead privileged backend's kernel rules still block; a fallback's orphan is titled "Firewall did not
+  stop" though the user never stopped.
+- [ ] L2. Stored wish drift: a failed tile stop keeps it true; a failed start or a declined consent
+  writes it false but leaves the switch ON and `_isFirewallDown` armed (`FirewallViewModel.kt:1064`),
+  so a later root/Shizuku gain restarts a firewall the user declined (`FirewallManager.kt:2886`);
+  StopFailed clears the down flag, so a privilege gain does not restore.
+- [ ] L3. Health and services: a same-backend restart and the legacy VPN fallback start no health
+  monitoring (`FirewallManager.kt:585`, `startVpnFallback`); AUTO keeps a dead VPN when the plan is
+  VPN again (`:2901`); the service's failure report runs in the scope `stopSelf` cancels
+  (`PrivilegedFirewallService.kt:583`); a tunnel back on the service's own retry is never reported
+  (`FirewallVpnService.kt:368`); health-job switch self-cancel, teardown-end race, dropped stop for an
+  in-flight backend, leaked health loop; monitor timer, "waiting"/"Still using VPN" texts, 3 s toast.
+- [ ] L4. VPN conflict and consent: `isAnotherVpnActive` blind with a dead own VPN and to split-tunnel
+  VPNs; a conflict while a privileged backend runs shows Error/OFF; the conflict banner outlives the
+  other VPN; Enable/Replace VPN granted after protection came back starts VPN over it;
+  `handleVpnConflict`'s start ignores a stop that lands meanwhile; De1984 retook the slot after its
+  tunnel was revoked; a widget/tile start while a "would not stop" warning is live does nothing
+  (`reportFirewallDown` early return); the conflict notice is debounced 30 s, so a repeat tap in that
+  window posts nothing new.
+- [ ] L5. Manual mode: never switches back after privileges return (`handlePrivilegeChange`
+  stillViable return); a cold start races Shizuku and shows START_FAILED briefly; a privilege answer
+  between two plans shows "switched to VPN" while a privileged backend runs.
+- [ ] L6. Notification text and life: 1007 keeps naming the old backend and "another VPN is active"
+  after it leaves; the upgrade notice says "Root access detected ... Mode set to AUTO" on a Shizuku
+  gain (`strings.xml:278`); "switched to AUTO mode" (`strings.xml:308`) while the stored mode stays
+  manual; 1010 "Tap to start it again" only opens the app, stays next to 1009 when a tile stop's
+  teardown fails later, and can land after a quick restart; channel names are hard-coded English;
+  Android 12+ boot (BootWorker) and the process-start restart have no consent pre-check (START_FAILED,
+  10 s waits); the old "Boot Failure" channel stays; the long-press toast on a following row.
+- [ ] L7. ConnectivityManager and profiles: a work copy stays denied after the app is uninstalled from
+  De1984's profile only, and stop does not clear it (`ConnectivityManagerFirewallBackend.kt:240`, `:534`,
+  `:595`); a work-only app sharing a sharedUserId with an own-profile app stays "cannot reach".
+- [ ] L8. UI leftovers: sheets keep per-network controls across a switch; rows paint raw partial
+  flags on simple backends; migration read-then-write race; `MainActivity.kt:217`
+  REQUEST_VPN_PERMISSION has no sender.
+- [ ] L9. Apply warning gaps: iptables swallows batch errors, so its partial failures raise no
+  warning (`IptablesFirewallBackend.kt:506-524`); NetworkPolicyManager keeps a cached "applied"
+  after the user changes Android's own data switch for that app.

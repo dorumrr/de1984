@@ -24,6 +24,7 @@ import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.Constants
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -632,13 +633,31 @@ class PrivilegedFirewallService : Service() {
                 val applyStartTime = System.currentTimeMillis()
                 backend.applyRules(rules, currentNetworkType, isScreenOn).getOrElse { error ->
                     AppLogger.e(TAG, "🔥 [TIMING] Backend applyRules FAILED: +${System.currentTimeMillis() - ruleApplicationStartTime}ms, error=${error.message}")
+                    reportApplyPass(backend, error)
                     return@launch
                 }
 
                 AppLogger.d(TAG, "🔥 [TIMING] Backend applyRules SUCCESS: backend took ${System.currentTimeMillis() - applyStartTime}ms, total +${System.currentTimeMillis() - ruleApplicationStartTime}ms")
+                reportApplyPass(backend, null)
+            } catch (e: CancellationException) {
+                // A newer schedule superseded this pass; that one reports.
+                throw e
             } catch (e: Exception) {
                 AppLogger.e(TAG, "🔥 [TIMING] Exception while applying rules: +${System.currentTimeMillis() - ruleApplicationStartTime}ms", e)
+                reportApplyPass(backend, e)
             }
+        }
+    }
+
+    private fun reportApplyPass(backend: FirewallBackend, error: Throwable?) {
+        val backendType = currentBackendType
+        // A pass that outlived its backend says nothing about the one running now.
+        if (!isServiceActive || currentBackend !== backend || backendType == null) return
+        try {
+            val app = application as De1984Application
+            app.dependencies.firewallManager.reportApplyPassFromService(backendType, error)
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to notify FirewallManager of the apply result: ${e.message}")
         }
     }
 }

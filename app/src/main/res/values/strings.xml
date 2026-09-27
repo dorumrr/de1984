@@ -311,6 +311,8 @@
     <string name="firewall_stop_failed_title">Firewall did not stop</string>
     <string name="firewall_stop_failed_message">The %1$s backend would not shut down. Some apps may still be blocked. Try again, or restart the device.</string>
     <string name="firewall_stop_failed_message_unknown">The firewall would not shut down. Some apps may still be blocked. Try again, or restart the device.</string>
+    <string name="firewall_apply_failed_title">Some rules not applied</string>
+    <string name="firewall_apply_failed_message">The %1$s backend could not apply every rule. Some apps may not be blocked or allowed as shown.</string>
     <string name="firewall_stop_failed_action_retry">Stop again</string>
     <string name="firewall_down_notifications_off">Notifications are off, so this warning cannot reach you when De1984 is closed.</string>
     <string name="firewall_down_action_enable_notifications">Turn on alerts</string>

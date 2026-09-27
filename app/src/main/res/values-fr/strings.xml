@@ -307,6 +307,8 @@
     <string name="firewall_stop_failed_title">Le pare-feu ne s\'est pas arrêté</string>
     <string name="firewall_stop_failed_message">Le moteur %1$s n\'a pas pu s\'arrêter. Certaines applications peuvent rester bloquées. Réessayez ou redémarrez l\'appareil.</string>
     <string name="firewall_stop_failed_message_unknown">Le pare-feu n\'a pas pu s\'arrêter. Certaines applications peuvent rester bloquées. Réessayez ou redémarrez l\'appareil.</string>
+    <string name="firewall_apply_failed_title">Certaines règles n\'ont pas été appliquées</string>
+    <string name="firewall_apply_failed_message">Le moteur %1$s n\'a pas pu appliquer toutes les règles. Certaines applications peuvent ne pas être bloquées ou autorisées comme indiqué.</string>
     <string name="firewall_stop_failed_action_retry">Arrêter à nouveau</string>
     <string name="firewall_down_notifications_off">Les notifications sont désactivées : cet avertissement ne peut pas vous atteindre quand De1984 est fermé.</string>
     <string name="firewall_down_action_enable_notifications">Activer les alertes</string>

@@ -10,6 +10,7 @@ import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.PartialApplyException
 import io.github.dorumrr.de1984.domain.firewall.rulesByCurrentUid
 import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
@@ -352,7 +353,7 @@ class ConnectivityManagerFirewallBackend(
             saveBlockedPackages(record)
 
                 AppLogger.d(TAG, "✅ Applied $appliedCount policies, skipped $skippedCount unchanged, $untouchedCount never ours, $systemUidCount packages on system UIDs Android will not firewall, $errorCount errors")
-                Result.success(Unit)
+                if (errorCount > 0) Result.failure(PartialApplyException(errorCount)) else Result.success(Unit)
             } catch (e: Exception) {
                 AppLogger.e(TAG, "Failed to apply rules", e)
                 Result.failure(errorHandler.handleError(e, "apply connectivity manager rules"))

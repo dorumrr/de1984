@@ -69,4 +69,13 @@ sealed interface FirewallHealth {
     data class StopFailed(
         val backend: FirewallBackendType?
     ) : FirewallHealth
+
+    /** The backend runs, but its last pass left some rules unwritten, so some rows show a rule not in force. */
+    data class ApplyFailed(
+        val backend: FirewallBackendType
+    ) : FirewallHealth
 }
+
+/** An apply pass that wrote every rule it could but failed on [failedCount] of them. */
+class PartialApplyException(val failedCount: Int) :
+    Exception("$failedCount rule(s) could not be applied")

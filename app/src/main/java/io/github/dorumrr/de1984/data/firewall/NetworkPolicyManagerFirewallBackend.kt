@@ -10,6 +10,7 @@ import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.PartialApplyException
 import io.github.dorumrr.de1984.domain.firewall.rulesByCurrentUid
 import io.github.dorumrr.de1984.domain.firewall.uidBlockedNow
 import io.github.dorumrr.de1984.domain.model.FirewallRule
@@ -495,6 +496,8 @@ class NetworkPolicyManagerFirewallBackend(
                     // write - overwriting a policy we cannot record would destroy it.
                     if (shouldBlock && !isOurs) {
                         errorCount++
+                        val packageName = allPackages.find { it.uid == uid }?.packageName ?: "UID $uid"
+                        AppLogger.e(TAG, "Not blocking $packageName (UID $uid): its current policy is unrecorded")
                         return@forEach
                     }
 
@@ -553,7 +556,7 @@ class NetworkPolicyManagerFirewallBackend(
                 AppLogger.d(TAG, "✅ Applied $appliedCount policies, skipped $skippedCount unchanged, " +
                         "left $untouchedCount foreign policies alone, $systemUidCount packages on system " +
                         "UIDs Android will not firewall, $errorCount errors")
-                Result.success(Unit)
+                if (errorCount > 0) Result.failure(PartialApplyException(errorCount)) else Result.success(Unit)
             } catch (e: Exception) {
                 AppLogger.e(TAG, "Failed to apply rules", e)
                 Result.failure(errorHandler.handleError(e, "apply network policies"))

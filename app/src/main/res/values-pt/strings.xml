@@ -307,6 +307,8 @@
     <string name="firewall_stop_failed_title">A firewall não parou</string>
     <string name="firewall_stop_failed_message">O backend %1$s não conseguiu parar. Algumas aplicações podem continuar bloqueadas. Tente novamente ou reinicie o dispositivo.</string>
     <string name="firewall_stop_failed_message_unknown">A firewall não conseguiu parar. Algumas aplicações podem continuar bloqueadas. Tente novamente ou reinicie o dispositivo.</string>
+    <string name="firewall_apply_failed_title">Algumas regras não foram aplicadas</string>
+    <string name="firewall_apply_failed_message">O backend %1$s não conseguiu aplicar todas as regras. Algumas aplicações podem não estar bloqueadas ou permitidas como indicado.</string>
     <string name="firewall_stop_failed_action_retry">Parar novamente</string>
     <string name="firewall_down_notifications_off">As notificações estão desativadas, por isso este aviso não o alcança quando o De1984 está fechado.</string>
     <string name="firewall_down_action_enable_notifications">Ativar alertas</string>

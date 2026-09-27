@@ -14,6 +14,9 @@ enum class FirewallHealthAction(@StringRes val label: Int) {
     REPLACE_VPN(R.string.firewall_down_action_replace_vpn),
 
     RETRY_STOP(R.string.firewall_stop_failed_action_retry),
+
+    // Not RETRY: startFirewall() returns early when the same backend is already running.
+    REAPPLY_RULES(R.string.firewall_down_action_retry),
 }
 
 /**
@@ -34,6 +37,7 @@ object FirewallHealthPresenter {
         is FirewallHealth.Down -> context.getString(R.string.firewall_down_title)
         is FirewallHealth.SwitchedToVpn -> context.getString(R.string.firewall_switched_title)
         is FirewallHealth.StopFailed -> context.getString(R.string.firewall_stop_failed_title)
+        is FirewallHealth.ApplyFailed -> context.getString(R.string.firewall_apply_failed_title)
     }
 
     fun message(context: Context, health: FirewallHealth): String? = when (health) {
@@ -69,6 +73,9 @@ object FirewallHealthPresenter {
                 context.getString(R.string.firewall_stop_failed_message_unknown)
             }
         }
+
+        is FirewallHealth.ApplyFailed ->
+            context.getString(R.string.firewall_apply_failed_message, health.backend.displayName(context))
     }
 
     fun action(health: FirewallHealth): FirewallHealthAction? = when (health) {
@@ -77,6 +84,8 @@ object FirewallHealthPresenter {
         is FirewallHealth.SwitchedToVpn -> null
 
         is FirewallHealth.StopFailed -> FirewallHealthAction.RETRY_STOP
+
+        is FirewallHealth.ApplyFailed -> FirewallHealthAction.REAPPLY_RULES
 
         is FirewallHealth.Down -> when (health.reason) {
             FirewallHealth.Down.Reason.NO_FALLBACK_PLAN -> FirewallHealthAction.CHOOSE_BACKEND

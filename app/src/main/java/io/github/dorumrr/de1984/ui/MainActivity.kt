@@ -724,6 +724,9 @@ class MainActivity : AppCompatActivity() {
             // stop that failed, and asking again would be asking them to confirm a retry.
             FirewallHealthAction.RETRY_STOP -> firewallViewModel.stopFirewall()
 
+            FirewallHealthAction.REAPPLY_RULES ->
+                (application as De1984Application).dependencies.firewallManager.reapplyRules()
+
             FirewallHealthAction.ENABLE_VPN,
             FirewallHealthAction.REPLACE_VPN -> handleVpnFallbackRequest()
         }

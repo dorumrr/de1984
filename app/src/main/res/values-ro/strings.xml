@@ -309,6 +309,8 @@
     <string name="firewall_stop_failed_title">Firewall-ul nu s-a oprit</string>
     <string name="firewall_stop_failed_message">Backendul %1$s nu s-a oprit. Unele aplicații pot fi în continuare blocate. Încearcă din nou sau repornește dispozitivul.</string>
     <string name="firewall_stop_failed_message_unknown">Firewall-ul nu s-a oprit. Unele aplicații pot fi în continuare blocate. Încearcă din nou sau repornește dispozitivul.</string>
+    <string name="firewall_apply_failed_title">Unele reguli nu au fost aplicate</string>
+    <string name="firewall_apply_failed_message">Backendul %1$s nu a putut aplica toate regulile. Unele aplicații pot să nu fie blocate sau permise așa cum se arată.</string>
     <string name="firewall_stop_failed_action_retry">Oprește din nou</string>
     <string name="firewall_down_notifications_off">Notificările sunt oprite, așa că acest avertisment nu te poate ajunge când De1984 este închis.</string>
     <string name="firewall_down_action_enable_notifications">Activează alertele</string>

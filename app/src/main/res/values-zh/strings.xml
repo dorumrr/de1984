@@ -317,6 +317,8 @@
     <string name="firewall_stop_failed_title">防火墙未停止</string>
     <string name="firewall_stop_failed_message">%1$s 后端未能关闭。部分应用可能仍被拦截。请重试或重启设备。</string>
     <string name="firewall_stop_failed_message_unknown">防火墙未能关闭。部分应用可能仍被拦截。请重试或重启设备。</string>
+    <string name="firewall_apply_failed_title">部分规则未生效</string>
+    <string name="firewall_apply_failed_message">%1$s 后端未能执行所有规则。部分应用的实际拦截状态可能与显示不符。</string>
     <string name="firewall_stop_failed_action_retry">再次停止</string>
     <string name="firewall_down_notifications_off">通知已关闭，因此 De1984 关闭时无法向你发出此警告。</string>
     <string name="firewall_down_action_enable_notifications">开启通知</string>

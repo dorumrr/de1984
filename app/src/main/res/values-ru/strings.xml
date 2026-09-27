@@ -310,6 +310,8 @@
     <string name="firewall_stop_failed_title">Брандмауэр не остановился</string>
     <string name="firewall_stop_failed_message">Бэкенд %1$s не удалось остановить. Некоторые приложения могут быть по-прежнему заблокированы. Повторите попытку или перезагрузите устройство.</string>
     <string name="firewall_stop_failed_message_unknown">Брандмауэр не удалось остановить. Некоторые приложения могут быть по-прежнему заблокированы. Повторите попытку или перезагрузите устройство.</string>
+    <string name="firewall_apply_failed_title">Некоторые правила не применены</string>
+    <string name="firewall_apply_failed_message">Бэкенд %1$s не смог применить все правила. Некоторые приложения могут быть заблокированы или разрешены не так, как показано.</string>
     <string name="firewall_stop_failed_action_retry">Остановить снова</string>
     <string name="firewall_down_notifications_off">Уведомления отключены, поэтому это предупреждение не дойдёт до вас, когда De1984 закрыт.</string>
     <string name="firewall_down_action_enable_notifications">Включить уведомления</string>

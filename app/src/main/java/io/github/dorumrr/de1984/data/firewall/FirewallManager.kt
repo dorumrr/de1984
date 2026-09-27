@@ -28,6 +28,7 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.firewall.FirewallHealth
 import io.github.dorumrr.de1984.domain.firewall.FirewallHealthPresenter
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
+import io.github.dorumrr.de1984.domain.firewall.PartialApplyException
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.ui.VpnPermissionActivity
@@ -146,6 +147,10 @@ class FirewallManager(
      */
     @Volatile
     private var stopTeardownFailed = false
+
+    // Kept apart from _firewallHealth: a start or a health check resets that to Healthy, and this re-raises it.
+    @Volatile
+    private var serviceApplyFailure: FirewallBackendType? = null
 
     private val _firewallHealth = MutableStateFlow<FirewallHealth>(FirewallHealth.Healthy)
     val firewallHealth: StateFlow<FirewallHealth> = _firewallHealth.asStateFlow()
@@ -528,6 +533,8 @@ class FirewallManager(
 
             if (oldBackendType == newBackendType) {
                 if (!oldBackend.isActive()) {
+                    // A new session: only its own passes, reported from now on, may raise the apply warning.
+                    serviceApplyFailure = null
                     oldBackend.start().getOrElse { error ->
                         AppLogger.e(TAG, "Failed to restart backend: ${error.message}")
                         reportStartFailure(
@@ -597,6 +604,8 @@ class FirewallManager(
             // ATOMIC SWITCH: Start new backend FIRST, then stop old backend
             // This prevents security gap where apps are unblocked during transition
             AppLogger.d(TAG, "Starting new backend ($newBackendType) BEFORE stopping old backend...")
+            // Only the incoming type's old record goes; a kept old backend keeps its own if this start fails.
+            if (serviceApplyFailure == newBackendType) serviceApplyFailure = null
             newBackend.start().getOrElse { error ->
                 AppLogger.e(TAG, "Failed to start new backend ($newBackendType): ${error.message}")
                 if (oldBackend != null && oldBackend.isActive()) {
@@ -816,6 +825,7 @@ class FirewallManager(
 
             currentBackend = null
             _activeBackendType.value = null
+            serviceApplyFailure = null
             _firewallState.value = FirewallState.Stopped
             emitStateChangeBroadcast(_firewallState.value)
 
@@ -1493,6 +1503,44 @@ class FirewallManager(
         handleBackendFailure(failedBackendType)
     }
 
+    /** The service finished an apply pass; [error] is null when every rule was written. */
+    fun reportApplyPassFromService(backendType: FirewallBackendType, error: Throwable?) {
+        if (error != null) {
+            AppLogger.e(TAG, "⚠️ RULES NOT FULLY APPLIED ($backendType): ${error.message}")
+        }
+        // A clean pass clears only its own backend's failure, so a late report from another cannot hide it.
+        serviceApplyFailure = when {
+            error != null -> backendType
+            serviceApplyFailure == backendType -> null
+            else -> serviceApplyFailure
+        }
+
+        // Moves only between Healthy and ApplyFailed; Down, StopFailed and SwitchedToVpn outrank it.
+        val current = _firewallHealth.value
+        if (current is FirewallHealth.Healthy || current is FirewallHealth.ApplyFailed) {
+            _firewallHealth.compareAndSet(current, enforcingHealth())
+        }
+    }
+
+    /** Healthy, unless the service's latest pass on the running backend left rules unwritten. */
+    private fun enforcingHealth(): FirewallHealth {
+        val failed = serviceApplyFailure
+        return if (failed != null && failed == _activeBackendType.value) {
+            FirewallHealth.ApplyFailed(failed)
+        } else {
+            FirewallHealth.Healthy
+        }
+    }
+
+    /** The action for [FirewallHealth.ApplyFailed]: a full pass on the instance that enforces. */
+    fun reapplyRules() {
+        triggerRuleReapplication()
+        // PrivilegedFirewallService owns enforcement and re-applies, cache cleared, on this broadcast.
+        context.sendBroadcast(
+            Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED").setPackage(context.packageName)
+        )
+    }
+
     /**
      * The widget or the tile asked to start the firewall, and the plan needs VPN permission.
      *
@@ -1643,7 +1691,7 @@ class FirewallManager(
      */
     private fun reportFirewallHealthy() {
         stopTeardownFailed = false
-        _firewallHealth.value = FirewallHealth.Healthy
+        _firewallHealth.value = enforcingHealth()
         _isFirewallDown.value = false
         dismissBackendFailedNotification()
         dismissVpnFallbackNotification()
@@ -1871,7 +1919,7 @@ class FirewallManager(
             return
         }
 
-        _firewallHealth.value = FirewallHealth.Healthy
+        _firewallHealth.value = enforcingHealth()
         dismissBackendFailedNotification()
     }
 
@@ -2391,8 +2439,8 @@ class FirewallManager(
             AppLogger.d(TAG, "Cleared NetworkPolicyManager applied policies cache")
         }
 
-        // No pass is scheduled here. The only caller, SettingsViewModel.setDefaultFirewallPolicy,
-        // also broadcasts FIREWALL_RULES_CHANGED, which PrivilegedFirewallService and
+        // No pass is scheduled here. Both callers, SettingsViewModel.setDefaultFirewallPolicy and
+        // reapplyRules, also broadcast FIREWALL_RULES_CHANGED, which PrivilegedFirewallService and
         // FirewallVpnService already turn into a rule application on the instance that owns
         // enforcement. Scheduling one here as well ran a second full pass over every package from
         // this class's own backend instance - the duplication the monitoring change removed
@@ -2462,6 +2510,11 @@ class FirewallManager(
             val screenOn = screenStateMonitor.isScreenOn()
 
             backend.applyRules(rules, networkType, screenOn).getOrElse { error ->
+                // A partial pass still enforces, so it must not fail a start; the service's own pass reports it.
+                if (error is PartialApplyException) {
+                    AppLogger.w(TAG, "Rules partly applied to ${backend.getType()}: ${error.message}")
+                    return Result.success(Unit)
+                }
                 AppLogger.e(TAG, "Failed to apply rules to ${backend.getType()}: ${error.message}")
                 return Result.failure(error)
             }

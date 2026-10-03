@@ -680,9 +680,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val displayedPackages = if (state.searchQuery.isBlank()) {
             state.packages
         } else {
-            val query = state.searchQuery.lowercase()
+            val query = state.searchQuery
             state.packages.filter { pkg ->
-                pkg.name.lowercase().contains(query, ignoreCase = false)
+                pkg.name.contains(query, ignoreCase = true) ||
+                    pkg.packageName.contains(query, ignoreCase = true)
             }
         }
 

@@ -2513,7 +2513,7 @@ class FirewallManager(
         }
 
         val currentBackendType = getActiveBackendType()
-        if (currentBackendType == FirewallBackendType.VPN) {
+        if (currentBackendType == FirewallBackendType.VPN && currentBackend?.isActive() == true) {
             AppLogger.d(TAG, "isAnotherVpnActive: De1984's VPN is active, not another VPN")
             return false
         }

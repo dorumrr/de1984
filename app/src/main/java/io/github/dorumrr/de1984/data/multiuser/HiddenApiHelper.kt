@@ -324,6 +324,8 @@ object HiddenApiHelper {
 
         AppLogger.i(TAG, "🔍 MULTI-USER: Starting user profile detection...")
 
+        val discoveredProfiles = linkedMapOf<Int, UserProfile>()
+
         try {
             val userManager = context.getSystemService(Context.USER_SERVICE) as android.os.UserManager
             val profiles = userManager.userProfiles
@@ -362,7 +364,9 @@ object HiddenApiHelper {
 
                 if (userProfiles.isNotEmpty()) {
                     AppLogger.i(TAG, "✅ MULTI-USER: Found ${userProfiles.size} user profiles via getUserProfiles(): ${userProfiles.map { "${it.userId}:${it.displayName}(work=${it.isWorkProfile},clone=${it.isCloneProfile})" }}")
-                    return cacheAndReturn(userProfiles)
+                    // This is only the current profile group; hidden getUsers() below may add
+                    // secondary users that userProfiles does not include.
+                    userProfiles.forEach { discoveredProfiles[it.userId] = it }
                 }
             }
         } catch (e: Exception) {
@@ -404,12 +408,29 @@ object HiddenApiHelper {
 
                     if (profiles.isNotEmpty()) {
                         AppLogger.i(TAG, "✅ Found ${profiles.size} user profiles via getUsers(): ${profiles.map { "${it.userId}:${it.displayName}" }}")
-                        return cacheAndReturn(profiles)
+                        profiles.forEach { hiddenProfile ->
+                            val publicProfile = discoveredProfiles[hiddenProfile.userId]
+                            discoveredProfiles[hiddenProfile.userId] = if (publicProfile == null) {
+                                hiddenProfile
+                            } else {
+                                hiddenProfile.copy(
+                                    name = hiddenProfile.name ?: publicProfile.name,
+                                    isWorkProfile = hiddenProfile.isWorkProfile || publicProfile.isWorkProfile,
+                                    isCloneProfile = hiddenProfile.isCloneProfile || publicProfile.isCloneProfile,
+                                )
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {
                 AppLogger.d(TAG, "Hidden API getUsers() failed: ${describeReflectionFailure(e)}")
             }
+        }
+
+        if (discoveredProfiles.isNotEmpty()) {
+            val profiles = discoveredProfiles.values.toList()
+            AppLogger.i(TAG, "Using ${profiles.size} combined user profiles: ${profiles.map { "${it.userId}:${it.displayName}" }}")
+            return cacheAndReturn(profiles)
         }
 
         val ownUserId = Constants.Firewall.ownUserId()

@@ -32,6 +32,7 @@ import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionSimpleBindin
 import io.github.dorumrr.de1984.databinding.FragmentFirewallBinding
 import io.github.dorumrr.de1984.databinding.NetworkTypeToggleBinding
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.FirewallMode
 import io.github.dorumrr.de1984.domain.firewall.blockingRefused
 import io.github.dorumrr.de1984.domain.firewall.UnblockableReason
 import io.github.dorumrr.de1984.domain.firewall.unblockableReason
@@ -931,9 +932,14 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // one returns currentBackend?.getType(), which is deliberately KEPT across a stop; this flow
         // is nulled. "Is a backend enforcing rules right now" is the question here, so the flow is
         // the right source and a stopped firewall must answer null.
-        val runningBackendType = (requireActivity().application as De1984Application)
-            .dependencies.firewallManager.activeBackendType.value
-        val isIptablesBackend = runningBackendType == FirewallBackendType.IPTABLES
+        val firewallManager = (requireActivity().application as De1984Application)
+            .dependencies.firewallManager
+        val runningBackendType = firewallManager.activeBackendType.value
+        // When the firewall is stopped there is no active backend, but LAN rules can still be
+        // edited for the mode the user has selected. A running non-iptables backend must keep
+        // LAN controls unavailable even when the saved mode is iptables.
+        val isIptablesBackend = runningBackendType == FirewallBackendType.IPTABLES ||
+            (runningBackendType == null && firewallManager.getCurrentMode() == FirewallMode.IPTABLES)
 
         // Neither Shizuku backend can touch a uid outside the app range - "Android System" and the
         // rest of the platform. The rule would still be written and this sheet would still read
@@ -1011,12 +1017,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // batch from another screen, the firewall stopping, a privilege change swapping the
         // backend. Rendered from scratch on every emission, exactly like the switch positions.
         fun renderEnforcementState(currentPkg: NetworkPackage) {
-            val backendNow = (requireActivity().application as De1984Application)
-                .dependencies.firewallManager.activeBackendType.value
-            val iptablesNow = backendNow == FirewallBackendType.IPTABLES
+            val activeBackendNow = firewallManager.activeBackendType.value
+            val iptablesNow = activeBackendNow == FirewallBackendType.IPTABLES ||
+                (activeBackendNow == null && firewallManager.getCurrentMode() == FirewallMode.IPTABLES)
             val allowCriticalNow = currentPkg.paintedAllowCritical
 
-            unblockableReason = backendNow.unblockableReason(
+            unblockableReason = activeBackendNow.unblockableReason(
                 currentPkg, viewModel.uiState.value.blockingContext
             )
             controlsRefused = unblockableReason?.fixableHere == false
@@ -1896,8 +1902,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val sheetBinding = BottomSheetFirewallMultiselectBinding.inflate(layoutInflater)
 
         val app = requireActivity().application as De1984Application
-        val backendType = app.dependencies.firewallManager.activeBackendType.value
-        val isIptablesBackend = backendType == FirewallBackendType.IPTABLES
+        val firewallManager = app.dependencies.firewallManager
+        val backendType = firewallManager.activeBackendType.value
+        val isIptablesBackend = backendType == FirewallBackendType.IPTABLES ||
+            (backendType == null && firewallManager.getCurrentMode() == FirewallMode.IPTABLES)
 
         // Guarding entry into the selection is not enough. A package can be selected while it is
         // still reachable and become unreachable before the batch runs - the firewall starts, or a

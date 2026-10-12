@@ -1,0 +1,690 @@
+<resources>
+    <string name="donate_button">تبرّع</string>
+
+    <string name="nav_firewall">جدار الحماية</string>
+    <string name="nav_packages">الحزم</string>
+    <string name="nav_settings">الإعدادات</string>
+
+    <string name="firewall_button_off">متوقف</string>
+    <string name="firewall_status_active">نشط</string>
+
+    <string name="firewall_state_blocked">محظور</string>
+    <string name="firewall_state_allowed">مسموح</string>
+    <string name="firewall_state_on">تشغيل</string>
+    <string name="firewall_state_off">إيقاف</string>
+    <string name="firewall_state_internet">إنترنت</string>
+    <string name="firewall_search_hint">البحث عن تطبيقات…</string>
+
+    <string name="dialog_firewall_start_title">تشغيل جدار حماية De1984؟</string>
+    <string name="dialog_firewall_start_message">مرحبًا بك في De1984! هل ترغب في بدء تشغيل جدار الحماية الآن لحماية خصوصيتك؟</string>
+    <string name="dialog_firewall_start_confirm">بدء جدار الحماية</string>
+    <string name="dialog_firewall_start_skip">لاحقًا</string>
+
+    <string name="dialog_firewall_stop_title">إيقاف جدار الحماية؟</string>
+    <string name="dialog_firewall_stop_message">⚠️ سيؤدي إيقاف جدار الحماية إلى السماح لجميع التطبيقات بالوصول إلى الإنترنت.\n\nسيتم تعطيل حماية خصوصيتك حتى تقوم بإعادة تشغيل جدار الحماية.</string>
+    <string name="dialog_firewall_stop_confirm">إيقاف جدار الحماية</string>
+
+    <string name="dialog_quick_toggle_block_title">حظر %1$s?</string>
+    <string name="dialog_quick_toggle_allow_title">السماح لـ%1$s?</string>
+    <string name="dialog_quick_toggle_message_wifi">هذا سيؤدي إلى %1$s الوصول إلى الواي فاي لـ %2$s</string>
+    <string name="dialog_quick_toggle_message_mobile">هذا سيؤدي إلى %1$s الوصول إلى بيانات الهاتف لـ %2$s</string>
+    <string name="dialog_quick_toggle_message_roaming">هذا سيؤدي إلى %1$s الوصول إلى التجوال لـ %2$s</string>
+    <string name="dialog_quick_toggle_action_block">حظر</string>
+    <string name="dialog_quick_toggle_action_allow">سماح</string>
+    <string name="snackbar_wifi_blocked">الواي الفاي محظور لـ %s</string>
+    <string name="snackbar_wifi_allowed">الواي الفاي مسموح لـ %s</string>
+    <string name="snackbar_mobile_blocked">بيانات الهاتف محظورة لـ %s</string>
+    <string name="snackbar_mobile_allowed">بيانات الهاتف مسموحة لـ %s</string>
+    <string name="snackbar_roaming_blocked">التجوال محظور لـ %s</string>
+    <string name="snackbar_roaming_allowed">التجوال مسموح لـ %s</string>
+    <string name="dialog_quick_toggle_message_internet">هذا سيؤدي إلى %1$s الوصول إلى الإنترنت لـ %2$s</string>
+    <string name="snackbar_internet_blocked">الإنترنت محظور لـ %s</string>
+    <string name="snackbar_internet_allowed">الإنترنت مسموح لـ %s</string>
+    <string name="snackbar_undo">تراجع</string>
+
+    <string name="packages_search_hint">البحث عن الحزم…</string>
+    <string name="packages_filter_all">الكل</string>
+    <string name="packages_filter_system">النظام</string>
+    <string name="packages_filter_user">المستخدم</string>
+    <string name="packages_filter_bloatware">Bloatware</string>
+    <string name="packages_export_description">استيراد القائمة على الشاشة</string>
+    <string name="packages_export_empty">لا شئ على الشاشة للاستيراد</string>
+    <string name="packages_export_success">✅ تم تصدير %d أسماء حزم</string>
+    <string name="packages_export_failed">Export failed: %s</string>
+    <string name="packages_filter_enabled">مفعّل</string>
+    <string name="packages_filter_disabled">معطّل</string>
+    <string name="packages_empty_state_no_uninstalled">لا تطبيقات نظام غير مثبتة</string>
+
+    <string name="filter_profile_all">All Profiles</string>
+    <string name="filter_profile_personal">الشخصي</string>
+    <string name="filter_profile_work">العمل</string>
+    <string name="filter_profile_clone">الاستنساخ</string>
+    <string name="badge_work_profile">العمل</string>
+    <string name="badge_clone_profile">الاستنساخ</string>
+
+    <string name="status_uninstalled">غير مثبّت</string>
+
+    <string name="packages_status_enabled">مُفعّل</string>
+    <string name="packages_status_disabled">مُعطّل</string>
+
+    <string name="action_enable">تفعيل</string>
+    <string name="action_disable">تعطيل</string>
+    <string name="action_uninstall">إلغاء التثبيت</string>
+    <string name="action_reinstall">إعادة التثبيت</string>
+    <string name="action_force_stop">إيقاف إجباري</string>
+    <string name="select_package">حدد حزم</string>
+    <string name="close_selection">إغلاق وضع التحديد</string>
+
+    <string name="action_sheet_package_name_label">اسم الحزمة</string>
+    <string name="action_sheet_force_stop_desc_running">إيقاف جميع العمليات فورًا</string>
+    <string name="action_sheet_force_stop_desc_not_running">إيقاف إجباري (إذا يعمل)</string>
+    <string name="action_sheet_disable_desc">منع تشغيل هذا التطبيق</string>
+    <string name="action_sheet_enable_desc">السماح بتشغيل هذا التطبيق</string>
+    <string name="action_sheet_uninstall_desc">إزالة هذا التطبيق من جهازك</string>
+    <string name="action_sheet_reinstall_desc">استعادة تطبيق النظام هذا</string>
+
+    <string name="dialog_force_stop_title">فرض إيقاف %s؟</string>
+    <string name="dialog_force_stop_system_message">⚠️ هذه حزمة نظام. قد يتسبب فرض الإيقاف في عدم استقرار النظام.\n\nهل أنت متأكد أنك تريد المتابعة؟</string>
+    <string name="dialog_force_stop_message">سيؤدي هذا فورًا إلى إيقاف جميع العمليات لـ %s.\n\nهل أنت متأكد؟</string>
+    <string name="dialog_enable_disable_title">%1$s %2$s؟</string>
+    <string name="dialog_disable_system_message">⚠️ هذه حزمة نظام. قد يتسبب تعطيلها في عدم استقرار النظام أو منع التطبيقات الأخرى من العمل.\n\nهل أنت متأكد أنك تريد المتابعة؟</string>
+    <string name="dialog_enable_message">سيسمح هذا بتشغيل %s بشكل طبيعي.\n\nهل أنت متأكد؟</string>
+    <string name="dialog_disable_message">سيمنع هذا %s من التشغيل.\n\nهل أنت متأكد؟</string>
+
+    <string name="permission_network_state">حالة الشبكة</string>
+    <string name="permission_wifi_state">حالة الـWi-Fi</string>
+    <string name="permission_notification">إذن الإشعارات</string>
+    <string name="permission_battery_optimization">إعفاء من تحسينات البطارية</string>
+    <string name="permission_modify_system_settings">تعديل إعدادات النظام</string>
+    <string name="permission_enable_disable_components">تفعيل/تعطيل المكونات</string>
+    <string name="permission_superuser_access">Superuser الوصول إلى</string>
+    <string name="permission_vpn">VPN إذن</string>
+
+    <string name="permission_network_state_desc">مراقبة اتصال الشبكة (WiFi/بيانات الهاتف/التجوال)</string>
+    <string name="permission_wifi_state_desc">اكتشاف حالة شبكة Wi-Fi</string>
+    <string name="permission_notification_desc">إظهار إشعارات لتثبيتات التطبيقات الجديدة</string>
+    <string name="permission_battery_optimization_desc">يمنع أندرويد من إيقاف خدمة جدار الحماية لتوفير طاقة البطارية. بالغ الأهمية لموثوقية VPN.</string>
+    <string name="permission_modify_system_settings_desc">تغيير إعدادات الأمان على مستوى النظام</string>
+    <string name="permission_enable_disable_components_desc">تمكين مكونات التطبيق أو تعطيلها</string>
+    <string name="permission_superuser_access_desc">وصول كامل إلى النظام للعمليات المتقدمة</string>
+    <string name="permission_vpn_desc">يسمح بالرجوع التلقائي إلى VPN عند فشل الواجهات الخلفية المميزة (iptables/ConnectivityManager). يضمن بقاء جدار الحماية نشطًا.</string>
+
+    <string name="permission_tier_basic_title">الوظائف الأساسية</string>
+    <string name="permission_tier_battery_title">العمل في الخلفية</string>
+    <string name="permission_tier_advanced_title">العمليات المتقدمة</string>
+    <string name="permission_tier_vpn_title">VPN Fallback</string>
+
+    <string name="permission_tier_basic_desc">عرض الحزم المثبتة والمعلومات الأساسية</string>
+    <string name="permission_tier_battery_desc">يمنع أندوريد من قتل خدمة جدار الحماية لتوفير طاقة البطارية. أمر بالغ الأهمية لموثوقية VPN.</string>
+    <string name="permission_tier_advanced_desc">إدارة الحزم والعمليات على مستوى النظام (عبر Shizuku أو root)</string>
+    <string name="permission_tier_vpn_desc">يسمح بالرجوع التلقائي إلى VPN عند فشل واجهات الخلفية المميزة (iptables/ConnectivityManager). يضمن بقاء جدار الحماية نشطًا.</string>
+    <string name="permission_tier_vpn_desc_privileged">غير مطلوب عند استخدام الواجهة الخلفية لجدار الحماية المميز (iptables/ConnectivityManager). مطلوب فقط كحل احتياطي.</string>
+
+    <string name="permission_status_completed">مكتمل</string>
+    <string name="permission_status_required">الإذن مطلوب</string>
+    <string name="permission_status_not_required">غير مطلوب</string>
+    <string name="permission_status_shizuku_or_root_required">Shizuku أو Root مطلوب</string>
+
+    <string name="permission_button_grant">منح الإذن</string>
+    <string name="permission_button_grant_shizuku">منح إذن Shizuku</string>
+    <string name="permission_button_grant_privileged">منح الوصول المميز</string>
+    <string name="permission_button_grant_vpn">منح إذن VPN</string>
+
+    <string name="multiselect_toast_not_available_disabled">التحديد المتعدد غير متاح للحزم المعطلة</string>
+    <string name="multiselect_toast_not_available_uninstalled">التحديد المتعدد غير متاح للحزم غير المثبتة</string>
+    <string name="multiselect_toolbar_title_format">تم تحديد %d</string>
+    <string name="multiselect_toolbar_button_uninstall">إلغاء التثبيت</string>
+    <string name="multiselect_toolbar_button_reinstall">إعادة التثبيت</string>
+
+    <string name="multiselect_toast_limit_reached">يمكن تحديد %d حزم كحد أقصى في وقت واحد</string>
+
+    <string name="firewall_multiselect_toast_cannot_select_critical">لا يمكن تحديد الحزم الحرجة/VPN</string>
+<string name="firewall_multiselect_toast_cannot_select_system_uid">لا يمكن حظر هذا التطبيق في وضع جدار الحماية الحالي</string>
+    <string name="firewall_multiselect_toolbar_button_block">حظر</string>
+    <string name="firewall_multiselect_toolbar_button_allow">سماح</string>
+    <string name="firewall_multiselect_toolbar_button_rules">تغيير القواعد</string>
+    <string name="firewall_multiselect_dialog_title_results">نتائج جدار الحماية</string>
+    <string name="firewall_multiselect_dialog_message_success_format">✓ بنجاح %2$s: %1$d من التطبيقات</string>
+    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d نجح، ✗ %2$d فشل لـ%3$s</string>
+
+    <string name="firewall_multiselect_sheet_header_format">تم تحديد %d حزم</string>
+    <string name="firewall_multiselect_sheet_section_network_rules">قواعد الشبكة</string>
+    <string name="firewall_multiselect_sheet_state_mixed">مختلط</string>
+    <string name="firewall_multiselect_sheet_quick_actions">الإجراءات السريعة</string>
+    <string name="firewall_multiselect_sheet_allow_all">السماح لكل الشبكات</string>
+    <string name="firewall_multiselect_sheet_block_all">حظر كل الشبكاتstring>
+
+    <string name="cd_app_icon">أيقونة التطبيق</string>
+    <string name="cd_wifi_status">حالة الـWifi</string>
+    <string name="cd_wifi_blocked">WiFi محظور</string>
+    <string name="cd_mobile_data_status">حالة بيانات الهاتف</string>
+    <string name="cd_mobile_blocked">بيانات الهاتف محظور</string>
+    <string name="cd_roaming_status">حالة التجوال</string>
+    <string name="cd_roaming_blocked">التجوال محظور</string>
+    <string name="cd_shield_icon">أيقونة الدرع</string>
+    <string name="cd_open_app_settings">فتح إعدادات التطبيق</string>
+    <string name="cd_package_control_icon">أيقونة تحكم الحزم</string>
+    <string name="cd_status_icon">أيقونة الحالة</string>
+    <string name="cd_de1984_logo">شعار De1984</string>
+    <string name="cd_force_stop_icon">أيقونة الإيقاف الإجباري</string>
+    <string name="cd_enable_disable_icon">أيقونة التفعيل/التعطيل</string>
+    <string name="cd_uninstall_icon">أيقونة إلغاء التثبيت</string>
+    <string name="cd_firewall_rules_icon">أيقونة قواعد جدار الحماية</string>
+    <string name="cd_settings_icon">أيقونة الإعدادات</string>
+    <string name="cd_backend_information">معلومات الواجهة الخلفية</string>
+    <string name="cd_captive_portal_icon">أيقونة البوابة المقيدة</string>
+    <string name="cd_apps_icon">أيقونة التطبيقات</string>
+    <string name="cd_permission_status">حالة الإذن</string>
+    <string name="cd_multiselect_icon">تم تحديد حزم متعددة</string>
+
+    <string name="footer_tagline">ليالٍ متأخرة لأيام أكثر إشراقًا.\nتم الإنشاء بواسطة Doru Moraru</string>
+
+    <plurals name="package_count">
+        <item quantity="zero">%d تطبيق</item>
+        <item quantity="one">%d تطبيق</item>
+        <item quantity="two">%d تطبيقان</item>
+        <item quantity="few">%d تطبيقات</item>
+        <item quantity="many">%d تطبيق</item>
+        <item quantity="other">%d تطبيق</item>
+    </plurals>
+
+    <string name="root_status_denied">الوصول إلى الجذر: مرفوض</string>
+    <string name="root_status_not_available">الوصول إلى الجذر: غير متاح</string>
+
+    <string name="root_desc_denied">تم رفض إذن الجذر. اتبع التعليمات أدناه لمنح الوصول.</string>
+    <string name="root_desc_not_available">جهازك غير مُتجذّر. الوصول إلى الجذر مطلوب لعمليات إدارة الحزمة المتقدمة.</string>
+
+    <string name="root_grant_instructions_title">لمنح الوصول إلى الجذر:</string>
+    <string name="root_grant_instructions_body">• أعد تثبيت التطبيق لتشغيل مربع حوار الإذن مرة أخرى\n• أو أضف De1984 يدويًا إلى تطبيق SuperUser خاصتّك (Magisk، وKernelSU، إلخ.).</string>
+
+    <string name="root_rooting_tools_title"><![CDATA[<b>أدوات التجذير الموصى بها:</b>]]></string>
+    <string name="root_rooting_tools_body">• Magisk - حل التجذير الأكثر شعبية والأوسع دعمًا. يعمل على Android 5.0+ ويدعم الوحدات للميزات الإضافية.\n• KernelSU - إدارة جذر حديثة قائمة على النواة. يوفر عزل أمان أفضل ولا يُعدّل قسم النظام.\n• APatch - بديل أحدث مع نهج تصحيح النواة. مناسب للأجهزة ذات السياسات الأمنية الصارمة.</string>
+
+
+    <string name="shizuku_status_denied">Shizuku: مرفوض</string>
+    <string name="shizuku_status_not_running">Shizuku: لا يعمل</string>
+
+    <string name="shizuku_desc_denied">تم رفض إذن Shizuku. اضغط على \'منح إذن Shizuku\' لإعادة المحاولة.</string>
+    <string name="shizuku_desc_not_running">تم تثبيت Shizuku ولكنه لا يعمل. شغّل Shizuku لتمكين إدارة الحزم.</string>
+
+    <string name="backend_notification_title_waiting">جدار حماية De1984 نشط (وضع VPN)</string>
+    <string name="backend_notification_title_switching">De1984 يقوم بتبديل الواجهة الخلفية...</string>
+    <string name="backend_notification_title_success">تم تبديل الواجهة الخلفية لجدار الحماية De1984</string>
+    <string name="backend_notification_title_failed">De1984 فشل تبديل الواجهة الخلفية لجدار الحماية</string>
+
+    <string name="backend_notification_text_shizuku_not_running">في انتظار بدء Shizuku. انقر لإعادة المحاولة.</string>
+    <string name="backend_notification_text_shizuku_no_permission">في انتظار إذن Shizuku. انقر لإعادة المحاولة.</string>
+    <string name="backend_notification_text_switching">Shizuku متاح الآن. جارٍ التبديل إلى الواجهة الخلفية المفضلة...</string>
+    <string name="backend_notification_text_failed">فشل جدار حماية De1984 في تبديل الواجهة الخلفية. لا يزال يستخدم VPN.</string>
+
+    <string name="backend_action_button_retry">إعادة المحاولة</string>
+
+    <string name="backend_switched_notification_title">تم تبديل الواجهة الخلفية لجدار الحماية</string>
+    <string name="backend_switched_notification_text">تم التبديل إلى %1$s — هناك VPN آخر نشط</string>
+    <string name="backend_switched_notification_big">تم توصيل تطبيق VPN آخر. تم التبديل من De1984 إلى %1$s تلقائيًا لمواصلة حمايتك. انقر لفتح الإعدادات.</string>
+    <string name="backend_upgraded_notification_title">تمت ترقية جدار الحماية</string>
+    <string name="backend_upgraded_notification_text">تم التبديل من VPN إلى %1$s</string>
+    <string name="backend_upgraded_notification_big">تم اكتشاف وصول الجذر. تمت ترقية De1984 من VPN إلى %1$s تلقائيًا لتوفير حماية أفضل. تم تعيين الوضع إلى تلقائي.</string>
+    <string name="backend_toast_success">تم تبديل جدار حماية De1984 إلى %1$s</string>
+    <string name="backend_notification_text_success">يستخدم جدار حماية De1984 الآن واجهة خلفية %1$s</string>
+    <string name="backend_unknown_name">غير معروف</string>
+    <string name="backend_toast_failed">فشل جدار حماية De1984 في تبديل الواجهة الخلفية</string>
+
+    <string name="vpn_fallback_notification_title">De1984 جدار الحماية معطل</string>
+    <string name="vpn_fallback_notification_text">فشل الواجهة الخلفية المميزة. اضغط لتمكين VPN fallback واستعادة حماية جدار الحماية.</string>
+    <string name="vpn_fallback_notification_action_text">تفعيل VPN fallback</string>
+
+    <string name="vpn_permission_notification_title">بدء جدار حماية De1984</string>
+    <string name="vpn_permission_notification_text">يحتاج De1984 إلى إذنك لإنشاء اتصال VPN. اضغط للسماح بذلك وابدأ جدار الحماية.</string>
+    <string name="vpn_permission_notification_action_text">السماح والبدء</string>
+
+    <string name="firewall_down_title">جدار الحماية معطل — تطبيقاتك غير محظورة</string>
+    <string name="firewall_down_reason_no_plan">لا يتوفر أي واجهة خلفية لجدار حماية قابلة للاستخدام على هذا الجهاز.</string>
+    <string name="firewall_down_reason_fallback_failed">لم تبدأ الواجهة الخلفية للنسخ الاحتياطي. لا شيء يمنع الوصول إلى الشبكة.</string>
+    <string name="firewall_down_reason_vpn_conflict">يستخدم تطبيق VPN آخر فتحة VPN. يجب على De1984 استبداله لحمايتك.</string>
+    <string name="firewall_down_reason_start_failed">تعذّر على De1984 بدء تشغيل جدار الحماية. لا يوجد شيء يمنع الوصول إلى الشبكة.</string>
+    <string name="firewall_down_reason_vpn_permission">يحتاج De1984 إلى إذن VPN لاستعادة الحماية.</string>
+    <string name="firewall_down_action_choose_backend">اختر الواجهة الخلفية</string>
+    <string name="firewall_down_action_retry">حاول مجددًا</string>
+    <string name="firewall_down_action_enable_vpn">تفعيل الـVPN</string>
+    <string name="firewall_down_action_replace_vpn">استبدال الـVPN</string>
+    <string name="firewall_switched_title">تم تبديل الواجهة الخلفية</string>
+    <string name="firewall_switched_message_auto">فشلت واجهة خلفية %1$s. تم تبديل De1984 إلى VPN ولا يزال يحميك.</string>
+    <string name="firewall_switched_message_manual">فشلت واجهة خلفية %1$s. تم تحويل De1984 إلى الوضع التلقائي ويستخدم VPN.</string>
+
+    <string name="firewall_stop_failed_title">لم يتوقف جدار الحماية</string>
+    <string name="firewall_stop_failed_message">لم يتم إيقاف تشغيل واجهة خلفية %1$s. قد تظل بعض التطبيقات محظورة. حاول مرة أخرى، أو أعد تشغيل الجهاز.</string>
+    <string name="firewall_stop_failed_message_unknown">لم يتم إيقاف تشغيل جدار الحماية. قد تظل بعض التطبيقات محظورة. حاول مرة أخرى، أو أعد تشغيل الجهاز.</string>
+    <string name="firewall_stop_failed_action_retry">توقف مرة أخرى</string>
+    <string name="firewall_down_notifications_off">الإشعارات متوقفة، لذلك لا يمكن لهذا التحذير الوصول إليك عند إغلاق De1984.</string>
+    <string name="firewall_down_action_enable_notifications">تشغيل التنبيهات</string>
+    <string name="firewall_status_down">معطل</string>
+    <string name="firewall_status_stuck">عالق</string>
+
+    <string name="vpn_conflict_notification_title">De1984 جدار الحماية معطل - تعارض VPN</string>
+    <string name="vpn_conflict_notification_text">هناك VPN آخر نشط. يحتاج De1984 إلى إذن VPN لاستعادة حماية جدار الحماية. سيحل هذا محل اتصال VPN الحالي. انقر لمنح الإذن.</string>
+    <string name="vpn_conflict_notification_action_text">استبدال &amp; VPN وتفعيل جدار الحماية</string>
+
+    <string name="language_title">لغة التطبيق</string>
+    <string name="language_description">اختر لغتك المفضلة للتطبيق</string>
+    <string name="language_system_default">افتراضي النظام</string>
+    <!-- Settings Screen -->
+    <string name="settings_app_version">الإصدار %s</string>
+    <string name="settings_app_description">الخصوصية ليست افتراضية. استعدها باستخدام De1984 Firewall وPackage Control. مشروع مجاني ومفتوح المصدر حقًا تم إنشاؤه ب ♥️ من أجل الخصوصية. فكر في التبرع لدعم تطويره إذا وجدته مفيدًا.</string>
+
+    <string name="settings_options_title">الخيارات</string>
+    <string name="settings_options_description">تكوين السلوك والإعدادات</string>
+
+    <string name="settings_firewall_policy_title">يحظر جدار الحماية الكل بشكل افتراضي</string>
+    <string name="settings_firewall_policy_description_block_all">حظر الكل، السماح بالمرغوب</string>
+    <string name="settings_firewall_policy_description_allow_all">السماح بالكل، حظر غير المرغوب</string>
+
+    <string name="settings_backend_title">واجهة خلفية جدار الحماية</string>
+    <string name="settings_backend_description">حدد أيًّا الواجهة الخلفية لاستخدامها لحظر التطبيقات</string>
+    <string name="settings_backend_active">نشط: %s</string>
+    <string name="settings_backend_not_running">جدار الحماية لا يعمل.</string>
+    <string name="settings_backend_loading">جارٍ التحميل...</string>
+
+    <string name="backend_auto_name">تلقائي (موصى به)</string>
+    <string name="backend_auto_description">تحديد أفضل واجهة خلفية متاحة تلقائيًا</string>
+    <string name="backend_vpn_name">VPN</string>
+    <string name="backend_vpn_description">استخدم دائمًا واجهة خلفية VPN</string>
+    <string name="backend_connectivity_manager_name">ConnectivityManager</string>
+    <string name="backend_connectivity_manager_description">الحظر على مستوى النظام (يتطلب Shizuku + أندرويد 13+)</string>
+    <string name="backend_requires_android_13">يتطلب أندوريد 13+</string>
+    <string name="backend_requires_shizuku">يتطلب Shizuku</string>
+    <string name="backend_iptables_name">iptables</string>
+    <string name="backend_iptables_description">الحظر على مستوى النواة (يتطلب الجذر)</string>
+    <string name="backend_iptables_requirement">يتطلب الجذر أو Shizuku في وضع الجذر</string>
+    <string name="backend_network_policy_manager_name">NetworkPolicyManager (Legacy)</string>
+    <string name="backend_network_policy_manager_description">لنظام التشغيل أندرويد 12 وأقدم (استخدم ConnectivityManager على أندرويد 13+‎)</string>
+    <string name="backend_network_policy_manager_requirement">يتطلب Shizuku</string>
+    <string name="backend_not_available_title">%s غير متاح</string>
+    <string name="backend_not_available_message">هذه الواجهة الخلفية غير متوفرة على جهازك.</string>
+
+    <string name="settings_show_icons_title">إظهار أيقونات التطبيقات</string>
+    <string name="settings_show_icons_description">قد يؤدي إلى تسريع التطبيق عند تعطيله</string>
+
+    <string name="settings_boot_protection_title">حماية التمهيد</string>
+    <string name="settings_boot_protection_description">حظر كل حركة مرور الشبكة أثناء بدء تشغيل الجهاز حتى يتم تنشيط جدار الحماية (يتطلب جذر وMagisk)</string>
+    <string name="settings_boot_protection_unavailable">يتطلب root and Magisk boot scripts</string>
+    <string name="settings_boot_protection_stuck">⚠️ لا تزال حماية التمهيد مثبتة وفقد De1984 الوصول إلى الجذر، لذلك لا يمكنه إزالتها. يحظر كل تمهيد جميع التطبيقات لمدة تصل إلى دقيقتين، ثم يرفع البرنامج النصي نفسه. حاول إزالته أدناه — وهذا يعمل إذا تم رفض الوصول إلى الجذر فقط، ولم يتم فقدانه.
+    <string name="settings_boot_protection_retry_remove">حاول للإزالة</string>
+    <string name="boot_protection_remove_no_root">تعذّر إزالته. لا يزال De1984 لا يتمتع بوصول الجذر، لذلك لا يمكنه حذف ملف ضمن /data/adb. استعد الجذر وحاول مرة أخرى. حتى ذلك الحين، يحظر كل تمهيد التطبيقات لمدة تصل إلى دقيقتين، ثم يمسح نفسه.</string>
+    <string name="boot_protection_rebooting">تمت إزالة حماية التمهيد. جارٍ إعادة تشغيل هاتفك...</string>
+
+    <string name="settings_new_app_notifications_title">إشعارات التطبيق الجديدة</string>
+    <string name="settings_new_app_notifications_description">إظهار إشعارات عند تثبيت تطبيقات جديدة ذات أذونات شبكة</string>
+
+    <string name="settings_allow_uninstall_critical_title">السماح بإلغاء تثبيت الحزم الأساسية</string>
+    <string name="settings_allow_uninstall_critical_description">إظهار خيار إلغاء التثبيت للحزم الأساسية والمهمة</string>
+
+    <string name="settings_allow_firewall_critical_title">السماح بجدار الحماية للحزم الأساسية</string>
+    <string name="settings_allow_firewall_critical_description">السماح بحظر الوصول إلى الشبكة لحزم النظام الأساسية وحزم VPN</string>
+
+    <string name="settings_show_firewall_prompt_title">إظهار مطالبة بدء جدار الحماية</string>
+    <string name="settings_show_firewall_prompt_description">عرض مطالبة لبدء جدار الحماية عند فتح التطبيق وعدم نشاط جدار الحماية</string>
+
+    <string name="settings_confirm_rule_changes_title">تأكيد تغييرات القاعدة</string>
+    <string name="settings_confirm_rule_changes_description">إظهار مربع حوار التأكيد عند النقر على رموز الشبكة لتبديل القواعد</string>
+
+    <string name="settings_dynamic_color_title">استخدام اللون الديناميكي</string>
+    <string name="settings_dynamic_color_description">تكييف ألوان التطبيق لتتناسب مع خلفية جهازك (أندرويد ١٢+). يتطلب إعادة تشغيل التطبيق.</string>
+
+    <string name="settings_backup_restore_title">النسخ الاحتياطي والاستعادة</string>
+    <string name="settings_backup_restore_description">حفظ قواعد جدار الحماية واستعادتها</string>
+    <string name="settings_backup_button">نسخ احتياطي</string>
+    <string name="settings_restore_button">استعادة</string>
+
+    <string name="settings_uninstalled_apps_title">التطبيقات غير المثبتة</string>
+    <string name="settings_uninstalled_apps_description">تصدير واستيراد قائمة حزم النظام التي تم إلغاء تثبيتها</string>
+    <string name="button_export_uninstalled_apps">تصدير</string>
+    <string name="button_import_uninstalled_apps">استيراد</string>
+
+    <string name="success_export_uninstalled">✅ تم التصدير بنجاح: %d حزم</string>
+    <string name="error_export_requires_privileges">❌ مطلوب Root أو Shizuku لتصدير التطبيقات التي تم إلغاء تثبيتها</string>
+    <string name="error_export_no_uninstalled_apps">لم يتم العثور على حزم نظام تم إلغاء تثبيتها</string>
+    <string name="error_export_failed">فشل التصدير: %s</string>
+
+    <string name="dialog_import_preview_title">استيراد &amp; تطبيقات غير مثبتة</string>
+    <string name="dialog_import_preview_message">تم العثور على %1$d حزم لإلغاء تثبيتها:\n\n%2$s\n\n⚠️ سيؤدي هذا إلى إلغاء تثبيت جميع التطبيقات المدرجة.</string>
+    <string name="dialog_import_warning_title">لم يتم العثور على بعض الحزم</string>
+    <string name="dialog_import_warning_message">تم العثور على %1$d من %2$d حزمة.\n\nتم العثور على:\n%3$s\n\nلم يتم العثور على:\n%4$s\n\nهل تريد المتابعة مع الحزم التي تم العثور عليها؟</string>
+    <string name="dialog_import_all_not_found">❌ لا يوجد أي من %d الحزم الموجودة في الملف مثبتة حاليًا</string>
+    <string name="dialog_import_protected_section">🛡️ تم التخطي لأنه محمي (أساسي أو مطلوب بواسطة De1984):\n%1$s</string>
+    <string name="dialog_import_empty_file">❌ الملف فارغ أو لا يحتوي على أسماء حزم صالحة</string>
+    <string name="dialog_import_confirm">إلغاء تثبيت الكل</string>
+    <string name="error_import_requires_privileges">❌ مطلوب جذر أو Shizuku لإلغاء تثبيت التطبيقات</string>
+    <string name="error_import_file_read_failed">فشل في قراءة الملف: %s</string>
+    <string name="error_import_failed">فشل الاستيراد: %s</string>
+
+    <string name="settings_captive_portal_title">متحكم البوابة المقيدة</string>
+    <string name="settings_captive_portal_description">تحكم في نظام الكشف عن البوابة المقيدة</string>
+    <string name="settings_captive_portal_current_settings">الإعدادات الحالية</string>
+    <string name="settings_captive_portal_detection_mode">وضع الكشف: %s</string>
+    <string name="settings_captive_portal_http_url">HTTP URL: %s</string>
+    <string name="settings_captive_portal_https_url">HTTPS URL: %s</string>
+    <string name="settings_captive_portal_preset">إعداد مسبق: %s</string>
+    <string name="settings_captive_portal_loading">جارٍ التحميل...</string>
+    <string name="settings_captive_portal_not_set">غير محدد</string>
+
+    <string name="captive_portal_mode_forced_off">متوقف إجباريًا</string>
+    <string name="captive_portal_mode_forced_off_description">تم تعطيل اكتشاف البوابة الخاصة تمامًا.</string>
+    <string name="captive_portal_mode_disabled">معطل</string>
+    <string name="captive_portal_mode_disabled_description">تم تعطيل اكتشاف البوابة المقيدة</string>
+    <string name="captive_portal_mode_enabled">مفعل</string>
+    <string name="captive_portal_mode_enabled_description">تم تفعيل اكتشاف البوابة المقيدة (افتراضي)</string>
+
+    <string name="captive_portal_preset_google">جوجل (افتراضي)</string>
+    <string name="captive_portal_preset_google_description">خوادم اكتشاف البوابة المقيدة الافتراضية من Google</string>
+    <string name="captive_portal_preset_grapheneos">GrapheneOS</string>
+    <string name="captive_portal_preset_grapheneos_description">خوادم تركز على الخصوصية من مشروع GrapheneOS</string>
+    <string name="captive_portal_preset_kuketz">Kuketz</string>
+    <string name="captive_portal_preset_kuketz_description">خوادم تركز على الخصوصية من Mike Kuketz (ألمانيا)</string>
+    <string name="captive_portal_preset_cloudflare">Cloudflare</string>
+    <string name="captive_portal_preset_cloudflare_description">خوادم الكشف عن البوابة المقيدة من Cloudflare</string>
+    <string name="captive_portal_preset_custom">URLs مخصص</string>
+    <string name="captive_portal_preset_custom_description">استخدم عناوين URL المخصصة لبوابة الدخول الخاصة بك</string>
+
+    <string name="captive_portal_preset_applied">تم تطبيق الإعداد المسبق %s بنجاح</string>
+    <string name="captive_portal_mode_set">تم تعيين وضع الكشف إلى %s</string>
+    <string name="settings_captive_portal_restore_original">استعادة الأصلي</string>
+    <string name="settings_captive_portal_reset_google">إعادة الضبط لجوجل</string>
+    <string name="settings_captive_portal_no_privileges">يلزم الوصول إلى Root أو Shizuku لتعديل الإعدادات</string>
+
+    <string name="settings_permissions_title">الأذونات</string>
+    <string name="settings_permissions_description">الحالة والتكوين المتقدم</string>
+
+    <string name="settings_contribute_title">أسئلة، ميزات أو أخطاء؟</string>
+    <string name="settings_contribute_description">شارك وساعد في تحسين De1984</string>
+    <string name="settings_contribute_message">ساهم بالكود أو أبلغ عن الأخطاء أو اقترح ميزات لجعل هذا التطبيق أفضل للجميع.</string>
+    <string name="settings_contribute_button">ساهم على GitHub</string>
+
+    <string name="dialog_success">نجاح</string>
+    <string name="dialog_firewall_backends_title">الواجهات الخلفية لجدار الحماية</string>
+    <string name="dialog_firewall_backends_message">💡 الوضع التلقائي (موصى به)\nيختار تلقائيًا أفضل واجهة خلفية متاحة:\n1. iptables (في حالة توفر root/Shizuku)\n2. ConnectivityManager (إذا كان Shizuku + Android 13+)\n3. VPN (الاحتياطي)\n\nيدعم De1984 أربع واجهات خلفية لجدار الحماية:\n\n🔹 واجهة خلفية VPN\n• متاحة دائمًا (لا يلزم وجود صلاحية الجذر)\n• تستخدم واجهة برمجة تطبيقات Android VpnService\n• تدعم التحكم الدقيق (WiFi/الجوال/التجوال)\n• تشغل فتحة VPN (لا يمكن استخدام تطبيقات VPN أخرى)\n• تصفية حزم مساحة المستخدم\n\n🔹 واجهة خلفية iptables\n• تتطلب صلاحية الجذر أو Shizuku في وضع الجذر\n• الحظر على مستوى النواة (الأكثر كفاءة)\n• تدعم التحكم الدقيق (WiFi/الجوال/التجوال)\n• لا تشغل فتحة VPN\n• يعمل مع تطبيقات VPN الأخرى\n\n🔹 الواجهة الخلفية ConnectivityManager\n• يتطلب Shizuku + Android 13+\n• الحظر على مستوى النظام (يحظر جميع الشبكات بشكل موثوق)\n• الحظر الكل أو لا شيء فقط (بدون تحكم دقيق)\n• لا يشغل فتحة VPN\n• يعمل مع تطبيقات VPN الأخرى\n\n🔹 الواجهة الخلفية NetworkPolicyManager (Legacy)\n• يتطلب Shizuku\n• لنظام Android 12 والإصدارات الأقدم\n• قد لا يحظر الواي فاي على بعض الأجهزة\n• استخدم ConnectivityManager على Android 13+ بدلاً من ذلك\n• لا يشغل فتحة VPN</string>
+    <string name="dialog_privileged_access_title">الوصول المميز</string>
+    <string name="dialog_privileged_access_testing">🔄 جارٍ اختبار الوصول المميز...\n\nيُرجى منح الإذن في مربع الحوار المنبثق إذا طُلب منك ذلك.</string>
+    <string name="dialog_privileged_access_failed">❌ فشل اختبار الجذر.\n\nالخطأ: %s</string>
+    <string name="dialog_restore_rules_title">استعادة قواعد جدار الحماية؟</string>
+    <string name="dialog_restore_rules_message">📦 معلومات النسخ الاحتياطي:\n\n• تاريخ الإنشاء: %1$s\n• إصدار التطبيق: %2$s\n• عدد القواعد: %3$d\n\nاختر وضع الاستعادة:\n\n• الدمج: الاحتفاظ بالقواعد الحالية والإضافة/التحديث من النسخ الاحتياطي\n• استبدال الكل: حذف جميع القواعد الحالية أولاً (⚠️ تدميري)</string>
+    <string name="dialog_restore_rules_merge">دمج</string>
+    <string name="dialog_restore_rules_replace">استبدال الكل</string>
+    <string name="dialog_replace_all_title">⚠️ استبدال جميع القواعد؟</string>
+    <string name="dialog_replace_all_message">سيؤدي هذا إلى حذف جميع قواعد جدار الحماية الحالية واستبدالها بالنسخة الاحتياطية.\n\nلا يمكن التراجع عن هذا الإجراء.\n\nهل أنت متأكد؟</string>
+    <string name="dialog_replace_all_confirm">استبدل الكل</string>
+    <string name="dialog_critical_uninstall_title">⚠️ تحذير</string>
+    <string name="dialog_critical_uninstall_message">يسمح هذا بإلغاء تثبيت الحزم الضرورية للنظام التي قد تتسبب في تعطيل جهازك. قم بالتفعيل فقط إذا كنت تعرف ما تفعله.\n\nهل أنت متأكد أنك تريد تفعيل هذا؟</string>
+    <string name="dialog_critical_uninstall_enable">تفعيل</string>
+    <string name="dialog_critical_firewall_title">⚠️ تحذير</string>
+    <string name="dialog_critical_firewall_message">يسمح هذا بحظر الوصول إلى الشبكة للحزم المهمة للنظام (WiFi وBluetooth و مدير التنزيلات وما إلى ذلك) وتطبيقات VPN.\n\nقد يؤدي حظر هذه الحزم إلى:\n• قطع الاتصال بالشبكة\n• منع WiFi/Bluetooth من العمل\n• التسبب في مشكلات في إعادة اتصال VPN\n• طلب إعادة الضبط إلى إعدادات المصنع أو ADB للإصلاح\n\nقم بالتفعيل فقط إذا كنت تعرف ما تفعله.\n\nهل أنت متأكد أنك تريد تفعيل هذا؟</string>
+    <string name="dialog_critical_firewall_enable">تفعيل</string>
+    <string name="dialog_restart_title">إعادة التشغيل مطلوبة</string>
+    <string name="dialog_restart_message">يحتاج التطبيق إلى إعادة التشغيل لتطبيق سمة اللون الجديد. هل تريد إعادة التشغيل الآن؟</string>
+    <string name="dialog_restart_confirm">إعادة التشغيل</string>
+    <string name="dialog_captive_portal_restore_title">استعادة الإعدادات الأصلية؟</string>
+    <string name="dialog_captive_portal_restore_message">سيؤدي هذا إلى استعادة الإعدادات الأصلية للبوابة التسجيل لجهازك التي تم التقاطها عند فتح هذه الميزة لأول مرة.</string>
+    <string name="dialog_captive_portal_restore_confirm">استعادة</string>
+    <string name="dialog_captive_portal_reset_title">إعادة التعيين إلى افتراضيات جوجل؟</string>
+    <string name="dialog_captive_portal_reset_message">سيؤدي هذا إلى إعادة تعيين إعدادات البوابة المقيدة إلى خوادم Google الافتراضية. ستظل إعداداتك الأصلية محفوظة ويمكن استعادتها لاحقًا.</string>
+    <string name="dialog_captive_portal_reset_confirm">إعادة الضبط</string>
+    <string name="dialog_backup_read_error">فشل في قراءة ملف النسخ الاحتياطي: %s</string>
+    <string name="dialog_backup_load_error">فشل في تحميل النسخة الاحتياطية: %s</string>
+    <string name="dialog_loading_backup_title">جارٍ تحميل النسخة الاحتياطية...</string>
+    <string name="dialog_loading_backup_message">يرجى الانتظار...</string>
+    <string name="dialog_vpn_permission_error_title">خطأ في إذن VPN</string>
+    <string name="dialog_vpn_permission_error_message">فشل في طلب إذن VPN: %s</string>
+
+    <string name="packages_empty_state_title">لم يتم العثور على حزم</string>
+    <string name="packages_empty_state_subtitle">حاول تعديل عوامل التصفية</string>
+    <string name="package_state_enabled">مُفعّل</string>
+    <string name="package_type_user">مستخدم</string>
+
+    <string name="firewall_empty_state_title">لم يتم العثور على حزم</string>
+    <string name="firewall_empty_state_subtitle">حاول تعديل عوامل التصفية</string>
+    <string name="firewall_vpn_info_message">استخدام جدار حماية قائم على VPN لأن جهازك غير مُجذّر أو لا يحتوي على Shizuku. لا يمكنك استخدام تطبيق VPN آخر أثناء تنشيط جدار حماية De1984.</string>
+    <string name="firewall_network_label_wifi">WiFi</string>
+    <string name="firewall_network_label_mobile">بيانات الهاتف</string>
+    <string name="firewall_network_label_roaming">التجوال</string>
+    <string name="firewall_network_label_lan">وصول الشبكة المحلية</string>
+    <string name="firewall_lan_requires_root">يتطلب الوصول إلى الجذر</string>
+<string name="firewall_backend_cannot_block_uid">لا يمكن الحظر</string>
+    <string name="firewall_system_uid_info">⚠️ جزء من نظام Android نفسه، وليس تطبيقًا عاديًا. لا يمكن لـ Shizuku حظره — يرفض Android قواعد جدار الحماية لمكوناته الخاصة. يمكن لـ Root ذلك، ولكن عندما تتم مشاركة معرف المستخدم مع تطبيق محمي، مثل الإعدادات، فإنه يحتاج أيضًا إلى تمكين \'السماح بالحزم الحرجة لجدار الحماية\' في الإعدادات وسيؤثر على تلك التطبيقات أيضًا.</string>
+    <string name="firewall_unknown_uid_info">⚠️ تعذّر على De1984 تحديد معرف مستخدم هذا التطبيق في ملفه التعريفي، لذلك لا يمكن تطبيق أي قاعدة جدار حماية عليه.</string>
+    <string name="firewall_other_profile_info">⚠️ هذا التطبيق في ملف تعريف آخر. يعمل وضع جدار الحماية الحالي مع أسماء التطبيقات داخل الملف التعريفي الذي يعمل فيه De1984، لذلك لا يمكنه الوصول إلى هذا التطبيق. يحظر الوصول إلى الجذر حسب معرف المستخدم ويمكنه الوصول إلى كل ملف تعريف.</string>
+    <string name="firewall_shared_uid_info">⚠️ يشارك هذا التطبيق معرّف مستخدم مع تطبيق محمي، ويحظر وضع جدار الحماية الحالي حسب معرّف المستخدم، وليس حسب التطبيق. سيؤدي حظره إلى قطع التطبيق المحمي أيضًا، لذلك يترك De1984 معرف المستخدم بالكامل دون تغيير. لحظره على أي حال، قم بتمكين \'السماح بالحزم الحرجة لجدار الحماية\' في الإعدادات ثم قم بتشغيل مفتاح التبديل لهذا التطبيق.</string>
+    <string name="firewall_no_rule_protected_uid_info">⚠️ يحمي De1984 معرف مستخدم هذا التطبيق، لذلك لا يتم تطبيق الإعداد الافتراضي "حظر الكل" عليه — قد يؤدي القيام بذلك إلى قطع تطبيق نظام محمي. مع تمكين \'السماح بالحزم الحرجة لجدار الحماية\'، لا يزال بإمكانك حظره: قم بتشغيل المفتاح لهذا التطبيق..</string>
+    <string name="firewall_sibling_rule_info">⚠️ يشارك تطبيق آخر معرّف مستخدم هذا التطبيق ولديه قاعدة جدار حماية خاصة به. يحظر وضع جدار الحماية الحالي حسب معرف المستخدم، لذلك تنطبق هذه القاعدة على هذا التطبيق أيضًا. المفاتيح أدناه هي إعداداتك الخاصة — تعرض قائمة التطبيقات ما يتم تطبيقه بالفعل.</string>
+    <string name="firewall_network_label_background_access">السماح في الخلفية</string>
+    <string name="firewall_network_label_internet_access">الوصول إلى الإنترنت</string>
+    <string name="firewall_internet_access_subtitle">WiFi، بيانات الهاتف، التجوال</string>
+    <string name="firewall_connectivity_manager_info">يستخدم جهازك جدار حماية على مستوى النظام لا يدعم الحظر لكل شبكة. للتحكم الدقيق، يلزم الوصول إلى الجذر.</string>
+    <string name="firewall_system_critical_info">⚠️ حزمة نظام هامة - لا يمكن تعديل الوصول إلى الشبكة لمنع عدم استقرار النظام.</string>
+    <string name="firewall_vpn_app_info">🔒 تطبيق VPN - مسموح دائمًا بمنع مشكلات إعادة اتصال VPN بعد قفل الجهاز/إلغاء قفله.</string>
+    <string name="firewall_critical_allowed_info">⚠️ تم تعطيل حماية الحزمة الهامة في الإعدادات. قد يتسبب حظر الوصول إلى الشبكة في عدم استقرار النظام أو مشاكل في VPN.</string>
+    <string name="firewall_badge_system_critical">نظام هام</string>
+    <string name="firewall_badge_vpn_app">تطبيق VPN</string>
+    <string name="firewall_badge_no_internet">لا إذن بالإنترنت</string>
+    <string name="firewall_no_internet_info">ℹ️ لا يحتوي هذا التطبيق حاليًا على إذن إنترنت معلن في بيان بياناته.\n\nسيصبح حظره الآن ساري المفعول إذا حصل التطبيق على إذن إنترنت في تحديث مستقبلي، مما يوفر حماية استباقية.</string>
+
+    <string name="protection_banner_title">🛡️ الحزمة المحمية</string>
+    <string name="protection_banner_message_firewall_system">هذه الحزمة ضرورية للنظام محمية بشكل افتراضي لمنع عدم استقرار النظام. قم بتمكين \'السماح بالحزم الهامة لجدار الحماية\' في الإعدادات لتعديل الوصول إلى الشبكة.</string>
+    <string name="protection_banner_message_firewall_vpn">يتم حماية تطبيق VPN هذا بشكل افتراضي لمنع حدوث مشكلات في إعادة اتصال VPN. قم بتمكين \'السماح بالحزم الهامة لجدار الحماية\' في الإعدادات لتعديل الوصول إلى الشبكة.</string>
+    <string name="protection_banner_message_firewall">هذه الحزمة محمية بشكل افتراضي. قم بتمكين \'السماح بالحزم الحرجة لجدار الحماية\' في الإعدادات لتعديل الوصول إلى الشبكة.</string>
+    <string name="protection_banner_message_uninstall">هذه الحزمة الهامة محمية بشكل افتراضي لمنع عدم استقرار النظام. قم بتمكين \'السماح بإلغاء تثبيت الحزم الهامة\' في الإعدادات لإلغاء تثبيتها.</string>
+    <string name="protection_banner_button">الإعدادات</string>
+
+    <string name="snackbar_firewall_protected">هذه الحزمة محمية. قم بتمكين الإعداد في الإعدادات لتعديل الوصول إلى الشبكة.</string>
+    <string name="snackbar_uninstall_protected">هذه الحزمة محمية. قم بتمكين الإعداد في الإعدادات لإلغاء التثبيت.</string>
+    <string name="snackbar_action_settings">الإعدادات</string>
+
+    <string name="category_system_core">لُب نظام</string>
+    <string name="category_system_ui">واجهة مستخدم النظام</string>
+    <string name="category_google_services">خدمات جوجل</string>
+    <string name="category_connectivity">اتصال</string>
+    <string name="category_telephony">هاتفي</string>
+    <string name="category_media">وسائط</string>
+    <string name="category_social">اجتماعي</string>
+    <string name="category_assistant">مساعد</string>
+    <string name="category_vendor">مُورِّد</string>
+    <string name="category_unknown">مجهول</string>
+
+    <string name="action_sheet_placeholder_app_name">اسم التطبيق</string>
+    <string name="action_sheet_placeholder_package_name">com.example.app</string>
+    <string name="action_sheet_safety_badge_essential">أساسي</string>
+    <string name="action_sheet_safety_badge_important">مهم</string>
+    <string name="action_sheet_safety_badge_optional">اختياري</string>
+    <string name="action_sheet_safety_badge_bloatware">Bloatware</string>
+    <string name="action_sheet_type_badge_user">مستخدم</string>
+    <string name="action_sheet_type_badge_system">واجهة مستخدم النظام</string>
+    <string name="action_sheet_action_force_stop">إيقاف إجباري</string>
+    <string name="action_sheet_action_force_stop_desc">إيقاف جميع العمليات فورًّا</string>
+    <string name="action_sheet_action_disable">تعطيل</string>
+    <string name="action_sheet_action_disable_desc">منع هذا التطبيق من التشغيل</string>
+    <string name="action_sheet_action_uninstall">إلغاء التثبيت</string>
+    <string name="action_sheet_action_uninstall_desc">إزالة هذا التطبيق من الجهاز</string>
+    <string name="action_sheet_action_firewall">قواعد جدار الحماية</string>
+    <string name="action_sheet_action_firewall_desc">التحكم في الوصول إلى الشبكة</string>
+    <string name="action_sheet_section_network_access">التحكم في الوصول إلى الشبكة</string>
+    <string name="action_sheet_section_package_control">التحكم في الحزمة</string>
+    <string name="action_sheet_section_package_control_desc">إيقاف إجباري، تعطيل أو إلغاء التثبيت</string>
+    <string name="action_sheet_status_updating">جارٍ التحديث...</string>
+
+    <string name="clipboard_label_package_name">اسم الحزمة</string>
+
+    <string name="uninstall_dialog_title_critical">🚨 تحذير بالغ الأهمية</string>
+    <string name="uninstall_dialog_message_essential">⚠️ حزمة نظام أساسية ⚠️\n\nسيؤدي إلغاء تثبيت %1$s إلى تعطل جهازك!\n\nهذه الحزمة ضرورية لتشغيل النظام. ستؤدي إزالته إلى جعل جهازك غير صالح للاستخدام وقد يتطلب إعادة ضبط المصنع أو إعادة فلاش.\n\n%2$sاكتب \"UNINSTALL\" لتأكيد هذا الإجراء الخطير:</string>
+    <string name="uninstall_dialog_affects_prefix">يؤثر على:\n%s\n\n</string>
+    <string name="uninstall_dialog_confirm_word">UNINSTALL</string>
+    <string name="uninstall_dialog_button_uninstall">إلغاء التثبيت</string>
+
+    <string name="uninstall_dialog_title_important">⚠️ تحذير: حزمة مهمة</string>
+    <string name="uninstall_dialog_message_important">سيؤدي إلغاء تثبيت %1$s إلى توقف ميزات النظام الرئيسية عن العمل.\n\n%2$sقد يتطلب هذا إعادة الضبط إلى إعدادات المصنع لاستعادة الوظائف.\n\nهل أنت متأكد؟</string>
+
+    <string name="uninstall_dialog_title_optional">إلغاء تثبيت %s?</string>
+    <string name="uninstall_dialog_message_optional_with_affects">قد يؤثر هذا على:\n%s\n\nهل أنت متأكد؟</string>
+    <string name="uninstall_dialog_message_optional">سيؤدي هذا إلى إزالة %s من جهازك.\n\nهل أنت متأكد؟</string>
+
+    <string name="uninstall_dialog_title_bloatware">إلغاء تثبيت %s?</string>
+    <string name="uninstall_dialog_message_bloatware">✓ آمن للإزالة\n\nتعتبر هذه الحزمة برنامجًا ضارًا ويمكن إلغاء تثبيتها بأمان.\n\nهل أنت متأكد؟</string>
+
+    <string name="uninstall_dialog_title_unknown">إلغاء تثبيت %s?</string>
+    <string name="uninstall_dialog_message_unknown_system">⚠️ خطر: هذه حزمة نظام. قد يؤدي إلغاء تثبيتها إلى تعطل جهازك أو التسبب في عدم استقرار شديد في النظام.\n\nلا يمكن التراجع عن هذا الإجراء بسهولة.\n\nهل أنت متأكد تمامًا؟</string>
+    <string name="uninstall_dialog_message_unknown_user">سيؤدي هذا إلى إزالة %s من جهازك.\n\nهل أنت متأكد؟</string>
+
+    <string name="reinstall_dialog_title">إعادة تثبيت %s?</string>
+    <string name="reinstall_dialog_message">سيؤدي هذا إلى استعادة تطبيق النظام إلى جهازك.\n\nهل أنت متأكد؟</string>
+    <string name="reinstall_dialog_button_reinstall">إعادة التثبيت</string>
+
+    <string name="batch_reinstall_dialog_title">إعادة تثبيت %d تطبيقات محددة؟</string>
+    <plurals name="batch_reinstall_dialog_message_prefix">
+        <item quantity="one"> إعادة تثبيت %d تطبيق النظام المحدد؟\n\nسيتم إعادة تثبيت التطبيقات التالية:\n\n</item>
+        <item quantity="two">إعادة تثبيت %d تطبيقان النظام المحددان؟\n\nسيتم إعادة تثبيت التطبيقات التالية:\n\n</item>
+        <item quantity="few">إعادة تثبيت %d تطبيقات النظام المحدد؟\n\nسيتم إعادة تثبيت التطبيقات التالية:\n\n</item>
+        <item quantity="many">إعادة تثبيت %d تطبيق النظام المحدد؟\n\nسيتم إعادة تثبيت التطبيقات التالية:\n\n</item>
+        <item quantity="other">إعادة تثبيت %d تطبيق النظام المحدد؟\n\nسيتم إعادة تثبيت التطبيقات التالية:\n\n</item>
+    </plurals>
+    <string name="batch_reinstall_dialog_message_item">• %s\n</string>
+    <string name="batch_reinstall_dialog_message_more">\n…و %d أكثر</string>
+    <string name="batch_reinstall_dialog_button_reinstall_all">إعادة تثبيت الكل</string>
+
+    <string name="batch_uninstall_dialog_message_question">هل أنت متأكد أنك تريد إلغاء تثبيت %d تطبيقات هذه؟</string>
+    <string name="batch_uninstall_dialog_category_user_apps">📱 تطبيقات المستخدم (%d):</string>
+    <string name="batch_uninstall_dialog_category_bloatware">✓ Bloatware (%d):</string>
+    <string name="batch_uninstall_dialog_category_optional">⚠️ تطبيقات النظام الاختيارية (%d):</string>
+    <string name="batch_uninstall_dialog_and_more">…و %d أكثر</string>
+    <string name="batch_uninstall_results_and_more">…و %d أكثر</string>
+    <string name="batch_uninstall_results_error_prefix"> خطأ: %s</string>
+    <string name="batch_uninstall_progress_title">جارٍ إلغاء تثبيت التطبيقات</string>
+    <string name="batch_uninstall_progress_message">جارٍ إلغاء تثبيت  %1$d من %2$d تطبيقات…</string>
+    <string name="batch_uninstall_results_title">Uninstall Results</string>
+    <string name="batch_uninstall_results_success">✅ بنجاح تم إلغاء تثبيت %d تطبيقات:</string>
+    <string name="batch_uninstall_results_failed">❌ فشل في إلغاء تثبيت %d تطبيقات::</string>
+
+    <string name="dialog_ok">حسنّا</string>
+    <string name="dialog_cancel">إلغاء</string>
+    <string name="dialog_continue">متابعة</string>
+    <string name="dialog_error_title">خطأ</string>
+    <string name="dialog_no_access_message">❌ لا يتوفر وصول مميز\n\nيبدو أن جهازك غير مُجذّر. لتمكين ميزات إدارة الحزم المتقدمة:\n• قم بتثبيت وتكوين Shizuku (موصى به - لا يلزم التجذير)\n•، قم بتجذير جهازك باستخدام Magisk، KernelSU أو APatch</string>
+    <string name="dialog_root_denied_message">❌ تم رفض الوصول إلى الجذر\n\nتم إجراء عملية روت لجهازك ولكن تم رفض منح إذن المستخدم المتميز لـ De1984.\n\nلمنح الوصول:\n• افتح تطبيق المستخدم المتميز (Magisk، وKernelSU، وAPatch، وما إلى ذلك) وامنح الإذن لـ De1984\n• إذا لم يظهر موجه الإذن، فقم بإلغاء تثبيت التطبيق وإعادة تثبيته، ثم امنح الإذن عند المطالبة بذلك عند التشغيل الأول\n• أو أضف De1984 يدويًا إلى تطبيق المستخدم المتميز (Magisk، وKernelSU، وما إلى ذلك.</string>
+    <string name="dialog_type_to_confirm_hint">اكتب \"%s\" لتأكيد</string>
+    <string name="dialog_vpn_conflict_title"> VPN آخر نشط</string>
+    <string name="dialog_vpn_conflict_message">سيؤدي التبديل إلى الواجهة الخلفية لشبكة VPN إلى قطع اتصال شبكة VPN الحالية (على سبيل المثال، Proton VPN وNordVPN وما إلى ذلك).\n\nهل تريد المتابعة؟</string>
+    <string name="dialog_vpn_conflict_confirm">قطع الاتصال &amp; تبديل</string>
+    <string name="vpn_permission_denied">تم رفض إذن VPN. يتم الرجوع إلى الوضع التلقائي.</string>
+
+    <string name="toast_copied_to_clipboard">تم النسخ إلى الحافظة</string>
+
+    <string name="vpn_fallback_failed_title">VPN Fallback فشل</string>
+    <string name="vpn_fallback_failed_message">فشل في بدء VPN fallback: %s</string>
+
+    <string name="privileged_access_banner_no_access">لا يتوفر وصول متميز. قم بتثبيت Shizuku أو قم بتجذير جهازك لتمكين إدارة الحزم.</string>
+    <string name="privileged_access_banner_shizuku_not_running">تم تثبيت Shizuku ولكنه لا يعمل. شغّل Shizuku أو قم بتجذير جهازك لتمكين إدارة الحزم.</string>
+    <string name="privileged_access_banner_permission_required">مطلوب Shizuku أو الوصول إلى الجذر لإدارة الحزمة</string>
+    <string name="privileged_access_banner_button_settings">انتقل إلى الإعدادات</string>
+    <string name="privileged_access_banner_button_grant">منح</string>
+    <string name="privileged_access_dialog_title">الوصول المميز</string>
+    <string name="privileged_access_tier_title">إدارة الحزمة</string>
+    <string name="privileged_access_status_setup_required">الإعداد مطلوب</string>
+    <string name="privileged_access_status_permission_required">الإذن مطلوب</string>
+
+    <string name="privileged_firewall_notification_title">جدار حماية De1984 نشط</string>
+    <string name="privileged_firewall_notification_text">باستخدام واجهة خلفية %s</string>
+    <string name="vpn_firewall_notification_title">جدار حماية De1984 نشط</string>
+    <string name="vpn_firewall_notification_text">حماية خصوصيتك</string>
+    <string name="vpn_failure_notification_title">فشل VPN جدار الحماية</string>
+    <string name="vpn_failure_notification_text">فشلت واجهة VPN. جارٍ إعادة المحاولة تلقائيًا...</string>
+    <string name="new_app_notification_title">اكتشف جدار حماية De1984 تطبيقًا جديدًا</string>
+    <string name="new_app_notification_text">تم تثبيت %s. اضغط لتكوين قواعد جدار الحماية.
+    <string name="new_app_notification_action_block">حظر الشبكة</string>
+    <string name="new_app_notification_action_allow">السماح بالشبكة</string>
+
+    <string name="error_firewall_restart_failed">فشل في إعادة تشغيل جدار الحماية مع واجهة خلفية الجديدة: %s</string>
+    <string name="error_no_rules_to_backup">لا قواعد جدار حماية للنسخ الاحتياطي</string>
+    <string name="error_backup_failed">فشل النسخ الاحتياطي: %s</string>
+    <string name="error_unsupported_backup_version">إصدار النسخ الاحتياطي غير مدعوم: %d</string>
+    <string name="error_backup_no_rules">لا يحتوي ملف النسخ الاحتياطي على قواعد</string>
+    <string name="error_backup_file_unreadable">تعذّر فتح هذا الملف. إذا اخترته من نتائج البحث، فافتح المجلد الموجود فيه واختره هناك بدلاً من ذلك.</string>
+    <string name="error_invalid_backup_format">تنسيق ملف النسخ الاحتياطي غير صالح</string>
+    <string name="error_restore_failed">فشل الاستعادة: %s</string>
+
+    <string name="error_unable_to_enable_package">تعذّر تفعيل الحزمة. يلزم الوصول إلى Shizuku أو الجذر لإدارة الحزمة.</string>
+    <string name="error_unable_to_disable_package">تعذّر تعطيل الحزمة. يلزم الوصول إلى Shizuku أو الجذر لإدارة الحزمة.</string>
+    <string name="error_unable_to_uninstall_package">تعذّر إلغاء تثبيت الحزمة. يلزم الوصول إلى Shizuku أو الجذر لإدارة الحزمة.</string>
+    <string name="error_unable_to_reinstall_package">تعذّر إعادة تثبيت الحزمة. يلزم الوصول إلى Shizuku أو الجذر لإدارة الحزمة.</string>
+    <string name="error_unable_to_force_stop_package">تعذّر إيقاف إجباري الحزمة. يلزم الوصول إلى Shizuku أو الجذر لإدارة الحزمة.</string>
+    <string name="error_unknown">خطأ غير معروف</string>
+
+    <string name="error_unable_to_allow_network">تعذّر السماح بالوصول إلى الشبكة. الوصول إلى الجذر مطلوب لعمليات جدار الحماية.</string>
+    <string name="error_unable_to_block_network">تعذّر حظر الوصول إلى الشبكة. الوصول إلى الجذر مطلوب لعمليات جدار الحماية.</string>
+    <string name="error_failed_to_block_mobile">فشل في حظر بيانات الهاتف: %s</string>
+    <string name="error_failed_to_block_roaming">فشل في حظر التجوال: %s</string>
+    <string name="error_failed_to_unblock_roaming">فشل في إلغاء حظر التجوال: %s</string>
+
+    <string name="error_failed_to_load_settings">فشل في تحميل الإعدادات</string>
+    <string name="error_failed_to_apply_preset">فشل في تطبيق الإعداد المسبق</string>
+    <string name="error_failed_to_set_detection_mode">فشل في تعيين وضع الكشف</string>
+    <string name="error_failed_to_set_custom_urls">فشل في تعيين URLs مخصص</string>
+    <string name="error_failed_to_restore_original_settings">فشل في استعادة الإعدادات الأصلية</string>
+    <string name="error_failed_to_reset_to_google_defaults">فشل في إعادة الضبط للافتراضيات جوجل</string>
+
+    <string name="success_custom_urls_applied">تم تطبيق URLs مخصص بنجاح</string>
+    <string name="success_original_settings_restored">تمت استعادة الإعدادات الأصلية بنجاح</string>
+    <string name="success_reset_to_google_defaults">تمت إعادة الضبط لافتراضيات جوجل بنجاح</string>
+
+    <string name="boot_protection_enable_warning_title">تفعيل حماية التمهيد؟</string>
+    <string name="boot_protection_enable_warning_message">⚠️ ستتم إعادة تشغيل جهازك على الفور عند المتابعة.\n\nسيؤدي هذا إلى حظر جميع حركات مرور الشبكة أثناء تمهيد الجهاز حتى يبدأ تشغيل De1984.\n\n⚠️ إذا فشل تشغيل De1984، فلن يكون لجهازك شبكة.\n\nخيارات الاسترداد:\n1. افتح De1984 → الإعدادات → تعطيل حماية التمهيد\n2. إذا لم ينجح ذلك، فاستخدم ADB:\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_disable_warning_title">تعطيل حماية التمهيد؟</string>
+    <string name="boot_protection_disable_warning_message">⚠️ ستتم إعادة تشغيل جهازك على الفور عند المتابعة.\n\nلن يتم حظر حركة مرور الشبكة بعد الآن أثناء التمهيد. قد تتسرّب البيانات من التطبيقات قبل أن يبدأ جدار الحماية.</string>
+    <string name="boot_protection_reboot_failed">تم تغيير حماية التمهيد، ولكن تعذّر إعادة تشغيل الجهاز تلقائيًا. يرجى إعادة تشغيل جهازك يدويًا.</string>
+    <string name="boot_protection_enable_failed">فشل في تفعيل حماية التمهيد: %s</string>
+    <string name="boot_protection_disable_failed">فشل في تعطيل حماية التمهيد: %s</string>
+
+    <string name="logs_title">سجلات التطبيق</string>
+    <string name="logs_menu_item">سجلات التطبيق</string>
+    <string name="logs_menu_description">عرض السجلات لاستكشاف الأخطاء وإصلاحها</string>
+    <string name="logs_enable_title">تمكين التسجيل</string>
+    <string name="logs_enable_description">تخزين السجلات في ملف لتصحيح الأخطاء. لا يتم إرسال السجلات إلى أي مكان.</string>
+    <string name="logs_debug_mode_note">ℹ️ نسخة تصحيح الأخطاء - التسجيل مُمكّن افتراضيًّا</string>
+    <string name="logs_clear">مسح</string>
+    <string name="logs_clear_confirm_title">مسح السجلات؟</string>
+    <string name="logs_clear_confirm_message">سيؤدي هذا إلى حذف إدخالات السجل الحالية.</string>
+    <string name="logs_share">مشاركة السجلات</string>
+    <string name="logs_count">%d إدخالات السجل</string>
+    <string name="logs_file_info">%1$d أسطر • %2$s</string>
+    <string name="logs_empty">لا سجلات بعد. قم بتمكين التسجيل واستخدم التطبيق لإنشاء السجلات.</string>
+    <string name="logs_cleared">تم مسح السجلات</string>
+    <string name="logs_share_title">مشاركة سجلات De1984</string>
+    <string name="logs_disabled_message">تم تعطيل التسجيل. لن يتم تسجيل سجلات جديدة.</string>
+
+    <string name="hint_detection_mode">وضع الكشف</string>
+    <string name="hint_server_preset">الإعداد المسبق للخادم</string>
+    <string name="hint_custom_http_url">HTTP URL مخصص</string>
+    <string name="hint_custom_https_url">HTTPS URL مخصص</string>
+
+    <string name="tile_label_firewall">De1984</string>
+    <string name="tile_label_firewall_on">جدار الحماية مفعل</string>
+    <string name="tile_label_firewall_off">جدار الحماية متوقف</string>
+    <string name="tile_label_firewall_loading">جارٍ بدء جدار الحماية</string>
+    <string name="tile_label_firewall_error">خطأ</string>
+    <string name="tile_subtitle_active">نشط</string>
+    <string name="tile_subtitle_inactive">غير نشط</string>
+    <string name="tile_subtitle_starting">جارٍ البدء…</string>
+    <string name="tile_description_firewall_on">جدار حماية De1984 نشط باستخدام واجهة خلفية %s</string>
+    <string name="tile_description_firewall_off">تم إيقاف جدار حماية De1984</string>
+    <string name="tile_description_firewall_starting">جارٍ بدء تشغيل جدار حماية De1984</string>
+    <string name="tile_description_firewall_error">واجه جدار حماية De1984 خطأً</string>
+
+    <string name="widget_description">مفتاح تبديل سريع لجدار حماية De1984</string>
+
+    <string name="backend_not_supported_on_device">غير مدعوم على هذا الجهاز</string>
+    <string name="backend_fell_back_to_auto">تعذّر بدء تشغيل %1$s على هذا الجهاز. يعمل جدار الحماية على التلقائي بدلاً من ذلك.</string>
+    <string name="backend_changed_title">تم تغيير الواجهة الخلفية</string>
+    <string name="settings_confirm_firewall_stop_title">تأكيد إيقاف جدار الحماية</string>
+    <string name="settings_confirm_firewall_stop_description">اسأل قبل إيقاف جدار الحماية من العنصر أو الأداة المصغرة</string>
+    <string name="firewall_stopped_notification_title">تم إيقاف جدار الحماية</string>
+    <string name="firewall_stopped_notification_text">يمكن لجميع التطبيقات الآن الوصول إلى الإنترنت. انقر لبدء تشغيله مرة أخرى.</string>
+<string name="error_package_scan_failed_title">تعذّر قراءة قائمة التطبيقات</string>
+    <string name="error_package_scan_failed_hint">إذا حدث هذا مرة أخرى، أغلق De1984 وأعد فتحه.</string>
+    <string name="error_package_scan_failed">تعذّر قراءة قائمة التطبيقات على هذا الجهاز. إذا استمر هذا في الحدوث، أغلق De1984 وأعد فتحه.</string>
+</resources>

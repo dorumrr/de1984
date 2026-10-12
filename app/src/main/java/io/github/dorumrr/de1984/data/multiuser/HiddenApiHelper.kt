@@ -51,6 +51,9 @@ object HiddenApiHelper {
     /** Moved on by [clearUserCache]: a user list, app list or sweep begun before it is returned but never cached. */
     private val cacheGeneration = java.util.concurrent.atomic.AtomicInteger()
 
+    /** Moved on by [clearInstalledAppsCache]: an app list read before it is never written back to the app cache. */
+    private val appsGeneration = java.util.concurrent.atomic.AtomicInteger()
+
     @Volatile
     private var cachedUsers: List<UserProfile>? = null
     @Volatile
@@ -431,15 +434,16 @@ object HiddenApiHelper {
     var profilesRead: Boolean = true
         private set
 
-    /** Called with the ids of full users a successful listing no longer shows. */
+    /** Called with the ids of profiles or full users that are gone, or re-created under the same id. */
     @Volatile
-    var onFullUsersRemoved: ((Set<Int>) -> Unit)? = null
+    var onUsersRemoved: ((Set<Int>) -> Unit)? = null
 
     private val fullUsersLock = Any()
 
     private fun withFullUsers(context: Context, profiles: List<UserProfile>, profilesRead: Boolean, generation: Int): List<UserProfile> {
         this.profilesRead = profilesRead
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        if (profilesRead) rememberProfiles(context, prefs, profiles)
         if (!prefs.getBoolean(Constants.Settings.KEY_INCLUDE_OTHER_USERS, Constants.Settings.DEFAULT_INCLUDE_OTHER_USERS)) {
             return cacheAndReturn(profiles, generation)
         }
@@ -455,6 +459,18 @@ object HiddenApiHelper {
 
     /** Full users from `pm list users` through root or Shizuku, or null when neither answered. */
     private fun listFullUsersViaShell(): List<UserProfile>? {
+        val all = listUsersViaShell() ?: return null
+        return all
+            // Android 10 and older do not mark full users with FLAG_FULL; there, not being a profile is enough.
+            .filter { (_, _, flags) ->
+                flags and (FLAG_PROFILE or FLAG_MANAGED_PROFILE) == 0 &&
+                    (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || flags and FLAG_FULL != 0)
+            }
+            .map { (id, name, _) -> UserProfile(id, name, isWorkProfile = false, isCloneProfile = false, isFullUser = true) }
+    }
+
+    /** Every user and profile as (id, name, flags) from `pm list users`, or null when the read failed. */
+    private fun listUsersViaShell(): List<Triple<Int, String, Int>>? {
         val lines = rootShellLines("pm list users") ?: shizukuShellLines("pm list users") ?: return null
         val pattern = Regex("""UserInfo\{(\d+):(.*):([0-9a-fA-F]+)\}""")
         val all = lines.mapNotNull { line ->
@@ -463,14 +479,7 @@ object HiddenApiHelper {
             Triple(id.toInt(), name, flags.toLong(16).toInt())
         }
         // Every device lists at least one user, so none parsed is a failed read, not an empty device.
-        if (all.isEmpty()) return null
-        return all
-            // Android 10 and older do not mark full users with FLAG_FULL; there, not being a profile is enough.
-            .filter { (_, _, flags) ->
-                flags and (FLAG_PROFILE or FLAG_MANAGED_PROFILE) == 0 &&
-                    (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || flags and FLAG_FULL != 0)
-            }
-            .map { (id, name, _) -> UserProfile(id, name, isWorkProfile = false, isCloneProfile = false, isFullUser = true) }
+        return all.ifEmpty { null }
     }
 
     private fun knownFullUsers(prefs: android.content.SharedPreferences): List<UserProfile> =
@@ -491,8 +500,42 @@ object HiddenApiHelper {
         }
         if (removed.isNotEmpty()) {
             AppLogger.i(TAG, "Full users gone from a successful listing: $removed")
-            onFullUsersRemoved?.invoke(removed)
+            onUsersRemoved?.invoke(removed)
         }
+    }
+
+    private fun rememberProfiles(context: Context, prefs: android.content.SharedPreferences, profiles: List<UserProfile>) {
+        // "id:creationTime": a profile deleted and re-created under the same id has a new creation time.
+        val now = profiles.associate { it.userId to profileCreationTime(context, it.userId) }
+        val before = prefs.getStringSet(Constants.Settings.KEY_KNOWN_PROFILES, null)?.mapNotNull { entry ->
+            entry.substringBefore(':').toIntOrNull()?.let { it to entry.substringAfter(':', "").toLongOrNull() }
+        }?.toMap()
+        if (before == now) return
+        val replaced = before.orEmpty().filter { (id, created) -> created != null && id in now && now[id] != null && now[id] != created }.keys
+        val missing = before.orEmpty().keys - now.keys
+        // getUserProfiles hides a locked private space, so only a user the full shell list also lacks is gone.
+        val onMain = android.os.Looper.myLooper() == android.os.Looper.getMainLooper()
+        val allUsers = if (missing.isEmpty() || onMain) null else listUsersViaShell()?.map { it.first }?.toSet()
+        val gone = if (allUsers == null) emptySet() else missing - allUsers
+        val kept = before.orEmpty().filterKeys { it in missing - gone }
+        synchronized(fullUsersLock) {
+            prefs.edit().putStringSet(
+                Constants.Settings.KEY_KNOWN_PROFILES,
+                (now + kept).map { (id, created) -> "$id:${created ?: ""}" }.toSet()
+            ).apply()
+        }
+        val removed = gone + replaced
+        if (removed.isNotEmpty()) {
+            AppLogger.i(TAG, "Profiles gone from a successful read: $removed")
+            onUsersRemoved?.invoke(removed)
+        }
+    }
+
+    private fun profileCreationTime(context: Context, userId: Int): Long? = try {
+        val userManager = context.getSystemService(Context.USER_SERVICE) as android.os.UserManager
+        userManager.getUserCreationTime(UserHandle.getUserHandleForUid(userId * 100000)).takeIf { it > 0 }
+    } catch (e: Exception) {
+        null
     }
 
     private const val FLAG_FULL = 0x400
@@ -562,6 +605,7 @@ object HiddenApiHelper {
         ensureCrossUserPermission(context)
 
         val generation = cacheGeneration.get()
+        val appsRead = appsGeneration.get()
         val now = System.currentTimeMillis()
         synchronized(installedAppsLock) {
             installedAppsCache[userId to flags]?.takeIf { (readAt, _) -> now - readAt < INSTALLED_APPS_CACHE_TTL }?.let { (_, cached) ->
@@ -583,7 +627,7 @@ object HiddenApiHelper {
                 val apps = method.invoke(pm, flags, userId) as? List<ApplicationInfo>
                 if (!apps.isNullOrEmpty()) {
                     AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via hidden API")
-                    cacheInstalledApps(userId, flags, apps, generation)
+                    cacheInstalledApps(userId, flags, apps, generation, appsRead)
                     return apps
                 }
             } catch (e: Exception) {
@@ -602,7 +646,7 @@ object HiddenApiHelper {
                 }
                 if (apps.isNotEmpty()) {
                     AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via root shell (synthetic)")
-                    cacheInstalledApps(userId, flags, apps, generation)
+                    cacheInstalledApps(userId, flags, apps, generation, appsRead)
                     return apps
                 }
             }
@@ -620,7 +664,7 @@ object HiddenApiHelper {
                 }
                 if (apps.isNotEmpty()) {
                     AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via Shizuku shell (synthetic)")
-                    cacheInstalledApps(userId, flags, apps, generation)
+                    cacheInstalledApps(userId, flags, apps, generation, appsRead)
                     return apps
                 }
             }
@@ -632,14 +676,16 @@ object HiddenApiHelper {
         return emptyList()
     }
 
-    private fun cacheInstalledApps(userId: Int, flags: Int, apps: List<ApplicationInfo>, generation: Int) {
+    private fun cacheInstalledApps(userId: Int, flags: Int, apps: List<ApplicationInfo>, generation: Int, appsRead: Int) {
         synchronized(installedAppsLock) {
-            if (generation != cacheGeneration.get()) return
+            if (generation != cacheGeneration.get() || appsRead != appsGeneration.get()) return
             installedAppsCache[userId to flags] = System.currentTimeMillis() to apps
         }
     }
 
     fun clearInstalledAppsCache() {
+        // Before the clear, so a read in flight cannot write its list back after it.
+        appsGeneration.incrementAndGet()
         synchronized(this) { packageUidsCache.clear() }
         synchronized(packageInfoLock) {
             packageInfoCache.clear()

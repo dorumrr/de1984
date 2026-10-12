@@ -58,7 +58,6 @@ object Constants {
 
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled", "Uninstalled")
-        val PROFILE_FILTERS = listOf("All", "Personal", "Work", "Clone")
 
         const val ANDROID_PACKAGE_PREFIX = "com.android"
         const val GOOGLE_PACKAGE_PREFIX = "com.google"
@@ -122,6 +121,8 @@ object Constants {
         const val KEY_INCLUDE_OTHER_USERS = "include_other_users"
         /** "id:name" of the full users the last successful listing showed. */
         const val KEY_KNOWN_FULL_USERS = "known_full_users"
+        /** "id:creationTime" of the profiles of De1984's own user the last successful read showed. */
+        const val KEY_KNOWN_PROFILES = "known_profiles"
         const val KEY_SHOW_FIREWALL_START_PROMPT = "show_firewall_start_prompt"
         const val KEY_USE_DYNAMIC_COLORS = "use_dynamic_colors"
         const val KEY_APP_LANGUAGE = "app_language"
@@ -314,7 +315,6 @@ object Constants {
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val NETWORK_STATE_FILTERS = listOf("Allowed", "Blocked")
         val PERMISSION_FILTERS = listOf("Internet")
-        val PROFILE_FILTERS = listOf("All", "Personal", "Work", "Clone")
 
         val NETWORK_PERMISSIONS = listOf(
             "android.permission.INTERNET",

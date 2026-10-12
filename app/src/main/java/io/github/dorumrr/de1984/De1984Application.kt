@@ -57,9 +57,11 @@ class De1984Application : Application() {
         dependencies.shizukuManager.registerListeners()
 
         HiddenApiHelper.setShizukuManager(dependencies.shizukuManager)
-        HiddenApiHelper.onFullUsersRemoved = { userIds ->
+        HiddenApiHelper.onUsersRemoved = { userIds ->
             dependencies.applicationScope.launch(Dispatchers.IO) {
                 userIds.forEach { dependencies.firewallRepository.deleteRulesByUserId(it) }
+                // A profile re-created under the same id needs its recommended rules back after the delete.
+                dependencies.provideEnsureSystemRecommendedRulesUseCase().invoke()
             }
         }
 

@@ -8,21 +8,17 @@
     <dimen name="design_bottom_navigation_active_item_min_width">96dp</dimen>
     <dimen name="m3_navigation_item_padding">0dp</dimen>
 
-    <!-- The search box reserves this much of its right edge for the package counter drawn on top
-         of it, and the counter keeps this much of that for itself. Extensions.setPackageCount
-         subtracts one from the other to know how wide the count may be before it starts covering
-         the hint. They live here, not inline in two layouts, because three places had to agree. -->
+    <!-- The search box reserves this much of its right edge so typed text does not run under the
+         package counter drawn on top of it. They live here, not inline in two layouts. -->
     <dimen name="search_counter_reserved">100dp</dimen>
-    <dimen name="search_counter_padding_end">40dp</dimen>
     <!-- Breathing space kept between the search hint and the counter. -->
     <dimen name="search_counter_gap">12dp</dimen>
 
-    <!-- Packages only. search_counter_padding_end above reserves the strip the search box's own
-         clear (X) icon is drawn in - that is what it was always for. The export button (#96) needs
-         a strip of its OWN, so on that screen the box stops short by search_export_button_size and
-         the counter keeps clear of both: search_counter_padding_end + search_export_button_size.
-         The Firewall screen has no export button and keeps the plain values. -->
-    <dimen name="search_export_button_size">40dp</dimen>
-    <dimen name="search_counter_padding_end_with_export">80dp</dimen>
+    <!-- The counter keeps clear of the box's own clear (X) icon strip, 40dp, plus one strip per
+         button beside the box (sort; export on Packages, #96); the box stops short by the buttons. -->
+    <dimen name="search_action_button_size">40dp</dimen>
+    <dimen name="search_actions_two_buttons">80dp</dimen>
+    <dimen name="search_counter_padding_end_one_button">80dp</dimen>
+    <dimen name="search_counter_padding_end_two_buttons">120dp</dimen>
 </resources>
 

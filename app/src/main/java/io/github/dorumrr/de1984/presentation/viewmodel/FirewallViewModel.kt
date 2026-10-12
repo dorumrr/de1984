@@ -613,6 +613,13 @@ class FirewallViewModel(
         applyFilters(newFilterState)
     }
 
+    // The fragment sorts what it shows, so a sort change needs no re-filter.
+    fun setSort(sort: io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria) {
+        val filterState = _uiState.value.filterState.copy(sort = sort)
+        io.github.dorumrr.de1984.utils.FilterPrefs.saveFirewall(getApplication(), filterState)
+        _uiState.value = _uiState.value.copy(filterState = filterState)
+    }
+
     fun setWifiBlocking(packageName: String, userId: Int = 0, blocked: Boolean) {
         viewModelScope.launch {
             // Asked BEFORE the optimistic write. updatePackageInList stamps hasExplicitRule

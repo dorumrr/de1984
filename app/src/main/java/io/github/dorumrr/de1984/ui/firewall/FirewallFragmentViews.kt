@@ -116,6 +116,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
      */
     private var previousObservedAllowCritical: Boolean? = null
     private var lastSubmittedPackages: List<NetworkPackage> = emptyList()
+    private var lastSubmittedSort: io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria? = null
+    // A newer submitList drops the older commit callback, so the scroll waits for whichever list lands.
+    private var scrollToTopPending = false
 
     private var currentDialog: BottomSheetDialog? = null
 
@@ -161,8 +164,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private fun scrollToPackage(packageName: String) {
         _binding?.let { binding ->
             binding.packagesRecyclerView.post {
-                val displayedPackages = viewModel.uiState.value.packages
-                val index = displayedPackages.indexOfFirst { it.packageName == packageName }
+                val index = lastSubmittedPackages.indexOfFirst { it.packageName == packageName }
 
                 if (index >= 0) {
                     (binding.packagesRecyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(index, 100)
@@ -437,6 +439,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     private fun setupSearchBox() {
         binding.searchLayout.isEndIconVisible = false
 
+        binding.sortButton.setOnClickListener {
+            io.github.dorumrr.de1984.ui.common.SortMenu.show(
+                binding.sortButton,
+                viewModel.uiState.value.filterState.sort,
+                io.github.dorumrr.de1984.utils.FilterPrefs.FIREWALL_SORTS,
+                viewModel::setSort
+            )
+        }
+
         binding.searchInput.addTextChangedListener { text ->
             val query = text?.toString() ?: ""
             if (query.isNotEmpty()) {
@@ -681,7 +692,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             viewModel.clearError()
         }
 
-        val displayedPackages = if (state.searchQuery.isBlank()) {
+        val searched = if (state.searchQuery.isBlank()) {
             state.packages
         } else {
             val query = state.searchQuery.trim().lowercase()
@@ -690,6 +701,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                         pkg.packageName.contains(query, ignoreCase = true)
             }
         }
+        val displayedPackages = io.github.dorumrr.de1984.utils.PackageUtils.sortPackages(
+            searched, state.filterState.sort, { it.name }, { it.installTime }, { it.updateTime }, { it.hasExplicitRule }
+        )
 
         // Computed BEFORE the visibility decision below, which used to test the unsearched list.
         // Testing the list actually shown is the right question either way.
@@ -757,13 +771,24 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             searchInput = binding.searchInput
         )
 
+        // Recorded before the early return: a sort that leaves the order unchanged must not make
+        // a later, unrelated list change jump to the top.
+        if (lastSubmittedSort != null && lastSubmittedSort != state.filterState.sort) scrollToTopPending = true
+        lastSubmittedSort = state.filterState.sort
+
         val listChanged = displayedPackages != lastSubmittedPackages
         if (!listChanged) {
             return
         }
 
         lastSubmittedPackages = displayedPackages
-        adapter.submitList(displayedPackages)
+        adapter.submitList(displayedPackages) {
+            // A re-sort keeps the old first row in view, which hides the new top of the list.
+            if (scrollToTopPending) {
+                scrollToTopPending = false
+                _binding?.packagesRecyclerView?.scrollToPosition(0)
+            }
+        }
         if (state.isRenderingUI) {
             viewModel.setUIReady()
         }

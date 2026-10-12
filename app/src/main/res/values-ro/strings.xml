@@ -26,6 +26,11 @@
     <string name="firewall_state_off">OFF</string>
     <string name="firewall_state_internet">Internet</string>
     <string name="firewall_search_hint">Caută aplicații...</string>
+    <string name="sort_title">Sortează</string>
+    <string name="sort_by_name">Nume</string>
+    <string name="sort_recently_installed">Instalate recent</string>
+    <string name="sort_recently_updated">Actualizate recent</string>
+    <string name="sort_configured_first">Configurate întâi</string>
 
     <!-- Firewall Dialogs -->
     <string name="dialog_firewall_start_title">Pornești De1984 Firewall?</string>

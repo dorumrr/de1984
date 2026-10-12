@@ -25,6 +25,11 @@
     <string name="firewall_state_off">OFF</string>
     <string name="firewall_state_internet">Internet</string>
     <string name="firewall_search_hint">Search apps…</string>
+    <string name="sort_title">Sort</string>
+    <string name="sort_by_name">Name</string>
+    <string name="sort_recently_installed">Recently installed</string>
+    <string name="sort_recently_updated">Recently updated</string>
+    <string name="sort_configured_first">Configured first</string>
 
     <!-- Firewall Dialogs -->
     <string name="dialog_firewall_start_title">Start De1984 Firewall?</string>

@@ -63,6 +63,17 @@ object FilterPrefs {
     private fun restorablePackageState(value: String?): String? =
         if (value?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()) null else value
 
+    /** An unknown stored name, or one the screen does not offer, falls back to Name. */
+    private fun normalisedSort(value: String?, allowed: Set<PackageUtils.SortCriteria>): PackageUtils.SortCriteria =
+        PackageUtils.SortCriteria.entries.firstOrNull { it.name == value }?.takeIf { it in allowed }
+            ?: PackageUtils.SortCriteria.NAME
+
+    val FIREWALL_SORTS: Set<PackageUtils.SortCriteria> = PackageUtils.SortCriteria.entries.toSet()
+
+    // The Packages screen has no rules, so it has nothing to put first.
+    val PACKAGES_SORTS: Set<PackageUtils.SortCriteria> =
+        FIREWALL_SORTS - PackageUtils.SortCriteria.CONFIGURED_FIRST
+
     fun loadFirewall(context: Context): FirewallFilterState {
         val p = prefs(context)
         val defaults = FirewallFilterState()
@@ -75,7 +86,8 @@ object FilterPrefs {
                 defaults.internetOnly
             ),
             profileFilter = p.getString(Constants.Settings.KEY_FIREWALL_FILTER_PROFILE, null)
-                ?: defaults.profileFilter
+                ?: defaults.profileFilter,
+            sort = normalisedSort(p.getString(Constants.Settings.KEY_FIREWALL_SORT, null), FIREWALL_SORTS)
         )
     }
 
@@ -85,6 +97,7 @@ object FilterPrefs {
             .putString(Constants.Settings.KEY_FIREWALL_FILTER_STATE, state.networkState)
             .putBoolean(Constants.Settings.KEY_FIREWALL_FILTER_INTERNET_ONLY, state.internetOnly)
             .putString(Constants.Settings.KEY_FIREWALL_FILTER_PROFILE, state.profileFilter)
+            .putString(Constants.Settings.KEY_FIREWALL_SORT, normalisedSort(state.sort.name, FIREWALL_SORTS).name)
             .apply()
     }
 
@@ -96,7 +109,8 @@ object FilterPrefs {
                 ?: defaults.packageType,
             packageState = restorablePackageState(p.getString(Constants.Settings.KEY_PACKAGES_FILTER_STATE, null)),
             profileFilter = p.getString(Constants.Settings.KEY_PACKAGES_FILTER_PROFILE, null)
-                ?: defaults.profileFilter
+                ?: defaults.profileFilter,
+            sort = normalisedSort(p.getString(Constants.Settings.KEY_PACKAGES_SORT, null), PACKAGES_SORTS)
         )
     }
 
@@ -105,6 +119,7 @@ object FilterPrefs {
             .putString(Constants.Settings.KEY_PACKAGES_FILTER_TYPE, normalisedPackagesType(state.packageType))
             .putString(Constants.Settings.KEY_PACKAGES_FILTER_STATE, restorablePackageState(state.packageState))
             .putString(Constants.Settings.KEY_PACKAGES_FILTER_PROFILE, state.profileFilter)
+            .putString(Constants.Settings.KEY_PACKAGES_SORT, normalisedSort(state.sort.name, PACKAGES_SORTS).name)
             .apply()
     }
 }

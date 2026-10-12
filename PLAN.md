@@ -9,7 +9,7 @@ Tier: 3        how hard each step is worked. 1 quick, 2 normal, 3 full. Default 
    [x] A2  List rows show the true LAN state on the Wi-Fi icon, iptables only
 
    B. SORT (#114)
-   [ ] B1  Firewall and Packages lists sort, and each tab remembers its choice
+   [x] B1  Firewall and Packages lists sort, and each tab remembers its choice
 
    C. ROOT RECHECK (#113)
    [ ] C1  Root granted after launch is picked up without a restart     cause not known, reproduce first

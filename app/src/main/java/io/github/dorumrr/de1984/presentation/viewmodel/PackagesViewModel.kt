@@ -217,7 +217,8 @@ class PackagesViewModel(
         uninstalledJob = viewModelScope.launch {
             val uninstalled = getPackagesUseCase.uninstalledSystemPackages()
             // A cancelled read still gets here, as an empty list: the data source and repository catch the cancel.
-            if (!isActive || _uiState.value.filterState != filterState) return@launch
+            // The sort is left out: it changes no row, and the fragment applies it.
+            if (!isActive || _uiState.value.filterState.copy(sort = filterState.sort) != filterState) return@launch
             _uiState.value = _uiState.value.copy(
                 packages = filterPackages(uninstalled, filterState),
                 isLoadingData = false,
@@ -354,6 +355,14 @@ class PackagesViewModel(
             profileFilter = profileFilter
         )
         applyFilters(newFilterState)
+    }
+
+    // The fragment sorts what it shows, so a sort change needs no reload; on "Uninstalled" a
+    // reload re-runs pm.
+    fun setSort(sort: io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria) {
+        val filterState = _uiState.value.filterState.copy(sort = sort)
+        io.github.dorumrr.de1984.utils.FilterPrefs.savePackages(getApplication(), filterState)
+        _uiState.value = _uiState.value.copy(filterState = filterState)
     }
 
     fun setPackageEnabled(packageName: String, userId: Int, enabled: Boolean) {
@@ -609,7 +618,9 @@ class PackagesViewModel(
 data class PackageFilterState(
     val packageType: String = "All",
     val packageState: String? = null,
-    val profileFilter: String = "All"
+    val profileFilter: String = "All",
+    val sort: io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria =
+        io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria.NAME
 )
 
 data class PackagesUiState(

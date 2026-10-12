@@ -85,7 +85,7 @@
             android:id="@+id/search_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="@dimen/search_export_button_size"
+            android:layout_marginEnd="@dimen/search_actions_two_buttons"
             android:hint="@string/packages_search_hint"
             app:startIconDrawable="@android:drawable/ic_menu_search"
             app:endIconMode="custom"
@@ -124,16 +124,28 @@
             android:layout_height="41dp"
             android:layout_gravity="end|center_vertical"
             android:gravity="center_vertical"
-            android:paddingEnd="@dimen/search_counter_padding_end_with_export"
+            android:paddingEnd="@dimen/search_counter_padding_end_two_buttons"
             android:textSize="14sp"
             android:textColor="?android:attr/textColorHint" />
+
+        <ImageButton
+            android:id="@+id/sort_button"
+            android:layout_width="@dimen/search_action_button_size"
+            android:layout_height="41dp"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="@dimen/search_action_button_size"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/sort_title"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_sort" />
 
         <!-- Issue #96. Takes its own strip at the right edge; search_layout stops short by exactly
              this width so the box's clear (X) icon is not drawn underneath it. The 40dp the counter
              reserved was never free - it is where that clear icon lives. -->
         <ImageButton
             android:id="@+id/export_packages"
-            android:layout_width="@dimen/search_export_button_size"
+            android:layout_width="@dimen/search_action_button_size"
             android:layout_height="41dp"
             android:layout_gravity="end|center_vertical"
             android:background="?attr/selectableItemBackgroundBorderless"

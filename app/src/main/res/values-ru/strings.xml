@@ -25,6 +25,11 @@
     <string name="firewall_state_off">ВЫКЛ</string>
     <string name="firewall_state_internet">Интернет</string>
     <string name="firewall_search_hint">Поиск приложений…</string>
+    <string name="sort_title">Сортировка</string>
+    <string name="sort_by_name">Название</string>
+    <string name="sort_recently_installed">Недавно установленные</string>
+    <string name="sort_recently_updated">Недавно обновлённые</string>
+    <string name="sort_configured_first">Сначала настроенные</string>
 
     <!-- Firewall Dialogs -->
     <string name="dialog_firewall_start_title">Запустить De1984 Брандмауэр?</string>

@@ -117,13 +117,6 @@ object PackageUtils {
         }
     }
     
-    fun getPackageType(packageInfo: PackageInfo): String {
-        return when {
-            packageInfo.isSystemApp() -> Constants.Packages.TYPE_SYSTEM
-            else -> Constants.Packages.TYPE_USER
-        }
-    }
-    
     fun filterPackagesByType(packages: List<PackageInfo>, type: String): List<PackageInfo> {
         return when (type.lowercase()) {
             Constants.Packages.TYPE_SYSTEM -> packages.filter { it.isSystemApp() }
@@ -159,33 +152,30 @@ object PackageUtils {
         }
     }
     
-    fun sortPackages(
-        context: Context,
-        packages: List<PackageInfo>,
-        sortBy: SortCriteria = SortCriteria.NAME
-    ): List<PackageInfo> {
+    /** Time sorts put the newest first and an unknown time last; ties fall back to name. */
+    fun <T> sortPackages(
+        packages: List<T>,
+        sortBy: SortCriteria,
+        name: (T) -> String,
+        installTime: (T) -> Long?,
+        updateTime: (T) -> Long?,
+        configured: (T) -> Boolean = { false },
+    ): List<T> {
+        val byName = compareBy<T> { name(it).lowercase() }
+        fun newestFirst(time: (T) -> Long?) =
+            compareBy<T> { time(it) == null }.thenByDescending { time(it) }.then(byName)
         return when (sortBy) {
-            SortCriteria.NAME -> packages.sortedBy { 
-                getPackageDisplayName(context, it.packageName).lowercase() 
-            }
-            SortCriteria.PACKAGE_NAME -> packages.sortedBy { 
-                it.packageName.lowercase() 
-            }
-            SortCriteria.INSTALL_TIME -> packages.sortedByDescending { 
-                it.firstInstallTime 
-            }
-            SortCriteria.TYPE -> packages.sortedWith { a, b ->
-                val typeA = getPackageType(a)
-                val typeB = getPackageType(b)
-                typeA.compareTo(typeB)
-            }
+            SortCriteria.NAME -> packages.sortedWith(byName)
+            SortCriteria.INSTALL_TIME -> packages.sortedWith(newestFirst(installTime))
+            SortCriteria.UPDATE_TIME -> packages.sortedWith(newestFirst(updateTime))
+            SortCriteria.CONFIGURED_FIRST -> packages.sortedWith(compareByDescending<T> { configured(it) }.then(byName))
         }
     }
-    
+
     enum class SortCriteria {
         NAME,
-        PACKAGE_NAME,
         INSTALL_TIME,
-        TYPE
+        UPDATE_TIME,
+        CONFIGURED_FIRST
     }
 }

@@ -14,6 +14,11 @@
     <string name="firewall_state_off">إيقاف</string>
     <string name="firewall_state_internet">إنترنت</string>
     <string name="firewall_search_hint">البحث عن تطبيقات…</string>
+    <string name="sort_title">ترتيب</string>
+    <string name="sort_by_name">الاسم</string>
+    <string name="sort_recently_installed">المثبتة مؤخرًا</string>
+    <string name="sort_recently_updated">المحدَّثة مؤخرًا</string>
+    <string name="sort_configured_first">المُعدّة أولًا</string>
 
     <string name="dialog_firewall_start_title">تشغيل جدار حماية De1984؟</string>
     <string name="dialog_firewall_start_message">مرحبًا بك في De1984! هل ترغب في بدء تشغيل جدار الحماية الآن لحماية خصوصيتك؟</string>

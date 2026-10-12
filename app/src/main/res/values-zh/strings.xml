@@ -25,6 +25,11 @@
     <string name="firewall_state_off">关闭</string>
     <string name="firewall_state_internet">互联网</string>
     <string name="firewall_search_hint">搜索应用…</string>
+    <string name="sort_title">排序</string>
+    <string name="sort_by_name">名称</string>
+    <string name="sort_recently_installed">最近安装</string>
+    <string name="sort_recently_updated">最近更新</string>
+    <string name="sort_configured_first">已配置优先</string>
 
     <!-- Firewall Dialogs -->
     <string name="dialog_firewall_start_title">启动 De1984 防火墙？</string>

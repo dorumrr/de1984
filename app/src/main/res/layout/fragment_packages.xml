@@ -140,9 +140,9 @@
             android:scaleType="fitCenter"
             android:src="@drawable/ic_sort" />
 
-        <!-- Issue #96. Takes its own strip at the right edge; search_layout stops short by exactly
-             this width so the box's clear (X) icon is not drawn underneath it. The 40dp the counter
-             reserved was never free - it is where that clear icon lives. -->
+        <!-- Issue #96. Takes its own strip at the right edge, beside the sort button; search_layout
+             stops short by both (search_actions_two_buttons) so the box's clear (X) icon is not
+             drawn underneath them. The 40dp the counter keeps is where that clear icon lives. -->
         <ImageButton
             android:id="@+id/export_packages"
             android:layout_width="@dimen/search_action_button_size"

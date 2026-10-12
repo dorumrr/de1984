@@ -589,9 +589,9 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             searchInput = binding.searchInput
         )
 
-        // Recorded before the early return: a sort that leaves the order unchanged must not make
-        // a later, unrelated list change jump to the top.
-        if (lastSubmittedSort != null && lastSubmittedSort != state.filterState.sort) scrollToTopPending = true
+        // Recorded before the early return, and the scroll armed only when this sort change
+        // submits a list: otherwise a later, unrelated list change would jump to the top.
+        val sortChanged = lastSubmittedSort != null && lastSubmittedSort != state.filterState.sort
         lastSubmittedSort = state.filterState.sort
 
         val listChanged = displayedPackages != lastSubmittedPackages
@@ -600,6 +600,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             handleError(state)
             return
         }
+        if (sortChanged) scrollToTopPending = true
 
         lastSubmittedPackages = displayedPackages
         adapter.submitList(displayedPackages) {

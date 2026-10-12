@@ -52,7 +52,10 @@ data class PackageEntity(
     val paintedBlockAllDefault: Boolean =
         Constants.Settings.DEFAULT_FIREWALL_POLICY == Constants.Settings.POLICY_BLOCK_ALL,
     val isWorkProfile: Boolean = false,
-    val isCloneProfile: Boolean = false
+    val isCloneProfile: Boolean = false,
+    val isFullUser: Boolean = false,
+    /** Hidden for its user (pm hide, device admin): installed, cannot run until unhidden. */
+    val isHidden: Boolean = false
 )
 
 fun PackageEntity.toDomain(): Package {
@@ -78,7 +81,8 @@ fun PackageEntity.toDomain(): Package {
         category = category,
         affects = affects,
         isWorkProfile = isWorkProfile,
-        isCloneProfile = isCloneProfile
+        isCloneProfile = isCloneProfile,
+        isFullUser = isFullUser
     )
 }
 
@@ -104,6 +108,7 @@ fun Package.toEntity(): PackageEntity {
         category = category,
         affects = affects,
         isWorkProfile = isWorkProfile,
-        isCloneProfile = isCloneProfile
+        isCloneProfile = isCloneProfile,
+        isFullUser = isFullUser
     )
 }

@@ -463,6 +463,12 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             }
         }
 
+        binding.includeOtherUsersSwitch.setOnCheckedChangeListener(null)
+        binding.includeOtherUsersSwitch.isChecked = state.includeOtherUsers
+        binding.includeOtherUsersSwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setIncludeOtherUsers(isChecked)
+        }
+
         binding.showFirewallStartPromptSwitch.setOnCheckedChangeListener(null)
         binding.showFirewallStartPromptSwitch.isChecked = state.showFirewallStartPrompt
         binding.showFirewallStartPromptSwitch.setOnCheckedChangeListener { _, isChecked ->

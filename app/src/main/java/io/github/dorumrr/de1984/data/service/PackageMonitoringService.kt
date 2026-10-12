@@ -3,7 +3,6 @@ package io.github.dorumrr.de1984.data.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
 import io.github.dorumrr.de1984.De1984Application
@@ -25,6 +24,12 @@ class PackageMonitoringService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var monitoringJob: Job? = null
     private var lastKnownPackages: Set<Pair<String, Int>> = emptySet()
+
+    /** Users [lastKnownPackages] covers: an app of any other user is a newly listed user's, not an install. */
+    private var baselineUsers: Set<Int> = emptySet()
+
+    /** Users the last successful [getCurrentInstalledPackages] covered, read or kept from the baseline. */
+    private var enumeratedUsers: Set<Int> = emptySet()
 
     /**
      * False until an enumeration has actually succeeded once.
@@ -149,6 +154,7 @@ class PackageMonitoringService : Service() {
         if (hadSecondaryProfiles) {
             getCurrentInstalledPackages()?.let {
                 lastKnownPackages = it
+                baselineUsers = enumeratedUsers
                 hasBaseline = true
             }
         }
@@ -230,6 +236,7 @@ class PackageMonitoringService : Service() {
                 // on the same userId is not compared against the deleted one's snapshot.
                 AppLogger.d(TAG, "No secondary profiles left - clearing baseline and idling")
                 lastKnownPackages = emptySet()
+                baselineUsers = emptySet()
                 hasBaseline = false
                 lastKnownDisabled.clear()
                 hadSecondaryProfiles = false
@@ -245,6 +252,7 @@ class PackageMonitoringService : Service() {
             hadSecondaryProfiles = true
             getCurrentInstalledPackages()?.let {
                 lastKnownPackages = it
+                baselineUsers = enumeratedUsers
                 hasBaseline = true
             }
             announcePackageSetChange()
@@ -323,11 +331,12 @@ class PackageMonitoringService : Service() {
             // point, not a burst of installs - the startup enumeration must have failed.
             AppLogger.d(TAG, "Baseline established from the first successful enumeration")
             lastKnownPackages = currentPackages
+            baselineUsers = enumeratedUsers
             hasBaseline = true
             return
         }
 
-        val newPackages = currentPackages - lastKnownPackages
+        val newPackages = (currentPackages - lastKnownPackages).filter { (_, userId) -> userId in baselineUsers }
 
         if (newPackages.isNotEmpty()) {
             AppLogger.d(TAG, "📦 Detected ${newPackages.size} new packages")
@@ -343,6 +352,7 @@ class PackageMonitoringService : Service() {
         // baseline, so it was never "new" again and a reinstall was never processed - the exact
         // case the stale-uid refresh exists for.
         lastKnownPackages = currentPackages
+        baselineUsers = enumeratedUsers
 
         if (setChanged) announcePackageSetChange()
     }
@@ -368,22 +378,19 @@ class PackageMonitoringService : Service() {
             // installs, returns, full uninstalls and enable/disable for it instantly. Other profiles get no such broadcast.
             val ownUserId = Constants.Firewall.ownUserId()
             val userProfiles = HiddenApiHelper.getUsers(this).filter { it.userId != ownUserId }
+            // A user whose list read empty failed to read: a baselined one keeps its last known apps, a newly
+            // listed one is baselined on its first good read.
+            val readUsers = mutableSetOf<Int>()
 
             for (profile in userProfiles) {
-                // Flags 0, not GET_META_DATA. The lambda below reads only .flags and .packageName;
-                // nothing in the app reads .metaData at all (a repo-wide grep for it returns
-                // nothing), so filling a Bundle for every app on every tick bought nothing.
-                //
-                // Deliberately changed HERE ONLY. installedAppsCache is keyed by userId alone, never
-                // by flags, so a flags-blind list can be served to a GET_META_DATA caller inside its
-                // 5s window - harmless while nothing reads .metaData, but it is why the other seven
-                // call sites are left as they are rather than swept along with this one.
+                // Hidden apps included, so an unhide is not taken for an install; no metaData Bundle per app.
                 val packages = HiddenApiHelper.getInstalledApplicationsAsUser(
                     this,
-                    0,
+                    android.content.pm.PackageManager.MATCH_UNINSTALLED_PACKAGES,
                     profile.userId
-                )
+                ).filter(HiddenApiHelper::isInstalledForUser)
 
+                if (packages.isNotEmpty()) readUsers.add(profile.userId)
                 packages
                     .filter { appInfo -> isWatchedApp(appInfo, profile.userId) }
                     .forEach { appInfo ->
@@ -391,6 +398,9 @@ class PackageMonitoringService : Service() {
                     }
             }
 
+            val unreadBaselined = (baselineUsers intersect userProfiles.map { it.userId }.toSet()) - readUsers
+            lastKnownPackages.filterTo(result) { (_, userId) -> userId in unreadBaselined }
+            enumeratedUsers = readUsers + unreadBaselined
             result
         } catch (e: Exception) {
             AppLogger.e(TAG, "Failed to get installed packages: ${e.message}", e)
@@ -489,7 +499,7 @@ class PackageMonitoringService : Service() {
             val packageInfo = HiddenApiHelper.getPackageInfoAsUser(
                 this,
                 packageName,
-                PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
+                HiddenApiHelper.PACKAGE_DETAIL_FLAGS,
                 userId
             ) ?: return false
             packageInfo.requestedPermissions?.contains(android.Manifest.permission.INTERNET) == true

@@ -123,7 +123,24 @@
                 android:background="@drawable/badge_background_no_internet"
                 android:visibility="gone" />
 
-            <!-- Profile Badge (Work/Clone) -->
+            <!-- Frozen Badge (disabled or hidden app) -->
+            <TextView
+                android:id="@+id/frozen_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/firewall_badge_frozen"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="#757575"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:background="@drawable/badge_background_no_internet"
+                android:visibility="gone" />
+
+            <!-- Profile Badge (Work/Clone/User) -->
             <TextView
                 android:id="@+id/profile_badge"
                 android:layout_width="wrap_content"

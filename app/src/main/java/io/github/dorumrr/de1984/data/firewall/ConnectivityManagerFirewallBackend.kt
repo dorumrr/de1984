@@ -654,14 +654,14 @@ class ConnectivityManagerFirewallBackend(
                 // GET_PERMISSIONS is requested but never read. It is here so this shares a cache
                 // entry with the getPackagesWithNetworkPermissions sweep, which asks for both.
                 // getPackageInfoAsUser keys its cache on "userId:flags:packageName", so GET_SERVICES
-                // alone (4) is a different key from GET_PERMISSIONS or GET_SERVICES (4100) and every
+                // alone (4) is a different key from PACKAGE_DETAIL_FLAGS and every
                 // call was a guaranteed miss - one binder round trip per app, inside a filter over
                 // every package. Measured on hardware: 53 hit / 587 miss before, and the whole
                 // Block All start took 8.35s.
             val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
                 context,
                 packageName,
-                PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
+                io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.PACKAGE_DETAIL_FLAGS,
                 userId
             ) ?: return false
 

@@ -294,7 +294,7 @@ class HandleNewAppInstallUseCase constructor(
             val packageInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getPackageInfoAsUser(
                 context,
                 packageName,
-                PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
+                io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.PACKAGE_DETAIL_FLAGS,
                 userId
             ) ?: return false
 

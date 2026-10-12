@@ -92,6 +92,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
     private var lastHasWorkProfile: Boolean? = null
     private var lastHasCloneProfile: Boolean? = null
+    private var lastHasFullUser: Boolean? = null
 
     private var previousObservedPolicy: String? = null
 
@@ -297,10 +298,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         currentPermissionFilter = true
         currentProfileFilter = getString(io.github.dorumrr.de1984.R.string.filter_profile_all)
 
-        rebuildFilterChips(hasWorkProfile = false, hasCloneProfile = false)
+        rebuildFilterChips(hasWorkProfile = false, hasCloneProfile = false, hasFullUser = false)
     }
 
-    private fun rebuildFilterChips(hasWorkProfile: Boolean, hasCloneProfile: Boolean) {
+    private fun rebuildFilterChips(hasWorkProfile: Boolean, hasCloneProfile: Boolean, hasFullUser: Boolean) {
         val packageTypeFilters = listOf(
             getString(io.github.dorumrr.de1984.R.string.packages_filter_all),
             getString(io.github.dorumrr.de1984.R.string.packages_filter_user),
@@ -315,7 +316,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         )
 
         val profileFilters = mutableListOf<String>()
-        if (hasWorkProfile || hasCloneProfile) {
+        if (hasWorkProfile || hasCloneProfile || hasFullUser) {
             profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_all))
             profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_personal))
         }
@@ -324,6 +325,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
         if (hasCloneProfile) {
             profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_clone))
+        }
+        if (hasFullUser) {
+            profileFilters.add(getString(io.github.dorumrr.de1984.R.string.filter_profile_user))
         }
 
         // KEEP the chip for a saved filter whose profile produced no rows this scan, rather than
@@ -718,11 +722,14 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding.emptyState.visibility = View.GONE
         }
 
-        if (lastHasWorkProfile != state.hasWorkProfile || lastHasCloneProfile != state.hasCloneProfile) {
+        if (lastHasWorkProfile != state.hasWorkProfile || lastHasCloneProfile != state.hasCloneProfile ||
+            lastHasFullUser != state.hasFullUser
+        ) {
             lastHasWorkProfile = state.hasWorkProfile
             lastHasCloneProfile = state.hasCloneProfile
-            AppLogger.d(TAG, "Profile availability changed: hasWork=${state.hasWorkProfile}, hasClone=${state.hasCloneProfile}")
-            rebuildFilterChips(state.hasWorkProfile, state.hasCloneProfile)
+            lastHasFullUser = state.hasFullUser
+            AppLogger.d(TAG, "Profile availability changed: hasWork=${state.hasWorkProfile}, hasClone=${state.hasCloneProfile}, hasFullUser=${state.hasFullUser}")
+            rebuildFilterChips(state.hasWorkProfile, state.hasCloneProfile, state.hasFullUser)
         }
 
         updateFilterChips(
@@ -890,7 +897,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 try {
                     val pm = context.packageManager
                     val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
-                        context, pkg.packageName, 0, pkg.userId
+                        context, pkg.packageName, android.content.pm.PackageManager.MATCH_UNINSTALLED_PACKAGES, pkg.userId
                     )
                     if (appInfo != null) {
                         pm.getApplicationIcon(appInfo)
@@ -1317,7 +1324,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 try {
                     val pm = context.packageManager
                     val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
-                        context, pkg.packageName, 0, pkg.userId
+                        context, pkg.packageName, android.content.pm.PackageManager.MATCH_UNINSTALLED_PACKAGES, pkg.userId
                     )
                     if (appInfo != null) {
                         pm.getApplicationIcon(appInfo)
@@ -1679,6 +1686,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             getString(io.github.dorumrr.de1984.R.string.filter_profile_personal) -> "Personal"
             getString(io.github.dorumrr.de1984.R.string.filter_profile_work) -> "Work"
             getString(io.github.dorumrr.de1984.R.string.filter_profile_clone) -> "Clone"
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_user) -> "User"
             else -> "All"
         }
     }
@@ -1689,6 +1697,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             "Personal" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_personal)
             "Work" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_work)
             "Clone" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_clone)
+            "User" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_user)
             else -> getString(io.github.dorumrr.de1984.R.string.filter_profile_all)
         }
     }

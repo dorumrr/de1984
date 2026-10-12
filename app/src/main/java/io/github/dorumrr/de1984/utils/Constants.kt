@@ -119,6 +119,9 @@ object Constants {
         const val KEY_FIREWALL_MODE = "firewall_mode"
         const val KEY_ALLOW_CRITICAL_UNINSTALL = "allow_critical_package_uninstall"
         const val KEY_ALLOW_CRITICAL_FIREWALL = "allow_critical_package_firewall"
+        const val KEY_INCLUDE_OTHER_USERS = "include_other_users"
+        /** "id:name" of the full users the last successful listing showed. */
+        const val KEY_KNOWN_FULL_USERS = "known_full_users"
         const val KEY_SHOW_FIREWALL_START_PROMPT = "show_firewall_start_prompt"
         const val KEY_USE_DYNAMIC_COLORS = "use_dynamic_colors"
         const val KEY_APP_LANGUAGE = "app_language"
@@ -160,6 +163,7 @@ object Constants {
         const val DEFAULT_FIREWALL_MODE = MODE_AUTO
         const val DEFAULT_ALLOW_CRITICAL_UNINSTALL = false
         const val DEFAULT_ALLOW_CRITICAL_FIREWALL = false
+        const val DEFAULT_INCLUDE_OTHER_USERS = false
         const val DEFAULT_SHOW_FIREWALL_START_PROMPT = true
         const val DEFAULT_USE_DYNAMIC_COLORS = false
         const val DEFAULT_APP_LANGUAGE = LANGUAGE_SYSTEM_DEFAULT

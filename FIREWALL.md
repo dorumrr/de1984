@@ -62,7 +62,7 @@ If a manually selected backend becomes unavailable (e.g., Shizuku stops, user re
 
 When backend availability changes (e.g., user grants Shizuku, device gets rooted, Shizuku crashes, SuperUser permission is revoked, etc), the app must switch backends seamlessly without creating security breaches.
 
-**Critical Security Rule**: When switching backends, there must be NO gap where apps are unblocked. The transition must be atomic and as fail-safe as possible. VPN and ConnectivityManager decide only apps in De1984's own profile, so while either runs, the rules of apps in other profiles are not enforced.
+**Critical Security Rule**: When switching backends, there must be NO gap where apps are unblocked. The transition must be atomic and as fail-safe as possible. VPN and ConnectivityManager decide only apps in De1984's own profile, so while either runs, the rules of apps in other profiles and users are not enforced.
 
 **Switching scenarios** (the order below is what `startFirewallInternal` does when a backend is still running: a failed health check, the backend monitor after boot). `handlePrivilegeChange` in AUTO mode, the VPN health loop's privilege-gain switch and the switch off VPN when another VPN connects do not follow it: they tear the old backend down first and then start, leaving a gap of about 1-2 s:
 
@@ -190,7 +190,7 @@ Each app has an "Allow while screen off" switch. Turned off, the app is blocked 
 - Shows VPN icon in status bar
 - Occupies VPN slot (cannot use another VPN simultaneously)
 - Supports granular per-network rules (WiFi/Mobile/Roaming)
-- Builds its app list only from De1984's own profile: no app from a work, clone or other profile is added, whatever its rule says
+- Builds its app list only from De1984's own profile: no app from a work, clone or other profile, or another user, is added, whatever its rule says. A hidden app is added once it is unhidden
 - Survives reboot (service restarts automatically)
 
 **How it works:**
@@ -271,7 +271,9 @@ Multiple apps can share the same UID, and Android enforces every backend's block
 
 - **A UID with no rule**: the default policy decides. Blocked in Block All mode, allowed in Allow All mode. The exception is a protected UID with the setting ON, which Block All leaves allowed (see the first bullet).
 
-An app whose own switches differ from what a neighbour's rule makes its UID do shows the shared-UID note in its sheet. A rule counts for the UID its app has now. The rule of an app that is gone from every profile is kept for a reinstall but counts nowhere; an app that is hidden or frozen, or uninstalled for one profile but still in another, keeps its rule counting. If any profile's app list cannot be read, nothing is dropped and the stored UID is used. De1984 re-applies at once when an app is uninstalled from its own profile, and when one is installed, restored or unhidden there while its package watcher runs (it starts when the app is opened or the firewall starts at boot); at its next check (about every 30 seconds while the screen is on) when the set of user apps with internet permission in another profile changes, or when the first other profile appears or the last one goes; and otherwise at the next screen or network change.
+An app whose own switches differ from what a neighbour's rule makes its UID do shows the shared-UID note in its sheet. A rule counts for the UID its app has now. The rule of an app that is gone from every profile is kept for a reinstall but counts nowhere; an app that is hidden or disabled, or uninstalled for one profile but still in another, keeps its rule counting. A hidden or disabled app is listed, marked Frozen, so its rule can be set before it runs again; iptables, ConnectivityManager and NetworkPolicyManager block a hidden app while it is hidden. If any profile's app list cannot be read, nothing is dropped and the stored UID is used.
+
+**Other users (Settings > "Include other users", off by default):** a second full user, such as a second space or Android multi-user, is not a profile of De1984's user. It is listed only while this switch is on, through `pm list users` over root or Shizuku; a failed listing keeps the last good one. A rule for a user that is not listed stays saved but counts nowhere, unless De1984 could not read its own profiles, when the stored UID is used. A user that a successful listing no longer shows is taken as deleted, and its rules are deleted with it. iptables and NetworkPolicyManager give each user its own rule, ConnectivityManager applies the rule of the app in De1984's own profile, and VPN cannot reach another user. De1984 re-applies at once when an app is uninstalled from its own profile, and when one is installed, restored or unhidden there while its package watcher runs (it starts when the app is opened or the firewall starts at boot); at its next check (about every 30 seconds while the screen is on) when the set of user apps with internet permission in another profile or user changes, or when the first other profile appears or the last one goes (the apps of a newly listed profile or user count as already installed, not as new installs); and otherwise at the next screen or network change.
 
 **Example (Block All, WiFi):**
 - Chrome (UID 10100, no rule) → Blocked
@@ -294,7 +296,7 @@ When switching to Mobile, Firefox becomes blocked and Telegram becomes allowed. 
 
 **How it works:**
 
-Uses Android system commands to enable or disable networking for an app. Android applies each command to the app's whole UID, and to that app in every profile (measured on Android 15 and 16), so De1984 sends the same command to every app of a UID and names only apps in its own profile (see "Shared UIDs" in section 2). This is all-or-nothing: an app is either allowed on ALL networks or blocked on ALL networks. Cannot block an app on WiFi while allowing it on Mobile.
+Uses Android system commands to enable or disable networking for an app. Android applies each command to the app's whole UID, and to that app in every profile and user (measured on Android 15 and 16; another user and a hidden app on Android 16), so De1984 sends the same command to every app of a UID and names only apps in its own profile (see "Shared UIDs" in section 2). This is all-or-nothing: an app is either allowed on ALL networks or blocked on ALL networks. Cannot block an app on WiFi while allowing it on Mobile.
 
 **Why no granular control:**
 
@@ -369,7 +371,7 @@ Calibration runs only on an app UID. On a system UID the write throws, and a thr
 
 **The original-policy record:**
 
-`POLICY_NONE` does not mean "no opinion" — writing it erases whatever was there, including Android's own "Restrict background data" setting and a ROM's per-app restrictions. So this backend records what each UID held **before** it was touched, in `npm_original_policies`, and flushes that record to disk **before** the first write. A UID absent from the record is not ours and is left alone. On stop, each UID is set back to its recorded value; an entry is dropped only once the policy reads back as `POLICY_NONE`, proving there is nothing left to undo. Entries that fail to restore stay on disk for the next attempt rather than being forgotten.
+`POLICY_NONE` does not mean "no opinion" — writing it erases whatever was there, including Android's own "Restrict background data" setting and a ROM's per-app restrictions. So this backend records what each UID held **before** it was touched, in `npm_original_policies`, and flushes that record to disk **before** the first write. A UID absent from the record is not ours and is left alone. A recorded UID that leaves the sweep (its app gone, or its user no longer listed) is set back at the next apply; on stop, each UID is set back to its recorded value; an entry is dropped only once the policy reads back as `POLICY_NONE`, proving there is nothing left to undo. Entries that fail to restore stay on disk for the next attempt rather than being forgotten.
 
 **Block All mode:**
 - Apps without rules: Blocked on all networks

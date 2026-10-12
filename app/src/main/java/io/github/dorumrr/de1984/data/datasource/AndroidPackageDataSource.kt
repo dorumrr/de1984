@@ -206,9 +206,15 @@ class AndroidPackageDataSource(
                 val profileStart = System.currentTimeMillis()
                 val installedPackages = HiddenApiHelper.getInstalledApplicationsAsUser(
                     context,
+                    HiddenApiHelper.APP_LIST_FLAGS,
+                    profile.userId
+                ).filter(HiddenApiHelper::isInstalledForUser)
+                // A hidden app is in the list above and missing from the plain one; an empty plain read failed.
+                val visibleNames = HiddenApiHelper.getInstalledApplicationsAsUser(
+                    context,
                     PackageManager.GET_META_DATA,
                     profile.userId
-                )
+                ).mapTo(HashSet()) { it.packageName }
                 val profileEnd = System.currentTimeMillis()
 
                 AppLogger.i(TAG, "⏱️ TIMING: Profile ${profile.userId} (${profile.displayName}): getInstalledApplicationsAsUser took ${profileEnd - profileStart}ms, returned ${installedPackages.size} packages")
@@ -326,7 +332,9 @@ class AndroidPackageDataSource(
                                 category = category,
                                 affects = affects,
                                 isWorkProfile = profile.isWorkProfile,
-                                isCloneProfile = profile.isCloneProfile
+                                isCloneProfile = profile.isCloneProfile,
+                                isFullUser = profile.isFullUser,
+                                isHidden = visibleNames.isNotEmpty() && appInfo.packageName !in visibleNames
                             )
                         }
                     }.awaitAll()
@@ -391,8 +399,12 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
+                )?.takeIf(HiddenApiHelper::isInstalledForUser) ?: return@withContext null
+                val isHidden = HiddenApiHelper.getApplicationInfoAsUser(
                     context, packageName, PackageManager.GET_META_DATA, userId
-                ) ?: return@withContext null
+                ) == null
+                val profile = HiddenApiHelper.getUsers(context).firstOrNull { it.userId == userId }
 
                 val rule = firewallRepository.getRuleByPackage(packageName, userId).first()
                 val permissions = getAppPermissions(packageName, userId)
@@ -460,8 +472,8 @@ class AndroidPackageDataSource(
                 val category = PackageSafetyLoader.getCategory(context, appInfo.packageName)
                 val affects = PackageSafetyLoader.getAffects(context, appInfo.packageName)
 
-                val isWorkProfile = userId in 10..99
-                val isCloneProfile = userId >= 100
+                val isWorkProfile = profile?.isWorkProfile ?: (userId in 10..99)
+                val isCloneProfile = profile?.isCloneProfile ?: (userId >= 100)
 
                 PackageEntity(
                     // Recorded for the same reason the main scan records them - every protection
@@ -492,7 +504,9 @@ class AndroidPackageDataSource(
                     category = category,
                     affects = affects,
                     isWorkProfile = isWorkProfile,
-                    isCloneProfile = isCloneProfile
+                    isCloneProfile = isCloneProfile,
+                    isFullUser = profile?.isFullUser == true,
+                    isHidden = isHidden
                 )
             } catch (e: Exception) {
                 null
@@ -760,7 +774,7 @@ class AndroidPackageDataSource(
             val packageInfo = HiddenApiHelper.getPackageInfoAsUser(
                 context,
                 packageName,
-                PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
+                HiddenApiHelper.PACKAGE_DETAIL_FLAGS,
                 userId
             )
 
@@ -820,7 +834,7 @@ class AndroidPackageDataSource(
     
     private fun getVersionName(packageName: String, userId: Int = 0): String? {
         return try {
-            HiddenApiHelper.getPackageInfoAsUser(context, packageName, 0, userId)?.versionName
+            HiddenApiHelper.getPackageInfoAsUser(context, packageName, HiddenApiHelper.PACKAGE_DETAIL_FLAGS, userId)?.versionName
         } catch (e: Exception) {
             null
         }
@@ -828,7 +842,7 @@ class AndroidPackageDataSource(
 
     private fun getVersionCode(packageName: String, userId: Int = 0): Long? {
         return try {
-            val packageInfo = HiddenApiHelper.getPackageInfoAsUser(context, packageName, 0, userId)
+            val packageInfo = HiddenApiHelper.getPackageInfoAsUser(context, packageName, HiddenApiHelper.PACKAGE_DETAIL_FLAGS, userId)
                 ?: return null
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 packageInfo.longVersionCode
@@ -843,7 +857,7 @@ class AndroidPackageDataSource(
 
     private fun getInstallTime(packageName: String, userId: Int = 0): Long? {
         return try {
-            HiddenApiHelper.getPackageInfoAsUser(context, packageName, 0, userId)?.firstInstallTime
+            HiddenApiHelper.getPackageInfoAsUser(context, packageName, HiddenApiHelper.PACKAGE_DETAIL_FLAGS, userId)?.firstInstallTime
         } catch (e: Exception) {
             null
         }
@@ -851,7 +865,7 @@ class AndroidPackageDataSource(
 
     private fun getUpdateTime(packageName: String, userId: Int = 0): Long? {
         return try {
-            HiddenApiHelper.getPackageInfoAsUser(context, packageName, 0, userId)?.lastUpdateTime
+            HiddenApiHelper.getPackageInfoAsUser(context, packageName, HiddenApiHelper.PACKAGE_DETAIL_FLAGS, userId)?.lastUpdateTime
         } catch (e: Exception) {
             null
         }
@@ -859,7 +873,7 @@ class AndroidPackageDataSource(
 
     private fun getAppPermissions(packageName: String, userId: Int = 0): List<String> {
         return try {
-            val packageInfo = HiddenApiHelper.getPackageInfoAsUser(context, packageName, PackageManager.GET_PERMISSIONS, userId)
+            val packageInfo = HiddenApiHelper.getPackageInfoAsUser(context, packageName, HiddenApiHelper.PACKAGE_DETAIL_FLAGS, userId)
             packageInfo?.requestedPermissions?.toList() ?: emptyList()
         } catch (e: Exception) {
             emptyList()
@@ -889,14 +903,14 @@ class AndroidPackageDataSource(
                 // GET_PERMISSIONS is requested but never read. It is here so this shares a cache
                 // entry with the getPackagesWithNetworkPermissions sweep, which asks for both.
                 // getPackageInfoAsUser keys its cache on "userId:flags:packageName", so GET_SERVICES
-                // alone (4) is a different key from GET_PERMISSIONS or GET_SERVICES (4100) and every
+                // alone (4) is a different key from PACKAGE_DETAIL_FLAGS and every
                 // call was a guaranteed miss - one binder round trip per app, inside a filter over
                 // every package. Measured on hardware: 53 hit / 587 miss before, and the whole
                 // Block All start took 8.35s.
             val packageInfo = HiddenApiHelper.getPackageInfoAsUser(
                 context,
                 packageName,
-                PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
+                HiddenApiHelper.PACKAGE_DETAIL_FLAGS,
                 userId
             ) ?: return false
 
@@ -954,7 +968,7 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
-                    context, packageName, PackageManager.GET_META_DATA, userId
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
                 ) ?: return@withContext false
                 val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
                 val rule = if (existingRule != null) {
@@ -1007,7 +1021,7 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
-                    context, packageName, PackageManager.GET_META_DATA, userId
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
                 ) ?: return@withContext false
                 val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
 
@@ -1065,7 +1079,7 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
-                    context, packageName, PackageManager.GET_META_DATA, userId
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
                 ) ?: return@withContext false
                 val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
 
@@ -1123,7 +1137,7 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
-                    context, packageName, PackageManager.GET_META_DATA, userId
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
                 ) ?: return@withContext false
                 val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
 
@@ -1181,7 +1195,7 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
-                    context, packageName, PackageManager.GET_META_DATA, userId
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
                 ) ?: return@withContext false
                 val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
 
@@ -1245,7 +1259,7 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
-                    context, packageName, PackageManager.GET_META_DATA, userId
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
                 ) ?: return@withContext false
                 val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
 
@@ -1304,7 +1318,7 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
-                    context, packageName, PackageManager.GET_META_DATA, userId
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
                 ) ?: return@withContext false
                 val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
 
@@ -1353,7 +1367,7 @@ class AndroidPackageDataSource(
         return withContext(Dispatchers.IO) {
             try {
                 val appInfo = HiddenApiHelper.getApplicationInfoAsUser(
-                    context, packageName, PackageManager.GET_META_DATA, userId
+                    context, packageName, HiddenApiHelper.APP_LIST_FLAGS, userId
                 ) ?: return@withContext false
                 val existingRule = firewallRepository.getRuleByPackage(packageName, userId).first()
 

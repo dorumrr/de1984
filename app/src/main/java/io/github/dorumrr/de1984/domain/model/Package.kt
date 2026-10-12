@@ -23,7 +23,8 @@ data class Package(
     val category: String? = null,
     val affects: List<String> = emptyList(),
     val isWorkProfile: Boolean = false,
-    val isCloneProfile: Boolean = false
+    val isCloneProfile: Boolean = false,
+    val isFullUser: Boolean = false
 ) {
     val id: PackageId get() = PackageId(packageName, userId)
 }

@@ -48,6 +48,9 @@ object HiddenApiHelper {
         AppLogger.d(TAG, "ShizukuManager reference set for work profile shell fallback")
     }
 
+    /** Moved on by [clearUserCache]: a user list, app list or sweep begun before it is returned but never cached. */
+    private val cacheGeneration = java.util.concurrent.atomic.AtomicInteger()
+
     @Volatile
     private var cachedUsers: List<UserProfile>? = null
     @Volatile
@@ -55,7 +58,7 @@ object HiddenApiHelper {
     private const val USERS_CACHE_TTL = 30_000L
 
     /**
-     * Guards [installedAppsCache] and [installedAppsCacheTime].
+     * Guards [installedAppsCache].
      *
      * @Volatile alone was not enough: it publishes the map REFERENCE, not the map's contents, and
      * three receivers plus PackageMonitoringService's poll all reach `.clear()` from their own
@@ -68,8 +71,9 @@ object HiddenApiHelper {
      */
     private val installedAppsLock = Any()
 
-    private var installedAppsCache: MutableMap<Int, List<ApplicationInfo>> = mutableMapOf()
-    private var installedAppsCacheTime: Long = 0
+    /** Keyed by user and flags: a list read with MATCH_UNINSTALLED_PACKAGES must never answer a plain read. */
+    /** Each entry keeps its own read time: a shared one let one user's fresh read keep another's old list alive. */
+    private var installedAppsCache: MutableMap<Pair<Int, Int>, Pair<Long, List<ApplicationInfo>>> = mutableMapOf()
     // Deliberately short, and NOT raised despite the cost of what it guards.
     //
     // The receivers below it invalidate on package add, change and removal, but only for the user
@@ -129,13 +133,17 @@ object HiddenApiHelper {
     private var networkPackagesCache: List<ApplicationInfo>? = null
     @Volatile
     private var networkPackagesCacheTime: Long = 0
+    @Volatile
+    private var networkPackagesGeneration: Int = -1
     private val networkPackagesLock = Any()
     
     data class UserProfile(
         val userId: Int,
         val name: String?,
         val isWorkProfile: Boolean,
-        val isCloneProfile: Boolean
+        val isCloneProfile: Boolean,
+        /** A separate user (Android multi-user, MIUI second space), not a profile of De1984's user. */
+        val isFullUser: Boolean = false
     ) {
         val displayName: String
             get() = when {
@@ -314,6 +322,7 @@ object HiddenApiHelper {
     
     fun getUsers(context: Context): List<UserProfile> {
         if (!initialized) initialize()
+        val generation = cacheGeneration.get()
 
         cachedUsers?.let { cached ->
             if (System.currentTimeMillis() - usersCacheTime < USERS_CACHE_TTL) {
@@ -362,7 +371,7 @@ object HiddenApiHelper {
 
                 if (userProfiles.isNotEmpty()) {
                     AppLogger.i(TAG, "✅ MULTI-USER: Found ${userProfiles.size} user profiles via getUserProfiles(): ${userProfiles.map { "${it.userId}:${it.displayName}(work=${it.isWorkProfile},clone=${it.isCloneProfile})" }}")
-                    return cacheAndReturn(userProfiles)
+                    return withFullUsers(context, userProfiles, profilesRead = true, generation)
                 }
             }
         } catch (e: Exception) {
@@ -404,7 +413,7 @@ object HiddenApiHelper {
 
                     if (profiles.isNotEmpty()) {
                         AppLogger.i(TAG, "✅ Found ${profiles.size} user profiles via getUsers(): ${profiles.map { "${it.userId}:${it.displayName}" }}")
-                        return cacheAndReturn(profiles)
+                        return withFullUsers(context, profiles, profilesRead = true, generation)
                     }
                 }
             } catch (e: Exception) {
@@ -414,16 +423,94 @@ object HiddenApiHelper {
 
         val ownUserId = Constants.Firewall.ownUserId()
         AppLogger.d(TAG, "All user enumeration methods failed, returning only De1984's own user $ownUserId")
-        return cacheAndReturn(listOf(UserProfile(ownUserId, null, isWorkProfile = false, isCloneProfile = false)))
+        return withFullUsers(context, listOf(UserProfile(ownUserId, null, isWorkProfile = false, isCloneProfile = false)), profilesRead = false, generation)
     }
 
-    private fun cacheAndReturn(users: List<UserProfile>): List<UserProfile> {
-        cachedUsers = users
-        usersCacheTime = System.currentTimeMillis()
+    /** False after [getUsers] fell back to De1984's own user: a rule for any other user then keeps its stored uid. */
+    @Volatile
+    var profilesRead: Boolean = true
+        private set
+
+    /** Called with the ids of full users a successful listing no longer shows. */
+    @Volatile
+    var onFullUsersRemoved: ((Set<Int>) -> Unit)? = null
+
+    private val fullUsersLock = Any()
+
+    private fun withFullUsers(context: Context, profiles: List<UserProfile>, profilesRead: Boolean, generation: Int): List<UserProfile> {
+        this.profilesRead = profilesRead
+        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(Constants.Settings.KEY_INCLUDE_OTHER_USERS, Constants.Settings.DEFAULT_INCLUDE_OTHER_USERS)) {
+            return cacheAndReturn(profiles, generation)
+        }
+        // The shell must never run on the main thread; there the last good list stands in, uncached.
+        val onMain = android.os.Looper.myLooper() == android.os.Looper.getMainLooper()
+        val listed = if (onMain) null else listFullUsersViaShell()?.filter { user -> profiles.none { it.userId == user.userId } }
+        val full = listed?.also { rememberFullUsers(prefs, it, profiles) } ?: knownFullUsers(prefs)
+            .filter { user -> profiles.none { it.userId == user.userId } }
+        if (full.isNotEmpty()) AppLogger.i(TAG, "MULTI-USER: other full users ${if (listed != null) "listed" else "remembered"}: ${full.map { it.userId }}")
+        val users = profiles + full
+        return if (onMain && listed == null) users else cacheAndReturn(users, generation)
+    }
+
+    /** Full users from `pm list users` through root or Shizuku, or null when neither answered. */
+    private fun listFullUsersViaShell(): List<UserProfile>? {
+        val lines = rootShellLines("pm list users") ?: shizukuShellLines("pm list users") ?: return null
+        val pattern = Regex("""UserInfo\{(\d+):(.*):([0-9a-fA-F]+)\}""")
+        val all = lines.mapNotNull { line ->
+            val match = pattern.find(line) ?: return@mapNotNull null
+            val (id, name, flags) = match.destructured
+            Triple(id.toInt(), name, flags.toLong(16).toInt())
+        }
+        // Every device lists at least one user, so none parsed is a failed read, not an empty device.
+        if (all.isEmpty()) return null
+        return all
+            // Android 10 and older do not mark full users with FLAG_FULL; there, not being a profile is enough.
+            .filter { (_, _, flags) ->
+                flags and (FLAG_PROFILE or FLAG_MANAGED_PROFILE) == 0 &&
+                    (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || flags and FLAG_FULL != 0)
+            }
+            .map { (id, name, _) -> UserProfile(id, name, isWorkProfile = false, isCloneProfile = false, isFullUser = true) }
+    }
+
+    private fun knownFullUsers(prefs: android.content.SharedPreferences): List<UserProfile> =
+        prefs.getStringSet(Constants.Settings.KEY_KNOWN_FULL_USERS, emptySet()).orEmpty().mapNotNull { entry ->
+            val id = entry.substringBefore(':').toIntOrNull() ?: return@mapNotNull null
+            UserProfile(id, entry.substringAfter(':', ""), isWorkProfile = false, isCloneProfile = false, isFullUser = true)
+        }.sortedBy { it.userId }
+
+    private fun rememberFullUsers(prefs: android.content.SharedPreferences, listed: List<UserProfile>, profiles: List<UserProfile>) {
+        val removed = synchronized(fullUsersLock) {
+            val before = knownFullUsers(prefs).map { it.userId }.toSet()
+            prefs.edit().putStringSet(
+                Constants.Settings.KEY_KNOWN_FULL_USERS,
+                listed.map { "${it.userId}:${it.name.orEmpty()}" }.toSet()
+            ).commit()
+            // A user of De1984's own profile group is never "gone": its rules are the ones in force here.
+            before - listed.map { it.userId }.toSet() - profiles.map { it.userId }.toSet()
+        }
+        if (removed.isNotEmpty()) {
+            AppLogger.i(TAG, "Full users gone from a successful listing: $removed")
+            onFullUsersRemoved?.invoke(removed)
+        }
+    }
+
+    private const val FLAG_FULL = 0x400
+    private const val FLAG_PROFILE = 0x1000
+    private const val FLAG_MANAGED_PROFILE = 0x20
+
+    private fun cacheAndReturn(users: List<UserProfile>, generation: Int): List<UserProfile> {
+        synchronized(cacheGeneration) {
+            if (generation == cacheGeneration.get()) {
+                cachedUsers = users
+                usersCacheTime = System.currentTimeMillis()
+            }
+        }
         return users
     }
 
     fun clearUserCache() {
+        synchronized(cacheGeneration) { cacheGeneration.incrementAndGet() }
         cachedUsers = null
         usersCacheTime = 0
         AppLogger.d(TAG, "User profile cache cleared")
@@ -474,13 +561,12 @@ object HiddenApiHelper {
         // that does. Once per process, and cheap after that.
         ensureCrossUserPermission(context)
 
+        val generation = cacheGeneration.get()
         val now = System.currentTimeMillis()
         synchronized(installedAppsLock) {
-            if (now - installedAppsCacheTime < INSTALLED_APPS_CACHE_TTL) {
-                installedAppsCache[userId]?.let { cached ->
-                    AppLogger.d(TAG, "📦 Returning cached ${cached.size} apps for user $userId")
-                    return cached
-                }
+            installedAppsCache[userId to flags]?.takeIf { (readAt, _) -> now - readAt < INSTALLED_APPS_CACHE_TTL }?.let { (_, cached) ->
+                AppLogger.d(TAG, "📦 Returning cached ${cached.size} apps for user $userId")
+                return cached
             }
         }
 
@@ -497,7 +583,7 @@ object HiddenApiHelper {
                 val apps = method.invoke(pm, flags, userId) as? List<ApplicationInfo>
                 if (!apps.isNullOrEmpty()) {
                     AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via hidden API")
-                    cacheInstalledApps(userId, apps)
+                    cacheInstalledApps(userId, flags, apps, generation)
                     return apps
                 }
             } catch (e: Exception) {
@@ -516,7 +602,7 @@ object HiddenApiHelper {
                 }
                 if (apps.isNotEmpty()) {
                     AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via root shell (synthetic)")
-                    cacheInstalledApps(userId, apps)
+                    cacheInstalledApps(userId, flags, apps, generation)
                     return apps
                 }
             }
@@ -534,7 +620,7 @@ object HiddenApiHelper {
                 }
                 if (apps.isNotEmpty()) {
                     AppLogger.d(TAG, "✅ Found ${apps.size} apps for user $userId via Shizuku shell (synthetic)")
-                    cacheInstalledApps(userId, apps)
+                    cacheInstalledApps(userId, flags, apps, generation)
                     return apps
                 }
             }
@@ -546,10 +632,10 @@ object HiddenApiHelper {
         return emptyList()
     }
 
-    private fun cacheInstalledApps(userId: Int, apps: List<ApplicationInfo>) {
+    private fun cacheInstalledApps(userId: Int, flags: Int, apps: List<ApplicationInfo>, generation: Int) {
         synchronized(installedAppsLock) {
-            installedAppsCache[userId] = apps
-            installedAppsCacheTime = System.currentTimeMillis()
+            if (generation != cacheGeneration.get()) return
+            installedAppsCache[userId to flags] = System.currentTimeMillis() to apps
         }
     }
 
@@ -561,17 +647,10 @@ object HiddenApiHelper {
         }
         synchronized(installedAppsLock) {
             installedAppsCache.clear()
-            installedAppsCacheTime = 0
         }
 
-        // networkPackagesLock is deliberately NOT taken here, and this is a known race: a sweep
-        // already inside that lock finishes afterwards and writes its pre-clear result back with a
-        // fresh timestamp, so the stale list survives one more TTL.
-        //
-        // Taking the lock would be worse than the race it fixes. That block takes seconds - measured
-        // at 9,499 ms for 466 packages - and two of this function's callers are BroadcastReceivers,
-        // where a wait that long is an ANR. The correct fix is a generation counter the sweep checks
-        // before publishing, not a lock. Left as a task rather than done badly here.
+        // Not networkPackagesLock (held for seconds; receivers call this). A sweep in flight may republish its
+        // pre-clear list for one TTL; only a user-set change (clearUserCache) makes it discard the result.
         networkPackagesCache = null
         networkPackagesCacheTime = 0
         AppLogger.d(TAG, "Cleared installed apps cache")
@@ -579,14 +658,16 @@ object HiddenApiHelper {
 
     /**
      * Per profile, every app still on the device for that user and its current uid, hidden and per-user-uninstalled
-     * system apps included; an unreadable profile maps to empty. Apps are read fresh, profiles via cached [getUsers].
+     * included; an unreadable profile maps to empty, and the whole map is empty when the profiles went unread.
      */
     fun getInstalledUids(context: Context): Map<Int, Map<String, Int>> {
         if (!initialized) initialize()
+        val users = getUsers(context)
+        if (!profilesRead) return emptyMap()
         val ownUserId = Constants.Firewall.ownUserId()
         // Another profile's list needs the cross-user permission; read before it lands, that profile would fall back.
-        if (getUsers(context).any { it.userId != ownUserId }) awaitCrossUserPermission(context)
-        return getUsers(context).mapNotNull { profile ->
+        if (users.any { it.userId != ownUserId }) awaitCrossUserPermission(context)
+        return users.mapNotNull { profile ->
             val apps = try {
                 if (profile.userId == ownUserId) {
                     context.packageManager.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
@@ -637,28 +718,26 @@ object HiddenApiHelper {
     private fun sweepPackagesWithNetworkPermissions(context: Context): List<ApplicationInfo> {
         val entryTime = System.currentTimeMillis()
         networkPackagesCache?.let { cached ->
-            if (entryTime - networkPackagesCacheTime < INSTALLED_APPS_CACHE_TTL) {
+            if (entryTime - networkPackagesCacheTime < INSTALLED_APPS_CACHE_TTL && networkPackagesGeneration == cacheGeneration.get()) {
                 AppLogger.d(TAG, "📦 Returning cached ${cached.size} packages with network permissions")
                 return cached
             }
         }
 
-        // One computation at a time. This takes seconds - measured at 9,499 ms for 466 packages
-        // across two profiles - and the firewall runs two backend instances that both ask for it at
-        // startup. Without this they both paid the full cost. A caller that waited here takes
-        // whatever the winner produced, regardless of the TTL: a result computed *after* we started
-        // waiting is by definition fresher than we are.
+        // One computation at a time: it takes seconds (9,499 ms for 466 packages) and two backends ask at
+        // startup. A waiter takes the winner's result when it is newer than the wait and of this generation.
         synchronized(networkPackagesLock) {
             networkPackagesCache?.let { cached ->
-                if (networkPackagesCacheTime >= entryTime) {
+                if (networkPackagesCacheTime >= entryTime && networkPackagesGeneration == cacheGeneration.get()) {
                     AppLogger.d(TAG, "📦 Reusing ${cached.size} packages computed while waiting")
                     return cached
                 }
             }
 
         val startTime = System.currentTimeMillis()
+        val generation = cacheGeneration.get()
         val appsByUser = getUsers(context).map { profile ->
-            profile.userId to getInstalledApplicationsAsUser(context, PackageManager.GET_META_DATA, profile.userId)
+            profile.userId to getInstalledApplicationsAsUser(context, APP_LIST_FLAGS, profile.userId).filter(::isInstalledForUser)
         }
         // A profile always has installed system apps, so empty is a failed read. Dropping that profile would
         // leave its apps unblocked, so the whole answer is refused and not cached.
@@ -677,7 +756,7 @@ object HiddenApiHelper {
                 val packageInfo = getPackageInfoAsUser(
                     context,
                     appInfo.packageName,
-                    PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES,
+                    PACKAGE_DETAIL_FLAGS,
                     userId
                 ) ?: return@filter true // Unreadable is not "no network permission": kept, or the app would stay unblocked.
                 packageInfo.requestedPermissions?.any { permission ->
@@ -688,8 +767,11 @@ object HiddenApiHelper {
             }
         }.map { (appInfo, _) -> appInfo }
 
-            networkPackagesCache = packages
-            networkPackagesCacheTime = System.currentTimeMillis()
+            if (generation == cacheGeneration.get()) {
+                networkPackagesCache = packages
+                networkPackagesCacheTime = System.currentTimeMillis()
+                networkPackagesGeneration = generation
+            }
             val hits = synchronized(packageInfoLock) {
                 val h = packageInfoHits
                 val m = packageInfoMisses
@@ -723,6 +805,8 @@ object HiddenApiHelper {
                     val appId = personalInfo.uid % 100000
                     this.uid = userId * 100000 + appId
                     this.enabled = isEnabled
+                    // Listed for this user, so installed there, whatever the personal copy says.
+                    this.flags = this.flags or ApplicationInfo.FLAG_INSTALLED
                 }
             } else {
                 // App exists only in this profile, so there is no personal-profile uid to derive
@@ -744,7 +828,7 @@ object HiddenApiHelper {
                 ApplicationInfo().apply {
                     this.packageName = packageName
                     this.uid = realUid ?: UID_UNKNOWN
-                    this.flags = 0
+                    this.flags = ApplicationInfo.FLAG_INSTALLED
                     this.enabled = isEnabled
                 }
             }
@@ -762,6 +846,19 @@ object HiddenApiHelper {
      * backends skip it instead of writing a rule against a number that belongs to someone else.
      */
     const val UID_UNKNOWN = -1
+
+    /**
+     * Every package-detail read uses these, so they share one cache entry. MATCH_UNINSTALLED_PACKAGES so a
+     * hidden app is read too; an app uninstalled for the user is left out by [isInstalledForUser], not here.
+     */
+    const val PACKAGE_DETAIL_FLAGS =
+        PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES or PackageManager.MATCH_UNINSTALLED_PACKAGES
+
+    /** App-list reads that must include hidden apps, filtered with [isInstalledForUser]. */
+    const val APP_LIST_FLAGS = PackageManager.GET_META_DATA or PackageManager.MATCH_UNINSTALLED_PACKAGES
+
+    /** False for an app removed for this user (pm uninstall --user, or -k); true for a hidden or disabled one. */
+    fun isInstalledForUser(app: ApplicationInfo): Boolean = app.flags and ApplicationInfo.FLAG_INSTALLED != 0
 
     private val packageUidsCache = mutableMapOf<Int, Map<String, Int>>()
 
@@ -791,89 +888,72 @@ object HiddenApiHelper {
     @Synchronized
     private fun getPackageUidsForUser(userId: Int): Map<String, Int> = packageUidsCache[userId] ?: emptyMap()
 
-    private fun getPackageListViaShell(userId: Int): List<String> {
+    private fun getPackageListViaShell(userId: Int): List<String> =
+        rootShellLines("pm list packages -U --user $userId")?.let { packageNamesFrom(userId, it) } ?: emptyList()
+
+    private fun getPackageListViaShizuku(userId: Int): List<String> =
+        shizukuShellLines("pm list packages -U --user $userId")?.let { packageNamesFrom(userId, it) } ?: emptyList()
+
+    /** -U output, so this one call yields the uids too - see recordPackageUids. */
+    private fun packageNamesFrom(userId: Int, lines: List<String>): List<String> {
+        recordPackageUids(userId, lines)
+        return lines
+            .filter { it.startsWith("package:") }
+            .map { it.removePrefix("package:").substringBefore(" uid:").trim() }
+            .filter { it.isNotEmpty() }
+    }
+
+    /** One command through the cached root shell: its output, or null when there is none or it failed. */
+    private fun rootShellLines(command: String): List<String>? {
         return try {
             val cachedShell = Shell.getCachedShell()
             if (cachedShell == null || !cachedShell.isRoot) {
-                AppLogger.d(TAG, "No cached root shell available for user $userId")
-                return emptyList()
+                AppLogger.d(TAG, "No cached root shell available for: $command")
+                return null
             }
 
             val outputList = mutableListOf<String>()
-            // runBlocking because this method is synchronous, exactly like the Shizuku branch below
-            // it. What changed is the ceiling: libsu's exec() had none, and by this file's own note
-            // this path demonstrably runs on the main thread - so a wedged shell was an ANR with no
-            // way out. Bounded and answering "could not read" beats unbounded and frozen.
+            // Bounded: this path demonstrably runs on the main thread, so a wedged shell was an ANR.
             val result = runBlocking {
                 ShellRunner.bounded(
-                    label = "root shell: pm list packages -U --user $userId",
+                    label = "root shell: $command",
                     timeoutMs = ShellRunner.READ_TIMEOUT_MS,
                     onAbandon = RootManager::closeRootShellIfIdle
                 ) {
-                    cachedShell.newJob()
-                        // -U so this one call yields the uids too. Asking separately meant a second
-                        // blocking shell command on this same main-thread path.
-                        .add("pm list packages -U --user $userId")
-                        .to(outputList)
-                        .exec()
+                    cachedShell.newJob().add(command).to(outputList).exec()
                 }
             }
 
-            if (result == null) {
-                AppLogger.d(TAG, "Root shell pm list packages did not finish for user $userId")
-                return emptyList()
+            when {
+                result == null -> { AppLogger.d(TAG, "Root shell did not finish: $command"); null }
+                !result.isSuccess -> { AppLogger.d(TAG, "Root shell failed (exit ${result.code}): $command"); null }
+                else -> outputList
             }
-
-            if (!result.isSuccess) {
-                AppLogger.d(TAG, "Root shell pm list packages failed for user $userId: exit code ${result.code}")
-                return emptyList()
-            }
-
-            recordPackageUids(userId, outputList)
-            outputList
-                .filter { it.startsWith("package:") }
-                .map { it.removePrefix("package:").substringBefore(" uid:").trim() }
-                .filter { it.isNotEmpty() }
         } catch (e: Exception) {
-            AppLogger.d(TAG, "Root shell pm list packages failed: ${e.message}")
-            emptyList()
+            AppLogger.d(TAG, "Root shell failed: $command: ${e.message}")
+            null
         }
     }
 
-    private fun getPackageListViaShizuku(userId: Int): List<String> {
+    /** One command through Shizuku: its output, or null when Shizuku is not usable or the command failed. */
+    private fun shizukuShellLines(command: String): List<String>? {
         val manager = shizukuManager
-        if (manager == null) {
-            AppLogger.d(TAG, "ShizukuManager not set - cannot use Shizuku shell for user $userId")
-            return emptyList()
-        }
-
-        if (!manager.hasShizukuPermission) {
-            AppLogger.d(TAG, "No Shizuku permission - cannot use Shizuku shell for user $userId")
-            return emptyList()
+        if (manager == null || !manager.hasShizukuPermission) {
+            AppLogger.d(TAG, "Shizuku not usable for: $command")
+            return null
         }
 
         return try {
-            // Use runBlocking since HiddenApiHelper methods are synchronous
-            // and Shizuku executeShellCommand is suspend
-            val (exitCode, output) = runBlocking {
-                // -U so this one call yields the uids too - see recordPackageUids.
-                manager.executeShellCommand("pm list packages -U --user $userId")
-            }
-
+            val (exitCode, output) = runBlocking { manager.executeShellCommand(command) }
             if (exitCode != 0) {
-                AppLogger.d(TAG, "Shizuku shell pm list packages failed for user $userId: exit code $exitCode")
-                return emptyList()
+                AppLogger.d(TAG, "Shizuku shell failed (exit $exitCode): $command")
+                null
+            } else {
+                output.lines()
             }
-
-            val lines = output.lines()
-            recordPackageUids(userId, lines)
-            lines
-                .filter { it.startsWith("package:") }
-                .map { it.removePrefix("package:").substringBefore(" uid:").trim() }
-                .filter { it.isNotEmpty() }
         } catch (e: Exception) {
-            AppLogger.d(TAG, "Shizuku shell pm list packages failed: ${e.message}")
-            emptyList()
+            AppLogger.d(TAG, "Shizuku shell failed: $command: ${e.message}")
+            null
         }
     }
 

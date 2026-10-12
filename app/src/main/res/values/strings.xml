@@ -78,8 +78,10 @@
     <string name="filter_profile_personal">Personal</string>
     <string name="filter_profile_work">Work</string>
     <string name="filter_profile_clone">Clone</string>
+    <string name="filter_profile_user">Other Users</string>
     <string name="badge_work_profile">Work</string>
     <string name="badge_clone_profile">Clone</string>
+    <string name="badge_other_user">User</string>
 
     <!-- Package Status -->
     <string name="status_uninstalled">Uninstalled</string>
@@ -392,6 +394,8 @@
 
     <string name="settings_allow_firewall_critical_title">Allow Firewall Critical Packages</string>
     <string name="settings_allow_firewall_critical_description">Allow blocking network access for system-critical and VPN packages</string>
+    <string name="settings_include_other_users_title">Include other users</string>
+    <string name="settings_include_other_users_description">Also show the apps of other users on this device, such as a second space. Needs root or Shizuku. Root (iptables) and NetworkPolicyManager give each user its own rules; ConnectivityManager applies the rule of the same app in De1984\'s profile, and VPN cannot reach them. When off, their rules stay saved but are not applied.</string>
 
     <string name="settings_show_firewall_prompt_title">Show Firewall Start Prompt</string>
     <string name="settings_show_firewall_prompt_description">Show a prompt to start the firewall when the app opens and firewall is inactive</string>
@@ -533,8 +537,8 @@
     <string name="firewall_backend_cannot_block_uid">Cannot be blocked</string>
     <string name="firewall_system_uid_info">⚠️ Part of Android itself, not an ordinary app. Shizuku cannot block it — Android refuses firewall rules for its own components. Root can, but where the user ID is shared with a protected app, such as Settings, it also needs \'Allow Firewall Critical Packages\' enabled in Settings and will affect those apps too.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 could not determine this app\'s user ID in its profile, so no firewall rule can be applied to it.</string>
-    <string name="firewall_other_profile_info">⚠️ This app is in another profile. The current firewall mode works with app names inside the profile De1984 runs in, so it cannot reach this one. Root access blocks by user ID and can reach every profile.</string>
-    <string name="firewall_other_profile_follows_info">⚠️ This app is in another profile. The current firewall mode blocks an app in every profile at once, so this copy follows the switches of the same app in the profile De1984 runs in. Root access blocks each profile on its own.</string>
+    <string name="firewall_other_profile_info">⚠️ This app is in another profile or user. The current firewall mode works with app names inside the profile De1984 runs in, so it cannot reach this one. Root access, or the NetworkPolicyManager mode with Shizuku, blocks by user ID and can reach every profile and user.</string>
+    <string name="firewall_other_profile_follows_info">⚠️ This app is in another profile or user. The current firewall mode blocks an app in every profile and user at once, so this copy follows the switches of the same app in the profile De1984 runs in. Root access, or the NetworkPolicyManager mode with Shizuku, blocks each one on its own.</string>
     <string name="firewall_other_profile_follows_subtitle">Set in De1984\'s profile</string>
     <string name="firewall_shared_uid_info">⚠️ This app shares a user ID with a protected app, and the current firewall mode blocks by user ID, not by app. Blocking it would cut off the protected app too, so De1984 leaves the whole user ID alone. To block it anyway, enable \'Allow Firewall Critical Packages\' in Settings and then turn on the switch for this app.</string>
     <string name="firewall_no_rule_protected_uid_info">⚠️ De1984 protects this app\'s user ID, so the Block All default is not applied to it — doing so could cut off a protected system app. With \'Allow Firewall Critical Packages\' enabled you can still block it: turn on the switch for this app.</string>
@@ -549,6 +553,7 @@
     <string name="firewall_badge_system_critical">System Critical</string>
     <string name="firewall_badge_vpn_app">VPN App</string>
     <string name="firewall_badge_no_internet">No Internet Permission</string>
+    <string name="firewall_badge_frozen">Frozen</string>
     <string name="firewall_no_internet_info">ℹ️ This app currently has no internet permission declared in its manifest.\n\nBlocking it now will take effect if the app gains internet permission in a future update, providing proactive protection.</string>
 
     <!-- Protection Warning Banner -->

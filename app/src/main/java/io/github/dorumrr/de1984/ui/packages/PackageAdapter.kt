@@ -308,6 +308,10 @@ class PackageAdapter(
             }
 
             when {
+                pkg.isFullUser -> {
+                    binding.profileBadge.text = binding.root.context.getString(R.string.badge_other_user)
+                    binding.profileBadge.visibility = View.VISIBLE
+                }
                 pkg.userId >= 10 && pkg.userId < 100 -> {
                     binding.profileBadge.text = binding.root.context.getString(R.string.badge_work_profile)
                     binding.profileBadge.visibility = View.VISIBLE

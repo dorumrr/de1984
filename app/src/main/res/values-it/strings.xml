@@ -77,8 +77,10 @@
     <string name="filter_profile_personal">Personale</string>
     <string name="filter_profile_work">Lavoro</string>
     <string name="filter_profile_clone">Clone</string>
+    <string name="filter_profile_user">Altri utenti</string>
     <string name="badge_work_profile">Lavoro</string>
     <string name="badge_clone_profile">Clone</string>
+    <string name="badge_other_user">Utente</string>
 
     <!-- Package Status -->
     <string name="status_uninstalled">Disinstallato</string>
@@ -388,6 +390,8 @@
 
     <string name="settings_allow_firewall_critical_title">Consenti Firewall Pacchetti Critici</string>
     <string name="settings_allow_firewall_critical_description">Consenti il blocco dell\'accesso alla rete per pacchetti critici di sistema e VPN</string>
+    <string name="settings_include_other_users_title">Includi altri utenti</string>
+    <string name="settings_include_other_users_description">Mostra anche le app degli altri utenti del dispositivo, come un secondo spazio. Richiede root o Shizuku. Root (iptables) e NetworkPolicyManager danno a ogni utente le proprie regole; ConnectivityManager applica la regola della stessa app nel profilo di De1984 e la VPN non può raggiungerli. Se disattivato, le loro regole restano salvate ma non vengono applicate.</string>
 
     <string name="settings_show_firewall_prompt_title">Mostra Prompt di Avvio Firewall</string>
     <string name="settings_show_firewall_prompt_description">Mostra un avviso per avviare il firewall quando l’app si apre</string>
@@ -529,8 +533,8 @@
     <string name="firewall_backend_cannot_block_uid">Non può essere bloccata</string>
     <string name="firewall_system_uid_info">⚠️ Fa parte di Android stesso, non è una normale app. Shizuku non può bloccarla — Android rifiuta le regole del firewall per i propri componenti. Con il root si può, ma dove l\'ID utente è condiviso con un\'app protetta, come le Impostazioni, serve anche \'Consenti Firewall Pacchetti Critici\' attivo nelle Impostazioni, e il blocco riguarderà anche quelle app.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 non è riuscito a determinare l\'ID utente di questa app nel suo profilo, quindi non è possibile applicarle alcuna regola del firewall.</string>
-    <string name="firewall_other_profile_info">⚠️ Questa app si trova in un altro profilo. La modalità firewall attuale lavora con i nomi delle app nel profilo in cui gira De1984, quindi non può raggiungerla. L\'accesso root blocca per ID utente e raggiunge tutti i profili.</string>
-    <string name="firewall_other_profile_follows_info">⚠️ Questa app si trova in un altro profilo. La modalità firewall attuale blocca un\'app in tutti i profili contemporaneamente, quindi questa copia segue gli interruttori della stessa app nel profilo in cui gira De1984. L\'accesso root blocca ogni profilo separatamente.</string>
+    <string name="firewall_other_profile_info">⚠️ Questa app si trova in un altro profilo o utente. La modalità firewall attuale lavora con i nomi delle app nel profilo in cui gira De1984, quindi non può raggiungerla. L\'accesso root, o la modalità NetworkPolicyManager con Shizuku, blocca per ID utente e raggiunge tutti i profili e gli utenti.</string>
+    <string name="firewall_other_profile_follows_info">⚠️ Questa app si trova in un altro profilo o utente. La modalità firewall attuale blocca un\'app in tutti i profili e gli utenti contemporaneamente, quindi questa copia segue gli interruttori della stessa app nel profilo in cui gira De1984. L\'accesso root, o la modalità NetworkPolicyManager con Shizuku, blocca ciascuno separatamente.</string>
     <string name="firewall_other_profile_follows_subtitle">Si imposta nel profilo di De1984</string>
     <string name="firewall_shared_uid_info">⚠️ Questa app condivide un ID utente con un\'app protetta, e la modalità firewall attuale blocca per ID utente, non per app. Bloccarla escluderebbe anche l\'app protetta, quindi De1984 lascia intatto l\'intero ID utente. Per bloccarla comunque, attiva \'Consenti Firewall Pacchetti Critici\' nelle Impostazioni e poi accendi l\'interruttore di questa app.</string>
     <string name="firewall_no_rule_protected_uid_info">⚠️ De1984 protegge l\'ID utente di questa app, quindi il criterio predefinito Blocca Tutto non le viene applicato — farlo potrebbe escludere un\'app di sistema protetta. Con \'Consenti Firewall Pacchetti Critici\' attivo puoi comunque bloccarla: accendi l\'interruttore di questa app.</string>
@@ -545,6 +549,7 @@
     <string name="firewall_badge_system_critical">Sistema Critico</string>
     <string name="firewall_badge_vpn_app">App VPN</string>
     <string name="firewall_badge_no_internet">Nessun Permesso Internet</string>
+    <string name="firewall_badge_frozen">Congelata</string>
     <string name="firewall_no_internet_info">ℹ️ Questa app attualmente non ha il permesso internet dichiarato nel suo manifest.\n\nBloccandola ora avrà effetto se l\'app ottiene il permesso internet in un aggiornamento futuro, fornendo protezione proattiva.</string>
 
     <!-- Protection Warning Banner -->

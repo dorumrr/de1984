@@ -65,8 +65,15 @@ data class NetworkPackage(
         io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_FIREWALL_POLICY ==
             io.github.dorumrr.de1984.utils.Constants.Settings.POLICY_BLOCK_ALL,
     val isWorkProfile: Boolean = false,
-    val isCloneProfile: Boolean = false
+    val isCloneProfile: Boolean = false,
+    val isFullUser: Boolean = false,
+    /** See PackageEntity.isHidden. */
+    val isHidden: Boolean = false
 ) {
+    /** Disabled or hidden: cannot run until unfrozen, yet its rule is kept and shown. */
+    val isFrozen: Boolean
+        get() = !isEnabled || isHidden
+
     /**
      * This row's OWN saved rule, whether or not the displayed flags have been replaced.
      *

@@ -2,6 +2,8 @@ package io.github.dorumrr.de1984.presentation.viewmodel
 
 import android.content.Context
 import android.content.Intent
+import io.github.dorumrr.de1984.De1984Application
+import io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper
 import android.net.Uri
 import android.os.Build
 import android.util.Log
@@ -92,6 +94,7 @@ class SettingsViewModel(
             firewallMode = FirewallMode.fromString(firewallModeString) ?: FirewallMode.AUTO,
             allowCriticalPackageUninstall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_UNINSTALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL),
             allowCriticalPackageFirewall = prefs.getBoolean(Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL, Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL),
+            includeOtherUsers = prefs.getBoolean(Constants.Settings.KEY_INCLUDE_OTHER_USERS, Constants.Settings.DEFAULT_INCLUDE_OTHER_USERS),
             showFirewallStartPrompt = prefs.getBoolean(Constants.Settings.KEY_SHOW_FIREWALL_START_PROMPT, Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT),
             confirmRuleChanges = prefs.getBoolean(Constants.Settings.KEY_CONFIRM_RULE_CHANGES, Constants.Settings.DEFAULT_CONFIRM_RULE_CHANGES),
             confirmFirewallStop = prefs.getBoolean(Constants.Settings.KEY_CONFIRM_FIREWALL_STOP, Constants.Settings.DEFAULT_CONFIRM_FIREWALL_STOP),
@@ -559,6 +562,25 @@ class SettingsViewModel(
     fun setAllowCriticalPackageFirewall(allow: Boolean) {
         _uiState.value = _uiState.value.copy(allowCriticalPackageFirewall = allow)
         saveSetting(Constants.Settings.KEY_ALLOW_CRITICAL_FIREWALL, allow)
+    }
+
+    fun setIncludeOtherUsers(include: Boolean) {
+        _uiState.value = _uiState.value.copy(includeOtherUsers = include)
+        saveSetting(Constants.Settings.KEY_INCLUDE_OTHER_USERS, include)
+        viewModelScope.launch(Dispatchers.IO) {
+            HiddenApiHelper.clearUserCache()
+            HiddenApiHelper.clearInstalledAppsCache()
+            // Read once here, off the main thread, so every later caller gets the new set from the cache.
+            HiddenApiHelper.getUsers(context)
+            val dependencies = (context.applicationContext as De1984Application).dependencies
+            // A newly listed user needs the same recommended allow rules the app start gives every user.
+            if (include) dependencies.provideEnsureSystemRecommendedRulesUseCase().invoke()
+            dependencies.notifyPackageDataChanged()
+            if (firewallManager.isActive()) {
+                firewallManager.triggerRuleReapplication()
+                context.sendBroadcast(Intent("io.github.dorumrr.de1984.FIREWALL_RULES_CHANGED").setPackage(context.packageName))
+            }
+        }
     }
 
     fun setShowFirewallStartPrompt(show: Boolean) {
@@ -1426,6 +1448,7 @@ data class SettingsUiState(
     val firewallMode: FirewallMode = FirewallMode.AUTO,
     val allowCriticalPackageUninstall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_UNINSTALL,
     val allowCriticalPackageFirewall: Boolean = Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL,
+    val includeOtherUsers: Boolean = Constants.Settings.DEFAULT_INCLUDE_OTHER_USERS,
     val showFirewallStartPrompt: Boolean = Constants.Settings.DEFAULT_SHOW_FIREWALL_START_PROMPT,
     val confirmRuleChanges: Boolean = Constants.Settings.DEFAULT_CONFIRM_RULE_CHANGES,
     val confirmFirewallStop: Boolean = Constants.Settings.DEFAULT_CONFIRM_FIREWALL_STOP,

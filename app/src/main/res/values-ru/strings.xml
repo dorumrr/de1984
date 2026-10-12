@@ -77,8 +77,10 @@
     <string name="filter_profile_personal">Личный</string>
     <string name="filter_profile_work">Рабочий</string>
     <string name="filter_profile_clone">Клон</string>
+    <string name="filter_profile_user">Другие пользователи</string>
     <string name="badge_work_profile">Рабочий</string>
     <string name="badge_clone_profile">Клон</string>
+    <string name="badge_other_user">Пользователь</string>
 
     <!-- Package Status -->
     <string name="status_uninstalled">Удалён</string>
@@ -391,6 +393,8 @@
 
     <string name="settings_allow_firewall_critical_title">Разрешить блокировку критических пакетов</string>
     <string name="settings_allow_firewall_critical_description">Разрешить блокировку сетевого доступа для критически важных системных и VPN-пакетов</string>
+    <string name="settings_include_other_users_title">Учитывать других пользователей</string>
+    <string name="settings_include_other_users_description">Показывать также приложения других пользователей устройства, например второго пространства. Нужен root или Shizuku. Root (iptables) и NetworkPolicyManager дают каждому пользователю собственные правила; ConnectivityManager применяет правило того же приложения в профиле De1984, а VPN до них не достаёт. Когда выключено, их правила сохраняются, но не применяются.</string>
 
     <string name="settings_show_firewall_prompt_title">Показывать запрос запуска файрволла</string>
     <string name="settings_show_firewall_prompt_description">Показывать запрос на запуск файрволла при открытии приложения, если файрволл неактивен</string>
@@ -532,8 +536,8 @@
     <string name="firewall_backend_cannot_block_uid">Нельзя заблокировать</string>
     <string name="firewall_system_uid_info">⚠️ Это часть самого Android, а не обычное приложение. Shizuku не может его заблокировать — Android отклоняет правила брандмауэра для своих компонентов. С root это возможно, но если идентификатор пользователя общий с защищённым приложением, например с Настройками, потребуется также включить \'Разрешить блокировку критических пакетов\' в настройках, и блокировка затронет и эти приложения.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 не смог определить идентификатор пользователя этого приложения в его профиле, поэтому к нему нельзя применить правило брандмауэра.</string>
-    <string name="firewall_other_profile_info">⚠️ Это приложение находится в другом профиле. Текущий режим брандмауэра работает с именами приложений в том профиле, где запущен De1984, поэтому не может его достичь. Root-доступ блокирует по идентификатору пользователя и охватывает все профили.</string>
-    <string name="firewall_other_profile_follows_info">⚠️ Это приложение находится в другом профиле. Текущий режим брандмауэра блокирует приложение сразу во всех профилях, поэтому эта копия следует переключателям того же приложения в профиле, где запущен De1984. Root-доступ блокирует каждый профиль отдельно.</string>
+    <string name="firewall_other_profile_info">⚠️ Это приложение находится в другом профиле или у другого пользователя. Текущий режим брандмауэра работает с именами приложений в том профиле, где запущен De1984, поэтому не может его достичь. Root-доступ или режим NetworkPolicyManager с Shizuku блокирует по идентификатору пользователя и охватывает все профили и всех пользователей.</string>
+    <string name="firewall_other_profile_follows_info">⚠️ Это приложение находится в другом профиле или у другого пользователя. Текущий режим брандмауэра блокирует приложение сразу во всех профилях и у всех пользователей, поэтому эта копия следует переключателям того же приложения в профиле, где запущен De1984. Root-доступ или режим NetworkPolicyManager с Shizuku блокирует каждого отдельно.</string>
     <string name="firewall_other_profile_follows_subtitle">Задаётся в профиле De1984</string>
     <string name="firewall_shared_uid_info">⚠️ Это приложение использует общий идентификатор пользователя с защищённым приложением, а текущий режим брандмауэра блокирует по идентификатору пользователя, а не по приложению. Его блокировка отключила бы и защищённое приложение, поэтому De1984 не трогает весь идентификатор. Чтобы всё же заблокировать, включите \'Разрешить блокировку критических пакетов\' в настройках, а затем включите переключатель этого приложения.</string>
     <string name="firewall_no_rule_protected_uid_info">⚠️ De1984 защищает идентификатор пользователя этого приложения, поэтому политика «Блокировать всё» по умолчанию к нему не применяется — иначе можно отключить защищённое системное приложение. При включённом параметре \'Разрешить блокировку критических пакетов\' его всё же можно заблокировать: включите переключатель этого приложения.</string>
@@ -548,6 +552,7 @@
     <string name="firewall_badge_system_critical">Критически важный</string>
     <string name="firewall_badge_vpn_app">VPN-приложение</string>
     <string name="firewall_badge_no_internet">Нет интернет-разрешения</string>
+    <string name="firewall_badge_frozen">Заморожено</string>
     <string name="firewall_no_internet_info">ℹ️ У этого приложения сейчас нет разрешения на интернет в манифесте.\n\nБлокировка сейчас вступит в силу, если приложение получит интернет-разрешение в будущем обновлении, обеспечивая превентивную защиту.</string>
 
     <!-- Protection Warning Banner -->

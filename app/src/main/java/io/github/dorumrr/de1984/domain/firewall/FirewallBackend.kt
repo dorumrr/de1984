@@ -103,7 +103,8 @@ fun uidBlockedNow(
 
 /**
  * Enabled rules grouped by the uid their app has now, per [installedUids] (user -> package -> uid, empty when
- * unread). A rule counts nowhere only once every profile was read and its app is in none; else it keeps a uid.
+ * unread). A rule counts nowhere when its user is not listed, or once every profile was read and its app is in
+ * none; else it keeps a uid.
  */
 fun rulesByCurrentUid(
     rules: List<FirewallRule>,
@@ -115,6 +116,7 @@ fun rulesByCurrentUid(
         .mapNotNull { rule ->
             val listed = installedUids[rule.userId]
             val uid = when {
+                listed == null && installedUids.isNotEmpty() -> return@mapNotNull null
                 listed.isNullOrEmpty() -> rule.uid
                 rule.packageName in listed -> listed.getValue(rule.packageName)
                 else -> installedUids.values.firstNotNullOfOrNull { it[rule.packageName] }

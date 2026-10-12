@@ -256,9 +256,10 @@ class PackagesViewModel(
         // were that the saved filter got overwritten, and that the chip could vanish leaving no way
         // out - and both are fixed where they happen.
         result = when (filterState.profileFilter.lowercase()) {
-            "personal" -> result.filter { !it.isWorkProfile && !it.isCloneProfile }
+            "personal" -> result.filter { !it.isWorkProfile && !it.isCloneProfile && !it.isFullUser }
             "work" -> result.filter { it.isWorkProfile }
             "clone" -> result.filter { it.isCloneProfile }
+            "user" -> result.filter { it.isFullUser }
             else -> result
         }
 

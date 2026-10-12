@@ -278,6 +278,7 @@ class NetworkPackageAdapter(
         private val vpnAppBadge: TextView = itemView.findViewById(R.id.vpn_app_badge)
         private val noInternetBadge: TextView = itemView.findViewById(R.id.no_internet_badge)
         private val profileBadge: TextView = itemView.findViewById(R.id.profile_badge)
+        private val frozenBadge: TextView = itemView.findViewById(R.id.frozen_badge)
         private val wifiContainer: View = itemView.findViewById(R.id.wifi_container)
         private val wifiIcon: ImageView = itemView.findViewById(R.id.wifi_icon)
         private val wifiBlockedOverlay: ImageView = itemView.findViewById(R.id.wifi_blocked_overlay)
@@ -308,7 +309,13 @@ class NetworkPackageAdapter(
 
             noInternetBadge.visibility = if (!pkg.hasInternetPermission) View.VISIBLE else View.GONE
 
+            frozenBadge.visibility = if (pkg.isFrozen) View.VISIBLE else View.GONE
+
             when {
+                pkg.isFullUser -> {
+                    profileBadge.text = itemView.context.getString(R.string.badge_other_user)
+                    profileBadge.visibility = View.VISIBLE
+                }
                 pkg.userId >= 10 && pkg.userId < 100 -> {
                     profileBadge.text = itemView.context.getString(R.string.badge_work_profile)
                     profileBadge.visibility = View.VISIBLE
@@ -362,7 +369,7 @@ class NetworkPackageAdapter(
                             try {
                                 val pm = context.packageManager
                                 val appInfo = io.github.dorumrr.de1984.data.multiuser.HiddenApiHelper.getApplicationInfoAsUser(
-                                    context, pkg.packageName, 0, pkg.userId
+                                    context, pkg.packageName, android.content.pm.PackageManager.MATCH_UNINSTALLED_PACKAGES, pkg.userId
                                 )
                                 if (appInfo != null) {
                                     pm.getApplicationIcon(appInfo)

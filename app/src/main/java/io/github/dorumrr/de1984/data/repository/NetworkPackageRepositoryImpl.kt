@@ -21,10 +21,8 @@ class NetworkPackageRepositoryImpl(
     override fun getNetworkPackages(): Flow<List<NetworkPackage>> {
         return packageDataSource.getPackages()
             .map { entities ->
+                // Every app, frozen ones included, so a rule can be set before it runs again.
                 entities
-                    // Show ALL apps (including those without network permissions)
-                    // This allows users to proactively block apps before they gain internet permission via updates
-                    .filter { it.isEnabled }
                     .map { entity ->
                         entity.toNetworkDomain().copy(
                             isSystemCritical = Constants.Firewall.isSystemCritical(entity.packageName)
@@ -239,6 +237,8 @@ private fun io.github.dorumrr.de1984.data.model.PackageEntity.toNetworkDomain():
         paintedAllowCritical = paintedAllowCritical,
         paintedBlockAllDefault = paintedBlockAllDefault,
         isWorkProfile = isWorkProfile,
-        isCloneProfile = isCloneProfile
+        isCloneProfile = isCloneProfile,
+        isFullUser = isFullUser,
+        isHidden = isHidden
     )
 }

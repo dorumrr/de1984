@@ -463,6 +463,7 @@ class FirewallViewModel(
                 // out, rather than being silently widened.
                 val hasWorkProfile = packages.any { it.isWorkProfile }
                 val hasCloneProfile = packages.any { it.isCloneProfile }
+                val hasFullUser = packages.any { it.isFullUser }
 
                 val blockingContext = computeBlockingContext(packages)
                 val filteredPackages = filterPackages(packages, activeFilter, blockingContext)
@@ -475,7 +476,8 @@ class FirewallViewModel(
                     error = null,
                     scanFailed = false,
                     hasWorkProfile = hasWorkProfile,
-                    hasCloneProfile = hasCloneProfile
+                    hasCloneProfile = hasCloneProfile,
+                    hasFullUser = hasFullUser
                 )
 
                 // Deliberately nothing here. An unmatched profile filter is left exactly as the user
@@ -533,9 +535,10 @@ class FirewallViewModel(
         // were that the saved filter got overwritten, and that the chip could vanish leaving no way
         // out - and both are fixed where they happen.
         result = when (filterState.profileFilter.lowercase()) {
-            "personal" -> result.filter { !it.isWorkProfile && !it.isCloneProfile }
+            "personal" -> result.filter { !it.isWorkProfile && !it.isCloneProfile && !it.isFullUser }
             "work" -> result.filter { it.isWorkProfile }
             "clone" -> result.filter { it.isCloneProfile }
+            "user" -> result.filter { it.isFullUser }
             else -> result
         }
 
@@ -1492,6 +1495,7 @@ data class FirewallUiState(
     val batchBlockResult: BatchBlockResult? = null,
     val hasWorkProfile: Boolean = false,
     val hasCloneProfile: Boolean = false,
+    val hasFullUser: Boolean = false,
 
     /**
      * What the running backend will consult before deciding whether a rule is worth sending.

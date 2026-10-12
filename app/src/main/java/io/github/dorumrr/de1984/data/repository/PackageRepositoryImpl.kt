@@ -34,7 +34,8 @@ class PackageRepositoryImpl(
         return packageDataSource.getPackages()
             .map { entities ->
                 entities
-                    .filter { !Constants.App.isOwnApp(it.packageName) }
+                    // Hidden apps are the firewall's to show: this tab's actions cannot unhide them.
+                    .filter { !Constants.App.isOwnApp(it.packageName) && !it.isHidden }
                     .map { it.toDomain() }
             }
     }

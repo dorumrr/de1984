@@ -57,6 +57,11 @@ class De1984Application : Application() {
         dependencies.shizukuManager.registerListeners()
 
         HiddenApiHelper.setShizukuManager(dependencies.shizukuManager)
+        HiddenApiHelper.onFullUsersRemoved = { userIds ->
+            dependencies.applicationScope.launch(Dispatchers.IO) {
+                userIds.forEach { dependencies.firewallRepository.deleteRulesByUserId(it) }
+            }
+        }
 
         ensureSystemRecommendedRules()
 

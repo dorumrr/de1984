@@ -273,7 +273,8 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             getString(io.github.dorumrr.de1984.R.string.filter_profile_all),
             getString(io.github.dorumrr.de1984.R.string.filter_profile_personal),
             getString(io.github.dorumrr.de1984.R.string.filter_profile_work),
-            getString(io.github.dorumrr.de1984.R.string.filter_profile_clone)
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_clone),
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_user)
         )
 
         currentTypeFilter = getString(io.github.dorumrr.de1984.R.string.packages_filter_all)
@@ -1529,6 +1530,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             getString(io.github.dorumrr.de1984.R.string.filter_profile_personal) -> "Personal"
             getString(io.github.dorumrr.de1984.R.string.filter_profile_work) -> "Work"
             getString(io.github.dorumrr.de1984.R.string.filter_profile_clone) -> "Clone"
+            getString(io.github.dorumrr.de1984.R.string.filter_profile_user) -> "User"
             else -> "All"
         }
     }
@@ -1539,6 +1541,7 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             "Personal" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_personal)
             "Work" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_work)
             "Clone" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_clone)
+            "User" -> getString(io.github.dorumrr.de1984.R.string.filter_profile_user)
             else -> getString(io.github.dorumrr.de1984.R.string.filter_profile_all)
         }
     }

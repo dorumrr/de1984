@@ -134,7 +134,8 @@ class NetworkPackageAdapter(
             onQuickToggle,
             iconCache,
             { hasCellular },
-            ::isRefusedByBackend
+            ::isRefusedByBackend,
+            { cachedBackendType == FirewallBackendType.IPTABLES }
         )
     }
 
@@ -267,7 +268,8 @@ class NetworkPackageAdapter(
         private val onQuickToggle: ((NetworkPackage, NetworkType) -> Unit)?,
         private val iconCache: LruCache<String, Drawable>,
         private val getHasCellular: () -> Boolean,
-        private val isRefusedByBackend: (NetworkPackage) -> Boolean
+        private val isRefusedByBackend: (NetworkPackage) -> Boolean,
+        private val isIptablesRunning: () -> Boolean
     ) : RecyclerView.ViewHolder(itemView) {
 
         private val selectionCheckbox: CheckBox = itemView.findViewById(R.id.selection_checkbox)
@@ -282,6 +284,7 @@ class NetworkPackageAdapter(
         private val wifiContainer: View = itemView.findViewById(R.id.wifi_container)
         private val wifiIcon: ImageView = itemView.findViewById(R.id.wifi_icon)
         private val wifiBlockedOverlay: ImageView = itemView.findViewById(R.id.wifi_blocked_overlay)
+        private val lanBadge: ImageView = itemView.findViewById(R.id.lan_badge)
         private val mobileContainer: View = itemView.findViewById(R.id.mobile_container)
         private val mobileIcon: ImageView = itemView.findViewById(R.id.mobile_icon)
         private val mobileBlockedOverlay: ImageView = itemView.findViewById(R.id.mobile_blocked_overlay)
@@ -419,6 +422,18 @@ class NetworkPackageAdapter(
             )
             wifiBlockedOverlay.visibility = if (wifiBlocked) View.VISIBLE else View.GONE
             wifiBlockedOverlay.setColorFilter(blockedColor, PorterDuff.Mode.SRC_IN)
+
+            // Only iptables enforces LAN, and its Wi-Fi block is a uid-wide DROP that takes LAN with it.
+            if (isIptablesRunning()) {
+                val lanBlocked = pkg.lanBlocked || wifiBlocked
+                lanBadge.visibility = View.VISIBLE
+                lanBadge.setColorFilter(if (lanBlocked) blockedColor else allowedColor, PorterDuff.Mode.SRC_IN)
+                lanBadge.contentDescription = itemView.context.getString(
+                    if (lanBlocked) R.string.cd_lan_blocked else R.string.cd_lan_allowed
+                )
+            } else {
+                lanBadge.visibility = View.GONE
+            }
 
             mobileIcon.setColorFilter(
                 if (mobileBlocked) blockedColor else allowedColor,

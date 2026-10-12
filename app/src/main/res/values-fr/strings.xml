@@ -204,6 +204,8 @@
     <string name="cd_mobile_blocked">Données mobiles bloquées</string>
     <string name="cd_roaming_status">État de l\'itinérance</string>
     <string name="cd_roaming_blocked">Itinérance bloquée</string>
+    <string name="cd_lan_allowed">LAN autorisé</string>
+    <string name="cd_lan_blocked">LAN bloqué</string>
     <string name="cd_shield_icon">Icône de bouclier</string>
     <string name="cd_open_app_settings">Ouvrir les paramètres de l\'application</string>
     <string name="cd_package_control_icon">Icône de gestion des paquets</string>

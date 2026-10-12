@@ -161,6 +161,8 @@
     <string name="cd_mobile_blocked">بيانات الهاتف محظور</string>
     <string name="cd_roaming_status">حالة التجوال</string>
     <string name="cd_roaming_blocked">التجوال محظور</string>
+    <string name="cd_lan_allowed">الشبكة المحلية مسموحة</string>
+    <string name="cd_lan_blocked">الشبكة المحلية محظورة</string>
     <string name="cd_shield_icon">أيقونة الدرع</string>
     <string name="cd_open_app_settings">فتح إعدادات التطبيق</string>
     <string name="cd_package_control_icon">أيقونة تحكم الحزم</string>

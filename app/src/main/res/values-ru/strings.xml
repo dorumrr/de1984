@@ -204,6 +204,8 @@
     <string name="cd_mobile_blocked">Мобильные данные заблокированы</string>
     <string name="cd_roaming_status">Состояние роуминга</string>
     <string name="cd_roaming_blocked">Роуминг заблокирован</string>
+    <string name="cd_lan_allowed">LAN разрешён</string>
+    <string name="cd_lan_blocked">LAN заблокирован</string>
     <string name="cd_shield_icon">Иконка щита</string>
     <string name="cd_open_app_settings">Открыть настройки приложения</string>
     <string name="cd_package_control_icon">Иконка управления пакетами</string>

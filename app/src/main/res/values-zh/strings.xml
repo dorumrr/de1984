@@ -214,6 +214,8 @@
     <string name="cd_mobile_blocked">移动数据已阻止</string>
     <string name="cd_roaming_status">漫游状态</string>
     <string name="cd_roaming_blocked">漫游已阻止</string>
+    <string name="cd_lan_allowed">局域网已允许</string>
+    <string name="cd_lan_blocked">局域网已阻止</string>
     <string name="cd_shield_icon">盾牌图标</string>
     <string name="cd_open_app_settings">打开应用设置</string>
     <string name="cd_package_control_icon">软件包控制图标</string>

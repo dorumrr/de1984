@@ -198,6 +198,17 @@
                         android:src="@drawable/ic_blocked_overlay"
                         android:visibility="gone"
                         android:contentDescription="@string/cd_wifi_blocked" />
+
+                    <ImageView
+                        android:id="@+id/lan_badge"
+                        android:layout_width="13dp"
+                        android:layout_height="13dp"
+                        android:layout_gravity="bottom|end"
+                        android:layout_marginEnd="2dp"
+                        android:layout_marginBottom="2dp"
+                        android:src="@drawable/ic_lan"
+                        android:visibility="gone"
+                        android:contentDescription="@string/cd_lan_allowed" />
                 </FrameLayout>
 
                 <!-- Mobile Icon with overlay - clickable for quick toggle -->

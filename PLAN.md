@@ -6,7 +6,7 @@ Tier: 3        how hard each step is worked. 1 quick, 2 normal, 3 full. Default 
 
    A. LAN CONTROL (#113)
    [x] A1  LAN switch is usable whenever iptables is available, firewall on or off
-   [ ] A2  List rows show the true LAN state on the Wi-Fi icon, iptables only
+   [x] A2  List rows show the true LAN state on the Wi-Fi icon, iptables only
 
    B. SORT (#114)
    [ ] B1  Firewall and Packages lists sort, and each tab remembers its choice

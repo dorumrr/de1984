@@ -205,6 +205,8 @@
     <string name="cd_mobile_blocked">Mobile blocked</string>
     <string name="cd_roaming_status">Roaming status</string>
     <string name="cd_roaming_blocked">Roaming blocked</string>
+    <string name="cd_lan_allowed">LAN allowed</string>
+    <string name="cd_lan_blocked">LAN blocked</string>
     <string name="cd_shield_icon">Shield icon</string>
     <string name="cd_open_app_settings">Open app settings</string>
     <string name="cd_package_control_icon">Package control icon</string>

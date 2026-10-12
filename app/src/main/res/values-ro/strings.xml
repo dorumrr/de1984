@@ -205,6 +205,8 @@
     <string name="cd_mobile_blocked">Date mobile blocate</string>
     <string name="cd_roaming_status">Stare roaming</string>
     <string name="cd_roaming_blocked">Roaming blocat</string>
+    <string name="cd_lan_allowed">LAN permis</string>
+    <string name="cd_lan_blocked">LAN blocat</string>
     <string name="cd_shield_icon">Pictogramă scut</string>
     <string name="cd_open_app_settings">Deschide setări aplicație</string>
     <string name="cd_package_control_icon">Pictogramă control pachete</string>

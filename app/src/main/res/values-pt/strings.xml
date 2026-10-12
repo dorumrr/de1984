@@ -204,6 +204,8 @@
     <string name="cd_mobile_blocked">Móvel bloqueado</string>
     <string name="cd_roaming_status">Estado do roaming</string>
     <string name="cd_roaming_blocked">Roaming bloqueado</string>
+    <string name="cd_lan_allowed">LAN permitida</string>
+    <string name="cd_lan_blocked">LAN bloqueada</string>
     <string name="cd_shield_icon">Ícone de escudo</string>
     <string name="cd_open_app_settings">Abrir configurações do app</string>
     <string name="cd_package_control_icon">Ícone de controle de pacotes</string>

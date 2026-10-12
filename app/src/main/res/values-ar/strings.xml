@@ -152,7 +152,7 @@
     <string name="firewall_multiselect_sheet_state_mixed">مختلط</string>
     <string name="firewall_multiselect_sheet_quick_actions">الإجراءات السريعة</string>
     <string name="firewall_multiselect_sheet_allow_all">السماح لكل الشبكات</string>
-    <string name="firewall_multiselect_sheet_block_all">حظر كل الشبكاتstring>
+    <string name="firewall_multiselect_sheet_block_all">حظر كل الشبكات</string>
 
     <string name="cd_app_icon">أيقونة التطبيق</string>
     <string name="cd_wifi_status">حالة الـWifi</string>
@@ -308,7 +308,7 @@
     <string name="settings_boot_protection_title">حماية التمهيد</string>
     <string name="settings_boot_protection_description">حظر كل حركة مرور الشبكة أثناء بدء تشغيل الجهاز حتى يتم تنشيط جدار الحماية (يتطلب جذر وMagisk)</string>
     <string name="settings_boot_protection_unavailable">يتطلب root and Magisk boot scripts</string>
-    <string name="settings_boot_protection_stuck">⚠️ لا تزال حماية التمهيد مثبتة وفقد De1984 الوصول إلى الجذر، لذلك لا يمكنه إزالتها. يحظر كل تمهيد جميع التطبيقات لمدة تصل إلى دقيقتين، ثم يرفع البرنامج النصي نفسه. حاول إزالته أدناه — وهذا يعمل إذا تم رفض الوصول إلى الجذر فقط، ولم يتم فقدانه.
+    <string name="settings_boot_protection_stuck">⚠️ لا تزال حماية التمهيد مثبتة وفقد De1984 الوصول إلى الجذر، لذلك لا يمكنه إزالتها. يحظر كل تمهيد جميع التطبيقات لمدة تصل إلى دقيقتين، ثم يرفع البرنامج النصي نفسه. حاول إزالته أدناه — وهذا يعمل إذا تم رفض الوصول إلى الجذر فقط، ولم يتم فقدانه.</string>
     <string name="settings_boot_protection_retry_remove">حاول للإزالة</string>
     <string name="boot_protection_remove_no_root">تعذّر إزالته. لا يزال De1984 لا يتمتع بوصول الجذر، لذلك لا يمكنه حذف ملف ضمن /data/adb. استعد الجذر وحاول مرة أخرى. حتى ذلك الحين، يحظر كل تمهيد التطبيقات لمدة تصل إلى دقيقتين، ثم يمسح نفسه.</string>
     <string name="boot_protection_rebooting">تمت إزالة حماية التمهيد. جارٍ إعادة تشغيل هاتفك...</string>
@@ -595,7 +595,7 @@
     <string name="vpn_failure_notification_title">فشل VPN جدار الحماية</string>
     <string name="vpn_failure_notification_text">فشلت واجهة VPN. جارٍ إعادة المحاولة تلقائيًا...</string>
     <string name="new_app_notification_title">اكتشف جدار حماية De1984 تطبيقًا جديدًا</string>
-    <string name="new_app_notification_text">تم تثبيت %s. اضغط لتكوين قواعد جدار الحماية.
+    <string name="new_app_notification_text">تم تثبيت %s. اضغط لتكوين قواعد جدار الحماية.</string>
     <string name="new_app_notification_action_block">حظر الشبكة</string>
     <string name="new_app_notification_action_allow">السماح بالشبكة</string>
 
@@ -633,7 +633,7 @@
     <string name="success_reset_to_google_defaults">تمت إعادة الضبط لافتراضيات جوجل بنجاح</string>
 
     <string name="boot_protection_enable_warning_title">تفعيل حماية التمهيد؟</string>
-    <string name="boot_protection_enable_warning_message">⚠️ ستتم إعادة تشغيل جهازك على الفور عند المتابعة.\n\nسيؤدي هذا إلى حظر جميع حركات مرور الشبكة أثناء تمهيد الجهاز حتى يبدأ تشغيل De1984.\n\n⚠️ إذا فشل تشغيل De1984، فلن يكون لجهازك شبكة.\n\nخيارات الاسترداد:\n1. افتح De1984 → الإعدادات → تعطيل حماية التمهيد\n2. إذا لم ينجح ذلك، فاستخدم ADB:\n   adb shell\n   su\n   rm /data/adb/post-fs-data.d/de1984_boot_protection.sh\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ ستتم إعادة تشغيل جهازك على الفور عند المتابعة.\n\nسيؤدي هذا إلى حظر جميع حركات مرور الشبكة أثناء تمهيد الجهاز حتى يبدأ تشغيل De1984.\n\n⚠️ إذا فشل تشغيل De1984، فلن يكون لجهازك شبكة.\n\nخيارات الاسترداد:\n1. افتح De1984 → الإعدادات → تعطيل حماية التمهيد\n2. إذا لم ينجح ذلك، فاستخدم ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">تعطيل حماية التمهيد؟</string>
     <string name="boot_protection_disable_warning_message">⚠️ ستتم إعادة تشغيل جهازك على الفور عند المتابعة.\n\nلن يتم حظر حركة مرور الشبكة بعد الآن أثناء التمهيد. قد تتسرّب البيانات من التطبيقات قبل أن يبدأ جدار الحماية.</string>
     <string name="boot_protection_reboot_failed">تم تغيير حماية التمهيد، ولكن تعذّر إعادة تشغيل الجهاز تلقائيًا. يرجى إعادة تشغيل جهازك يدويًا.</string>
@@ -687,4 +687,5 @@
 <string name="error_package_scan_failed_title">تعذّر قراءة قائمة التطبيقات</string>
     <string name="error_package_scan_failed_hint">إذا حدث هذا مرة أخرى، أغلق De1984 وأعد فتحه.</string>
     <string name="error_package_scan_failed">تعذّر قراءة قائمة التطبيقات على هذا الجهاز. إذا استمر هذا في الحدوث، أغلق De1984 وأعد فتحه.</string>
+    <string name="language_arabic">العربية</string>
 </resources>

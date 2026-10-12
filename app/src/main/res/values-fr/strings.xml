@@ -335,6 +335,7 @@
     <string name="language_italian">Italiano (Italien)</string>
     <string name="language_french">Français (Français)</string>
     <string name="language_russian">Русский (Russe)</string>
+    <string name="language_arabic">العربية (Arabe)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Version %s</string>

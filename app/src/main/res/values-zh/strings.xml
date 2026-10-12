@@ -345,6 +345,7 @@
     <string name="language_italian">Italiano (意大利语)</string>
     <string name="language_french">Français (法语)</string>
     <string name="language_russian">Русский (俄语)</string>
+    <string name="language_arabic">العربية (阿拉伯语)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">版本 %s</string>

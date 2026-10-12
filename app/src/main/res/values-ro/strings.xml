@@ -533,6 +533,7 @@
     <string name="firewall_network_label_roaming">Roaming</string>
     <string name="firewall_network_label_lan">Acces LAN</string>
     <string name="firewall_lan_requires_root">Necesită acces root</string>
+    <string name="firewall_lan_applies_with_iptables">Se aplică doar când firewall-ul folosește iptables</string>
     <string name="firewall_backend_cannot_block_uid">Nu poate fi blocată</string>
     <string name="firewall_system_uid_info">⚠️ Face parte din Android, nu este o aplicație obișnuită. Shizuku nu o poate bloca — Android refuză regulile de firewall pentru propriile componente. Cu root se poate, dar acolo unde ID-ul de utilizator este partajat cu o aplicație protejată, precum Setările, este nevoie și de \'Permite Firewall Pachete Critice\' activat în Setări, iar blocarea le va afecta și pe acelea.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 nu a putut determina ID-ul de utilizator al acestei aplicații în profilul său, deci nu i se poate aplica nicio regulă de firewall.</string>

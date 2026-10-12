@@ -35,6 +35,7 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallHealth
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -110,6 +111,7 @@ class FirewallViewModel(
         observeRuleUids()
         observeFirewallState()
         observeActiveBackendType()
+        observeIptablesAvailability()
         observePackageDataChanges()
         loadDefaultPolicy()
         // NOTE: Privilege monitoring for automatic backend switching is now handled
@@ -224,6 +226,26 @@ class FirewallViewModel(
                 )
             }
             .launchIn(viewModelScope)
+    }
+
+    // A LAN rule is worth writing whenever iptables could enforce it, so this is asked again on
+    // every privilege or backend change.
+    private fun observeIptablesAvailability() {
+        viewModelScope.launch {
+            combine(
+                rootManager.rootStatus,
+                shizukuManager.shizukuStatus,
+                firewallManager.activeBackendType
+            ) { _, _, backend -> backend }.collect { backend ->
+                // A running iptables answers for itself, which keeps the probe off the shared root
+                // shell during chain rewrites: a probe that is cancelled or times out closes it.
+                val available = backend == FirewallBackendType.IPTABLES ||
+                    withContext(NonCancellable) { firewallManager.isIptablesAvailable() }
+                if (available != _uiState.value.iptablesAvailable) {
+                    _uiState.value = _uiState.value.copy(iptablesAvailable = available)
+                }
+            }
+        }
     }
 
     /**
@@ -1104,12 +1126,7 @@ class FirewallViewModel(
                 // Persist. setNetworkAccess, not setAllNetworkBlocking: the button says "Block All
                 // Networks", and "all" was settled as WiFi + Mobile + Roaming + LAN.
                 // setAllNetworkBlocking is the narrower "Internet Access" control and leaves LAN.
-                //
-                // The LAN row is only shown on the iptables backend, so on the other three this
-                // writes a lanBlocked the user cannot see. It is recoverable - "Allow All Networks"
-                // clears it through the same path - and those backends ignore lanBlocked entirely.
-                // Hiding rather than disabling unenforceable controls is a settled decision that is
-                // not implemented yet; see PLAN.md, product decision 4.
+                // Only iptables enforces lanBlocked; the LAN switch says so wherever it is not running.
                 manageNetworkAccessUseCase.setNetworkAccess(packageId.packageName, packageId.userId, allowed = false, stampDefaultOnUntouched = !masked)
                     .onSuccess {
                         succeeded.add(packageId.packageName)
@@ -1496,6 +1513,7 @@ data class FirewallUiState(
     val hasWorkProfile: Boolean = false,
     val hasCloneProfile: Boolean = false,
     val hasFullUser: Boolean = false,
+    val iptablesAvailable: Boolean = false,
 
     /**
      * What the running backend will consult before deciding whether a rule is worth sending.

@@ -931,17 +931,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding.roamingToggle.root.visibility = View.GONE
         }
 
-        // Read once for the whole sheet. Two separate reads of this StateFlow used to sit in this
-        // function - the LAN toggle and the switch colours - and they could disagree if the backend
-        // changed between them.
-        //
         // NOT firewallManager.getActiveBackendType(), which the info-message block below uses. That
         // one returns currentBackend?.getType(), which is deliberately KEPT across a stop; this flow
         // is nulled. "Is a backend enforcing rules right now" is the question here, so the flow is
         // the right source and a stopped firewall must answer null.
         val runningBackendType = (requireActivity().application as De1984Application)
             .dependencies.firewallManager.activeBackendType.value
-        val isIptablesBackend = runningBackendType == FirewallBackendType.IPTABLES
 
         // Neither Shizuku backend can touch a uid outside the app range - "Android System" and the
         // rest of the platform. The rule would still be written and this sheet would still read
@@ -996,7 +991,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
             val lanBlocked = controlPkg.lanBlocked
             binding.lanToggle.toggleSwitch.isChecked = lanBlocked
-            if (isIptablesBackend) {
+            if (isLanSettable()) {
                 updateSwitchColors(binding.lanToggle.toggleSwitch, lanBlocked)
             }
 
@@ -1021,7 +1016,6 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         fun renderEnforcementState(currentPkg: NetworkPackage) {
             val backendNow = (requireActivity().application as De1984Application)
                 .dependencies.firewallManager.activeBackendType.value
-            val iptablesNow = backendNow == FirewallBackendType.IPTABLES
             val allowCriticalNow = currentPkg.paintedAllowCritical
 
             unblockableReason = backendNow.unblockableReason(
@@ -1049,26 +1043,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 }
             }
 
-            // LAN keeps its stronger and still-correct answer when the backend cannot do LAN at
-            // all; the refused subtitle only when LAN would otherwise be reachable.
-            binding.lanToggle.toggleSwitch.isEnabled = iptablesNow && canToggle
-            when {
-                !iptablesNow -> {
-                    binding.lanToggle.root.alpha = 0.6f
-                    binding.lanToggle.networkTypeSubtitle.visibility = View.VISIBLE
-                    binding.lanToggle.networkTypeSubtitle.text =
-                        getString(R.string.firewall_lan_requires_root)
-                }
-                controlsRefused -> {
-                    binding.lanToggle.root.alpha = 0.6f
-                    binding.lanToggle.networkTypeSubtitle.visibility = View.VISIBLE
-                    binding.lanToggle.networkTypeSubtitle.text = refusedText
-                }
-                else -> {
-                    binding.lanToggle.root.alpha = 1f
-                    binding.lanToggle.networkTypeSubtitle.visibility = View.GONE
-                }
-            }
+            renderLanToggle(binding.lanToggle, currentPkg)
 
             // Same ordering as the simple sheet: the protection setting first when it is what
             // bites, then the backend reason. This is the only explanation a root user gets.
@@ -1232,8 +1207,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             )
         }
 
-        // Setup LAN toggle - always visible, disabled when not using iptables backend.
-        // Its dimming and subtitle come from renderEnforcementState below, with everything else.
+        // Its enabled state, dimming and subtitle come from renderEnforcementState below.
         binding.lanDivider.visibility = View.VISIBLE
         binding.lanToggle.root.visibility = View.VISIBLE
 
@@ -1241,10 +1215,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             binding = binding.lanToggle,
             label = getString(R.string.firewall_network_label_lan),
             isBlocked = controlBase.lanBlocked,
-            // isIptablesBackend alone is not enough: an unresolved uid is out of reach for iptables
-            // too, and that is the one case where both conditions can be true at once.
-            enabled = isIptablesBackend && !controlsRefused &&
-                (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical),
+            // Fail closed: renderEnforcementState below decides it.
+            enabled = false,
             onToggle = { blocked ->
                 if (isUpdatingProgrammatically) return@setupNetworkToggle
                 viewModel.setLanBlocking(pkg.packageName, pkg.userId, blocked)
@@ -1273,7 +1245,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
 
             binding.lanToggle.root.setOnClickListener {
-                if (!binding.lanToggle.toggleSwitch.isEnabled && isIptablesBackend) {
+                if (!binding.lanToggle.toggleSwitch.isEnabled && isLanSettable()) {
                     showProtectionSnackbar(dialog)
                 }
             }
@@ -1430,10 +1402,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 binding.infoMessage.visibility = View.GONE
             }
 
-            binding.internetToggle.toggleSwitch.isEnabled =
-                (!currentPkg.isSystemCritical || allowCriticalNow) &&
-                    (!currentPkg.isVpnApp || allowCriticalNow) &&
-                    !controlsRefused
+            val canToggle = (!currentPkg.isSystemCritical || allowCriticalNow) &&
+                (!currentPkg.isVpnApp || allowCriticalNow) &&
+                !controlsRefused
+            binding.internetToggle.toggleSwitch.isEnabled = canToggle
+            renderLanToggle(binding.lanToggle, currentPkg)
             binding.internetToggle.networkTypeSubtitle.visibility = View.VISIBLE
             binding.internetToggle.networkTypeSubtitle.text = if (controlsRefused) {
                 getString(refusedSubtitle(unblockableReason))
@@ -1456,6 +1429,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 saved.roamingBlocked
             binding.internetToggle.toggleSwitch.isChecked = isBlocked
             updateSwitchColors(binding.internetToggle.toggleSwitch, isBlocked)
+            binding.lanToggle.toggleSwitch.isChecked = saved.lanBlocked
+            updateSwitchColors(binding.lanToggle.toggleSwitch, saved.lanBlocked)
             bindScreenOffToggle(
                 toggle = binding.foregroundOnlyToggle,
                 divider = binding.foregroundOnlyDivider,
@@ -1510,20 +1485,19 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 viewModel.setAllNetworkBlocking(pkg.packageName, pkg.userId, blocked)
             }
         )
-        // After setupNetworkToggle, never before: these one-time calls run AFTER the collector is
-        // registered, so at open they are the last writer and would undo the render.
-        renderSimpleEnforcementState(pkg)
-
         setupNetworkToggle(
             binding = binding.lanToggle,
             label = getString(R.string.firewall_network_label_lan),
             isBlocked = simpleBase.lanBlocked,
             enabled = false,
-            onToggle = { }
+            onToggle = { blocked ->
+                if (isUpdatingProgrammatically) return@setupNetworkToggle
+                viewModel.setLanBlocking(pkg.packageName, pkg.userId, blocked)
+            }
         )
-        binding.lanToggle.root.alpha = 0.6f
-        binding.lanToggle.networkTypeSubtitle.visibility = View.VISIBLE
-        binding.lanToggle.networkTypeSubtitle.text = getString(R.string.firewall_lan_requires_root)
+        // After every setupNetworkToggle, never before: these one-time calls run AFTER the collector
+        // is registered, so at open they are the last writer and would undo the render.
+        renderSimpleEnforcementState(pkg)
 
         binding.manageAppAction.setOnClickListener {
             dialog.dismiss()
@@ -1906,8 +1880,17 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val sheetBinding = BottomSheetFirewallMultiselectBinding.inflate(layoutInflater)
 
         val app = requireActivity().application as De1984Application
-        val backendType = app.dependencies.firewallManager.activeBackendType.value
-        val isIptablesBackend = backendType == FirewallBackendType.IPTABLES
+        val lanEnforcedNow =
+            app.dependencies.firewallManager.activeBackendType.value == FirewallBackendType.IPTABLES
+        val lanSettable = isLanSettable()
+
+        // Shares the subtitle with the Mixed state, which says more about what a tap will do.
+        fun noteLanNotEnforced() {
+            if (!lanEnforcedNow && sheetBinding.lanToggle.networkTypeSubtitle.visibility != View.VISIBLE) {
+                sheetBinding.lanToggle.networkTypeSubtitle.visibility = View.VISIBLE
+                sheetBinding.lanToggle.networkTypeSubtitle.text = getString(R.string.firewall_lan_applies_with_iptables)
+            }
+        }
 
         // Guarding entry into the selection is not enough. A package can be selected while it is
         // still reachable and become unreachable before the batch runs - the firewall starts, or a
@@ -1995,7 +1978,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             )
         }
 
-        if (isIptablesBackend) {
+        if (lanSettable) {
             sheetBinding.lanDivider.visibility = View.VISIBLE
             sheetBinding.lanToggle.root.visibility = View.VISIBLE
             setupMultiSelectToggleInitial(
@@ -2003,6 +1986,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 label = getString(R.string.firewall_network_label_lan),
                 state = lanState
             )
+            noteLanNotEnforced()
         }
 
         sheetBinding.allowAllButton.setOnClickListener {
@@ -2042,8 +2026,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 updateMultiSelectToggleState(sheetBinding.roamingToggle, newRoamingState)
             }
 
-            if (isIptablesBackend) {
+            if (lanSettable) {
                 updateMultiSelectToggleState(sheetBinding.lanToggle, newLanState)
+                noteLanNotEnforced()
             }
 
             isUpdatingProgrammatically = false
@@ -2082,10 +2067,11 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
         }
 
-        if (isIptablesBackend) {
+        if (lanSettable) {
             sheetBinding.lanToggle.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
                 if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
                 sheetBinding.lanToggle.networkTypeSubtitle.visibility = View.GONE
+                noteLanNotEnforced()
                 updateSwitchColors(sheetBinding.lanToggle.toggleSwitch, isChecked)
                 viewModel.batchSetLanBlocking(getSelectedPackagePairs(), isChecked)
             }
@@ -2210,6 +2196,39 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
      * any of them has to act on all three - the same thing the bottom sheet's single "Internet
      * Access" switch does. See issue #72.
      */
+    // LAN rules are saved whenever iptables could enforce them; only a running iptables applies them.
+    private fun isLanSettable(): Boolean =
+        (requireActivity().application as De1984Application).dependencies.firewallManager
+            .activeBackendType.value == FirewallBackendType.IPTABLES || viewModel.uiState.value.iptablesAvailable
+
+    // Only iptables enforces LAN, so only its refusal counts, whichever backend runs now.
+    private fun renderLanToggle(toggle: NetworkTypeToggleBinding, pkg: NetworkPackage) {
+        val running = (requireActivity().application as De1984Application).dependencies.firewallManager
+            .activeBackendType.value
+        val enforcedNow = running == FirewallBackendType.IPTABLES
+        val settable = isLanSettable()
+        val context = viewModel.uiState.value.blockingContext
+        val reason = FirewallBackendType.IPTABLES.unblockableReason(pkg, context)
+        val refused = reason?.fixableHere == false
+        // A row the running backend paints over hides its saved LAN value, and a first rule written
+        // from it would drop the Block All default (rowPaintedAllowed); wait for iptables there.
+        val paintedOver = !enforcedNow && running.unblockableReason(pkg, context)
+            .let { it != null && it != UnblockableReason.SIBLING_RULE_OVERRIDES_DEFAULT }
+        val allowCritical = pkg.paintedAllowCritical
+        val canToggle = (!pkg.isSystemCritical || allowCritical) && (!pkg.isVpnApp || allowCritical) &&
+            !refused && !paintedOver
+        toggle.toggleSwitch.isEnabled = settable && canToggle
+        toggle.root.alpha = if (!settable || refused || paintedOver) 0.6f else 1f
+        val subtitle = when {
+            !settable -> getString(R.string.firewall_lan_requires_root)
+            refused -> getString(refusedSubtitle(reason))
+            !enforcedNow -> getString(R.string.firewall_lan_applies_with_iptables)
+            else -> null
+        }
+        toggle.networkTypeSubtitle.visibility = if (subtitle != null) View.VISIBLE else View.GONE
+        subtitle?.let { toggle.networkTypeSubtitle.text = it }
+    }
+
     private fun supportsGranularControl(): Boolean {
         val app = requireActivity().application as De1984Application
         return app.dependencies.firewallManager.supportsGranularControl()

@@ -534,6 +534,7 @@
     <string name="firewall_network_label_roaming">Роуминг</string>
     <string name="firewall_network_label_lan">Доступ к LAN</string>
     <string name="firewall_lan_requires_root">Требуется root-доступ</string>
+    <string name="firewall_lan_applies_with_iptables">Действует, только когда файрволл использует iptables</string>
     <string name="firewall_backend_cannot_block_uid">Нельзя заблокировать</string>
     <string name="firewall_system_uid_info">⚠️ Это часть самого Android, а не обычное приложение. Shizuku не может его заблокировать — Android отклоняет правила брандмауэра для своих компонентов. С root это возможно, но если идентификатор пользователя общий с защищённым приложением, например с Настройками, потребуется также включить \'Разрешить блокировку критических пакетов\' в настройках, и блокировка затронет и эти приложения.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 не смог определить идентификатор пользователя этого приложения в его профиле, поэтому к нему нельзя применить правило брандмауэра.</string>

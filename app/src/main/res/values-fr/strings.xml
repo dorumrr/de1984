@@ -531,6 +531,7 @@
     <string name="firewall_network_label_roaming">Itinérance</string>
     <string name="firewall_network_label_lan">Accès LAN</string>
     <string name="firewall_lan_requires_root">Requiert l\'accès root</string>
+    <string name="firewall_lan_applies_with_iptables">S\'applique uniquement lorsque le pare-feu utilise iptables</string>
     <string name="firewall_backend_cannot_block_uid">Ne peut pas être bloquée</string>
     <string name="firewall_system_uid_info">⚠️ Fait partie d\'Android lui-même, ce n\'est pas une application ordinaire. Shizuku ne peut pas la bloquer — Android refuse les règles de pare-feu pour ses propres composants. Le root le peut, mais lorsque l\'identifiant utilisateur est partagé avec une application protégée, comme les Paramètres, il faut aussi \'Autoriser les paquets critiques du pare-feu\' activé dans les Paramètres, et le blocage affectera également ces applications.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 n\'a pas pu déterminer l\'identifiant utilisateur de cette application dans son profil ; aucune règle de pare-feu ne peut donc lui être appliquée.</string>

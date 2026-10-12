@@ -448,6 +448,7 @@
     <string name="firewall_network_label_roaming">التجوال</string>
     <string name="firewall_network_label_lan">وصول الشبكة المحلية</string>
     <string name="firewall_lan_requires_root">يتطلب الوصول إلى الجذر</string>
+    <string name="firewall_lan_applies_with_iptables">يُطبَّق فقط عندما يستخدم جدار الحماية iptables</string>
 <string name="firewall_backend_cannot_block_uid">لا يمكن الحظر</string>
     <string name="firewall_system_uid_info">⚠️ جزء من نظام Android نفسه، وليس تطبيقًا عاديًا. لا يمكن لـ Shizuku حظره — يرفض Android قواعد جدار الحماية لمكوناته الخاصة. يمكن لـ Root ذلك، ولكن عندما تتم مشاركة معرف المستخدم مع تطبيق محمي، مثل الإعدادات، فإنه يحتاج أيضًا إلى تمكين \'السماح بالحزم الحرجة لجدار الحماية\' في الإعدادات وسيؤثر على تلك التطبيقات أيضًا.</string>
     <string name="firewall_unknown_uid_info">⚠️ تعذّر على De1984 تحديد معرف مستخدم هذا التطبيق في ملفه التعريفي، لذلك لا يمكن تطبيق أي قاعدة جدار حماية عليه.</string>

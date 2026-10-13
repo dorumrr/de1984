@@ -1202,17 +1202,6 @@ class AndroidPackageDataSource(
                 if (existingRule != null) {
                     firewallRepository.updateBackgroundBlocking(packageName, userId, blocked)
                 } else {
-                    val defaultPolicy = prefs.getString(
-                        Constants.Settings.KEY_DEFAULT_FIREWALL_POLICY,
-                        Constants.Settings.DEFAULT_FIREWALL_POLICY
-                    )
-                    val isBlockAllDefault = defaultPolicy == Constants.Settings.POLICY_BLOCK_ALL
-
-                    // A FIRST rule created by a BLOCK tap must not stamp the Block All default onto the
-                    // networks the user did not touch. That only ever happens on a row already showing
-                    // Allowed - one Block All is not reaching - so inheriting the default there turned
-                    // one tap on one icon into a block on three, with an Undo that lifted only one.
-                    // An UNBLOCK tap keeps the old behaviour: the row was showing those as blocked.
                     val rule = FirewallRule(
                         packageName = packageName,
                         userId = userId,

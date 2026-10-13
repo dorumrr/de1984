@@ -1121,7 +1121,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
 
         val observerJob = viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.uiState.collect { state ->
+            viewModel.uiState.collect { _ ->
                 // Match the FULL identity, name AND userId. Issue #97.
                 //
                 // A package name is not unique: the same app in a work or cloned profile is a second
@@ -1485,7 +1485,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         updateToggleFromPackage(pkg)
 
         val observerJob = viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.uiState.collect { state ->
+            viewModel.uiState.collect { _ ->
                 // Same fix as showGranularControlSheet - see the note there for the full mechanism.
                 // This sheet's Internet Access switch drifts the same way on a multi-profile device;
                 // fixing only one of the two leaves the other reporting another profile's state.

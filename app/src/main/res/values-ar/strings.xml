@@ -231,7 +231,7 @@
     <string name="backend_switched_notification_big">تم توصيل تطبيق VPN آخر. بدّل De1984 تلقائيًا إلى %1$s لمواصلة حمايتك. انقر لفتح الإعدادات.</string>
     <string name="backend_upgraded_notification_title">تمت ترقية جدار الحماية</string>
     <string name="backend_upgraded_notification_text">تم التبديل من VPN إلى %1$s</string>
-    <string name="backend_upgraded_notification_big">تم اكتشاف وصول الجذر. تمت ترقية De1984 من VPN إلى %1$s تلقائيًا لتوفير حماية أفضل. تم تعيين الوضع إلى تلقائي.</string>
+    <string name="backend_upgraded_notification_big">تمت ترقية De1984 من VPN إلى %1$s تلقائيًا لتوفير حماية أفضل.</string>
     <string name="backend_toast_success">تم تبديل جدار حماية De1984 إلى %1$s</string>
     <string name="backend_notification_text_success">يستخدم جدار حماية De1984 الآن واجهة خلفية %1$s</string>
     <string name="backend_unknown_name">غير معروف</string>
@@ -450,12 +450,13 @@
     <string name="firewall_empty_state_title">لم يتم العثور على حزم</string>
     <string name="firewall_empty_state_subtitle">حاول تعديل عوامل التصفية</string>
     <string name="firewall_vpn_info_message">استخدام جدار حماية قائم على VPN لأن جهازك غير مُجذّر أو لا يحتوي على Shizuku. لا يمكنك استخدام تطبيق VPN آخر أثناء تنشيط جدار حماية De1984.</string>
+    <string name="firewall_vpn_info_message_privileged">استخدام جدار حماية قائم على VPN. لا يمكنك استخدام تطبيق VPN آخر أثناء تنشيط جدار حماية De1984.</string>
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">بيانات الهاتف</string>
     <string name="firewall_network_label_roaming">التجوال</string>
     <string name="firewall_network_label_lan">وصول الشبكة المحلية</string>
-    <string name="firewall_lan_requires_root">يتطلب الوصول إلى الجذر</string>
     <string name="firewall_lan_applies_with_iptables">يُطبَّق فقط عندما يستخدم جدار الحماية iptables</string>
+    <string name="firewall_multiselect_lan_skips_refused">يتخطى التطبيقات التي لا يستطيع iptables حظرها</string>
 <string name="firewall_backend_cannot_block_uid">لا يمكن الحظر</string>
     <string name="firewall_system_uid_info">⚠️ جزء من نظام Android نفسه، وليس تطبيقًا عاديًا. لا يمكن لـ Shizuku حظره — يرفض Android قواعد جدار الحماية لمكوناته الخاصة. يمكن لـ Root ذلك، ولكن عندما تتم مشاركة معرف المستخدم مع تطبيق محمي، مثل الإعدادات، فإنه يحتاج أيضًا إلى تمكين \'السماح بالحزم الحرجة لجدار الحماية\' في الإعدادات وسيؤثر على تلك التطبيقات أيضًا.</string>
     <string name="firewall_unknown_uid_info">⚠️ تعذّر على De1984 تحديد معرف مستخدم هذا التطبيق في ملفه التعريفي، لذلك لا يمكن تطبيق أي قاعدة جدار حماية عليه.</string>

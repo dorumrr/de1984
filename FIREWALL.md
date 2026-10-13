@@ -91,7 +91,7 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
      1. Detect backend failure immediately (monitor Shizuku state, test iptables commands -  make sure here we have the most compatible check method for most android versions and privilege tools)
      2. Start VPN backend FIRST, establish VPN tunnel with all blocked apps
      3. Wait until the VPN backend reports active (`awaitBackendActive`; "Backend Health" below says what active means)
-     4. Only then clean up old backend (remove iptables rules, stop ConnectivityManager). If it will not go, its rules may stay in force under VPN and the "Firewall did not stop" notification is posted; the in-app banner then shows the switch to VPN instead (PLAN.md L1)
+     4. Only then clean up old backend (remove iptables rules, stop ConnectivityManager). If it will not go, its rules may stay in force under VPN and the "Firewall did not stop" notification is posted; the in-app banner then shows the switch to VPN instead
      5. If VPN fails to start, the firewall is reported down (`FALLBACK_FAILED`); there is no timed retry, but the next app open or root/Shizuku change tries the start again (see "Retry Strategy")
    - **Not this order**: a loss that `handlePrivilegeChange` handles in AUTO mode (a root or Shizuku status change) tears the old backend down first, then starts (see "Switching scenarios")
    - **Fail-safe**: If VPN cannot be established, the firewall is DOWN and the user is notified: the banner stays until protection returns, and the high-priority notification clears when tapped
@@ -741,7 +741,7 @@ Notifications inform users about firewall state changes and issues.
 - ✅ Backend failure with VPN permission needed (high priority)
 - ✅ Firewall falls back to VPN at boot (low priority, the monitor's foreground notification)
 - ✅ Foreground service running (required by Android)
-- ✅ Automatic backend switch success (default priority, on the `firewall_alerts_channel`): "Firewall Upgraded" / "Switched from VPN to <backend>", auto-cancel; its expanded text says "Root access detected ... Mode set to AUTO", which is untrue on a Shizuku gain and the stored mode is kept (PLAN.md L6)
+- ✅ Automatic backend switch success (default priority, on the `firewall_alerts_channel`): "Firewall Upgraded" / "Switched from VPN to <backend>", auto-cancel; its expanded text says "De1984 upgraded from VPN to <backend> automatically for better protection." The stored mode is kept
 - ✅ Another VPN connected and the firewall moved off VPN: "Firewall Backend Switched" / "Switched to <backend> — another VPN is active", ongoing, on the `firewall_alerts_channel`. Cleared by a stop, by any firewall-down report and by a mode change in Settings; it shares id 1007 with "Firewall Upgraded", so either replaces the other
 - ✅ Stop from the tile or widget with the stop confirmation off: "Firewall stopped" / "All apps can now access the internet. Tap to start it again.", auto-cancel, on the `firewall_alerts_channel`, id 1010. Cleared once protection is back
 - ❌ Health check failures (logged only, no notification spam)

@@ -292,7 +292,7 @@
     <string name="backend_switched_notification_big">另一个 VPN 应用已连接。De1984 已自动切换到 %1$s 以继续保护你。点按可打开设置。</string>
     <string name="backend_upgraded_notification_title">防火墙已升级</string>
     <string name="backend_upgraded_notification_text">已从 VPN 切换到 %1$s</string>
-    <string name="backend_upgraded_notification_big">检测到 root 权限。De1984 已自动从 VPN 切换到 %1$s 以获得更好的保护。模式已设为 AUTO。</string>
+    <string name="backend_upgraded_notification_big">De1984 已自动从 VPN 切换到 %1$s 以获得更好的保护。</string>
     <string name="backend_toast_success">De1984 已切换到 %1$s</string>
     <string name="backend_notification_text_success">De1984 现在使用 %1$s 后端</string>
     <string name="backend_unknown_name">未知</string>
@@ -543,12 +543,13 @@
     <string name="firewall_empty_state_title">未找到软件包</string>
     <string name="firewall_empty_state_subtitle">尝试调整您的筛选器</string>
     <string name="firewall_vpn_info_message">使用基于 VPN 的防火墙，因为您的设备未 Root 或没有 Shizuku。De1984 防火墙活动时，您无法使用其他 VPN 应用。</string>
+    <string name="firewall_vpn_info_message_privileged">正在使用基于 VPN 的防火墙。De1984 防火墙活动时，您无法使用其他 VPN 应用。</string>
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">移动数据</string>
     <string name="firewall_network_label_roaming">漫游</string>
     <string name="firewall_network_label_lan">局域网访问</string>
-    <string name="firewall_lan_requires_root">需要 Root 访问权限</string>
     <string name="firewall_lan_applies_with_iptables">仅在防火墙使用 iptables 时生效</string>
+    <string name="firewall_multiselect_lan_skips_refused">跳过 iptables 无法拦截的应用</string>
     <string name="firewall_backend_cannot_block_uid">无法拦截</string>
     <string name="firewall_system_uid_info">⚠️ 这是 Android 系统本身的一部分，而不是普通应用。Shizuku 无法拦截它 — Android 拒绝对自身组件应用防火墙规则。使用 Root 可以，但如果其用户 ID 与受保护的应用（例如设置）共用，则还需在设置中启用“允许防火墙关键软件包”，并且拦截也会影响这些应用。</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 无法确定此应用在其配置文件中的用户 ID，因此无法对其应用任何防火墙规则。</string>

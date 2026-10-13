@@ -282,7 +282,7 @@
     <string name="backend_switched_notification_big">Outra app VPN ligou-se. O De1984 mudou automaticamente para %1$s para continuar a proteger-te. Toca para abrir as definições.</string>
     <string name="backend_upgraded_notification_title">Firewall melhorada</string>
     <string name="backend_upgraded_notification_text">Mudou de VPN para %1$s</string>
-    <string name="backend_upgraded_notification_big">Acesso root detetado. O De1984 mudou automaticamente de VPN para %1$s para melhor proteção. Modo definido como AUTO.</string>
+    <string name="backend_upgraded_notification_big">O De1984 mudou automaticamente de VPN para %1$s para melhor proteção.</string>
     <string name="backend_toast_success">O De1984 mudou para %1$s</string>
     <string name="backend_notification_text_success">O De1984 está agora a usar o backend %1$s</string>
     <string name="backend_unknown_name">Desconhecido</string>
@@ -533,12 +533,13 @@
     <string name="firewall_empty_state_title">Nenhum pacote encontrado</string>
     <string name="firewall_empty_state_subtitle">Tente ajustar seus filtros</string>
     <string name="firewall_vpn_info_message">Usando firewall baseado em VPN porque seu dispositivo não tem root ou não tem Shizuku. Você não pode usar outro app VPN enquanto o De1984 Firewall está ativo.</string>
+    <string name="firewall_vpn_info_message_privileged">Usando firewall baseado em VPN. Você não pode usar outro app VPN enquanto o De1984 Firewall está ativo.</string>
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Dados Móveis</string>
     <string name="firewall_network_label_roaming">Roaming</string>
     <string name="firewall_network_label_lan">Acesso LAN</string>
-    <string name="firewall_lan_requires_root">Requer acesso root</string>
     <string name="firewall_lan_applies_with_iptables">Aplica-se apenas quando o firewall usa iptables</string>
+    <string name="firewall_multiselect_lan_skips_refused">Ignora as apps que o iptables não consegue bloquear</string>
     <string name="firewall_backend_cannot_block_uid">Não pode ser bloqueada</string>
     <string name="firewall_system_uid_info">⚠️ Faz parte do próprio Android, não é uma aplicação normal. O Shizuku não a consegue bloquear — o Android recusa regras de firewall para os seus próprios componentes. Com root é possível, mas onde o ID de utilizador é partilhado com uma aplicação protegida, como as Configurações, também é necessário \'Permitir Firewall de Pacotes Críticos\' ativado nas Configurações, e o bloqueio afetará também essas aplicações.</string>
     <string name="firewall_unknown_uid_info">⚠️ O De1984 não conseguiu determinar o ID de utilizador desta aplicação no seu perfil, pelo que nenhuma regra de firewall lhe pode ser aplicada.</string>

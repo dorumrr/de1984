@@ -709,9 +709,6 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
 
         val rootStatus = viewModel.rootStatus.value
         val shizukuStatus = viewModel.shizukuStatus.value
-        val hasRoot = rootStatus == io.github.dorumrr.de1984.data.common.RootStatus.ROOTED_WITH_PERMISSION
-        val hasShizukuRoot = shizukuStatus == io.github.dorumrr.de1984.data.common.ShizukuStatus.RUNNING_WITH_PERMISSION &&
-                viewModel.isShizukuRootMode()
         val hasShizuku = shizukuStatus == io.github.dorumrr.de1984.data.common.ShizukuStatus.RUNNING_WITH_PERMISSION
         val isAndroid13Plus = android.os.Build.VERSION.SDK_INT >= 33
 
@@ -744,7 +741,9 @@ class SettingsFragmentViews : BaseFragment<FragmentSettingsBinding>() {
             requirementText = connectivityManagerRequirement
         ))
 
-        val iptablesAvailable = hasRoot || hasShizukuRoot
+        val iptablesAvailable = io.github.dorumrr.de1984.data.common.hasIptablesPrivilege(
+            rootStatus, shizukuStatus, viewModel::isShizukuRootMode
+        )
         backends.add(BackendOption(
             mode = io.github.dorumrr.de1984.domain.firewall.FirewallMode.IPTABLES,
             displayName = getString(R.string.backend_iptables_name),

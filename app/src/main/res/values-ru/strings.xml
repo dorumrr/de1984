@@ -285,7 +285,7 @@
     <string name="backend_switched_notification_big">Подключилось другое VPN-приложение. De1984 автоматически переключился на %1$s, чтобы продолжать вас защищать. Нажмите, чтобы открыть настройки.</string>
     <string name="backend_upgraded_notification_title">Брандмауэр улучшен</string>
     <string name="backend_upgraded_notification_text">Переключено с VPN на %1$s</string>
-    <string name="backend_upgraded_notification_big">Обнаружен root-доступ. De1984 автоматически переключился с VPN на %1$s для лучшей защиты. Режим установлен на AUTO.</string>
+    <string name="backend_upgraded_notification_big">De1984 автоматически переключился с VPN на %1$s для лучшей защиты.</string>
     <string name="backend_toast_success">De1984 переключился на %1$s</string>
     <string name="backend_notification_text_success">De1984 теперь использует бэкенд %1$s</string>
     <string name="backend_unknown_name">Неизвестно</string>
@@ -536,12 +536,13 @@
     <string name="firewall_empty_state_title">Пакеты не найдены</string>
     <string name="firewall_empty_state_subtitle">Попробуйте изменить фильтры</string>
     <string name="firewall_vpn_info_message">Используется VPN-файрволл, так как на устройстве нет root или Shizuku. Вы не можете использовать другое VPN-приложение, пока активен файрволл De1984.</string>
+    <string name="firewall_vpn_info_message_privileged">Используется VPN-файрволл. Вы не можете использовать другое VPN-приложение, пока активен файрволл De1984.</string>
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Мобильные данные</string>
     <string name="firewall_network_label_roaming">Роуминг</string>
     <string name="firewall_network_label_lan">Доступ к LAN</string>
-    <string name="firewall_lan_requires_root">Требуется root-доступ</string>
     <string name="firewall_lan_applies_with_iptables">Действует, только когда файрволл использует iptables</string>
+    <string name="firewall_multiselect_lan_skips_refused">Пропускает приложения, которые iptables не может заблокировать</string>
     <string name="firewall_backend_cannot_block_uid">Нельзя заблокировать</string>
     <string name="firewall_system_uid_info">⚠️ Это часть самого Android, а не обычное приложение. Shizuku не может его заблокировать — Android отклоняет правила брандмауэра для своих компонентов. С root это возможно, но если идентификатор пользователя общий с защищённым приложением, например с Настройками, потребуется также включить \'Разрешить блокировку критических пакетов\' в настройках, и блокировка затронет и эти приложения.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 не смог определить идентификатор пользователя этого приложения в его профиле, поэтому к нему нельзя применить правило брандмауэра.</string>

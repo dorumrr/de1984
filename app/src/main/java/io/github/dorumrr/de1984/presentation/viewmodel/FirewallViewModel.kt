@@ -35,7 +35,7 @@ import io.github.dorumrr.de1984.domain.firewall.FirewallHealth
 import io.github.dorumrr.de1984.ui.common.SuperuserBannerState
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
+import io.github.dorumrr.de1984.data.common.hasIptablesPrivilege
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -228,24 +228,24 @@ class FirewallViewModel(
             .launchIn(viewModelScope)
     }
 
-    // A LAN rule is worth writing whenever iptables could enforce it, so this is asked again on
-    // every privilege or backend change.
+    // Never a probe of its own: one queued behind a long chain rewrite times out and closes the
+    // shared root shell under it. A binary the planner or Settings saw fail rules iptables out.
     private fun observeIptablesAvailability() {
-        viewModelScope.launch {
-            combine(
-                rootManager.rootStatus,
-                shizukuManager.shizukuStatus,
-                firewallManager.activeBackendType
-            ) { _, _, backend -> backend }.collect { backend ->
-                // A running iptables answers for itself, which keeps the probe off the shared root
-                // shell during chain rewrites: a probe that is cancelled or times out closes it.
-                val available = backend == FirewallBackendType.IPTABLES ||
-                    withContext(NonCancellable) { firewallManager.isIptablesAvailable() }
+        combine(
+            rootManager.rootStatus,
+            shizukuManager.shizukuStatus,
+            firewallManager.activeBackendType,
+            firewallManager.iptablesBinaryUsable
+        ) { root, shizuku, backend, binaryUsable ->
+            backend == FirewallBackendType.IPTABLES ||
+                (hasIptablesPrivilege(root, shizuku, shizukuManager::isShizukuRootMode) && binaryUsable != false)
+        }
+            .onEach { available ->
                 if (available != _uiState.value.iptablesAvailable) {
                     _uiState.value = _uiState.value.copy(iptablesAvailable = available)
                 }
             }
-        }
+            .launchIn(viewModelScope)
     }
 
     /**
@@ -350,8 +350,10 @@ class FirewallViewModel(
      * current chip and search leave visible, so asking it would treat every hidden row as unknown -
      * and a batch would then either drop rows it should keep or keep rows it should drop.
      */
-    fun unreachableSelection(ids: Set<PackageId>): Set<PackageId> {
-        val backend = firewallManager.activeBackendType.value
+    fun unreachableSelection(
+        ids: Set<PackageId>,
+        backend: FirewallBackendType? = firewallManager.activeBackendType.value,
+    ): Set<PackageId> {
         val context = computeBlockingContext(cachedPackages)
         return cachedPackages
             .filter { it.id in ids && backend.blockingRefused(it, context) }

@@ -663,13 +663,6 @@ class SettingsViewModel(
         setFirewallMode(pendingMode, forceEvenIfOtherVpnActive = true)
     }
 
-    fun checkIptablesAvailability(callback: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val available = firewallManager.isIptablesAvailable()
-            callback(available)
-        }
-    }
-
     fun isShizukuRootMode(): Boolean {
         return shizukuManager.isShizukuRootMode()
     }

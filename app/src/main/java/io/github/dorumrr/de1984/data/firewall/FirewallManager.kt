@@ -132,6 +132,9 @@ class FirewallManager(
     private val _activeBackendType = MutableStateFlow<FirewallBackendType?>(null)
     val activeBackendType: StateFlow<FirewallBackendType?> = _activeBackendType.asStateFlow()
 
+    /** From the probes the planner and Settings already run; see IptablesFirewallBackend.binaryUsable. */
+    val iptablesBinaryUsable: StateFlow<Boolean?> get() = iptablesBackend.binaryUsable
+
     /**
      * Whether the firewall is actually enforcing, for the UI to render.
      *
@@ -1067,11 +1070,6 @@ class FirewallManager(
 
     fun supportsGranularControl(): Boolean {
         return currentBackend?.supportsGranularControl() ?: true
-    }
-
-    /** Runs on Dispatchers.IO: checkAvailability shells out to `iptables --version`. */
-    suspend fun isIptablesAvailable(): Boolean = withContext(Dispatchers.IO) {
-        iptablesBackend.checkAvailability().isSuccess
     }
 
     /**

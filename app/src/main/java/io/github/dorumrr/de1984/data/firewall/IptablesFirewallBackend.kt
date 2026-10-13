@@ -15,6 +15,9 @@ import io.github.dorumrr.de1984.domain.model.FirewallRule
 import io.github.dorumrr.de1984.domain.model.NetworkType
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -25,6 +28,11 @@ class IptablesFirewallBackend(
     private val shizukuManager: ShizukuManager,
     private val errorHandler: ErrorHandler
 ) : FirewallBackend {
+
+    private val _binaryUsable = MutableStateFlow<Boolean?>(null)
+
+    /** The last `iptables --version` that ran; null until one has. A run that did not finish says nothing. */
+    val binaryUsable: StateFlow<Boolean?> = _binaryUsable.asStateFlow()
     
     companion object {
         private const val TAG = "IptablesFirewall"
@@ -601,6 +609,7 @@ class IptablesFirewallBackend(
             }
 
             val (exitCode, _) = executeCommand("$IPTABLES --version")
+            if (exitCode >= 0) _binaryUsable.value = exitCode == 0
 
             if (exitCode != 0) {
                 val error = errorHandler.createUnsupportedDeviceError(

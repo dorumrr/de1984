@@ -282,7 +282,7 @@
     <string name="backend_switched_notification_big">Une autre application VPN s\'est connectée. De1984 est passé automatiquement à %1$s pour continuer à vous protéger. Touchez pour ouvrir les réglages.</string>
     <string name="backend_upgraded_notification_title">Pare-feu amélioré</string>
     <string name="backend_upgraded_notification_text">Passé du VPN à %1$s</string>
-    <string name="backend_upgraded_notification_big">Accès root détecté. De1984 est passé automatiquement du VPN à %1$s pour une meilleure protection. Mode réglé sur AUTO.</string>
+    <string name="backend_upgraded_notification_big">De1984 est passé automatiquement du VPN à %1$s pour une meilleure protection.</string>
     <string name="backend_toast_success">De1984 est passé à %1$s</string>
     <string name="backend_notification_text_success">De1984 utilise maintenant le moteur %1$s</string>
     <string name="backend_unknown_name">Inconnu</string>
@@ -533,12 +533,13 @@
     <string name="firewall_empty_state_title">Aucun paquet trouvé</string>
     <string name="firewall_empty_state_subtitle">Essayez d\'ajuster vos filtres</string>
     <string name="firewall_vpn_info_message">Utilisation du pare-feu basé sur VPN car votre appareil n\'est pas rooté ou n\'a pas Shizuku. Vous ne pouvez pas utiliser une autre application VPN pendant que le pare-feu De1984 est actif.</string>
+    <string name="firewall_vpn_info_message_privileged">Utilisation du pare-feu basé sur VPN. Vous ne pouvez pas utiliser une autre application VPN pendant que le pare-feu De1984 est actif.</string>
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Données mobiles</string>
     <string name="firewall_network_label_roaming">Itinérance</string>
     <string name="firewall_network_label_lan">Accès LAN</string>
-    <string name="firewall_lan_requires_root">Requiert l\'accès root</string>
     <string name="firewall_lan_applies_with_iptables">S\'applique uniquement lorsque le pare-feu utilise iptables</string>
+    <string name="firewall_multiselect_lan_skips_refused">Ignore les applications qu\'iptables ne peut pas bloquer</string>
     <string name="firewall_backend_cannot_block_uid">Ne peut pas être bloquée</string>
     <string name="firewall_system_uid_info">⚠️ Fait partie d\'Android lui-même, ce n\'est pas une application ordinaire. Shizuku ne peut pas la bloquer — Android refuse les règles de pare-feu pour ses propres composants. Le root le peut, mais lorsque l\'identifiant utilisateur est partagé avec une application protégée, comme les Paramètres, il faut aussi \'Autoriser les paquets critiques du pare-feu\' activé dans les Paramètres, et le blocage affectera également ces applications.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 n\'a pas pu déterminer l\'identifiant utilisateur de cette application dans son profil ; aucune règle de pare-feu ne peut donc lui être appliquée.</string>

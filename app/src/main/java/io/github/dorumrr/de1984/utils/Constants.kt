@@ -59,10 +59,6 @@ object Constants {
         val PACKAGE_TYPE_FILTERS = listOf("All", "User", "System")
         val PACKAGE_STATE_FILTERS = listOf("Enabled", "Disabled", "Uninstalled")
 
-        const val ANDROID_PACKAGE_PREFIX = "com.android"
-        const val GOOGLE_PACKAGE_PREFIX = "com.google"
-        const val SYSTEM_PACKAGE_PREFIX = "android"
-
         object MultiSelect {
             const val MAX_SELECTION_COUNT = 50
             const val TOAST_CANNOT_SELECT_CRITICAL = "Important/Essential packages must be uninstalled individually"

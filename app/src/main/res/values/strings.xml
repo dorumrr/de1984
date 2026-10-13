@@ -284,7 +284,7 @@
     <string name="backend_switched_notification_big">Another VPN app connected. De1984 switched to %1$s automatically to keep protecting you. Tap to open settings.</string>
     <string name="backend_upgraded_notification_title">Firewall Upgraded</string>
     <string name="backend_upgraded_notification_text">Switched from VPN to %1$s</string>
-    <string name="backend_upgraded_notification_big">Root access detected. De1984 upgraded from VPN to %1$s automatically for better protection. Mode set to AUTO.</string>
+    <string name="backend_upgraded_notification_big">De1984 upgraded from VPN to %1$s automatically for better protection.</string>
     <string name="backend_toast_success">De1984 Firewall switched to %1$s</string>
     <string name="backend_notification_text_success">De1984 Firewall is now using the %1$s backend</string>
     <string name="backend_unknown_name">Unknown</string>
@@ -537,12 +537,13 @@
     <string name="firewall_empty_state_title">No packages found</string>
     <string name="firewall_empty_state_subtitle">Try adjusting your filters</string>
     <string name="firewall_vpn_info_message">Using VPN-based firewall because your device is not rooted or doesn\'t have Shizuku. You cannot use another VPN app while De1984 Firewall is active.</string>
+    <string name="firewall_vpn_info_message_privileged">Using VPN-based firewall. You cannot use another VPN app while De1984 Firewall is active.</string>
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Mobile Data</string>
     <string name="firewall_network_label_roaming">Roaming</string>
     <string name="firewall_network_label_lan">LAN Access</string>
-    <string name="firewall_lan_requires_root">Requires root access</string>
     <string name="firewall_lan_applies_with_iptables">Applies only when the firewall uses iptables</string>
+    <string name="firewall_multiselect_lan_skips_refused">Skips apps that iptables cannot block</string>
     <string name="firewall_backend_cannot_block_uid">Cannot be blocked</string>
     <string name="firewall_system_uid_info">⚠️ Part of Android itself, not an ordinary app. Shizuku cannot block it — Android refuses firewall rules for its own components. Root can, but where the user ID is shared with a protected app, such as Settings, it also needs \'Allow Firewall Critical Packages\' enabled in Settings and will affect those apps too.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 could not determine this app\'s user ID in its profile, so no firewall rule can be applied to it.</string>

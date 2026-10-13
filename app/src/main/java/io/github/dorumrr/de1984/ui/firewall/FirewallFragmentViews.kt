@@ -26,6 +26,8 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import android.widget.TextView
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
+import io.github.dorumrr.de1984.data.common.hasIptablesPrivilege
+import io.github.dorumrr.de1984.data.common.hasPrivilegedAccess
 import io.github.dorumrr.de1984.databinding.BottomSheetFirewallMultiselectBinding
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionGranularBinding
 import io.github.dorumrr.de1984.databinding.BottomSheetPackageActionSimpleBinding
@@ -1104,7 +1106,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                     .dependencies.firewallManager.getActiveBackendType() == FirewallBackendType.VPN
             ) {
                 binding.infoMessage.visibility = View.VISIBLE
-                binding.infoMessage.text = getString(R.string.firewall_vpn_info_message)
+                // The "no root, no Shizuku" reason is true only without them: VPN can be picked, or a fallback.
+                val deps = (requireActivity().application as De1984Application).dependencies
+                binding.infoMessage.text = getString(
+                    if (hasPrivilegedAccess(deps.rootManager.rootStatus.value, deps.shizukuManager.shizukuStatus.value)) {
+                        R.string.firewall_vpn_info_message_privileged
+                    } else {
+                        R.string.firewall_vpn_info_message
+                    }
+                )
             } else {
                 binding.infoMessage.visibility = View.GONE
             }
@@ -1906,17 +1916,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         val sheetBinding = BottomSheetFirewallMultiselectBinding.inflate(layoutInflater)
 
         val app = requireActivity().application as De1984Application
-        val lanEnforcedNow =
-            app.dependencies.firewallManager.activeBackendType.value == FirewallBackendType.IPTABLES
         val lanSettable = isLanSettable()
-
-        // Shares the subtitle with the Mixed state, which says more about what a tap will do.
-        fun noteLanNotEnforced() {
-            if (!lanEnforcedNow && sheetBinding.lanToggle.networkTypeSubtitle.visibility != View.VISIBLE) {
-                sheetBinding.lanToggle.networkTypeSubtitle.visibility = View.VISIBLE
-                sheetBinding.lanToggle.networkTypeSubtitle.text = getString(R.string.firewall_lan_applies_with_iptables)
-            }
-        }
 
         // Guarding entry into the selection is not enough. A package can be selected while it is
         // still reachable and become unreachable before the batch runs - the firewall starts, or a
@@ -1948,6 +1948,27 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         // unblock them.
         val selectedPkgs = actionableIds.mapNotNull { viewModel.enforcedPackage(it)?.asSaved() }
 
+        // Only iptables enforces LAN, so its refusals pick the LAN targets whichever backend runs now.
+        val lanUnreachable = viewModel.unreachableSelection(selectedPackages, FirewallBackendType.IPTABLES)
+        val lanIds = actionableIds.filterNot { it in lanUnreachable }.toSet()
+        val lanShown = lanSettable && lanIds.isNotEmpty()
+
+        // The LAN subtitle carries every note at once. The collector below redraws it when the backend changes.
+        var lanMixed = false
+        var lanNoteBackend: FirewallBackendType? = null
+        fun renderLanNote(mixed: Boolean) {
+            lanMixed = mixed
+            lanNoteBackend = app.dependencies.firewallManager.activeBackendType.value
+            val lanEnforcedNow = lanNoteBackend == FirewallBackendType.IPTABLES
+            val note = listOfNotNull(
+                getString(R.string.firewall_multiselect_sheet_state_mixed).takeIf { mixed },
+                getString(R.string.firewall_multiselect_lan_skips_refused).takeIf { lanIds.size < actionableIds.size },
+                getString(R.string.firewall_lan_applies_with_iptables).takeIf { !lanEnforcedNow },
+            ).joinToString("\n")
+            sheetBinding.lanToggle.networkTypeSubtitle.visibility = if (note.isEmpty()) View.GONE else View.VISIBLE
+            sheetBinding.lanToggle.networkTypeSubtitle.text = note
+        }
+
         if (selectedPkgs.isEmpty() || actionableIds.isEmpty()) {
             dialog.dismiss()
             return
@@ -1974,7 +1995,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
         val mobileState = calculateToggleState(selectedPkgs) { it.mobileBlocked }
         val roamingState = calculateToggleState(selectedPkgs) { it.roamingBlocked }
-        val lanState = calculateToggleState(selectedPkgs) { it.lanBlocked }
+        val lanState = calculateToggleState(selectedPkgs.filter { it.id in lanIds }) { it.lanBlocked }
 
         setupMultiSelectToggleInitial(
             binding = sheetBinding.wifiToggle,
@@ -2004,7 +2025,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             )
         }
 
-        if (lanSettable) {
+        if (lanShown) {
             sheetBinding.lanDivider.visibility = View.VISIBLE
             sheetBinding.lanToggle.root.visibility = View.VISIBLE
             setupMultiSelectToggleInitial(
@@ -2012,7 +2033,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 label = getString(R.string.firewall_network_label_lan),
                 state = lanState
             )
-            noteLanNotEnforced()
+            renderLanNote(mixed = lanState == MultiSelectToggleState.MIXED)
         }
 
         sheetBinding.allowAllButton.setOnClickListener {
@@ -2040,7 +2061,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
             val newMobileState = calculateToggleState(packages) { it.mobileBlocked }
             val newRoamingState = calculateToggleState(packages) { it.roamingBlocked }
-            val newLanState = calculateToggleState(packages) { it.lanBlocked }
+            val lanPackages = packages.filter { it.id in lanIds }
+            val newLanState = calculateToggleState(lanPackages) { it.lanBlocked }
 
             updateMultiSelectToggleState(sheetBinding.wifiToggle, newWifiState)
 
@@ -2052,9 +2074,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 updateMultiSelectToggleState(sheetBinding.roamingToggle, newRoamingState)
             }
 
-            if (lanSettable) {
+            if (lanShown && lanPackages.isNotEmpty()) {
                 updateMultiSelectToggleState(sheetBinding.lanToggle, newLanState)
-                noteLanNotEnforced()
+                renderLanNote(mixed = newLanState == MultiSelectToggleState.MIXED)
             }
 
             isUpdatingProgrammatically = false
@@ -2093,13 +2115,12 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
         }
 
-        if (lanSettable) {
+        if (lanShown) {
             sheetBinding.lanToggle.toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
                 if (isUpdatingProgrammatically) return@setOnCheckedChangeListener
-                sheetBinding.lanToggle.networkTypeSubtitle.visibility = View.GONE
-                noteLanNotEnforced()
+                renderLanNote(mixed = false)
                 updateSwitchColors(sheetBinding.lanToggle.toggleSwitch, isChecked)
-                viewModel.batchSetLanBlocking(getSelectedPackagePairs(), isChecked)
+                viewModel.batchSetLanBlocking(lanIds.map { it.packageName to it.userId }, isChecked)
             }
         }
 
@@ -2142,6 +2163,10 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
                 if (changed && visible.isNotEmpty() && !isUpdatingProgrammatically) {
                     AppLogger.d(TAG, "showMultiSelectRulesSheet: uiState collected - updating from ${visible.size} of ${trackedSelection.size} selected")
                     updateTogglesFromPackages(visible)
+                }
+                // A backend change alone leaves every saved rule equal, so nothing above redraws the note.
+                if (lanShown && app.dependencies.firewallManager.activeBackendType.value != lanNoteBackend) {
+                    renderLanNote(lanMixed)
                 }
             }
         }
@@ -2229,8 +2254,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
     // Only iptables enforces LAN, so only its refusal counts, whichever backend runs now.
     private fun renderLanToggle(toggle: NetworkTypeToggleBinding, pkg: NetworkPackage) {
-        val running = (requireActivity().application as De1984Application).dependencies.firewallManager
-            .activeBackendType.value
+        val deps = (requireActivity().application as De1984Application).dependencies
+        val running = deps.firewallManager.activeBackendType.value
         val enforcedNow = running == FirewallBackendType.IPTABLES
         val settable = isLanSettable()
         val context = viewModel.uiState.value.blockingContext
@@ -2246,7 +2271,15 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         toggle.toggleSwitch.isEnabled = settable && canToggle
         toggle.root.alpha = if (!settable || refused || paintedOver) 0.6f else 1f
         val subtitle = when {
-            !settable -> getString(R.string.firewall_lan_requires_root)
+            // With the privilege in hand, only a failed iptables binary leaves LAN unsettable.
+            !settable -> getString(
+                if (hasIptablesPrivilege(
+                        deps.rootManager.rootStatus.value,
+                        deps.shizukuManager.shizukuStatus.value,
+                        deps.shizukuManager::isShizukuRootMode
+                    )
+                ) R.string.backend_not_supported_on_device else R.string.backend_iptables_requirement
+            )
             refused -> getString(refusedSubtitle(reason))
             !enforcedNow -> getString(R.string.firewall_lan_applies_with_iptables)
             else -> null

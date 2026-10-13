@@ -284,7 +284,7 @@
     <string name="backend_switched_notification_big">O altă aplicație VPN s-a conectat. De1984 a trecut automat la %1$s ca să te protejeze în continuare. Atinge pentru a deschide setările.</string>
     <string name="backend_upgraded_notification_title">Firewall îmbunătățit</string>
     <string name="backend_upgraded_notification_text">S-a trecut de la VPN la %1$s</string>
-    <string name="backend_upgraded_notification_big">Acces root detectat. De1984 a trecut automat de la VPN la %1$s pentru protecție mai bună. Modul a fost setat pe AUTO.</string>
+    <string name="backend_upgraded_notification_big">De1984 a trecut automat de la VPN la %1$s pentru protecție mai bună.</string>
     <string name="backend_toast_success">De1984 a trecut la %1$s</string>
     <string name="backend_notification_text_success">De1984 folosește acum backendul %1$s</string>
     <string name="backend_unknown_name">Necunoscut</string>
@@ -535,12 +535,13 @@
     <string name="firewall_empty_state_title">Nu s-au găsit pachete</string>
     <string name="firewall_empty_state_subtitle">Încearcă să ajustezi filtrele</string>
     <string name="firewall_vpn_info_message">Se folosește Firewall-ul bazat pe VPN deoarece dispozitivul tău nu este rootat sau nu are Shizuku. Nu poți folosi o altă aplicație VPN în timp ce De1984 Firewall este activ.</string>
+    <string name="firewall_vpn_info_message_privileged">Se folosește Firewall-ul bazat pe VPN. Nu poți folosi o altă aplicație VPN în timp ce De1984 Firewall este activ.</string>
     <string name="firewall_network_label_wifi">WiFi</string>
     <string name="firewall_network_label_mobile">Date mobile</string>
     <string name="firewall_network_label_roaming">Roaming</string>
     <string name="firewall_network_label_lan">Acces LAN</string>
-    <string name="firewall_lan_requires_root">Necesită acces root</string>
     <string name="firewall_lan_applies_with_iptables">Se aplică doar când firewall-ul folosește iptables</string>
+    <string name="firewall_multiselect_lan_skips_refused">Omite aplicațiile pe care iptables nu le poate bloca</string>
     <string name="firewall_backend_cannot_block_uid">Nu poate fi blocată</string>
     <string name="firewall_system_uid_info">⚠️ Face parte din Android, nu este o aplicație obișnuită. Shizuku nu o poate bloca — Android refuză regulile de firewall pentru propriile componente. Cu root se poate, dar acolo unde ID-ul de utilizator este partajat cu o aplicație protejată, precum Setările, este nevoie și de \'Permite Firewall Pachete Critice\' activat în Setări, iar blocarea le va afecta și pe acelea.</string>
     <string name="firewall_unknown_uid_info">⚠️ De1984 nu a putut determina ID-ul de utilizator al acestei aplicații în profilul său, deci nu i se poate aplica nicio regulă de firewall.</string>

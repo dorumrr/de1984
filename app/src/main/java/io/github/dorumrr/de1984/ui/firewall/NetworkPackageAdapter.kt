@@ -25,7 +25,6 @@ import io.github.dorumrr.de1984.domain.model.NetworkPackage
 import io.github.dorumrr.de1984.domain.model.PackageId
 import io.github.dorumrr.de1984.domain.model.PackageType
 import io.github.dorumrr.de1984.utils.Constants
-import io.github.dorumrr.de1984.utils.PackageUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

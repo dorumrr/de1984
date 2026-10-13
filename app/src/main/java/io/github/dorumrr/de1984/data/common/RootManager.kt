@@ -30,6 +30,11 @@ enum class RootStatus {
 fun hasPrivilegedAccess(rootStatus: RootStatus, shizukuStatus: ShizukuStatus): Boolean =
     rootStatus == RootStatus.ROOTED_WITH_PERMISSION || shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION
 
+/** iptables needs root, or Shizuku started as root; ADB-mode Shizuku cannot run it. */
+fun hasIptablesPrivilege(rootStatus: RootStatus, shizukuStatus: ShizukuStatus, shizukuIsRoot: () -> Boolean): Boolean =
+    rootStatus == RootStatus.ROOTED_WITH_PERMISSION ||
+        (shizukuStatus == ShizukuStatus.RUNNING_WITH_PERMISSION && shizukuIsRoot())
+
 fun privilegeProbesAnswered(rootStatus: RootStatus, shizukuStatus: ShizukuStatus): Boolean =
     rootStatus != RootStatus.CHECKING && shizukuStatus != ShizukuStatus.CHECKING
 

@@ -27,8 +27,10 @@ Skill: /phi:fix. Defect: with the firewall off, or on another backend, a rooted 
 "Requires root access" and a dead LAN switch (`FirewallFragmentViews.kt:1024,1054-1061`), so the
 user cannot set LAN in advance.
 
-- Available means `FirewallManager.isIptablesAvailable()` (`FirewallManager.kt:1073`) is true,
-  probed when a sheet opens and again when privilege or the running backend changes.
+- Available means iptables is running, or root / Shizuku-as-root is held (`hasIptablesPrivilege`,
+  `RootManager.kt`) and the last finished `iptables --version` did not fail
+  (`IptablesFirewallBackend.binaryUsable`). No probe of its own: re-read on every privilege or
+  backend change (`FirewallViewModel.observeIptablesAvailability`).
 - Every LAN gate site moves together: full sheet colours `:999-1000`, enable and subtitle
   `:1054-1061`, initial enable `:1246`, protection snackbar `:1276`; simple sheet `:1517-1526`
   (today always disabled and set once; it opens when `supportsGranularControl()` is false,
@@ -36,7 +38,8 @@ user cannot set LAN in advance.
   `:1023-1024`; batch sheet `:1909-1910`, `:1998`, `:2045`, `:2085`
   (today hides LAN when not on iptables).
 - Available but not running on iptables: the switch works and the LAN row shows a new note,
-  "Applies only when the firewall uses iptables". Not available: "Requires root access", disabled.
+  "Applies only when the firewall uses iptables". Not available, disabled: "Requires root or
+  Shizuku in root mode" without the privilege, "Not supported on this device" with it.
 - Refusal rules do not change: `canToggle`, `controlsRefused`, critical and VPN-app protection.
 
 Proves (root granted before launch; debug chain `de1984dbg_output`, `Constants.kt:32`): on a rooted
@@ -45,7 +48,7 @@ the note; after a tap, force-stop and relaunch, the sheet still shows LAN blocke
 firewall on iptables gives exactly 3 `-d <range> -j DROP` lines for that uid in
 `iptables -S de1984dbg_output` and 2 in `ip6tables -S de1984dbg_output`; switching LAN off gives 0;
 the batch sheet shows LAN; the simple sheet (ConnectivityManager) offers LAN with the note; with
-root denied, the switch is disabled with "Requires root access".
+root denied, the switch is disabled with "Requires root or Shizuku in root mode".
 
 ## A2  List rows show the true LAN state on the Wi-Fi icon, iptables only
 Depends: A1

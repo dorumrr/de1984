@@ -1,0 +1,6 @@
+Sort both app lists by name, recently installed, recently updated or (Firewall) configured first #114
+Set LAN access with the firewall off or in any mode when root is available; on iptables the Wi-Fi icon shows the LAN state #113
+Optionally show apps of other users on this device #109
+Search also matches package names #112
+Arabic translation #100
+Messages that wrongly said the device was not rooted or the mode was set to AUTO

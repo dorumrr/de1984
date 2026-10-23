@@ -1,0 +1,3 @@
+Boot Protection works on KernelSU and APatch #110
+VPN mode sees when another VPN app takes over and no longer takes the VPN back from it #116
+Boot Protection warning now says the block lifts itself after 2 minutes if De1984 fails to start

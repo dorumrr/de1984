@@ -387,8 +387,8 @@
     <string name="settings_show_icons_description">Might speed up the app when disabled</string>
 
     <string name="settings_boot_protection_title">Boot Protection</string>
-    <string name="settings_boot_protection_description">Block all network traffic during device startup until firewall activates (requires root and Magisk)</string>
-    <string name="settings_boot_protection_unavailable">Requires root and Magisk boot scripts</string>
+    <string name="settings_boot_protection_description">Block all network traffic during device startup until firewall activates (requires root and Magisk, KernelSU or APatch)</string>
+    <string name="settings_boot_protection_unavailable">Requires root and Magisk, KernelSU or APatch boot scripts</string>
     <string name="settings_boot_protection_stuck">⚠️ Boot protection is still installed and De1984 has lost root access, so it cannot remove it. Every boot blocks all apps for up to 2 minutes, then the script lifts itself. Try to remove it below — that works if root was only denied, not lost.</string>
     <string name="settings_boot_protection_retry_remove">Try to remove</string>
     <string name="boot_protection_remove_no_root">Could not remove it. De1984 still has no root access, so it cannot delete a file under /data/adb. Restore root and try again. Until then each boot blocks apps for up to 2 minutes, then clears itself.</string>
@@ -756,7 +756,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Enable Boot Protection?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Your device will restart immediately when you continue.\n\nThis will block ALL network traffic during device boot until De1984 starts.\n\n⚠️ If De1984 fails to start, your device will have no network.\n\nRecovery Options:\n1. Open De1984 → Settings → Disable Boot Protection\n2. If that doesn\'t work, use ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Your device will restart immediately when you continue.\n\nThis will block ALL network traffic during device boot until De1984 starts.\n\n⚠️ If De1984 fails to start, apps have no network for up to 2 minutes after each boot, then the block lifts itself.\n\nRecovery Options:\n1. Open De1984 → Settings → Disable Boot Protection\n2. If that doesn\'t work, use ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Disable Boot Protection?</string>
     <string name="boot_protection_disable_warning_message">⚠️ Your device will restart immediately when you continue.\n\nNetwork traffic will no longer be blocked during boot. Apps may leak data before firewall starts.</string>
     <string name="boot_protection_reboot_failed">Boot protection was changed, but the device could not be restarted automatically. Please restart your device manually.</string>

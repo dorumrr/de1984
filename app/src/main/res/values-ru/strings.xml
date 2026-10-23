@@ -386,8 +386,8 @@
     <string name="settings_show_icons_description">Отключение может ускорить работу приложения</string>
 
     <string name="settings_boot_protection_title">Защита при загрузке</string>
-    <string name="settings_boot_protection_description">Блокировать весь сетевой трафик при запуске устройства до активации файрволла (требуется root и Magisk)</string>
-    <string name="settings_boot_protection_unavailable">Требуется root и скрипты загрузки Magisk</string>
+    <string name="settings_boot_protection_description">Блокировать весь сетевой трафик при запуске устройства до активации файрволла (требуется root и Magisk, KernelSU или APatch)</string>
+    <string name="settings_boot_protection_unavailable">Требуется root и скрипты загрузки Magisk, KernelSU или APatch</string>
     <string name="settings_boot_protection_stuck">⚠️ Защита при загрузке всё ещё установлена, а De1984 потерял root-доступ и не может её удалить. При каждой загрузке все приложения блокируются до 2 минут, затем скрипт снимает блокировку сам. Попробуйте удалить её ниже — это сработает, если в root было лишь отказано, а не утрачено.</string>
     <string name="settings_boot_protection_retry_remove">Попробовать удалить</string>
     <string name="boot_protection_remove_no_root">Не удалось удалить. У De1984 по-прежнему нет root-доступа, поэтому он не может удалить файл в /data/adb. Восстановите root и повторите попытку. До тех пор каждая загрузка блокирует приложения до 2 минут, затем блокировка снимается сама.</string>
@@ -755,7 +755,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Включить защиту при загрузке?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Ваше устройство немедленно перезагрузится при продолжении.\n\nЭто заблокирует ВЕСЬ сетевой трафик при загрузке устройства до запуска De1984.\n\n⚠️ Если De1984 не запустится, устройство будет без сети.\n\nВарианты восстановления:\n1. Откройте De1984 → Настройки → Отключить защиту при загрузке\n2. Если не работает, используйте ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Ваше устройство немедленно перезагрузится при продолжении.\n\nЭто заблокирует ВЕСЬ сетевой трафик при загрузке устройства до запуска De1984.\n\n⚠️ Если De1984 не запустится, приложения будут без сети до 2 минут после каждой загрузки, затем блокировка снимется сама.\n\nВарианты восстановления:\n1. Откройте De1984 → Настройки → Отключить защиту при загрузке\n2. Если не работает, используйте ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Отключить защиту при загрузке?</string>
     <string name="boot_protection_disable_warning_message">⚠️ Ваше устройство немедленно перезагрузится при продолжении.\n\nСетевой трафик больше не будет блокироваться при загрузке. Приложения могут передавать данные до запуска файрволла.</string>
     <string name="boot_protection_reboot_failed">Защита при загрузке изменена, но устройство не удалось перезагрузить автоматически. Пожалуйста, перезагрузите устройство вручную.</string>

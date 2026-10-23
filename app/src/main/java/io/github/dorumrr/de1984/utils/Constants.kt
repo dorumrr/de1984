@@ -178,8 +178,11 @@ object Constants {
     }
 
     object BootProtection {
-        const val MAGISK_POST_FS_DIR = "/data/adb/post-fs-data.d"
-        val BOOT_SCRIPT_PATH = "$MAGISK_POST_FS_DIR/${App.ROOT_NAME_PREFIX}_boot_protection.sh"
+        const val POST_FS_DATA_DIR = "/data/adb/post-fs-data.d"
+        val BOOT_SCRIPT_PATH = "$POST_FS_DATA_DIR/${App.ROOT_NAME_PREFIX}_boot_protection.sh"
+
+        // KernelSU and APatch run POST_FS_DATA_DIR scripts but never create the folder; Magisk does.
+        val ROOT_MANAGERS_THAT_RUN_IT_UNCREATED = listOf("/data/adb/ksu", "/data/adb/ap")
         val BOOT_CHAIN = "${App.ROOT_NAME_PREFIX}_boot"
         const val BOOT_SCRIPT_PERMISSIONS = "755"
 

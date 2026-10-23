@@ -397,7 +397,7 @@ Like ConnectivityManager, the live network type does not affect the outcome. `ap
 
 Optional, **root only**. Blocks all network traffic from the moment the kernel is up until De1984 starts, closing the window where apps can talk before any backend exists.
 
-**How it works.** A script is installed at `/data/adb/post-fs-data.d/de1984_boot_protection.sh` — Magisk's directory, not the app's. At boot it creates a `de1984_boot` chain that accepts loopback and a small set of system UIDs, and DROPs everything else. It uses raw `iptables` because `post-fs-data` runs long before Android's framework.
+**How it works.** A script is installed at `/data/adb/post-fs-data.d/de1984_boot_protection.sh`, the root manager's boot script folder, not the app's. Magisk, KernelSU and APatch all run it at post-fs-data; KernelSU and APatch do not create the folder, so De1984 creates it when one of them is installed (`/data/adb/ksu` or `/data/adb/ap`). At boot it creates a `de1984_boot` chain that accepts loopback and a small set of system UIDs, and DROPs everything else. It uses raw `iptables` because `post-fs-data` runs long before Android's framework.
 
 **Toggling it reboots the device**, on both enable and disable. This is deliberate, chosen so that on-disk state and live state can never disagree. The confirmation dialog says so and lists ADB recovery steps.
 

@@ -385,8 +385,8 @@
     <string name="settings_show_icons_description">Ar putea fluidiza aplicația când este dezactivat</string>
 
     <string name="settings_boot_protection_title">Protecție la Pornire</string>
-    <string name="settings_boot_protection_description">Blochează tot traficul de rețea în timpul pornirii dispozitivului până când firewall-ul se activează (necesită root și Magisk)</string>
-    <string name="settings_boot_protection_unavailable">Necesită root și scripturi de pornire Magisk</string>
+    <string name="settings_boot_protection_description">Blochează tot traficul de rețea în timpul pornirii dispozitivului până când firewall-ul se activează (necesită root și Magisk, KernelSU sau APatch)</string>
+    <string name="settings_boot_protection_unavailable">Necesită root și scripturi de pornire Magisk, KernelSU sau APatch</string>
     <string name="settings_boot_protection_stuck">⚠️ Protecția la pornire este încă instalată, iar De1984 a pierdut accesul root, deci nu o poate elimina. La fiecare pornire, toate aplicațiile sunt blocate până la 2 minute, apoi scriptul se ridică singur. Încercați eliminarea mai jos — funcționează dacă rootul a fost doar refuzat, nu pierdut.</string>
     <string name="settings_boot_protection_retry_remove">Încearcă eliminarea</string>
     <string name="boot_protection_remove_no_root">Nu a putut fi eliminată. De1984 tot nu are acces root, deci nu poate șterge un fișier din /data/adb. Restabiliți rootul și încercați din nou. Până atunci, fiecare pornire blochează aplicațiile până la 2 minute, apoi se eliberează singură.</string>
@@ -749,7 +749,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Activezi Protecția la Pornire?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Dispozitivul tău va reporni imediat când continui.\n\nAceasta va bloca TOT traficul de rețea în timpul pornirii dispozitivului până când De1984 pornește.\n\n⚠️ Dacă De1984 nu reușește să pornească, dispozitivul tău nu va avea rețea.\n\nOpțiuni de recuperare:\n1. Deschide De1984 → Setări → Dezactivează Protecția la Pornire\n2. Dacă asta nu funcționează, folosește ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Dispozitivul tău va reporni imediat când continui.\n\nAceasta va bloca TOT traficul de rețea în timpul pornirii dispozitivului până când De1984 pornește.\n\n⚠️ Dacă De1984 nu reușește să pornească, aplicațiile nu vor avea rețea până la 2 minute după fiecare pornire, apoi blocarea se ridică singură.\n\nOpțiuni de recuperare:\n1. Deschide De1984 → Setări → Dezactivează Protecția la Pornire\n2. Dacă asta nu funcționează, folosește ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Dezactivezi Protecția la Pornire?</string>
     <string name="boot_protection_disable_warning_message">⚠️ Dispozitivul tău va reporni imediat când continui.\n\nTraficul de rețea nu va mai fi blocat în timpul pornirii. Aplicațiile pot scurge date înainte ca firewall-ul să pornească.</string>
     <string name="boot_protection_reboot_failed">Protecția la Pornire a fost modificată, dar dispozitivul nu a putut fi repornit automat. Te rugăm să repornești dispozitivul manual.</string>

@@ -383,8 +383,8 @@
     <string name="settings_show_icons_description">Peut accélérer l\'application si désactivé</string>
 
     <string name="settings_boot_protection_title">Protection au démarrage</string>
-    <string name="settings_boot_protection_description">Bloquer tout le trafic réseau pendant le démarrage de l\'appareil jusqu\'à l\'activation du pare-feu (requiert root et Magisk)</string>
-    <string name="settings_boot_protection_unavailable">Requiert root et les scripts de démarrage Magisk</string>
+    <string name="settings_boot_protection_description">Bloquer tout le trafic réseau pendant le démarrage de l\'appareil jusqu\'à l\'activation du pare-feu (requiert root et Magisk, KernelSU ou APatch)</string>
+    <string name="settings_boot_protection_unavailable">Requiert root et les scripts de démarrage Magisk, KernelSU ou APatch</string>
     <string name="settings_boot_protection_stuck">⚠️ La protection au démarrage est toujours installée et De1984 a perdu l’accès root, il ne peut donc pas la supprimer. Chaque démarrage bloque toutes les applications pendant 2 minutes au maximum, puis le script se désactive tout seul. Essayez de la supprimer ci-dessous — cela fonctionne si le root a seulement été refusé, pas perdu.</string>
     <string name="settings_boot_protection_retry_remove">Essayer de supprimer</string>
     <string name="boot_protection_remove_no_root">Suppression impossible. De1984 n’a toujours pas l’accès root et ne peut donc pas supprimer un fichier dans /data/adb. Rétablissez le root puis réessayez. D’ici là, chaque démarrage bloque les applications pendant 2 minutes au maximum, puis se libère.</string>
@@ -747,7 +747,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Activer la protection au démarrage?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Votre appareil redémarrera immédiatement lorsque vous continuerez.\n\nCela bloquera TOUT le trafic réseau pendant le démarrage de l\'appareil jusqu\'à ce que De1984 démarre.\n\n⚠️ Si De1984 ne démarre pas, votre appareil n\'aura pas de réseau.\n\nOptions de récupération:\n1. Ouvrir De1984 → Paramètres → Désactiver la protection au démarrage\n2. Si cela ne fonctionne pas, utilisez ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Votre appareil redémarrera immédiatement lorsque vous continuerez.\n\nCela bloquera TOUT le trafic réseau pendant le démarrage de l\'appareil jusqu\'à ce que De1984 démarre.\n\n⚠️ Si De1984 ne démarre pas, les applications n\'auront pas de réseau pendant 2 minutes au plus après chaque démarrage, puis le blocage se lève tout seul.\n\nOptions de récupération:\n1. Ouvrir De1984 → Paramètres → Désactiver la protection au démarrage\n2. Si cela ne fonctionne pas, utilisez ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Désactiver la protection au démarrage?</string>
     <string name="boot_protection_disable_warning_message">⚠️ Votre appareil redémarrera immédiatement lorsque vous continuerez.\n\nLe trafic réseau ne sera plus bloqué pendant le démarrage. Les applications peuvent fuir des données avant le démarrage du pare-feu.</string>
     <string name="boot_protection_reboot_failed">La protection au démarrage a été modifiée, mais l\'appareil n\'a pas pu redémarrer automatiquement. Veuillez redémarrer votre appareil manuellement.</string>

@@ -393,8 +393,8 @@
     <string name="settings_show_icons_description">禁用时可能会加快应用速度</string>
 
     <string name="settings_boot_protection_title">启动保护</string>
-    <string name="settings_boot_protection_description">在设备启动期间阻止所有网络流量，直到防火墙激活（需要 Root 和 Magisk）</string>
-    <string name="settings_boot_protection_unavailable">需要 Root 和 Magisk 启动脚本</string>
+    <string name="settings_boot_protection_description">在设备启动期间阻止所有网络流量，直到防火墙激活（需要 Root 和 Magisk、KernelSU 或 APatch）</string>
+    <string name="settings_boot_protection_unavailable">需要 Root 和 Magisk、KernelSU 或 APatch 启动脚本</string>
     <string name="settings_boot_protection_stuck">⚠️ 启动保护仍已安装，但 De1984 已失去 root 权限，无法将其移除。每次启动都会阻止所有应用最多 2 分钟，然后脚本会自行解除。请在下方尝试移除——如果只是被拒绝授予 root 而非彻底失去，就会成功。</string>
     <string name="settings_boot_protection_retry_remove">尝试移除</string>
     <string name="boot_protection_remove_no_root">无法移除。De1984 仍然没有 root 权限，因此无法删除 /data/adb 下的文件。请恢复 root 后重试。在此之前，每次启动都会阻止应用最多 2 分钟，然后自行解除。</string>
@@ -755,7 +755,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">启用启动保护？</string>
-    <string name="boot_protection_enable_warning_message">⚠️ 继续后您的设备将立即重启。\n\n这将在设备启动期间阻止所有网络流量，直到 De1984 启动。\n\n⚠️ 如果 De1984 无法启动，您的设备将无法联网。\n\n恢复选项：\n1. 打开 De1984 → 设置 → 禁用启动保护\n2. 如果不起作用，使用 ADB：\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ 继续后您的设备将立即重启。\n\n这将在设备启动期间阻止所有网络流量，直到 De1984 启动。\n\n⚠️ 如果 De1984 无法启动，应用在每次开机后最多 2 分钟内无法联网，之后拦截会自动解除。\n\n恢复选项：\n1. 打开 De1984 → 设置 → 禁用启动保护\n2. 如果不起作用，使用 ADB：\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">禁用启动保护？</string>
     <string name="boot_protection_disable_warning_message">⚠️ 继续后您的设备将立即重启。\n\n网络流量将不再在启动期间被阻止。应用可能在防火墙启动前泄露数据。</string>
     <string name="boot_protection_reboot_failed">启动保护已更改，但设备无法自动重启。请手动重启您的设备。</string>

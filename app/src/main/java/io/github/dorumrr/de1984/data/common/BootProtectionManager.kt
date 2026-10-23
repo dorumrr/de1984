@@ -32,7 +32,9 @@ class BootProtectionManager(
         try {
             AppLogger.d(TAG, "Checking if boot script support is available...")
 
-            val command = "test -d ${Constants.BootProtection.MAGISK_POST_FS_DIR} && echo 'exists' || echo 'not_found'"
+            val dirs = listOf(Constants.BootProtection.POST_FS_DATA_DIR) +
+                Constants.BootProtection.ROOT_MANAGERS_THAT_RUN_IT_UNCREATED
+            val command = dirs.joinToString(" || ") { "test -d $it" } + " && echo 'exists' || echo 'not_found'"
             val result = executeCommand(command)
 
             val available = result.first == 0 && result.second.trim() == "exists"
@@ -203,6 +205,14 @@ link_if_sane ip6tables
     remove_boot_chain
 ) &
 """
+
+        val dir = Constants.BootProtection.POST_FS_DATA_DIR
+        val dirResult = executeCommand("[ -d $dir ] || { mkdir -p $dir && chmod 755 $dir; }")
+        if (dirResult.first != 0) {
+            val error = "Failed to create $dir (exit code: ${dirResult.first})"
+            AppLogger.e(TAG, error)
+            return Result.failure(Exception(error))
+        }
 
         val createCommand = "echo '${scriptContent.replace("'", "'\\''")}' > ${Constants.BootProtection.BOOT_SCRIPT_PATH}"
         val createResult = executeCommand(createCommand)

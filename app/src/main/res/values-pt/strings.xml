@@ -383,8 +383,8 @@
     <string name="settings_show_icons_description">Pode acelerar o app quando desativado</string>
 
     <string name="settings_boot_protection_title">Proteção na Inicialização</string>
-    <string name="settings_boot_protection_description">Bloquear todo o tráfego de rede durante a inicialização do dispositivo até o firewall ativar (requer root e Magisk)</string>
-    <string name="settings_boot_protection_unavailable">Requer root e scripts de inicialização do Magisk</string>
+    <string name="settings_boot_protection_description">Bloquear todo o tráfego de rede durante a inicialização do dispositivo até o firewall ativar (requer root e Magisk, KernelSU ou APatch)</string>
+    <string name="settings_boot_protection_unavailable">Requer root e scripts de inicialização do Magisk, KernelSU ou APatch</string>
     <string name="settings_boot_protection_stuck">⚠️ A proteção de inicialização ainda está instalada e o De1984 perdeu o acesso root, portanto não pode removê-la. Cada inicialização bloqueia todos os aplicativos por até 2 minutos e depois o script se desativa sozinho. Tente removê-la abaixo — funciona se o root foi apenas negado, não perdido.</string>
     <string name="settings_boot_protection_retry_remove">Tentar remover</string>
     <string name="boot_protection_remove_no_root">Não foi possível remover. O De1984 ainda não tem acesso root, portanto não pode excluir um arquivo em /data/adb. Restaure o root e tente novamente. Até lá, cada inicialização bloqueia os aplicativos por até 2 minutos e depois se libera sozinha.</string>
@@ -747,7 +747,7 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Ativar Proteção na Inicialização?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Seu dispositivo será reiniciado imediatamente ao continuar.\n\nIsto bloqueará TODO o tráfego de rede durante a inicialização do dispositivo até o De1984 iniciar.\n\n⚠️ Se o De1984 falhar ao iniciar, seu dispositivo não terá rede.\n\nOpções de recuperação:\n1. Abra De1984 → Configurações → Desativar Proteção na Inicialização\n2. Se isso não funcionar, use ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Seu dispositivo será reiniciado imediatamente ao continuar.\n\nIsto bloqueará TODO o tráfego de rede durante a inicialização do dispositivo até o De1984 iniciar.\n\n⚠️ Se o De1984 falhar ao iniciar, os apps ficam sem rede por até 2 minutos após cada inicialização e depois o bloqueio é removido sozinho.\n\nOpções de recuperação:\n1. Abra De1984 → Configurações → Desativar Proteção na Inicialização\n2. Se isso não funcionar, use ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Desativar Proteção na Inicialização?</string>
     <string name="boot_protection_disable_warning_message">⚠️ Seu dispositivo será reiniciado imediatamente ao continuar.\n\nO tráfego de rede não será mais bloqueado durante a inicialização. Apps podem vazar dados antes do firewall iniciar.</string>
     <string name="boot_protection_reboot_failed">A Proteção na Inicialização foi alterada, mas o dispositivo não pôde ser reiniciado automaticamente. Por favor, reinicie o dispositivo manualmente.</string>

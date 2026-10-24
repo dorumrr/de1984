@@ -336,7 +336,6 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
             io.github.dorumrr.de1984.ui.common.SortMenu.show(
                 binding.sortButton,
                 viewModel.uiState.value.filterState.sort,
-                io.github.dorumrr.de1984.utils.FilterPrefs.PACKAGES_SORTS,
                 viewModel::setSort
             )
         }

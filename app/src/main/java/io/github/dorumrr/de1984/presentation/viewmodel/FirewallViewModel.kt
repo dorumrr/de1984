@@ -616,8 +616,13 @@ class FirewallViewModel(
     }
 
     // The fragment sorts what it shows, so a sort change needs no re-filter.
-    fun setSort(sort: io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria) {
-        val filterState = _uiState.value.filterState.copy(sort = sort)
+    fun setSort(sort: io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria) =
+        saveSort(_uiState.value.filterState.copy(sort = sort))
+
+    fun setConfiguredFirst(configuredFirst: Boolean) =
+        saveSort(_uiState.value.filterState.copy(configuredFirst = configuredFirst))
+
+    private fun saveSort(filterState: FirewallFilterState) {
         io.github.dorumrr.de1984.utils.FilterPrefs.saveFirewall(getApplication(), filterState)
         _uiState.value = _uiState.value.copy(filterState = filterState)
     }

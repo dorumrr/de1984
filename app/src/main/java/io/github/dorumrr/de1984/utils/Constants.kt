@@ -136,6 +136,7 @@ object Constants {
         const val KEY_PACKAGES_FILTER_STATE = "packages_filter_state"
         const val KEY_PACKAGES_FILTER_PROFILE = "packages_filter_profile"
         const val KEY_FIREWALL_SORT = "firewall_sort"
+        const val KEY_FIREWALL_CONFIGURED_FIRST = "firewall_sort_configured_first"
         const val KEY_PACKAGES_SORT = "packages_sort"
 
         const val POLICY_BLOCK_ALL = "block_all"

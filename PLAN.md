@@ -74,8 +74,8 @@ Touches: app/src/main/java/io/github/dorumrr/de1984/utils/PackageUtils.kt, app/s
 
 Skill: /phi:feat.
 
-- Firewall tab: Name (default), Recently installed, Recently updated, Configured first (rows with
-  `hasExplicitRule` first, then by name). Packages tab: Name, Recently installed, Recently updated.
+- Both tabs: Name (default), Recently installed, Recently updated. The Firewall tab adds a
+  Configured first checkbox (#120): rows with `hasExplicitRule` first, each group in the picked order.
   Time sorts are newest first, unknown time last, ties by name.
 - An icon button beside the search box in each tab opens a menu with the current choice checked.
 - The choice is a field of the existing filter state (`FirewallFilterState` at
@@ -86,7 +86,7 @@ Skill: /phi:feat.
   applied where the search filter is applied (`FirewallFragmentViews.kt:687`,
   `PackagesFragmentViews.kt:564`). One sorter serves both tabs and replaces the dead
   `PackageUtils.sortPackages` and `SortCriteria` (`PackageUtils.kt:162-191`, no callers).
-- Known behaviour: under Configured first, a row that gains its first rule moves to the top group.
+- Known behaviour: with Configured first ticked, a row that gains its first rule moves to the top group.
 
 Proves: on the emulator, each option orders both lists as stated; with Firewall on Recently
 installed and Packages on Recently updated, both survive force-stop and relaunch; writing an unknown

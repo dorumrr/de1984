@@ -158,5 +158,6 @@ data class FirewallFilterState(
     val internetOnly: Boolean = true,
     val profileFilter: String = "All",
     val sort: io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria =
-        io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria.NAME
+        io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria.NAME,
+    val configuredFirst: Boolean = false
 )

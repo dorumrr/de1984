@@ -118,7 +118,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
      */
     private var previousObservedAllowCritical: Boolean? = null
     private var lastSubmittedPackages: List<NetworkPackage> = emptyList()
-    private var lastSubmittedSort: io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria? = null
+    private var lastSubmittedSort: Pair<io.github.dorumrr.de1984.utils.PackageUtils.SortCriteria, Boolean>? = null
     // A newer submitList drops the older commit callback, so the scroll waits for whichever list lands.
     private var scrollToTopPending = false
 
@@ -445,8 +445,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             io.github.dorumrr.de1984.ui.common.SortMenu.show(
                 binding.sortButton,
                 viewModel.uiState.value.filterState.sort,
-                io.github.dorumrr.de1984.utils.FilterPrefs.FIREWALL_SORTS,
-                viewModel::setSort
+                viewModel::setSort,
+                viewModel.uiState.value.filterState.configuredFirst,
+                viewModel::setConfiguredFirst
             )
         }
 
@@ -704,7 +705,8 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
             }
         }
         val displayedPackages = io.github.dorumrr.de1984.utils.PackageUtils.sortPackages(
-            searched, state.filterState.sort, { it.name }, { it.installTime }, { it.updateTime }, { it.hasExplicitRule }
+            searched, state.filterState.sort, { it.name }, { it.installTime }, { it.updateTime },
+            state.filterState.configuredFirst, { it.hasExplicitRule }
         )
 
         // Computed BEFORE the visibility decision below, which used to test the unsearched list.
@@ -775,8 +777,9 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
 
         // Recorded before the early return, and the scroll armed only when this sort change
         // submits a list: otherwise a later, unrelated list change would jump to the top.
-        val sortChanged = lastSubmittedSort != null && lastSubmittedSort != state.filterState.sort
-        lastSubmittedSort = state.filterState.sort
+        val sort = state.filterState.sort to state.filterState.configuredFirst
+        val sortChanged = lastSubmittedSort != null && lastSubmittedSort != sort
+        lastSubmittedSort = sort
 
         val listChanged = displayedPackages != lastSubmittedPackages
         if (!listChanged) {

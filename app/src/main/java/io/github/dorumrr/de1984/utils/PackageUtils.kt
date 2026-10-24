@@ -29,23 +29,23 @@ object PackageUtils {
         name: (T) -> String,
         installTime: (T) -> Long?,
         updateTime: (T) -> Long?,
+        configuredFirst: Boolean = false,
         configured: (T) -> Boolean = { false },
     ): List<T> {
         val byName = compareBy<T> { name(it).lowercase() }
         fun newestFirst(time: (T) -> Long?) =
             compareBy<T> { time(it) == null }.thenByDescending { time(it) }.then(byName)
-        return when (sortBy) {
-            SortCriteria.NAME -> packages.sortedWith(byName)
-            SortCriteria.INSTALL_TIME -> packages.sortedWith(newestFirst(installTime))
-            SortCriteria.UPDATE_TIME -> packages.sortedWith(newestFirst(updateTime))
-            SortCriteria.CONFIGURED_FIRST -> packages.sortedWith(compareByDescending<T> { configured(it) }.then(byName))
+        val order = when (sortBy) {
+            SortCriteria.NAME -> byName
+            SortCriteria.INSTALL_TIME -> newestFirst(installTime)
+            SortCriteria.UPDATE_TIME -> newestFirst(updateTime)
         }
+        return packages.sortedWith(if (configuredFirst) compareByDescending<T> { configured(it) }.then(order) else order)
     }
 
     enum class SortCriteria {
         NAME,
         INSTALL_TIME,
-        UPDATE_TIME,
-        CONFIGURED_FIRST
+        UPDATE_TIME
     }
 }

@@ -63,20 +63,17 @@ object FilterPrefs {
     private fun restorablePackageState(value: String?): String? =
         if (value?.lowercase() == Constants.Packages.STATE_UNINSTALLED.lowercase()) null else value
 
-    /** An unknown stored name, or one the screen does not offer, falls back to Name. */
-    private fun normalisedSort(value: String?, allowed: Set<PackageUtils.SortCriteria>): PackageUtils.SortCriteria =
-        PackageUtils.SortCriteria.entries.firstOrNull { it.name == value }?.takeIf { it in allowed }
-            ?: PackageUtils.SortCriteria.NAME
+    /** An unknown stored name falls back to Name. */
+    private fun normalisedSort(value: String?): PackageUtils.SortCriteria =
+        PackageUtils.SortCriteria.entries.firstOrNull { it.name == value } ?: PackageUtils.SortCriteria.NAME
 
-    val FIREWALL_SORTS: Set<PackageUtils.SortCriteria> = PackageUtils.SortCriteria.entries.toSet()
-
-    // The Packages screen has no rules, so it has nothing to put first.
-    val PACKAGES_SORTS: Set<PackageUtils.SortCriteria> =
-        FIREWALL_SORTS - PackageUtils.SortCriteria.CONFIGURED_FIRST
+    // Up to 2.8.0 "Configured first" was a sort of its own, saved under the sort key.
+    private const val LEGACY_CONFIGURED_FIRST_SORT = "CONFIGURED_FIRST"
 
     fun loadFirewall(context: Context): FirewallFilterState {
         val p = prefs(context)
         val defaults = FirewallFilterState()
+        val storedSort = p.getString(Constants.Settings.KEY_FIREWALL_SORT, null)
         return FirewallFilterState(
             packageType = normalisedFirewallType(p.getString(Constants.Settings.KEY_FIREWALL_FILTER_TYPE, null))
                 ?: defaults.packageType,
@@ -87,7 +84,12 @@ object FilterPrefs {
             ),
             profileFilter = p.getString(Constants.Settings.KEY_FIREWALL_FILTER_PROFILE, null)
                 ?: defaults.profileFilter,
-            sort = normalisedSort(p.getString(Constants.Settings.KEY_FIREWALL_SORT, null), FIREWALL_SORTS)
+            sort = normalisedSort(storedSort),
+            configuredFirst = if (p.contains(Constants.Settings.KEY_FIREWALL_CONFIGURED_FIRST)) {
+                p.getBoolean(Constants.Settings.KEY_FIREWALL_CONFIGURED_FIRST, defaults.configuredFirst)
+            } else {
+                storedSort == LEGACY_CONFIGURED_FIRST_SORT
+            }
         )
     }
 
@@ -97,7 +99,8 @@ object FilterPrefs {
             .putString(Constants.Settings.KEY_FIREWALL_FILTER_STATE, state.networkState)
             .putBoolean(Constants.Settings.KEY_FIREWALL_FILTER_INTERNET_ONLY, state.internetOnly)
             .putString(Constants.Settings.KEY_FIREWALL_FILTER_PROFILE, state.profileFilter)
-            .putString(Constants.Settings.KEY_FIREWALL_SORT, normalisedSort(state.sort.name, FIREWALL_SORTS).name)
+            .putString(Constants.Settings.KEY_FIREWALL_SORT, state.sort.name)
+            .putBoolean(Constants.Settings.KEY_FIREWALL_CONFIGURED_FIRST, state.configuredFirst)
             .apply()
     }
 
@@ -110,7 +113,7 @@ object FilterPrefs {
             packageState = restorablePackageState(p.getString(Constants.Settings.KEY_PACKAGES_FILTER_STATE, null)),
             profileFilter = p.getString(Constants.Settings.KEY_PACKAGES_FILTER_PROFILE, null)
                 ?: defaults.profileFilter,
-            sort = normalisedSort(p.getString(Constants.Settings.KEY_PACKAGES_SORT, null), PACKAGES_SORTS)
+            sort = normalisedSort(p.getString(Constants.Settings.KEY_PACKAGES_SORT, null))
         )
     }
 
@@ -119,7 +122,7 @@ object FilterPrefs {
             .putString(Constants.Settings.KEY_PACKAGES_FILTER_TYPE, normalisedPackagesType(state.packageType))
             .putString(Constants.Settings.KEY_PACKAGES_FILTER_STATE, restorablePackageState(state.packageState))
             .putString(Constants.Settings.KEY_PACKAGES_FILTER_PROFILE, state.profileFilter)
-            .putString(Constants.Settings.KEY_PACKAGES_SORT, normalisedSort(state.sort.name, PACKAGES_SORTS).name)
+            .putString(Constants.Settings.KEY_PACKAGES_SORT, state.sort.name)
             .apply()
     }
 }

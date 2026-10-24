@@ -341,7 +341,11 @@ class FirewallViewModel(
      */
     fun enforcedPackage(id: PackageId): NetworkPackage? =
         cachedPackages.find { it.id == id }
-            ?.asEnforcedBy(firewallManager.activeBackendType.value, _uiState.value.blockingContext)
+            ?.masked(firewallManager.activeBackendType.value, _uiState.value.blockingContext)
+
+    // The only masking for rows the screen sees, so a sheet's row and a list row compare equal.
+    private fun NetworkPackage.masked(backend: FirewallBackendType?, context: BlockingContext) =
+        asEnforcedBy(backend, context).copy(configuredBeforeMask = isConfigured)
 
     /**
      * Which of [ids] the running backend cannot act on.
@@ -539,7 +543,7 @@ class FirewallViewModel(
         // bit - the quick toggle, which derives its write from what the row shows, all read the
         // enforced flags rather than the saved ones. cachedPackages keeps the raw truth.
         val backend = firewallManager.activeBackendType.value
-        var result = packages.map { it.asEnforcedBy(backend, blockingContext) }
+        var result = packages.map { it.masked(backend, blockingContext) }
 
         result = when (filterState.packageType.lowercase()) {
             Constants.Packages.TYPE_USER.lowercase() ->

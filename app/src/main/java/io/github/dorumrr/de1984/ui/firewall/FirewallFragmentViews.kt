@@ -706,7 +706,7 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
         }
         val displayedPackages = io.github.dorumrr.de1984.utils.PackageUtils.sortPackages(
             searched, state.filterState.sort, { it.name }, { it.installTime }, { it.updateTime },
-            state.filterState.configuredFirst, { it.hasExplicitRule }
+            state.filterState.configuredFirst, { it.isConfigured }
         )
 
         // Computed BEFORE the visibility decision below, which used to test the unsearched list.

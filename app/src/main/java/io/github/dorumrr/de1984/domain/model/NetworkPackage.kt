@@ -58,6 +58,8 @@ data class NetworkPackage(
      * explanation the row was masked to give.
      */
     val savedRule: UidRuleAggregate? = null,
+    /** [isConfigured] taken before asEnforcedBy replaced the flags, which can drop the row's own rule. */
+    val configuredBeforeMask: Boolean? = null,
     /** See PackageEntity.paintedAllowCritical - the settings this row was PAINTED with. */
     val paintedAllowCritical: Boolean =
         io.github.dorumrr.de1984.utils.Constants.Settings.DEFAULT_ALLOW_CRITICAL_FIREWALL,
@@ -88,6 +90,19 @@ data class NetworkPackage(
             lanBlocked = lanBlocked,
             backgroundBlocked = backgroundBlocked,
         )
+
+    /** A rule that differs from the default De1984 paints and writes on its own, so the user set it. */
+    val isConfigured: Boolean
+        get() {
+            configuredBeforeMask?.let { return it }
+            if (!hasExplicitRule) return false
+            val own = ownVector
+            val blockedByDefault = paintedBlockAllDefault && !isSystemCritical && !isVpnApp &&
+                !io.github.dorumrr.de1984.utils.Constants.Firewall.isSystemRecommendedAllow(packageName)
+            return own.backgroundBlocked ||
+                listOf(own.wifiBlocked, own.mobileBlocked, own.roamingBlocked, own.lanBlocked)
+                    .any { it != blockedByDefault }
+        }
 
     /**
      * This row with the user's own values back in the blocking flags.

@@ -31,8 +31,8 @@ android {
         minSdk = 26
         targetSdk = 34
 
-        versionCode = 50
-        versionName = "2.8.0"
+        versionCode = 51
+        versionName = "2.8.1"
 
         resourceConfigurations += listOf("en", "ro", "pt", "zh", "it", "fr", "ru", "ar")
 

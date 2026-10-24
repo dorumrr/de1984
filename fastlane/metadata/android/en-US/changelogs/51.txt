@@ -1,0 +1,1 @@
+- Firewall sort: "Configured first" is now a checkbox that works with Name, Recently installed or Recently updated #120

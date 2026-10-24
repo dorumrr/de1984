@@ -374,10 +374,10 @@
     <string name="backend_requires_android_13">Требуется Android 13+</string>
     <string name="backend_requires_shizuku">Требуется Shizuku</string>
     <string name="backend_iptables_name">iptables</string>
-    <string name="backend_iptables_description">Блокировка на уровне ядра (требуется root)</string>
+    <string name="backend_iptables_description">Блокировка на уровне ядра (требуется root или Shizuku в режиме root)</string>
     <string name="backend_iptables_requirement">Требуется root или Shizuku в режиме root</string>
     <string name="backend_network_policy_manager_name">NetworkPolicyManager (устаревший)</string>
-    <string name="backend_network_policy_manager_description">Для Android 12 и ниже (используйте ConnectivityManager на Android 13+)</string>
+    <string name="backend_network_policy_manager_description">Любая версия Android, выбирается вручную (некоторые прошивки не могут блокировать Wi-Fi)</string>
     <string name="backend_network_policy_manager_requirement">Требуется Shizuku</string>
     <string name="backend_not_available_title">%s недоступен</string>
     <string name="backend_not_available_message">Этот бэкенд недоступен на вашем устройстве.</string>

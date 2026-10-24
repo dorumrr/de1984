@@ -4,13 +4,16 @@ The name **De1984** is inspired by George Orwell’s novel Nineteen Eighty-Four,
 
 <b>FIREWALL FEATURES</b>
 
-- Multiple firewall capabilities: iptables (root/Shizuku), ConnectivityManager (Android 13+), and VPN fallback
+- Multiple firewall capabilities: iptables (root, or Shizuku in root mode), ConnectivityManager (Shizuku, Android 13+), NetworkPolicyManager (Shizuku, chosen manually), and VPN fallback
 - Automatic firewall method selection based on device capabilities
 - Comprehensive iptables method for rooted devices provides kernel-level blocking with superior performance
-- ConnectivityManager for Android 13+ devices without root
+- ConnectivityManager for Android 13+ devices with Shizuku, no root required
+- NetworkPolicyManager with Shizuku, selectable manually. On ROMs without POLICY_REJECT_ALL it can only block metered background data, not WiFi
 - VPN backend as fallback for maximum compatibility (no root required)
-- Block apps from accessing WiFi, Mobile Data, or Roaming independently
-- Global firewall policies: "Block All by Default" (allowlist) or "Allow All by Default" (blocklist)
+- Block apps on WiFi, Mobile Data and Roaming separately with iptables and VPN. Roaming is part of Mobile Data. ConnectivityManager and NetworkPolicyManager block an app on all networks or none
+- Block LAN access, enforced only by iptables
+- Global firewall policies: "Block All by Default" (allowlist) or "Allow All by Default" (blocklist). Switching the policy resets every app's WiFi, Mobile, Roaming and LAN rules to the new default, with no confirmation. System-recommended apps keep theirs, and critical and VPN apps keep theirs only while "Allow Firewall Critical Packages" is on
+- Captive portal detection settings (root or Shizuku). These system settings stay changed after De1984 is uninstalled
 - Screen-off blocking to save battery and data
 - Real-time network state monitoring and automatic rule application
 
@@ -38,6 +41,7 @@ The name **De1984** is inspired by George Orwell’s novel Nineteen Eighty-Four,
 - Android 8.0 (API 26) or higher
 - For iptables firewall: Root access OR Shizuku in root mode
 - For ConnectivityManager firewall: Shizuku + Android 13+
+- For NetworkPolicyManager firewall: Shizuku
 - For VPN firewall: VPN permission (no root required, works on all Android versions)
 - For package management: Shizuku or root access
 
@@ -47,8 +51,16 @@ The name **De1984** is inspired by George Orwell’s novel Nineteen Eighty-Four,
 - BIND_VPN_SERVICE: Create local VPN for VPN-based firewall backend
 - QUERY_ALL_PACKAGES: View all installed apps
 - POST_NOTIFICATIONS: Show notifications for new app installations (optional)
-- RECEIVE_BOOT_COMPLETED: Auto-start firewall on device boot
-- Shizuku or root access: For iptables firewall and package management (optional)
+- RECEIVE_BOOT_COMPLETED: Start the firewall again after a reboot, if it was on before
+- ACCESS_WIFI_STATE: Read the network state for per-network rules
+- FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE: Keep the firewall services running
+- REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: Ask Android not to stop the firewall to save battery (optional)
+- KILL_BACKGROUND_PROCESSES: Last fallback for force stop
+- Shizuku API permission: Talk to Shizuku or Sui
+- INTERACT_ACROSS_USERS: Read apps in other profiles. When another profile exists, De1984 grants it to itself through root or Shizuku, without asking
+- WRITE_SECURE_SETTINGS, CHANGE_COMPONENT_ENABLED_STATE: Only checked, to show the permission status
+- REQUEST_DELETE_PACKAGES, INSTALL_SHORTCUT, ACCESS_SUPERUSER: Declared, but not used
+- Shizuku or root access: For the iptables, ConnectivityManager and NetworkPolicyManager firewalls, package management, boot protection and captive portal settings (optional)
 
 <b>OPEN SOURCE</b>
 

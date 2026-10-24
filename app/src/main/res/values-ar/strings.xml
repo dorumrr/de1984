@@ -301,10 +301,10 @@
     <string name="backend_requires_android_13">يتطلب أندوريد 13+</string>
     <string name="backend_requires_shizuku">يتطلب Shizuku</string>
     <string name="backend_iptables_name">iptables</string>
-    <string name="backend_iptables_description">الحظر على مستوى النواة (يتطلب الجذر)</string>
+    <string name="backend_iptables_description">الحظر على مستوى النواة (يتطلب الجذر أو Shizuku في وضع الجذر)</string>
     <string name="backend_iptables_requirement">يتطلب الجذر أو Shizuku في وضع الجذر</string>
     <string name="backend_network_policy_manager_name">NetworkPolicyManager (قديم)</string>
-    <string name="backend_network_policy_manager_description">لنظام التشغيل أندرويد 12 وأقدم (استخدم ConnectivityManager على أندرويد 13+‎)</string>
+    <string name="backend_network_policy_manager_description">أي إصدار من أندرويد، يُختار يدويًا (بعض الأنظمة لا تستطيع حظر WiFi)</string>
     <string name="backend_network_policy_manager_requirement">يتطلب Shizuku</string>
     <string name="backend_not_available_title">%s غير متاح</string>
     <string name="backend_not_available_message">هذه الواجهة الخلفية غير متوفرة على جهازك.</string>

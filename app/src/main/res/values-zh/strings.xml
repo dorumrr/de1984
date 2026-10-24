@@ -381,10 +381,10 @@
     <string name="backend_requires_android_13">需要 Android 13+</string>
     <string name="backend_requires_shizuku">需要 Shizuku</string>
     <string name="backend_iptables_name">iptables</string>
-    <string name="backend_iptables_description">内核级阻止（需要 Root）</string>
+    <string name="backend_iptables_description">内核级阻止（需要 Root 或 Root 模式的 Shizuku）</string>
     <string name="backend_iptables_requirement">需要 Root 或 Root 模式下的 Shizuku</string>
     <string name="backend_network_policy_manager_name">NetworkPolicyManager（旧版）</string>
-    <string name="backend_network_policy_manager_description">适用于 Android 12 及以下版本（在 Android 13+ 上使用 ConnectivityManager）</string>
+    <string name="backend_network_policy_manager_description">适用于任何 Android 版本，需手动选择（部分 ROM 无法阻止 WiFi）</string>
     <string name="backend_network_policy_manager_requirement">需要 Shizuku</string>
     <string name="backend_not_available_title">%s 不可用</string>
     <string name="backend_not_available_message">此后端在您的设备上不可用。</string>

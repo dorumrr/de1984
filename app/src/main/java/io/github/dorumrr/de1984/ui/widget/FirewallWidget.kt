@@ -75,19 +75,8 @@ class FirewallWidget : AppWidgetProvider() {
                                           stateString?.contains("Starting") == true
             AppLogger.d(TAG, "Derived isEnabled from broadcast: $isEnabledFromBroadcast")
 
-            // This receiver must be exported so the system can deliver APPWIDGET_UPDATE, and the
-            // custom action carries no permission, so ANY installed app can send this broadcast with
-            // any payload. It therefore must never write app state.
-            //
-            // It used to persist KEY_FIREWALL_ENABLED from this extra. A third-party app could send
-            // a "Stopped" state, the flag would be cleared, and BootReceiver/BootWorker would then
-            // skip firewall restoration on every subsequent boot - silently disabling the firewall
-            // for good. Verified reproducible over adb.
-            //
-            // Every genuine state change already persists the flag through FirewallViewModel,
-            // FirewallToggleReceiver, VpnPermissionActivity or FirewallManager, so nothing is lost.
-            // A spoofed broadcast can now do no more than paint a wrong icon until the next real
-            // update.
+            // Exported for APPWIDGET_UPDATE with no permission: any app can send any state, so never write state here.
+            // Persisting KEY_FIREWALL_ENABLED let a spoof end boot restore; a spoof still repaints and re-points the tap.
 
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(

@@ -50,7 +50,7 @@ User can force a specific backend from Settings.
 
 **Note**: AUTO never selects NetworkPolicyManager. Its priority chain is iptables → ConnectivityManager → VPN. NetworkPolicyManager is reachable only by choosing it here.
 
-If a manually selected backend becomes unavailable (e.g., Shizuku stops, user revokes root), the firewall falls back automatically, as AUTO does: the planner treats a manual mode whose backend is gone as AUTO, usually landing on VPN. The manual choice stays stored. The firewall goes to **error** only when that fallback cannot start. Manual VPN is the exception: VPN never counts as gone, and when another VPN takes the slot it goes down with the VPN-conflict banner instead of switching.
+If a manually selected backend becomes unavailable (e.g., Shizuku stops, user revokes root), the firewall falls back automatically, as AUTO does: the planner treats a manual mode whose backend is gone as AUTO, landing on the first backend in AUTO order that can run, VPN when no privileged one can. The manual choice stays stored. The firewall goes to **error** only when that fallback cannot start. Manual VPN is the exception: VPN never counts as gone, and when another VPN takes the slot it goes down with the VPN-conflict banner instead of switching.
 
 ### Why This Priority Order?
 
@@ -64,7 +64,7 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
 
 **Critical Security Rule**: When switching backends, there must be NO gap where apps are unblocked. The transition must be atomic and as fail-safe as possible. VPN and ConnectivityManager decide only apps in De1984's own profile, so while either runs, the rules of apps in other profiles and users are not enforced.
 
-**Switching scenarios** (the order below is what `startFirewallInternal` does when a backend is still running: a failed health check, the backend monitor after boot). `handlePrivilegeChange` in AUTO mode, the VPN health loop's privilege-gain switch and the switch off VPN when another VPN connects do not follow it: they tear the old backend down first and then start, leaving a gap of about 1-2 s:
+**Switching scenarios** (the order below is what `startFirewallInternal` does when a backend is still running: a failed health check, the backend monitor after boot). `handlePrivilegeChange` in AUTO mode, the VPN health loop's privilege-gain switch and the switch off VPN when another VPN connects do not follow it: they tear the old backend down first and then start, leaving a gap of about 1-2 s. A mode change in Settings does the same: it stops the firewall, waits 500 ms, then starts the new mode:
 
 1. **From VPN to iptables** (upgrade):
    - Start iptables backend first, apply all rules
@@ -111,7 +111,7 @@ When a privileged backend fails and VPN permission is not granted:
    - Show high-priority notification requesting VPN permission
    - Set firewall state to `Error` with clear warning message
    - Update UI to show "Firewall not running" with error indicator
-   - Mark firewall as DOWN (`isFirewallDown = true`)
+   - Mark firewall as DOWN (`isFirewallDown`), only while the user wants the firewall on (`KEY_FIREWALL_ENABLED`); with it off, the failure is reported but recovery is not armed
 
 2. **Background Monitoring**:
    - Continue monitoring for privileged backend availability (root/Shizuku may return)
@@ -121,7 +121,7 @@ When a privileged backend fails and VPN permission is not granted:
 3. **Security Warning**:
    - Firewall is DOWN - all apps are UNBLOCKED
    - User MUST be warned prominently in UI and notification
-   - Notification should be persistent until resolved
+   - The notification clears when tapped; the in-app banner stays until protection returns
 
 4. **Recovery Paths**:
    - **Path A**: User grants VPN permission via notification → Automatically start VPN backend
@@ -165,7 +165,7 @@ The app uses adaptive health check intervals to balance responsiveness and batte
 
 - Immediately on **first** health check failure
 - Do NOT wait for multiple failures (security-critical)
-- Atomic switch to prevent security gap
+- Start the new backend before tearing down the old one; the paths that tear down first, with a gap, are listed under "Switching scenarios"
 - A failing manual-mode backend falls back automatically too, keeping the manual choice stored, except manual VPN (see Manual Mode)
 
 **Monitoring Lifecycle**:
@@ -197,7 +197,7 @@ Each app has an "Allow while screen off" switch. Turned off, the app is blocked 
 
 Apps that should be blocked are added to the VPN tunnel. Their traffic goes through the VPN where packets are dropped. Apps that should be allowed are NOT added to the VPN, so they bypass it completely and use the normal network connection. Android routes the whole UID of an added app into the tunnel, so De1984 decides per UID: it adds every app of a blocked UID and none of an allowed one (see "Shared UIDs" in section 2).
 
-**Critical rule:** If zero apps need blocking, the VPN must NOT be started at all. If we fiddle with switches and we reach to all Allowed, same thing, no need to have firewall up. Android's default behavior is to route ALL apps through the VPN if no apps are explicitly added (blocked) and starting a VPN with zero apps would accidentally block everything.
+**Critical rule:** If zero apps need blocking, no VPN tunnel is established. The VPN service still runs in the foreground and reports the firewall active, and builds a tunnel as soon as an app needs blocking. Android's default behavior is to route ALL apps through the VPN if no apps are explicitly added (blocked) and starting a VPN with zero apps would accidentally block everything.
 
 **Switch dependencies:**
 - **Roaming requires Mobile**: Roaming is a state of mobile data when outside home network. If user enables Roaming block while Mobile is allowed, Mobile must also be blocked. If user disables Mobile block while Roaming is blocked, Roaming must also be allowed.
@@ -259,7 +259,7 @@ Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app 
 
 **Network changes:**
 
-When switching networks, recalculates which UIDs should be blocked based on per-network rules. Removes firewall rules for UIDs that should no longer be blocked. Adds firewall rules for UIDs that should now be blocked. Uses diff-based updates for efficiency.
+When switching networks, recalculates which UIDs should be blocked based on per-network rules. Removes firewall rules for UIDs that should no longer be blocked. Adds firewall rules for UIDs that should now be blocked. The first apply after a start rewrites the whole chain; later applies are diff-based. A diff that does not match the chain arms a full rewrite for the next apply, and the current apply still reports success.
 
 **Shared UIDs (every backend):**
 
@@ -371,7 +371,7 @@ Calibration runs only on an app UID. On a system UID the write throws, and a thr
 
 **The original-policy record:**
 
-`POLICY_NONE` does not mean "no opinion" — writing it erases whatever was there, including Android's own "Restrict background data" setting and a ROM's per-app restrictions. So this backend records what each UID held **before** it was touched, in `npm_original_policies`, and flushes that record to disk **before** the first write. A UID absent from the record is not ours and is left alone. A recorded UID that leaves the sweep (its app gone, or its user no longer listed) is set back at the next apply; on stop, each UID is set back to its recorded value; an entry is dropped only once the policy reads back as `POLICY_NONE`, proving there is nothing left to undo. Entries that fail to restore stay on disk for the next attempt rather than being forgotten.
+`POLICY_NONE` does not mean "no opinion" — writing it erases whatever was there, including Android's own "Restrict background data" setting and a ROM's per-app restrictions. So this backend records what each UID held **before** it was touched, in `npm_original_policies`, and flushes that record to disk **before** the first write. A UID absent from the record is not ours and is left alone. A recorded UID that leaves the sweep (its app gone, or its user no longer listed) is set back at the next apply; on stop, each UID is set back to its recorded value, and its entry is dropped as soon as that write succeeds, with no readback. When the write fails, the policy is read back: the entry is dropped only when both the recorded original and the current policy are `POLICY_NONE` (UIDs Android refuses to write, such as system ones); every other failed entry stays on disk for the next attempt rather than being forgotten.
 
 **Block All mode:**
 - Apps without rules: Blocked on all networks
@@ -395,7 +395,7 @@ Like ConnectivityManager, the live network type does not affect the outcome. `ap
 
 ## Boot Protection
 
-Optional, **root only**. Blocks all network traffic from the moment the kernel is up until De1984 starts, closing the window where apps can talk before any backend exists.
+Optional, **root or Shizuku in root mode**. Blocks all network traffic from the moment the kernel is up until De1984 starts, closing the window where apps can talk before any backend exists.
 
 **How it works.** A script is installed at `/data/adb/post-fs-data.d/de1984_boot_protection.sh`, the root manager's boot script folder, not the app's. Magisk, KernelSU and APatch all run it at post-fs-data; KernelSU and APatch do not create the folder, so De1984 creates it when one of them is installed (`/data/adb/ksu` or `/data/adb/ap`). At boot it creates a `de1984_boot` chain that accepts loopback and a small set of system UIDs, and DROPs everything else. It uses raw `iptables` because `post-fs-data` runs long before Android's framework.
 
@@ -403,7 +403,7 @@ Optional, **root only**. Blocks all network traffic from the moment the kernel i
 
 **Two safety guards, both verified on hardware:**
 - **Self-expiry.** The chain removes itself about 120 seconds after boot whether or not De1984 ever starts. Measured at +72 s on a test device.
-- **Self-delete.** If the APK is gone from every user profile, the script deletes itself and exits without installing anything.
+- **Self-delete.** If De1984's data folder (`/data/user_de/<user>/<package>`) is gone for every user, the script deletes itself and exits without installing anything. It checks the data folder, not the APK, so an uninstall that keeps the app's data leaves the script running.
 
 **Recovery if it ever goes wrong:**
 ```
@@ -441,6 +441,10 @@ adb shell cmd netpolicy remove restrict-background-blacklist <uid>
 ```
 Both commands are needed; `remove` alone is refused when the UID is not on that list.
 
+**Not firewall blocks, but also left behind:**
+- **Captive portal settings.** Settings > Captive Portal Controller writes `captive_portal_mode`, `captive_portal_http_url` and `captive_portal_https_url` to Android's global settings. They stay after uninstall, and the originals De1984 saved are deleted with its data. Restore them in the app before uninstalling, or with `adb shell settings delete global <name>`.
+- **Boot protection script.** It stays in `/data/adb/post-fs-data.d/` and deletes itself at the next boot (see "Self-delete" above).
+
 ---
 
 ## Firewall State Machine
@@ -458,7 +462,7 @@ The firewall operates as a state machine with well-defined states and transition
 2. **`Starting(backend)`**: Backend service launched, waiting for active confirmation
    - Backend service has been started (Intent sent)
    - Waiting for backend to report active via `isActive()`
-   - UI should show loading indicator
+   - No loading indicator in the app (see "UI Synchronization Rules"); the tile shows a "Starting" subtitle
    - This is a transient state (should resolve within 1-2 seconds)
 
 3. **`Running(backend)`**: Backend active and its start confirmed
@@ -474,7 +478,7 @@ The firewall operates as a state machine with well-defined states and transition
    - UI must show prominent error warning
    - User must be notified
 
-There is no separate switching state. A backend switch reuses `Starting`: `startFirewall` sets `Starting(oldBackendType)`, starts the new backend before stopping the old one so there is no security gap, then sets `Running(newBackendType)`. If the new backend fails while the old one is still active, the state returns to `Running(oldBackend)` rather than going to `Error`.
+There is no separate switching state. A backend switch reuses `Starting`: `startFirewall` sets `Starting(oldBackendType)`, starts the new backend before stopping the old one where its path allows (the paths that tear down first, with a gap, are listed under "Switching scenarios"), then sets `Running(newBackendType)`. If the new backend fails while the old one is still active, the state returns to `Running(oldBackend)` rather than going to `Error`.
 
 ### State Transitions
 
@@ -504,14 +508,16 @@ Error → Stopped: User explicitly stops firewall
 
 **Status Display**:
 - `Stopped`: "Firewall OFF" badge
-- `Starting`: "Starting..." with loading indicator
+- `Starting`: in the app, the same "Firewall Active" badge as `Running`; the Quick Settings tile shows a "Starting" subtitle (Android 10+)
 - `Running`: "Firewall Active" badge + backend type
 - `Error`: "Firewall not running" with error icon + error message
 
 **User Actions**:
 - User can always toggle OFF (stop firewall)
 - User can toggle ON only from `Stopped` or `Error` states
-- User cannot interact during `Starting` (prevent race conditions)
+- Nothing blocks a tap during `Starting`: the app toggle stays enabled, and the tile treats `Starting` as running, so a tap goes down the stop path
+
+**State broadcast**: every state change is also sent as the implicit broadcast `io.github.dorumrr.de1984.FIREWALL_STATE_CHANGED`, with the state and, while running, the backend type, and no permission. Any app that registers a receiver can read it. The home-screen widget's receiver is exported for the same action with no permission, so any app can make the widget show a wrong state, and a widget drawn OFF sends its tap to the toggle receiver, which stops a running firewall without asking when the stop confirmation is off.
 
 ### State Persistence
 
@@ -521,14 +527,7 @@ Error → Stopped: User explicitly stops firewall
 - `KEY_PRIVILEGED_SERVICE_RUNNING`: Is privileged service active?
 - `KEY_PRIVILEGED_BACKEND_TYPE`: Which privileged backend is active?
 
-**State Recovery on App Restart**:
-1. Read `KEY_FIREWALL_ENABLED` to determine user intent
-2. Check if any backend service is actually running (`isActive()`)
-3. Synchronize state:
-   - If should be running but not active → Restart firewall
-   - If should be stopped but active → Stop backend
-   - If backend type mismatch → Restart with correct backend
-4. Emit correct `firewallState` to UI
+**State Recovery on App Restart**: see "Initialization Sequence" below.
 
 ### No network
 
@@ -542,15 +541,15 @@ When the app starts (or returns from background), it must recover the correct fi
 
 ### Initialization Sequence
 
-1. **Check User Intent**:
-   - Read `KEY_FIREWALL_ENABLED` from SharedPreferences
-   - This tells us if user wants firewall running
-
-2. **Detect Running Backends**:
+1. **Detect Running Backends** (up to 5 attempts, 100 ms longer apart each time; the first one found is adopted as `Running`, whatever the user intent):
    - Check VPN backend: `VpnFirewallBackend.isActive()`
    - Check iptables backend: `IptablesFirewallBackend.isActive()`
    - Check ConnectivityManager backend: `ConnectivityManagerFirewallBackend.isActive()`
    - Check NetworkPolicyManager backend: `NetworkPolicyManagerFirewallBackend.isActive()`
+
+2. **Check User Intent**, only when no backend was found:
+   - Read `KEY_FIREWALL_ENABLED` from SharedPreferences
+   - True: restart the firewall (Case B). False: `Stopped` (Case D)
 
 3. **Synchronize State**:
    - **Case A**: Firewall should be running AND backend is active
@@ -595,7 +594,7 @@ When the app starts (or returns from background), it must recover the correct fi
 
 **Backend crashed**:
 - Health monitoring detects failure
-- `handleBackendFailure` re-runs the planner, which normally picks the next privileged backend rather than VPN
+- `handleBackendFailure` re-runs the planner, which picks the first backend in AUTO order that can run: a privileged one when available, else VPN
 - A manual mode gets the same fallback and keeps its stored choice (see Manual Mode). The firewall is left down, with `_isFirewallDown` set and a notification shown, only when the fallback cannot start
 - State transitions: `Running` → `Starting` → `Running(newBackend)`, or `Error`. There is no `Switching` state — `FirewallState` is only `Stopped`, `Starting`, `Running`, `Error`
 
@@ -730,7 +729,14 @@ Notifications inform users about firewall state changes and issues.
    - It is the monitor service's foreground notification, so it lasts as long as the service
    - Stops itself after a successful switch, after 10 minutes if Shizuku is not installed, or once the firewall is turned off
 
-4. **Silent Notifications** (no sound/vibration):
+4. **New App Notification** (default priority, `new_app_notifications` channel):
+   - Shown when an app with network permission is installed, while Settings > "New App Notifications" is on (on by default)
+   - Title "De1984 Firewall detected a new app", message "<app> was installed. Tap to configure firewall rules."; a tap opens that app's firewall controls
+   - One action: "Allow Network" under Block All, "Block Network" under Allow All. It sets all four networks, LAN included, and dismisses the notification. Hidden when the running backend cannot reach that app's user
+   - For a critical or VPN app while "Allow Firewall Critical Packages" is off, the action is refused: it is only logged and the notification stays
+   - Apps installed before De1984 are not notified
+
+5. **Silent Notifications** (no sound/vibration):
    - Backend monitor's switch success: toast "De1984 Firewall switched to [backend]", notification "De1984 Firewall backend switched" / "De1984 Firewall is now using the [backend] backend"
    - Only shown if user has notifications enabled
    - Low-importance channel; gone about 3 seconds later, when the monitor stops
@@ -752,6 +758,7 @@ Notifications inform users about firewall state changes and issues.
 - `backend_monitoring_channel`: Backend monitoring status (importance: LOW)
 - `backend_failure_channel`: Firewall down and "Firewall did not stop" (importance: HIGH)
 - `firewall_alerts_channel`: Switched, upgraded and stopped notices (importance: DEFAULT)
+- `new_app_notifications`: New app installed (importance: DEFAULT)
 
 **User control**:
 - Users can disable notification channels in Android settings

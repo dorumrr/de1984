@@ -25,10 +25,12 @@
 - **Automatic firewall method selection** based on device capabilities
 - **Comprehensive iptables** for rooted devices provides kernel-level blocking with superior performance
 - **ConnectivityManager** for Android 13+ devices with Shizuku, no root required
-- **NetworkPolicyManager** for older devices with Shizuku, selectable manually
+- **NetworkPolicyManager** with Shizuku on any Android version, selectable manually
 - **VPN backend** as fallback for maximum compatibility (no root required)
-- Block apps from accessing WiFi, Mobile Data, or Roaming independently
-- **Global firewall policies**: "Block All by Default" (allowlist) or "Allow All by Default" (blocklist)
+- Block apps on WiFi, Mobile Data and Roaming separately with iptables and VPN. Roaming is part of Mobile Data: a Mobile block also blocks Roaming, and blocking or allowing Roaming does the same to Mobile. ConnectivityManager and NetworkPolicyManager block an app on all networks or none
+- Block LAN access, enforced only by iptables
+- **Global firewall policies**: "Block All by Default" (allowlist) or "Allow All by Default" (blocklist). Switching the policy resets the WiFi, Mobile, Roaming and LAN rules of every app to the new default, with no confirmation: those per-app exceptions are not kept, while each app's screen-off switch is. Apps on the system-recommended list keep theirs, and critical and VPN apps keep theirs only while "Allow Firewall Critical Packages" is on
+- **Captive portal detection**: change the URLs Android uses to check for a captive portal, or turn the check off (root or Shizuku). This changes system settings, and they stay changed after De1984 is uninstalled
 - Screen-off blocking to save battery and data
 - Real-time network state monitoring and automatic rule application
 
@@ -63,14 +65,22 @@
 - **BIND_VPN_SERVICE**: Create local VPN for VPN-based firewall backend
 - **QUERY_ALL_PACKAGES**: View all installed apps
 - **POST_NOTIFICATIONS**: Show notifications for new app installations (optional)
-- **RECEIVE_BOOT_COMPLETED**: Auto-start firewall on device boot
-- **Shizuku or root access**: For the iptables, ConnectivityManager and NetworkPolicyManager firewalls, and for package management (optional)
+- **RECEIVE_BOOT_COMPLETED**: Start the firewall again after a reboot, if it was on before
+- **ACCESS_WIFI_STATE**: Read the network state for per-network rules
+- **FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE**: Keep the firewall services running
+- **REQUEST_IGNORE_BATTERY_OPTIMIZATIONS**: Ask Android not to stop the firewall to save battery (optional)
+- **KILL_BACKGROUND_PROCESSES**: Last fallback for force stop when neither Shizuku nor root works
+- **moe.shizuku.manager.permission.API_V23**: Talk to Shizuku or Sui
+- **INTERACT_ACROSS_USERS**: Read apps in a work, clone or other profile directly. A normal install cannot hold it: when another profile exists, De1984 grants it to itself through root or Shizuku, without asking
+- **WRITE_SECURE_SETTINGS, CHANGE_COMPONENT_ENABLED_STATE**: Not granted to a normal install. De1984 only checks whether they are held, to show the permission status
+- **REQUEST_DELETE_PACKAGES, INSTALL_SHORTCUT, ACCESS_SUPERUSER**: Declared, but no code uses them
+- **Shizuku or root access**: For the iptables, ConnectivityManager and NetworkPolicyManager firewalls, for package management, boot protection and captive portal settings (optional)
 
 ## ⚠️ Good to Know
 
 **If you use VPN mode, turn OFF "Block connections without VPN"**
 
-In Android's VPN settings, De1984 must not have "Block connections without VPN" (also called lockdown) enabled. De1984's VPN routes only the apps you have *blocked* through its tunnel — allowed apps deliberately bypass it and use the network directly. Apps that share a user ID share one verdict, so an allowed app that shares one with an app whose rule blocks goes through the tunnel too. Lockdown tells Android to drop anything that does not go through the VPN, so it blocks exactly those allowed apps. On recent Android versions this switch is turned on automatically when you grant a VPN, so it is worth checking.
+In Android's VPN settings, De1984 must not have "Block connections without VPN" (also called lockdown) enabled. De1984's VPN routes only the apps you have *blocked* through its tunnel — allowed apps deliberately bypass it and use the network directly. Apps that share a user ID share one verdict, so an allowed app that shares one with an app whose rule blocks goes through the tunnel too. Lockdown tells Android to drop anything that does not go through the VPN, so it blocks exactly those allowed apps. On recent Android versions this switch is turned on automatically when you grant a VPN, so it is worth checking. The app itself does not warn about this.
 
 **iptables needs real root, not ADB-mode Shizuku**
 

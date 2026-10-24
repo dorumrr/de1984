@@ -371,10 +371,10 @@
     <string name="backend_requires_android_13">Richiede Android 13+</string>
     <string name="backend_requires_shizuku">Richiede Shizuku</string>
     <string name="backend_iptables_name">iptables</string>
-    <string name="backend_iptables_description">Blocco a livello kernel (richiede root)</string>
+    <string name="backend_iptables_description">Blocco a livello kernel (richiede root o Shizuku in modalità root)</string>
     <string name="backend_iptables_requirement">Richiede root o Shizuku in modalità root</string>
     <string name="backend_network_policy_manager_name">NetworkPolicyManager (Legacy)</string>
-    <string name="backend_network_policy_manager_description">Per Android 12 o precedenti</string>
+    <string name="backend_network_policy_manager_description">Qualsiasi versione di Android, da scegliere manualmente (alcune ROM non possono bloccare il WiFi)</string>
     <string name="backend_network_policy_manager_requirement">Richiede Shizuku</string>
     <string name="backend_not_available_title">%s non disponibile</string>
     <string name="backend_not_available_message">Questo backend non è disponibile sul tuo dispositivo.</string>

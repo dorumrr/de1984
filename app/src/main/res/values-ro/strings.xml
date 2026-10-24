@@ -373,10 +373,10 @@
     <string name="backend_requires_android_13">Necesită Android 13+</string>
     <string name="backend_requires_shizuku">Necesită Shizuku</string>
     <string name="backend_iptables_name">iptables</string>
-    <string name="backend_iptables_description">Blocare la nivel de kernel (necesită root)</string>
+    <string name="backend_iptables_description">Blocare la nivel de kernel (necesită root sau Shizuku în modul root)</string>
     <string name="backend_iptables_requirement">Necesită root sau Shizuku în mod root</string>
     <string name="backend_network_policy_manager_name">NetworkPolicyManager (Vechi)</string>
-    <string name="backend_network_policy_manager_description">Pentru Android 12 și mai jos (folosește ConnectivityManager pe Android 13+)</string>
+    <string name="backend_network_policy_manager_description">Orice versiune Android, aleasă manual (unele ROM-uri nu pot bloca WiFi)</string>
     <string name="backend_network_policy_manager_requirement">Necesită Shizuku</string>
     <string name="backend_not_available_title">%s Indisponibil</string>
     <string name="backend_not_available_message">Acest backend nu este disponibil pe dispozitivul tău.</string>

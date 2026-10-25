@@ -1,0 +1,2 @@
+- Firewall sort: "Configured first" now shows the apps whose rules differ from your default policy. With "Block All by Default", that is the apps you allowed #120
+- Settings: the iptables and NetworkPolicyManager descriptions now state what they really need

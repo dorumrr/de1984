@@ -36,9 +36,12 @@ import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.ui.VpnPermissionActivity
 import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -79,11 +82,12 @@ class FirewallManager(
         /** Ceiling on the whole wait, time spent behind a queued teardown included. See awaitBackendActive. */
         private const val BACKEND_ACTIVE_MAX_WAIT_MS = 30_000L
 
+        /** Health checks failed in a row, no check passing between them, before restarts stop and the firewall is reported down. */
+        private const val MAX_HEALTH_FAILURES_IN_A_ROW = 3
+
         /**
          * How long a start will wait for the root and Shizuku probes to stop saying CHECKING.
          *
-         * FirewallToggleReceiver and BootReceiver reach startFirewall through goAsync(), and the system
-         * kills a background broadcast after 60 s: this wait and BACKEND_ACTIVE_MAX_WAIT_MS are its two largest parts.
          * The probe measured about five seconds on a cold start, so this leaves margin.
          */
         const val PRIVILEGE_ANSWER_TIMEOUT_MS = 8_000L
@@ -109,6 +113,9 @@ class FirewallManager(
      * stopMonitoring() still cancels unconditionally, so a concurrent stopFirewall always wins.
      */
     private var switchingInsideHealthJob = false
+    private val healthFailuresInARow = AtomicInteger(0)
+    // Under startStopMutex: true while a health-check failure is being handled, so its restarts keep the count.
+    private var startingFromHealthCheck = false
     private var privilegeMonitoringJob: Job? = null
     private var vpnPermissionMonitoringJob: Job? = null
     private var vpnStateMonitoringJob: Job? = null
@@ -393,10 +400,39 @@ class FirewallManager(
         }
 
     /** False once the user stopped the firewall or turned it off. */
-    fun isMeantToBeOn(): Boolean =
-        _firewallState.value !is FirewallState.Stopped &&
-            context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                .getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
+    fun isMeantToBeOn(): Boolean = _firewallState.value !is FirewallState.Stopped && isOnByUser()
+
+    fun isOnByUser(): Boolean =
+        context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
+
+    /** For starts that read the user's ON well before they run, such as boot restore; null when it no longer stands. */
+    suspend fun startFirewallIfOnByUser(mode: FirewallMode): Result<FirewallBackendType>? =
+        withContext(Dispatchers.IO) {
+            startStopMutex.withLock { if (isOnByUser()) startFirewallInternal(mode) else null }
+        }
+
+    /** Boot restore's VPN-consent branch: the notice is posted only while the user's ON still stands, read under the lock. */
+    suspend fun reportVpnPermissionRequiredIfOnByUser(resolvedMode: FirewallMode): Boolean =
+        startStopMutex.withLock {
+            if (!isOnByUser()) return@withLock false
+            reportVpnPermissionRequiredFromBackground(resolvedMode)
+            true
+        }
+
+    /** The stop of [restartFirewall] failed, so the old backend may still enforce and nothing was started. */
+    class RestartStopFailedException(cause: Throwable) : Exception(cause.message, cause)
+
+    /** A mode change: stop and start under one hold of the lock, so a user OFF cannot land between them. Null when the OFF came first. */
+    suspend fun restartFirewall(mode: FirewallMode): Result<FirewallBackendType>? =
+        // NonCancellable: a caller that goes away between the stop and the start would leave protection off with intent ON.
+        withContext(Dispatchers.IO + NonCancellable) {
+            startStopMutex.withLock {
+                stopFirewallInternal().onFailure { return@withLock Result.failure(RestartStopFailedException(it)) }
+                delay(500)
+                if (isOnByUser()) startFirewallInternal(mode) else null
+            }
+        }
 
     /** Checks [isMeantToBeOn] under the start/stop lock, so a stop already running wins. Null when it no longer holds. */
     suspend fun startFirewallIfMeantToBeOn(): Result<FirewallBackendType>? =
@@ -462,6 +498,8 @@ class FirewallManager(
 
     /** For callers already holding [startStopMutex]: it is not reentrant, so [startFirewall] from inside it hangs forever. */
     private suspend fun startFirewallInternal(mode: FirewallMode): Result<FirewallBackendType> {
+        // Any other start is a fresh run: failures from before it must not count toward the cap.
+        if (!startingFromHealthCheck) healthFailuresInARow.set(0)
         return try {
             AppLogger.d(TAG, "Starting firewall with mode: $mode")
 
@@ -594,6 +632,8 @@ class FirewallManager(
                 emitStateChangeBroadcast(_firewallState.value)
                 _activeBackendType.value = newBackendType
                 reportFirewallHealthy()
+                // As the switch path does: a restart reached from a health check ended that check's job.
+                startBackendHealthMonitoring()
                 return Result.success(oldBackendType)
             }
 
@@ -750,6 +790,7 @@ class FirewallManager(
             // asynchronously, so this flag is how a failure it finds mid-sweep stops the success
             // path below from declaring the firewall healthy.
             stopTeardownFailed = false
+            healthFailuresInARow.set(0)
 
             stopMonitoring()
 
@@ -1445,11 +1486,42 @@ class FirewallManager(
         return true
     }
 
+    /** The caller's health job ends right after this; the handling runs outside it, since a switch cancels that job (stopMonitoring). */
     private suspend fun failHealthCheck(backendType: FirewallBackendType) {
         AppLogger.e(TAG, "Resetting health check interval to initial value (${Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS}ms)")
         consecutiveSuccessfulHealthChecks = 0
         currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
-        handleBackendFailure(backendType)
+        countFailureAndHandle(backendType, reporter = currentCoroutineContext()[Job])
+    }
+
+    private fun countFailureAndHandle(backendType: FirewallBackendType, reporter: Job?) {
+        val failures = healthFailuresInARow.incrementAndGet()
+        scope.launch {
+            // After the reporting job has ended, so the handling's "no health job left" check is not fooled by it.
+            reporter?.join()
+            if (failures < MAX_HEALTH_FAILURES_IN_A_ROW) {
+                handleBackendFailure(backendType, fromHealthCheck = true)
+                return@launch
+            }
+            startStopMutex.withLock {
+                // Re-read under the lock: a stop or a fresh start since this failure resets the run it belonged to.
+                if (!isOnByUser() || currentBackend?.getType() != backendType ||
+                    healthFailuresInARow.get() < MAX_HEALTH_FAILURES_IN_A_ROW
+                ) return@withLock
+                AppLogger.e(TAG, "$backendType failed ${healthFailuresInARow.get()} health checks in a row - no more restarts, reporting down")
+                stopMonitoring()
+                // Stopped first, so DOWN is true and no service lingers; a teardown that fails reports itself as stuck.
+                currentBackend?.stop()
+                currentBackend = null
+                _activeBackendType.value = null
+                reportFirewallDown(
+                    reason = FirewallHealth.Down.Reason.START_FAILED,
+                    backend = backendType,
+                    stateMessage = "Backend failed ${healthFailuresInARow.get()} health checks in a row",
+                    afterStartAttempt = true
+                )
+            }
+        }
     }
 
     /**
@@ -1469,9 +1541,7 @@ class FirewallManager(
 
     /** Runs the cold-start [sweep] under the start/stop lock; false, without running it, when the firewall is meant to be on or a backend is up. */
     suspend fun sweepWhileStopped(sweep: suspend () -> Unit): Boolean = startStopMutex.withLock {
-        val enabled = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-            .getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
-        if (enabled || _activeBackendType.value != null) return@withLock false
+        if (isOnByUser() || _activeBackendType.value != null) return@withLock false
         sweep()
         true
     }
@@ -1490,7 +1560,8 @@ class FirewallManager(
 
     suspend fun handleBackendFailureFromService(failedBackendType: FirewallBackendType) {
         AppLogger.e(TAG, "Received backend failure notification from service: $failedBackendType")
-        handleBackendFailure(failedBackendType)
+        // Counted with this class's own health failures, or a backend the service keeps failing restarts without end.
+        countFailureAndHandle(failedBackendType, reporter = null)
     }
 
     /** The service finished an apply pass; [error] is null when every rule was written. */
@@ -1852,6 +1923,7 @@ class FirewallManager(
      * it went the flag that drives recovery.
      */
     private fun clearHealthWarningIfEnforcing() {
+        healthFailuresInARow.set(0)
         if (_activeBackendType.value == null) {
             AppLogger.d(TAG, "Health check passed but no active backend - keeping the current warning")
             return
@@ -1870,12 +1942,29 @@ class FirewallManager(
         dismissBackendFailedNotification()
     }
 
-    private suspend fun handleBackendFailure(failedBackendType: FirewallBackendType) =
-        startStopMutex.withLock { handleBackendFailureLocked(failedBackendType) }
+    private suspend fun handleBackendFailure(failedBackendType: FirewallBackendType, fromHealthCheck: Boolean = false) =
+        startStopMutex.withLock {
+            startingFromHealthCheck = fromHealthCheck
+            try {
+                handleBackendFailureLocked(failedBackendType)
+            } finally {
+                startingFromHealthCheck = false
+            }
+            // Kept or restarted on the same backend through a path that starts no health job: without this nothing watches it.
+            if (healthMonitoringJob?.isActive != true && currentBackend != null && _firewallState.value is FirewallState.Running) {
+                startBackendHealthMonitoring()
+            }
+        }
 
     /** For callers already holding [startStopMutex], which is not reentrant. */
     private suspend fun handleBackendFailureLocked(failedBackendType: FirewallBackendType) {
         AppLogger.e(TAG, "=== BACKEND FAILURE DETECTED: $failedBackendType ===")
+
+        // A service report can queue behind the user's OFF on this lock; a fallback start then would undo it.
+        if (!isOnByUser()) {
+            AppLogger.d(TAG, "handleBackendFailure: firewall turned off by the user - no fallback")
+            return
+        }
 
         val currentMode = getCurrentMode()
         val wasManualSelection = currentMode != FirewallMode.AUTO

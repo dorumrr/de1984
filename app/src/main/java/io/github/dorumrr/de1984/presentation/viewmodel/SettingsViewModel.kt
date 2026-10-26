@@ -37,7 +37,6 @@ import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.PackageSafetyLoader
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -707,17 +706,14 @@ class SettingsViewModel(
                 return
             }
 
-            // A failed stop must ABORT the switch. This used to discard the Result and start the
-            // new backend anyway, which was wrong twice over: the old backend is still enforcing,
-            // so two sets of rules end up live with only one of them visible or undoable - and the
-            // successful start then calls reportFirewallHealthy(), erasing the very warning that
-            // said the first backend is stuck. The user is left with a firewall they cannot turn
-            // off and nothing on screen saying so.
-            //
-            // Aborting keeps exactly one backend running and leaves the StopFailed banner up, whose
-            // "Stop again" button is the way out. The mode preference has already been written by
-            // the caller, so a later successful stop lets the user retry the switch.
-            firewallManager.stopFirewall().onFailure { error ->
+            val result = firewallManager.restartFirewall(newMode) ?: run {
+                AppLogger.d(TAG, "Firewall turned off during the mode change - not starting $newMode")
+                return
+            }
+
+            // A failed stop ABORTS the switch: starting anyway left two backends enforcing, and the
+            // start's reportFirewallHealthy erased the StopFailed banner whose "Stop again" is the way out.
+            (result.exceptionOrNull() as? FirewallManager.RestartStopFailedException)?.let { error ->
                 AppLogger.e(TAG, "Backend switch aborted - the old backend would not stop: ${error.message}", error)
                 _uiState.value = _uiState.value.copy(
                     error = context.getString(
@@ -727,9 +723,6 @@ class SettingsViewModel(
                 )
                 return
             }
-            delay(500)
-
-            val result = firewallManager.startFirewall(newMode)
 
             result.onSuccess {
                 if (substituted) {

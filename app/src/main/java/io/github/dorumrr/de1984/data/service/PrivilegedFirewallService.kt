@@ -68,6 +68,9 @@ class PrivilegedFirewallService : Service() {
     private var lastOp: Job? = null
     private var opCount = 0
 
+    // Under opLock. The type of the newest START that has not taken the backend slot yet: a STOP naming it must still reach it.
+    private var pendingStartType: FirewallBackendType? = null
+
     // A teardown ends with stopSelf(this id), which Android ignores once a newer start arrived.
     @Volatile private var lastStartId = 0
 
@@ -199,12 +202,13 @@ class PrivilegedFirewallService : Service() {
                 val requested = intent.getStringExtra(EXTRA_BACKEND_TYPE)
                 val running = currentBackendType
                 if (requested != null && running != null && requested != running.name) {
-                    AppLogger.w(TAG, "Ignoring ACTION_STOP for $requested - this service is running $running")
+                    stopTypeInQueue(requested, startId)
                     return START_STICKY
                 }
 
                 AppLogger.d(TAG, "ACTION_STOP received - stopping privileged firewall (requested=${requested ?: "any"}, running=$running)")
                 wasExplicitlyStopped = true
+                synchronized(opLock) { pendingStartType = null }
                 stopFirewall()
                 return START_NOT_STICKY
             }
@@ -280,103 +284,141 @@ class PrivilegedFirewallService : Service() {
     private fun startFirewall(backendType: FirewallBackendType, startId: Int) {
         AppLogger.d(TAG, "startFirewall() called with backend: $backendType")
 
-        enqueue { op ->
-            try {
-                val app = application as De1984Application
-                val deps = app.dependencies
+        synchronized(opLock) {
+            pendingStartType = backendType
+            enqueue { op -> runStart(op, backendType, startId) }
+        }
+    }
 
-                val backend = when (backendType) {
-                    FirewallBackendType.IPTABLES -> {
-                        // The shared instance, NOT a new one. This object holds the only in-memory
-                        // picture of the de1984_output chain - chainNeedsResync, blockedUids,
-                        // blockedLanUids - and FirewallManager applies rules through the same
-                        // object. Building a second one here meant two owners of one chain, each
-                        // arming its own resync flag, so every start rewrote the whole chain twice.
-                        val b = deps.iptablesBackend
-                        b.startInternal().getOrElse { error ->
-                            AppLogger.e(TAG, "Failed to start iptables backend: ${error.message}")
-                            stopSelf(startId)
-                            return@enqueue
-                        }
-                        b
+    // A failed START must not end a service whose slot still holds a running backend: onDestroy would tear it down.
+    private fun stopSelfIfIdle(startId: Int) {
+        if (currentBackend == null) stopSelf(startId)
+    }
+
+    private suspend fun runStart(op: Int, backendType: FirewallBackendType, startId: Int) {
+        // Superseded before it ran: starting it would only build a backend for the newer op to tear down.
+        if (!isLatestOp(op)) {
+            AppLogger.d(TAG, "startFirewall: superseded before it ran - skipping $backendType")
+            return
+        }
+        try {
+            val app = application as De1984Application
+            val deps = app.dependencies
+
+            val backend = when (backendType) {
+                FirewallBackendType.IPTABLES -> {
+                    // The shared instance, NOT a new one. This object holds the only in-memory
+                    // picture of the de1984_output chain - chainNeedsResync, blockedUids,
+                    // blockedLanUids - and FirewallManager applies rules through the same
+                    // object. Building a second one here meant two owners of one chain, each
+                    // arming its own resync flag, so every start rewrote the whole chain twice.
+                    val b = deps.iptablesBackend
+                    b.startInternal().getOrElse { error ->
+                        AppLogger.e(TAG, "Failed to start iptables backend: ${error.message}")
+                        stopSelfIfIdle(startId)
+                        return
                     }
-                    FirewallBackendType.CONNECTIVITY_MANAGER -> {
-                        val b = ConnectivityManagerFirewallBackend(
-                            context = applicationContext,
-                            shizukuManager = deps.shizukuManager,
-                            errorHandler = deps.errorHandler
-                        )
-                        b.startInternal().getOrElse { error ->
-                            AppLogger.e(TAG, "Failed to start ConnectivityManager backend: ${error.message}")
-                            stopSelf(startId)
-                            return@enqueue
-                        }
-                        b
-                    }
-                    FirewallBackendType.NETWORK_POLICY_MANAGER -> {
-                        val b = NetworkPolicyManagerFirewallBackend(
-                            context = applicationContext,
-                            shizukuManager = deps.shizukuManager,
-                            errorHandler = deps.errorHandler
-                        )
-                        b.startInternal().getOrElse { error ->
-                            AppLogger.e(TAG, "Failed to start NetworkPolicyManager backend: ${error.message}")
-                            stopSelf(startId)
-                            return@enqueue
-                        }
-                        b
-                    }
-                    else -> {
-                        AppLogger.e(TAG, "Unsupported backend type: $backendType")
-                        stopSelf(startId)
-                        return@enqueue
-                    }
+                    b
                 }
-
-                currentBackend = backend
-                currentBackendType = backendType
-
-                // A newer start or stop is queued: it owns the backend now, so this run must not report itself running.
-                if (!isLatestOp(op)) {
-                    AppLogger.d(TAG, "startFirewall: a newer start or stop is queued - leaving $backendType to it")
-                    return@enqueue
+                FirewallBackendType.CONNECTIVITY_MANAGER -> {
+                    val b = ConnectivityManagerFirewallBackend(
+                        context = applicationContext,
+                        shizukuManager = deps.shizukuManager,
+                        errorHandler = deps.errorHandler
+                    )
+                    b.startInternal().getOrElse { error ->
+                        AppLogger.e(TAG, "Failed to start ConnectivityManager backend: ${error.message}")
+                        stopSelfIfIdle(startId)
+                        return
+                    }
+                    b
                 }
+                FirewallBackendType.NETWORK_POLICY_MANAGER -> {
+                    val b = NetworkPolicyManagerFirewallBackend(
+                        context = applicationContext,
+                        shizukuManager = deps.shizukuManager,
+                        errorHandler = deps.errorHandler
+                    )
+                    b.startInternal().getOrElse { error ->
+                        AppLogger.e(TAG, "Failed to start NetworkPolicyManager backend: ${error.message}")
+                        stopSelfIfIdle(startId)
+                        return
+                    }
+                    b
+                }
+                else -> {
+                    AppLogger.e(TAG, "Unsupported backend type: $backendType")
+                    stopSelfIfIdle(startId)
+                    return
+                }
+            }
 
-                endSession()
-                isServiceActive = true
+            // Superseded while starting: undo only what this run built, never the backend the slot holds.
+            if (!isLatestOp(op)) {
+                AppLogger.d(TAG, "startFirewall: superseded while starting - undoing $backendType")
+                if (backendType != currentBackendType) stopBackend(backend, backendType)
+                return
+            }
 
-                val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                prefs.edit()
-                    .putBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, true)
-                    .putString(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE, backendType.name)
-                    .apply()
-                AppLogger.d(TAG, "Updated SharedPreferences: PRIVILEGED_SERVICE_RUNNING=true, BACKEND_TYPE=$backendType")
+            currentBackend = backend
+            currentBackendType = backendType
 
-                AppLogger.d(TAG, "Starting foreground service with notification")
-                startForeground(NOTIFICATION_ID, createNotification())
+            endSession()
+            isServiceActive = true
 
-                // No "initial" apply here, on purpose.
-                //
-                // It never ran anyway: startMonitoring() below collects the Room rules Flow and the
-                // network/screen monitors, all of which emit their current value immediately, and
-                // each of those calls scheduleRuleApplication - which cancels the pending job. Timed
-                // on hardware 2026-08-25: "initial" scheduled at 59.501, cancelled by "flow" at
-                // 59.567 and again by "state-change" at 59.607, all inside the 300ms debounce.
-                //
-                // It was not merely dead. currentNetworkType is still NetworkType.NONE at this point
-                // - startMonitoring() is what fills it - and FirewallRule.isBlockedOn(NONE) blocks.
-                // So on any device slow enough for the monitors to take more than 300ms to emit,
-                // this line applied a full over-block of every rule, then corrected itself moments
-                // later. The rules Flow emission is the guaranteed trigger; this was a race against
-                // it that could only ever produce a wrong answer.
+            val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, true)
+                .putString(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE, backendType.name)
+                .apply()
+            AppLogger.d(TAG, "Updated SharedPreferences: PRIVILEGED_SERVICE_RUNNING=true, BACKEND_TYPE=$backendType")
 
-                startMonitoring()
-                startBackendHealthMonitoring()
+            AppLogger.d(TAG, "Starting foreground service with notification")
+            startForeground(NOTIFICATION_ID, createNotification())
 
-                AppLogger.d(TAG, "Privileged firewall started successfully with backend: $backendType")
-            } catch (e: Exception) {
-                AppLogger.e(TAG, "Error in startFirewall", e)
-                stopSelf(startId)
+            // No "initial" apply here, on purpose.
+            //
+            // It never ran anyway: startMonitoring() below collects the Room rules Flow and the
+            // network/screen monitors, all of which emit their current value immediately, and
+            // each of those calls scheduleRuleApplication - which cancels the pending job. Timed
+            // on hardware 2026-08-25: "initial" scheduled at 59.501, cancelled by "flow" at
+            // 59.567 and again by "state-change" at 59.607, all inside the 300ms debounce.
+            //
+            // It was not merely dead. currentNetworkType is still NetworkType.NONE at this point
+            // - startMonitoring() is what fills it - and FirewallRule.isBlockedOn(NONE) blocks.
+            // So on any device slow enough for the monitors to take more than 300ms to emit,
+            // this line applied a full over-block of every rule, then corrected itself moments
+            // later. The rules Flow emission is the guaranteed trigger; this was a race against
+            // it that could only ever produce a wrong answer.
+
+            startMonitoring()
+            startBackendHealthMonitoring()
+
+            AppLogger.d(TAG, "Privileged firewall started successfully with backend: $backendType")
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Error in startFirewall", e)
+            stopSelfIfIdle(startId)
+        } finally {
+            synchronized(opLock) { if (op == opCount) pendingStartType = null }
+        }
+    }
+
+    /**
+     * A STOP naming a type the slot did not hold when it arrived: decided in the queue, after every earlier
+     * op, so a START of that type that wins the slot meanwhile is still torn down. It supersedes only a START of that type.
+     */
+    private fun stopTypeInQueue(requested: String, stopId: Int) = synchronized(opLock) {
+        val namesPendingStart = pendingStartType?.name == requested
+        if (namesPendingStart) pendingStartType = null
+        AppLogger.d(TAG, "ACTION_STOP for $requested queued (pending start of that type: $namesPendingStart)")
+        enqueue(supersedes = namesPendingStart) {
+            when {
+                currentBackendType?.name == requested -> {
+                    pendingTeardowns.incrementAndGet()
+                    try { tearDown(stopId) } finally { pendingTeardowns.decrementAndGet() }
+                }
+                currentBackend == null -> stopSelf(stopId)
+                else -> AppLogger.d(TAG, "ACTION_STOP for $requested ignored - this service runs $currentBackendType")
             }
         }
     }
@@ -390,58 +432,63 @@ class PrivilegedFirewallService : Service() {
 
         val stopId = lastStartId
         pendingTeardowns.incrementAndGet()
-        teardownJob = enqueue {
-            endSession()
-
-            val backend = currentBackend
-            val backendType = currentBackendType
-
-            if (backend != null && backendType != null) {
-                when (backendType) {
-                    // The teardown failure is reported, not just logged. FirewallManager judges the
-                    // stop by backend.stop(), which for all three of these returns success as soon
-                    // as startService() returns - the real teardown happens here, asynchronously.
-                    // Swallowing it meant the "firewall would not stop" warning could never fire for
-                    // any privileged backend, which is three of the four.
-                    FirewallBackendType.IPTABLES -> {
-                        (backend as? IptablesFirewallBackend)?.stopInternal()?.getOrElse { error ->
-                            AppLogger.w(TAG, "Failed to stop iptables backend: ${error.message}")
-                            reportTeardownFailure(backendType, error)
-                        }
-                    }
-                    FirewallBackendType.CONNECTIVITY_MANAGER -> {
-                        (backend as? ConnectivityManagerFirewallBackend)?.stopInternal()?.getOrElse { error ->
-                            AppLogger.w(TAG, "Failed to stop ConnectivityManager backend: ${error.message}")
-                            reportTeardownFailure(backendType, error)
-                        }
-                    }
-                    FirewallBackendType.NETWORK_POLICY_MANAGER -> {
-                        (backend as? NetworkPolicyManagerFirewallBackend)?.stopInternal()?.getOrElse { error ->
-                            AppLogger.w(TAG, "Failed to stop NetworkPolicyManager backend: ${error.message}")
-                            reportTeardownFailure(backendType, error)
-                        }
-                    }
-                    else -> {
-                        AppLogger.w(TAG, "Unknown backend type: $backendType")
-                    }
-                }
-            }
-
-            currentBackend = null
-            currentBackendType = null
-            markServiceStopped()
-
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf(stopId)
-        }.also { job ->
+        teardownJob = enqueue { tearDown(stopId) }.also { job ->
             // On completion, not in a finally: a job cancelled by onDestroy before it ran never enters its block.
             job.invokeOnCompletion { pendingTeardowns.decrementAndGet() }
         }
     }
 
-    private fun enqueue(block: suspend (op: Int) -> Unit): Job = synchronized(opLock) {
+    /** Runs inside the op queue, so a START queued after it still runs after it. */
+    private suspend fun tearDown(stopId: Int) {
+        endSession()
+
+        val backend = currentBackend
+        val backendType = currentBackendType
+        if (backend != null && backendType != null) stopBackend(backend, backendType)
+
+        currentBackend = null
+        currentBackendType = null
+        markServiceStopped()
+
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf(stopId)
+    }
+
+    private suspend fun stopBackend(backend: FirewallBackend, backendType: FirewallBackendType) {
+        when (backendType) {
+            // The teardown failure is reported, not just logged. FirewallManager judges the
+            // stop by backend.stop(), which for all three of these returns success as soon
+            // as startService() returns - the real teardown happens here, asynchronously.
+            // Swallowing it meant the "firewall would not stop" warning could never fire for
+            // any privileged backend, which is three of the four.
+            FirewallBackendType.IPTABLES -> {
+                (backend as? IptablesFirewallBackend)?.stopInternal()?.getOrElse { error ->
+                    AppLogger.w(TAG, "Failed to stop iptables backend: ${error.message}")
+                    reportTeardownFailure(backendType, error)
+                }
+            }
+            FirewallBackendType.CONNECTIVITY_MANAGER -> {
+                (backend as? ConnectivityManagerFirewallBackend)?.stopInternal()?.getOrElse { error ->
+                    AppLogger.w(TAG, "Failed to stop ConnectivityManager backend: ${error.message}")
+                    reportTeardownFailure(backendType, error)
+                }
+            }
+            FirewallBackendType.NETWORK_POLICY_MANAGER -> {
+                (backend as? NetworkPolicyManagerFirewallBackend)?.stopInternal()?.getOrElse { error ->
+                    AppLogger.w(TAG, "Failed to stop NetworkPolicyManager backend: ${error.message}")
+                    reportTeardownFailure(backendType, error)
+                }
+            }
+            else -> {
+                AppLogger.w(TAG, "Unknown backend type: $backendType")
+            }
+        }
+    }
+
+    /** [supersedes] false: the op still waits its turn, but a START queued before it stays the latest. */
+    private fun enqueue(supersedes: Boolean = true, block: suspend (op: Int) -> Unit): Job = synchronized(opLock) {
         val previous = lastOp
-        val op = ++opCount
+        val op = if (supersedes) ++opCount else opCount
         serviceScope.launch {
             previous?.join()
             block(op)

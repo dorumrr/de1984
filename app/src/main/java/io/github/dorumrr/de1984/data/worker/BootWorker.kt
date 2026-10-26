@@ -68,7 +68,12 @@ class BootWorker(
             delay(500)
 
             AppLogger.d(TAG, "🚀 Starting firewall after boot...")
-            val result = firewallManager.startFirewall()
+            // The OFF can land during the warm-up above, after the intent read at the top.
+            val result = firewallManager.startFirewallIfOnByUser(firewallManager.getCurrentMode()) ?: run {
+                AppLogger.d(TAG, "Firewall turned off before the restore ran - lifting any boot block")
+                app.dependencies.bootProtectionManager.clearBootBlockIfInstalled()
+                return Result.success()
+            }
 
             result.onSuccess { backendType ->
                 AppLogger.d(TAG, "✅ FIREWALL RESTORED SUCCESSFULLY | Trigger: BOOT_COMPLETED (WorkManager) | Backend: $backendType")

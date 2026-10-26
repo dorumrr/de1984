@@ -20,7 +20,7 @@ import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.plus
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -115,9 +115,7 @@ class BootReceiver : BroadcastReceiver() {
                     val shizukuManager = app.dependencies.shizukuManager
                     val rootManager = app.dependencies.rootManager
 
-                    val pendingResult = goAsync()
-
-                    app.dependencies.applicationScope.launch(Dispatchers.IO) {
+                    goAsyncBounded(app.dependencies.applicationScope + Dispatchers.IO, TAG) {
                         try {
                             // CRITICAL: Request root permission FIRST to wake up Magisk
                             // Magisk doesn't grant root permission until the app requests it after boot/update
@@ -145,12 +143,29 @@ class BootReceiver : BroadcastReceiver() {
                                 firewallManager.vpnConsentIntent() != null
 
                             val result: Result<FirewallBackendType> = if (needsVpnConsent) {
-                                AppLogger.w(TAG, "🔐 VPN permission required after $trigger - notifying instead of starting")
-                                firewallManager.reportVpnPermissionRequiredFromBackground(mode)
+                                if (!firewallManager.reportVpnPermissionRequiredIfOnByUser(mode)) {
+                                    AppLogger.d(TAG, "Firewall turned off before the restore ran - no VPN permission notice, lifting any boot block")
+                                    try {
+                                        app.dependencies.bootProtectionManager.clearBootBlockIfInstalled()
+                                    } catch (e: Exception) {
+                                        AppLogger.e(TAG, "Failed to lift boot protection block", e)
+                                    }
+                                    return@goAsyncBounded
+                                }
+                                AppLogger.w(TAG, "🔐 VPN permission required after $trigger - notified instead of starting")
                                 Result.failure(IllegalStateException("VPN permission required"))
                             } else {
                                 AppLogger.d(TAG, "🚀 Starting firewall after $trigger (mode=$mode)...")
-                                firewallManager.startFirewall(mode)
+                                // The OFF can land during the warm-up above, after the intent read at the top.
+                                firewallManager.startFirewallIfOnByUser(mode) ?: run {
+                                    AppLogger.d(TAG, "Firewall turned off before the restore ran - lifting any boot block")
+                                    try {
+                                        app.dependencies.bootProtectionManager.clearBootBlockIfInstalled()
+                                    } catch (e: Exception) {
+                                        AppLogger.e(TAG, "Failed to lift boot protection block", e)
+                                    }
+                                    return@goAsyncBounded
+                                }
                             }
                             result.onSuccess { backendType ->
                                 AppLogger.d(TAG, "✅ FIREWALL RESTORED SUCCESSFULLY | Trigger: $trigger | Backend: $backendType")
@@ -253,8 +268,6 @@ class BootReceiver : BroadcastReceiver() {
                             } catch (report: Exception) {
                                 AppLogger.e(TAG, "Could not report the failed restore after a throw", report)
                             }
-                        } finally {
-                            pendingResult.finish()
                         }
                     }
                 } else {
@@ -280,14 +293,11 @@ class BootReceiver : BroadcastReceiver() {
                 // on every boot with no in-app way out.
                 val app = context.applicationContext as? De1984Application
                 if (app != null) {
-                    val pendingResult = goAsync()
-                    app.dependencies.applicationScope.launch(Dispatchers.IO) {
+                    goAsyncBounded(app.dependencies.applicationScope + Dispatchers.IO, TAG) {
                         try {
                             app.dependencies.bootProtectionManager.clearBootBlockIfInstalled()
                         } catch (e: Exception) {
                             AppLogger.e(TAG, "Failed to lift boot protection block", e)
-                        } finally {
-                            pendingResult.finish()
                         }
                     }
                 }

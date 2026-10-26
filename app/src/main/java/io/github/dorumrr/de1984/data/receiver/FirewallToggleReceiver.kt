@@ -12,7 +12,6 @@ import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 class FirewallToggleReceiver : BroadcastReceiver() {
 
@@ -42,11 +41,7 @@ class FirewallToggleReceiver : BroadcastReceiver() {
         
         AppLogger.d(TAG, "FirewallManager obtained, isActive=${firewallManager.isActive()}")
 
-        val pendingResult = goAsync()
-        AppLogger.d(TAG, "goAsync() called, starting coroutine...")
-
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        scope.launch {
+        goAsyncBounded(CoroutineScope(SupervisorJob() + Dispatchers.IO), TAG) {
             try {
                 val isCurrentlyActive = firewallManager.isActive()
                 AppLogger.d(TAG, "Current firewall state: isActive=$isCurrentlyActive")
@@ -131,9 +126,6 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                 }
             } catch (e: Exception) {
                 AppLogger.e(TAG, "❌ Error toggling firewall", e)
-            } finally {
-                AppLogger.d(TAG, "Coroutine complete, calling pendingResult.finish()")
-                pendingResult.finish()
             }
         }
     }
@@ -141,17 +133,12 @@ class FirewallToggleReceiver : BroadcastReceiver() {
     /** The DOWN notification's action: records OFF, which ends the retries, then stops whatever is left. */
     private fun turnOff(context: Context) {
         val firewallManager = (context.applicationContext as De1984Application).dependencies.firewallManager
-        val pendingResult = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            try {
-                context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
-                firewallManager.stopFirewall()
-                    .onSuccess { AppLogger.d(TAG, "Turned off from the DOWN notification, KEY_FIREWALL_ENABLED=false") }
-                    .onFailure { AppLogger.e(TAG, "Turn off from the DOWN notification failed: ${it.message}") }
-            } finally {
-                pendingResult.finish()
-            }
+        goAsyncBounded(CoroutineScope(SupervisorJob() + Dispatchers.IO), TAG) {
+            context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
+            firewallManager.stopFirewall()
+                .onSuccess { AppLogger.d(TAG, "Turned off from the DOWN notification, KEY_FIREWALL_ENABLED=false") }
+                .onFailure { AppLogger.e(TAG, "Turn off from the DOWN notification failed: ${it.message}") }
         }
     }
 }

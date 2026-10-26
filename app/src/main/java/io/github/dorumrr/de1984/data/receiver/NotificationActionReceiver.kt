@@ -11,7 +11,6 @@ import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 class NotificationActionReceiver : BroadcastReceiver() {
 
@@ -40,10 +39,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             val app = context.applicationContext as De1984Application
             val manageNetworkAccessUseCase = app.dependencies.provideManageNetworkAccessUseCase()
 
-            val pendingResult = goAsync()
-
-            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-            scope.launch {
+            goAsyncBounded(CoroutineScope(SupervisorJob() + Dispatchers.IO), TAG) {
                 try {
                     // Update firewall rule for all networks.
                     //
@@ -62,8 +58,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         }
                 } catch (e: Exception) {
                     AppLogger.e(TAG, "Error processing notification action", e)
-                } finally {
-                    pendingResult.finish()
                 }
             }
 

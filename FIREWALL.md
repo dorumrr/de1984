@@ -64,7 +64,7 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
 
 **Critical Security Rule**: When switching backends, there must be NO gap where apps are unblocked. The transition must be atomic and as fail-safe as possible. VPN and ConnectivityManager decide only apps in De1984's own profile, so while either runs, the rules of apps in other profiles and users are not enforced.
 
-**Switching scenarios** (the order below is what `startFirewallInternal` does when a backend is still running: a failed health check, the backend monitor after boot). `handlePrivilegeChange` in AUTO mode, the VPN health loop's privilege-gain switch and the switch off VPN when another VPN connects do not follow it: they tear the old backend down first and then start, leaving a gap of about 1-2 s. A mode change in Settings does the same: it stops the firewall, waits 500 ms, then starts the new mode:
+**Switching scenarios** (the order below is what `startFirewallInternal` does when a backend is still running: a failed health check, the backend monitor after boot). `handlePrivilegeChange` in AUTO mode, the VPN health loop's privilege-gain switch and the switch off VPN when another VPN connects do not follow it: they tear the old backend down first and then start, leaving a gap of about 1-2 s. A mode change in Settings does the same: it stops the firewall, waits 500 ms, then starts the new mode, all under one hold of the start/stop lock, and skips the start when the user turned the firewall off meanwhile:
 
 1. **From VPN to iptables** (upgrade):
    - Start iptables backend first, apply all rules
@@ -92,7 +92,7 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
      2. Start VPN backend FIRST, establish VPN tunnel with all blocked apps
      3. Wait until the VPN backend reports active (`awaitBackendActive`; "Backend Health" below says what active means)
      4. Only then clean up old backend (remove iptables rules, stop ConnectivityManager). If it will not go, its rules may stay in force under VPN and the "Firewall did not stop" notification is posted; the in-app banner then shows the switch to VPN instead
-     5. If VPN fails to start, the firewall is reported down (`FALLBACK_FAILED`); there is no timed retry, but the next app open or root/Shizuku change tries the start again (see "Retry Strategy")
+     5. If VPN fails to start, the firewall is reported down (`FALLBACK_FAILED`); there is no timed retry, but the next app open or root/Shizuku change tries the start again (see "Retry Strategy").
    - **Not this order**: a loss that `handlePrivilegeChange` handles in AUTO mode (a root or Shizuku status change) tears the old backend down first, then starts (see "Switching scenarios")
    - **Fail-safe**: If VPN cannot be established, the firewall is DOWN and the user is notified: the banner stays until protection returns or the user taps "Turn off", and the high-priority notification clears when tapped
    - Maintain granular control ✅
@@ -170,7 +170,7 @@ The app uses adaptive health check intervals to balance responsiveness and batte
 
 **Monitoring Lifecycle**:
 
-- Start monitoring on a start that brings up a new backend (`startFirewallInternal`). A restart onto the same backend and the "Enable VPN" / "Replace VPN" start from a banner or notification (`startVpnFallback`) start none
+- Start monitoring on a start that brings up a backend (`startFirewallInternal`), a restart onto the same backend included. The "Enable VPN" / "Replace VPN" start from a banner or notification (`startVpnFallback`) starts none
 - Stop monitoring when firewall stops
 - Continue monitoring during backend switches
 - Privileged backends: Monitor in PrivilegedFirewallService (foreground service)
@@ -589,7 +589,7 @@ When the app starts (or returns from background), it must recover the correct fi
 
 **Device rebooted**:
 - All services are killed
-- BootReceiver (through BootWorker on Android 12+) starts firewall if `KEY_FIREWALL_ENABLED` is true. BootReceiver's own path posts the VPN permission notification instead when the plan needs VPN consent; BootWorker does not check first. A start that lands on VPN in AUTO while Shizuku is not ready also starts the backend monitor (see "Notification Strategy")
+- BootReceiver (through BootWorker on Android 12+) starts firewall if `KEY_FIREWALL_ENABLED` is true, read again under the start/stop lock after the root and Shizuku warm-up, so an OFF during the warm-up holds. BootReceiver's own path posts the VPN permission notification instead when the plan needs VPN consent; BootWorker does not check first. A start that lands on VPN in AUTO while Shizuku is not ready also starts the backend monitor (see "Notification Strategy")
 - App initializes later and detects running service (Case A)
 
 **Backend crashed**:
@@ -645,7 +645,7 @@ Health checks ensure the firewall backend remains functional and triggers fallba
 
 **For VPN Backend**:
 - FirewallVpnService rebuilds the tunnel on network, screen and rule changes, and retries a tunnel that failed to establish
-- FirewallManager runs its health loop on the VPN backend too, on the same adaptive interval. Each tick first requires `VpnFirewallBackend.isActive()` (see "Backend Health"), else `handleBackendFailure()`
+- FirewallManager runs its health loop on the VPN backend too, on the same adaptive interval. Each tick first requires `VpnFirewallBackend.isActive()` (see "Backend Health"), else the failure is handled as under "On Failure" below
 - The same loop detects privilege gain: in every stored mode except manual VPN (AUTO, or a manual mode that fell back to VPN) it re-checks root/Shizuku and plans with the stored mode, and if that plan picks a privileged backend it stops VPN first, then starts in AUTO. In manual VPN mode the check is skipped and the user's choice is kept.
 
 ### Health Check Logic
@@ -664,8 +664,9 @@ Health checks ensure the firewall backend remains functional and triggers fallba
    - Log failure with details
    - Reset consecutive success counter to 0
    - Reset check interval to 15 seconds (fast recovery)
-   - Trigger `handleBackendFailure()`
-   - Stop health monitoring; whether the next backend starts its own is under "Monitoring Lifecycle"
+   - Stop this health job, then trigger `handleBackendFailure()` outside it; a failure the privileged service reports counts the same
+   - On the 3rd failure in a row with no passing check between them: no `handleBackendFailure()`; the backend is stopped and the firewall reported DOWN (`START_FAILED`), see "Retry Strategy"
+   - Whether health monitoring resumes is under "Monitoring Lifecycle"
 
 ### Failure Handling
 
@@ -695,6 +696,7 @@ When health check fails:
 **No timed retry on health check failure**:
 - Health checks already run frequently (15-60 seconds)
 - Immediate fallback is more secure than retrying failed backend
+- A failed check is handled once (fallback, or a restart onto the same backend), and health monitoring resumes on whatever then runs. After 3 failed checks in a row with no passing check between them, restarts stop and the firewall is reported DOWN (`START_FAILED`)
 - User can manually retry from error state
 
 **Recovery while the user wants it on**: the user's ON is recorded at the tap, so a start that fails, or a fallback that fails, leaves `KEY_FIREWALL_ENABLED` true and the firewall DOWN. The start is tried again on app open, on a root or Shizuku status change, and at boot; the VPN permission monitor tries at most 30 times. While DOWN, the banner offers "Turn off", which records OFF and ends the retries; so does the "Firewall down — your apps are unblocked" notification, but not the VPN permission or VPN conflict notifications

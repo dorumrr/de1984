@@ -7,7 +7,7 @@ import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.plus
 
 /**
  * Receiver for package state changes from outside de1984: enable, disable and removal.
@@ -87,8 +87,7 @@ class PackageChangedReceiver : BroadcastReceiver() {
             // Only for a package that still exists. The two removal actions land here too, and there
             // is nothing to look up for a package that is gone.
             if (action == Intent.ACTION_PACKAGE_CHANGED) {
-                val pendingResult = goAsync()
-                app.dependencies.applicationScope.launch(Dispatchers.IO) {
+                goAsyncBounded(app.dependencies.applicationScope + Dispatchers.IO, TAG) {
                     try {
                         // No notification from here: PackageMonitoringService's registered receiver owns
                         // the new-app notification and runs this same idempotent use case.
@@ -96,8 +95,6 @@ class PackageChangedReceiver : BroadcastReceiver() {
                             .execute(packageName, uid)
                     } catch (e: Exception) {
                         AppLogger.e(TAG, "Failed to refresh rule for $packageName", e)
-                    } finally {
-                        pendingResult.finish()
                     }
                 }
             }

@@ -106,99 +106,82 @@ class De1984Application : Application() {
                     dependencies.shizukuManager.checkShizukuStatus()
                     kotlinx.coroutines.delay(500)
 
-                    // RE-READ the gate. The check above happened a full second ago, and one widget
-                    // or tile tap does BOTH of these at once: it cold-starts this process, which
-                    // schedules this sweep, and it runs FirewallToggleReceiver's startFirewall with
-                    // no delay at all. So the start wins the race, creates the chains - and then
-                    // this sweep wakes up and deletes them.
-                    //
-                    // The result is the worst state this app can be in: the toggle, the badge and
-                    // the notification all say ACTIVE while nothing is enforcing. Nothing catches
-                    // it either - the health check only runs "iptables --version" and reads a
-                    // preference, and never looks for de1984_output.
-                    //
-                    // The privilege warm-up above is what made this bite. Before it, the sweep ran
-                    // with no root and its teardown commands were inert, so the collision was
-                    // harmless. Giving the sweep real privileges gave it real teeth.
-                    val enabledNow = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
-                    val backendUp = dependencies.firewallManager.activeBackendType.value != null
-                    if (enabledNow || backendUp) {
-                        AppLogger.i(
-                            TAG,
-                            "Firewall came up while the sweep was warming up (enabled=$enabledNow, backend=$backendUp) - skipping the sweep"
-                        )
-                        return@launch
-                    }
+                    // Gate re-checked under the start/stop lock: one widget or tile tap cold-starts this process AND
+                    // starts the firewall, and a sweep after that start deletes its chains while every control says ACTIVE.
+                    val swept = dependencies.firewallManager.sweepWhileStopped {
+                        // Collected, not just logged. This sweep is the only retry that happens after a
+                        // stop failed and the process died, and the health state it would have restored
+                        // is in-memory only - so a device whose rules are still enforcing used to start
+                        // every process reporting Healthy, with no badge, no banner and nothing to press.
+                        val orphans = mutableListOf<Pair<FirewallBackendType, Throwable>>()
 
-                    // Collected, not just logged. This sweep is the only retry that happens after a
-                    // stop failed and the process died, and the health state it would have restored
-                    // is in-memory only - so a device whose rules are still enforcing used to start
-                    // every process reporting Healthy, with no badge, no banner and nothing to press.
-                    val orphans = mutableListOf<Pair<FirewallBackendType, Throwable>>()
-
-                    try {
-                        // The shared instance, not a new one. stopInternal() deletes the kernel
-                        // chains AND clears blockedUids / re-arms chainNeedsResync. Done on a
-                        // throwaway, the deletion still happens but the live object keeps a
-                        // populated blockedUids and chainNeedsResync=false - so its next applyRules
-                        // diffs against a chain that no longer exists, finds nothing to add, and
-                        // writes no rules at all. Silent total bypass.
-                        val iptablesBackend = dependencies.iptablesBackend
-                        // stopInternal() can now genuinely fail - it verifies the chains are gone
-                        // instead of assuming it. The old unconditional "Cleaned up" line would
-                        // report success over chains that are still in the kernel.
-                        iptablesBackend.stopInternal()
-                            .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned iptables rules") }
-                            .onFailure { orphans += FirewallBackendType.IPTABLES to it; AppLogger.w(TAG, "Orphaned iptables cleanup incomplete: ${it.message}") }
-                    } catch (e: Exception) {
-                        AppLogger.w(TAG, "Failed to clean up orphaned iptables rules: ${e.message}")
-                    }
-
-                    try {
-                        val cmBackend = ConnectivityManagerFirewallBackend(
-                            this@De1984Application,
-                            dependencies.shizukuManager,
-                            dependencies.errorHandler
-                        )
-                        // clearOrphanedPolicies(), not stopInternal(): it returns immediately when
-                        // there is no record of ours, so the many users who never run this backend
-                        // keep a cold start that issues no shell commands at all. An upgrade from a
-                        // build that kept no record is already covered - this sweep only runs when
-                        // the firewall was off, and that old build's own stop disabled the chain.
-                        cmBackend.clearOrphanedPolicies()
-                            .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned ConnectivityManager rules") }
-                            .onFailure { orphans += FirewallBackendType.CONNECTIVITY_MANAGER to it; AppLogger.w(TAG, "Orphaned ConnectivityManager denials remain: ${it.message}") }
-                    } catch (e: Exception) {
-                        AppLogger.w(TAG, "Failed to clean up orphaned ConnectivityManager rules: ${e.message}")
-                    }
-
-                    // Clean up NetworkPolicyManager uid policies
-                    // Android persists these in /data/system/netpolicy.xml, so they outlive the
-                    // process. This is the only fresh-process sweep in the app, and the reason the
-                    // backend mirrors its uid list to SharedPreferences: after a crash, or a stop
-                    // that failed because Shizuku was down, this is where the retry happens.
-                    try {
-                        val npmBackend = NetworkPolicyManagerFirewallBackend(
-                            this@De1984Application,
-                            dependencies.shizukuManager,
-                            dependencies.errorHandler
-                        )
-                        npmBackend.clearOrphanedPolicies()
-                            .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned NetworkPolicyManager policies") }
-                            .onFailure { orphans += FirewallBackendType.NETWORK_POLICY_MANAGER to it; AppLogger.w(TAG, "Orphaned NetworkPolicyManager policies remain: ${it.message}") }
-                    } catch (e: Exception) {
-                        AppLogger.w(TAG, "Failed to clean up orphaned NetworkPolicyManager policies: ${e.message}")
-                    }
-
-                    // Raise the warning for whatever is still enforcing. reportStopFailedFromSweep
-                    // publishes the same STUCK badge, banner and notification a failed stop does,
-                    // because it is the same situation: apps are blocked and no control in the app
-                    // touches the thing blocking them.
-                    orphans.firstOrNull()?.let { (backend, error) ->
-                        if (orphans.size > 1) {
-                            AppLogger.e(TAG, "Cold-start sweep left ${orphans.map { it.first }} enforcing - reporting $backend")
+                        try {
+                            // The shared instance, not a new one. stopInternal() deletes the kernel
+                            // chains AND clears blockedUids / re-arms chainNeedsResync. Done on a
+                            // throwaway, the deletion still happens but the live object keeps a
+                            // populated blockedUids and chainNeedsResync=false - so its next applyRules
+                            // diffs against a chain that no longer exists, finds nothing to add, and
+                            // writes no rules at all. Silent total bypass.
+                            val iptablesBackend = dependencies.iptablesBackend
+                            // stopInternal() can now genuinely fail - it verifies the chains are gone
+                            // instead of assuming it. The old unconditional "Cleaned up" line would
+                            // report success over chains that are still in the kernel.
+                            iptablesBackend.stopInternal()
+                                .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned iptables rules") }
+                                .onFailure { orphans += FirewallBackendType.IPTABLES to it; AppLogger.w(TAG, "Orphaned iptables cleanup incomplete: ${it.message}") }
+                        } catch (e: Exception) {
+                            AppLogger.w(TAG, "Failed to clean up orphaned iptables rules: ${e.message}")
                         }
-                        dependencies.firewallManager.reportStopFailedFromSweep(backend, error)
+
+                        try {
+                            val cmBackend = ConnectivityManagerFirewallBackend(
+                                this@De1984Application,
+                                dependencies.shizukuManager,
+                                dependencies.errorHandler
+                            )
+                            // clearOrphanedPolicies(), not stopInternal(): it returns immediately when
+                            // there is no record of ours, so the many users who never run this backend
+                            // keep a cold start that issues no shell commands at all. An upgrade from a
+                            // build that kept no record is already covered - this sweep only runs when
+                            // the firewall was off, and that old build's own stop disabled the chain.
+                            cmBackend.clearOrphanedPolicies()
+                                .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned ConnectivityManager rules") }
+                                .onFailure { orphans += FirewallBackendType.CONNECTIVITY_MANAGER to it; AppLogger.w(TAG, "Orphaned ConnectivityManager denials remain: ${it.message}") }
+                        } catch (e: Exception) {
+                            AppLogger.w(TAG, "Failed to clean up orphaned ConnectivityManager rules: ${e.message}")
+                        }
+
+                        // Clean up NetworkPolicyManager uid policies
+                        // Android persists these in /data/system/netpolicy.xml, so they outlive the
+                        // process. This is the only fresh-process sweep in the app, and the reason the
+                        // backend mirrors its uid list to SharedPreferences: after a crash, or a stop
+                        // that failed because Shizuku was down, this is where the retry happens.
+                        try {
+                            val npmBackend = NetworkPolicyManagerFirewallBackend(
+                                this@De1984Application,
+                                dependencies.shizukuManager,
+                                dependencies.errorHandler
+                            )
+                            npmBackend.clearOrphanedPolicies()
+                                .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned NetworkPolicyManager policies") }
+                                .onFailure { orphans += FirewallBackendType.NETWORK_POLICY_MANAGER to it; AppLogger.w(TAG, "Orphaned NetworkPolicyManager policies remain: ${it.message}") }
+                        } catch (e: Exception) {
+                            AppLogger.w(TAG, "Failed to clean up orphaned NetworkPolicyManager policies: ${e.message}")
+                        }
+
+                        // Raise the warning for whatever is still enforcing. reportStopFailedFromSweep
+                        // publishes the same STUCK badge, banner and notification a failed stop does,
+                        // because it is the same situation: apps are blocked and no control in the app
+                        // touches the thing blocking them.
+                        orphans.firstOrNull()?.let { (backend, error) ->
+                            if (orphans.size > 1) {
+                                AppLogger.e(TAG, "Cold-start sweep left ${orphans.map { it.first }} enforcing - reporting $backend")
+                            }
+                            dependencies.firewallManager.reportStopFailedFromSweep(backend, error)
+                        }
+                    }
+                    if (!swept) {
+                        AppLogger.i(TAG, "Firewall is meant to be on or a backend is up - skipping the sweep")
                     }
                 }
             } catch (e: Exception) {

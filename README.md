@@ -65,7 +65,7 @@
 - **BIND_VPN_SERVICE**: Create local VPN for VPN-based firewall backend
 - **QUERY_ALL_PACKAGES**: View all installed apps
 - **POST_NOTIFICATIONS**: Show notifications for new app installations (optional)
-- **RECEIVE_BOOT_COMPLETED**: Start the firewall again after a reboot, if it was on before
+- **RECEIVE_BOOT_COMPLETED**: Start the firewall again after a reboot, if you had turned it on
 - **ACCESS_WIFI_STATE**: Read the network state for per-network rules
 - **FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE**: Keep the firewall services running
 - **REQUEST_IGNORE_BATTERY_OPTIMIZATIONS**: Ask Android not to stop the firewall to save battery (optional)

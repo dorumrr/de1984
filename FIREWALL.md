@@ -94,7 +94,7 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
      4. Only then clean up old backend (remove iptables rules, stop ConnectivityManager). If it will not go, its rules may stay in force under VPN and the "Firewall did not stop" notification is posted; the in-app banner then shows the switch to VPN instead
      5. If VPN fails to start, the firewall is reported down (`FALLBACK_FAILED`); there is no timed retry, but the next app open or root/Shizuku change tries the start again (see "Retry Strategy")
    - **Not this order**: a loss that `handlePrivilegeChange` handles in AUTO mode (a root or Shizuku status change) tears the old backend down first, then starts (see "Switching scenarios")
-   - **Fail-safe**: If VPN cannot be established, the firewall is DOWN and the user is notified: the banner stays until protection returns, and the high-priority notification clears when tapped
+   - **Fail-safe**: If VPN cannot be established, the firewall is DOWN and the user is notified: the banner stays until protection returns or the user taps "Turn off", and the high-priority notification clears when tapped
    - Maintain granular control ✅
 
 **Monitoring for automatic fallback**:
@@ -121,7 +121,7 @@ When a privileged backend fails and VPN permission is not granted:
 3. **Security Warning**:
    - Firewall is DOWN - all apps are UNBLOCKED
    - User MUST be warned prominently in UI and notification
-   - The notification clears when tapped; the in-app banner stays until protection returns
+   - The notification clears when tapped; the in-app banner stays until protection returns or the user taps "Turn off"
 
 4. **Recovery Paths**:
    - **Path A**: User grants VPN permission via notification → Automatically start VPN backend
@@ -463,7 +463,7 @@ The firewall operates as a state machine with well-defined states and transition
    - Backend service has been started (Intent sent)
    - Waiting for backend to report active via `isActive()`
    - No loading indicator in the app (see "UI Synchronization Rules"); the tile shows a "Starting" subtitle
-   - This is a transient state (should resolve within 1-2 seconds)
+   - This is a transient state, usually 1-2 seconds; a start queued behind a privileged stop still tearing down waits for it, up to 30 s in all (`awaitBackendActive`)
 
 3. **`Running(backend)`**: Backend active and its start confirmed
    - Backend service is running and `isActive()` returns true
@@ -692,10 +692,12 @@ When health check fails:
 
 ### Retry Strategy
 
-**No automatic retries on health check failure**:
+**No timed retry on health check failure**:
 - Health checks already run frequently (15-60 seconds)
 - Immediate fallback is more secure than retrying failed backend
 - User can manually retry from error state
+
+**Recovery while the user wants it on**: the user's ON is recorded at the tap, so a start that fails, or a fallback that fails, leaves `KEY_FIREWALL_ENABLED` true and the firewall DOWN. The start is tried again on app open, on a root or Shizuku status change, and at boot; the VPN permission monitor tries at most 30 times. While DOWN, the banner offers "Turn off", which records OFF and ends the retries; so does the "Firewall down — your apps are unblocked" notification, but not the VPN permission or VPN conflict notifications
 
 **Automatic recovery when privileges return**:
 - Privilege monitoring detects when root/Shizuku becomes available

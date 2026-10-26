@@ -23,6 +23,8 @@ import io.github.dorumrr.de1984.data.common.ShizukuManager
 import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.monitor.NetworkStateMonitor
 import io.github.dorumrr.de1984.data.monitor.ScreenStateMonitor
+import io.github.dorumrr.de1984.data.receiver.FirewallToggleReceiver
+import io.github.dorumrr.de1984.data.service.PrivilegedFirewallService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackend
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
 import io.github.dorumrr.de1984.domain.firewall.FirewallHealth
@@ -74,12 +76,14 @@ class FirewallManager(
         /** How long to keep asking before calling it a failed start. See awaitBackendActive. */
         private const val BACKEND_ACTIVE_TIMEOUT_MS = 8_000L
 
+        /** Ceiling on the whole wait, time spent behind a queued teardown included. See awaitBackendActive. */
+        private const val BACKEND_ACTIVE_MAX_WAIT_MS = 30_000L
+
         /**
          * How long a start will wait for the root and Shizuku probes to stop saying CHECKING.
          *
-         * Matched to BACKEND_ACTIVE_TIMEOUT_MS above, and deliberately under the ten seconds a
-         * FOREGROUND broadcast is allowed - FirewallToggleReceiver reaches startFirewall through
-         * goAsync(), so a longer wait there would be killed by the system rather than by us.
+         * FirewallToggleReceiver and BootReceiver reach startFirewall through goAsync(), and the system
+         * kills a background broadcast after 60 s: this wait and BACKEND_ACTIVE_MAX_WAIT_MS are its two largest parts.
          * The probe measured about five seconds on a cold start, so this leaves margin.
          */
         const val PRIVILEGE_ANSWER_TIMEOUT_MS = 8_000L
@@ -167,8 +171,7 @@ class FirewallManager(
      * - KEY_FIREWALL_ENABLED = user intent (should firewall be running?)
      * - isFirewallDown = current state (is firewall temporarily down due to error?)
      *
-     * When isFirewallDown=true, handlePrivilegeChange() will attempt recovery
-     * even if KEY_FIREWALL_ENABLED was cleared by error paths.
+     * When isFirewallDown=true, handlePrivilegeChange() will attempt recovery.
      */
     private val _isFirewallDown = MutableStateFlow(false)
     val isFirewallDown: StateFlow<Boolean> = _isFirewallDown.asStateFlow()
@@ -549,6 +552,8 @@ class FirewallManager(
                     // path simply never got the guard.
                     if (!awaitBackendActive(oldBackend, oldBackendType)) {
                         AppLogger.e(TAG, "Backend ($oldBackendType) restarted but never became active")
+                        // A START still queued in the service would otherwise enforce under a DOWN report; same type, so it is not dropped.
+                        oldBackend.stop()
                         reportStartFailure(
                             reason = FirewallHealth.Down.Reason.START_FAILED,
                             backend = oldBackendType,
@@ -1462,6 +1467,15 @@ class FirewallManager(
         reportStopFailed(backendType, error)
     }
 
+    /** Runs the cold-start [sweep] under the start/stop lock; false, without running it, when the firewall is meant to be on or a backend is up. */
+    suspend fun sweepWhileStopped(sweep: suspend () -> Unit): Boolean = startStopMutex.withLock {
+        val enabled = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
+        if (enabled || _activeBackendType.value != null) return@withLock false
+        sweep()
+        true
+    }
+
     /**
      * The privileged service could not tear a backend down.
      *
@@ -1571,10 +1585,8 @@ class FirewallManager(
          */
         vpnPermissionResolvedMode: FirewallMode? = null
     ) {
-        // This flag means "the user wants the firewall on and it is not". Recovery keys off it, so
-        // setting it when the user's own intent flag is false turns a failed toggle into a restart
-        // attempt on every resume: FirewallViewModel writes KEY_FIREWALL_ENABLED=false on a failed
-        // start, and handlePrivilegeChange's `!enabled && !down` guard then stops short-circuiting.
+        // This flag means "the user wants the firewall on and it is not". Recovery keys off it, so it is
+        // set only while intent is ON: set with intent OFF, every resume would restart a firewall the user turned off.
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val userWantsFirewallOn = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
 
@@ -1858,7 +1870,11 @@ class FirewallManager(
         dismissBackendFailedNotification()
     }
 
-    private suspend fun handleBackendFailure(failedBackendType: FirewallBackendType) = startStopMutex.withLock {
+    private suspend fun handleBackendFailure(failedBackendType: FirewallBackendType) =
+        startStopMutex.withLock { handleBackendFailureLocked(failedBackendType) }
+
+    /** For callers already holding [startStopMutex], which is not reentrant. */
+    private suspend fun handleBackendFailureLocked(failedBackendType: FirewallBackendType) {
         AppLogger.e(TAG, "=== BACKEND FAILURE DETECTED: $failedBackendType ===")
 
         val currentMode = getCurrentMode()
@@ -1897,7 +1913,7 @@ class FirewallManager(
                 backend = failedBackendType,
                 stateMessage = "Failed to compute fallback plan: ${error?.message}"
             )
-            return@withLock
+            return
         }
 
         val plan = planResult.getOrThrow()
@@ -1917,7 +1933,7 @@ class FirewallManager(
                     stateMessage = "Fallback start failed: ${error.message}"
                 )
             }
-            return@withLock
+            return
         }
 
         AppLogger.e(TAG, "Planner selected VPN fallback, checking VPN permission...")
@@ -1938,7 +1954,7 @@ class FirewallManager(
             )
 
             startVpnPermissionMonitoring()
-            return@withLock
+            return
         }
 
         val prepareIntent = try {
@@ -2248,6 +2264,14 @@ class FirewallManager(
         val title = FirewallHealthPresenter.title(context, health).orEmpty()
         val body = FirewallHealthPresenter.message(context, health).orEmpty()
 
+        // Down keeps the user's ON, so recovery retries on every app open, privilege change and boot; this records OFF.
+        val turnOffIntent = PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(context, FirewallToggleReceiver::class.java).setAction(Constants.Firewall.ACTION_TURN_OFF_FIREWALL),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(context, Constants.BackendFailure.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_shield)
             .setContentTitle(title)
@@ -2260,6 +2284,7 @@ class FirewallManager(
             .setOnlyAlertOnce(true)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .addAction(R.drawable.ic_shield, context.getString(R.string.firewall_down_action_turn_off), turnOffIntent)
             .build()
 
         notificationManager.notify(Constants.BackendFailure.NOTIFICATION_ID, notification)
@@ -2412,6 +2437,7 @@ class FirewallManager(
         backendType: FirewallBackendType
     ): Boolean {
         val startedWaiting = System.currentTimeMillis()
+        var countedMs = 0L
 
         while (true) {
             kotlinx.coroutines.delay(BACKEND_ACTIVE_POLL_MS)
@@ -2421,8 +2447,13 @@ class FirewallManager(
                 return true
             }
 
-            if (System.currentTimeMillis() - startedWaiting >= BACKEND_ACTIVE_TIMEOUT_MS) {
-                AppLogger.e(TAG, "$backendType did not become active within ${BACKEND_ACTIVE_TIMEOUT_MS}ms")
+            // The service runs a start only after the stop queued before it, and a ConnectivityManager
+            // or NetworkPolicyManager teardown can take far longer than the budget for the start itself.
+            if (!PrivilegedFirewallService.hasPendingTeardown()) countedMs += BACKEND_ACTIVE_POLL_MS
+
+            val waitedMs = System.currentTimeMillis() - startedWaiting
+            if (countedMs >= BACKEND_ACTIVE_TIMEOUT_MS || waitedMs >= BACKEND_ACTIVE_MAX_WAIT_MS) {
+                AppLogger.e(TAG, "$backendType did not become active (waited ${waitedMs}ms, ${countedMs}ms not behind a teardown)")
                 return false
             }
         }
@@ -2666,6 +2697,17 @@ class FirewallManager(
 
         AppLogger.i(TAG, "🔐 AUTO mode: Attempting to switch to privileged backend due to VPN conflict...")
 
+        // Intent was read before the lock: a stop that ran since then must not be undone by the start below.
+        startStopMutex.withLock {
+            if (!isMeantToBeOn() || _activeBackendType.value != FirewallBackendType.VPN) {
+                AppLogger.d(TAG, "🔐 Firewall stopped or switched since the VPN change - nothing to resolve")
+                return
+            }
+            switchForVpnConflictLocked()
+        }
+    }
+
+    private suspend fun switchForVpnConflictLocked() {
         val planResult = computeStartPlan(FirewallMode.AUTO)
         if (planResult.isFailure) {
             AppLogger.e(TAG, "🔐 Failed to compute fallback plan", planResult.exceptionOrNull())
@@ -2687,7 +2729,7 @@ class FirewallManager(
                 _activeBackendType.value = null
             }
 
-            val restartResult = startFirewall(FirewallMode.AUTO)
+            val restartResult = startFirewallInternal(FirewallMode.AUTO)
 
             if (restartResult.isSuccess) {
                 val newBackend = restartResult.getOrThrow()
@@ -2874,6 +2916,12 @@ class FirewallManager(
             return
         }
 
+        // Under the lock from the intent read on: a stop that lands between that read and the switch
+        // would otherwise be undone by the start below.
+        startStopMutex.withLock { switchForPrivilegeChangeLocked(rootStatus, shizukuStatus) }
+    }
+
+    private suspend fun switchForPrivilegeChangeLocked(rootStatus: RootStatus, shizukuStatus: ShizukuStatus) {
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
         val firewallEnabled = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
         val firewallDown = _isFirewallDown.value
@@ -2919,8 +2967,8 @@ class FirewallManager(
                 AppLogger.d(TAG, "Privilege loss: planner suggests backend change $currentBackendType → $plannedBackendType, restarting firewall with fallback backend...")
             }
 
-            // NOTE: We stop the current backend before calling startFirewall() so that
-            // startFirewall() sees no existing backend and performs a fresh start rather than
+            // NOTE: We stop the current backend before calling startFirewallInternal() so that
+            // it sees no existing backend and performs a fresh start rather than
             // an atomic switch. This creates a brief security gap (~1-2s) where apps are
             // unprotected. A future improvement could refactor this to use atomic switching
             // (start new backend first, then stop old) as documented in FIREWALL.md.
@@ -2933,7 +2981,7 @@ class FirewallManager(
                 _activeBackendType.value = null
             }
 
-            val result = startFirewall(FirewallMode.AUTO)
+            val result = startFirewallInternal(FirewallMode.AUTO)
             result.onSuccess { newBackend ->
                 AppLogger.d(TAG, "✅ Firewall automatically switched to $newBackend backend (AUTO mode)")
                 // Reported after the start, whose reportFirewallHealthy would otherwise erase it.
@@ -2949,7 +2997,7 @@ class FirewallManager(
         if (currentBackendType == null) {
             if (_isFirewallDown.value) {
                 AppLogger.d(TAG, "Manual mode $currentMode with firewall down - attempting automatic recovery")
-                val restartResult = startFirewall(currentMode)
+                val restartResult = startFirewallInternal(currentMode)
                 restartResult.onSuccess { backendType ->
                     AppLogger.d(TAG, "✅ Manual backend $backendType restarted after privilege recovery")
                     dismissBackendFailedNotification()
@@ -2984,7 +3032,7 @@ class FirewallManager(
         }
 
         AppLogger.e(TAG, "Manual backend $currentMode/$currentBackendType no longer viable after privilege change; keeping manual mode and notifying user")
-        handleBackendFailure(currentBackendType)
+        handleBackendFailureLocked(currentBackendType)
     }
 
 

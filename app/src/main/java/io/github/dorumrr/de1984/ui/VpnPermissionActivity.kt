@@ -64,27 +64,22 @@ class VpnPermissionActivity : Activity() {
         val firewallManager = app.dependencies.firewallManager
         
         scope.launch(Dispatchers.IO) {
-            // Every widget and tile start on a device without root lands here, so this is the path
-            // that matters most. It used to hard-code AUTO, throwing away the mode the user picked,
-            // and to record "firewall enabled" whether or not the start worked.
+            // Every widget and tile start on a device without root lands here. It used to hard-code
+            // AUTO, throwing away the mode the user picked.
             val resolved = intent?.getStringExtra(EXTRA_RESOLVED_MODE)
                 ?.let { name -> FirewallMode.entries.firstOrNull { it.name == name } }
             val mode = resolved ?: firewallManager.getCurrentMode()
             AppLogger.d(TAG, "Starting firewall in mode: $mode (from caller: ${resolved != null})")
+            // Recorded once the user granted VPN, before the start: a failed start then reads as DOWN,
+            // which app open, a root or Shizuku change and boot each retry.
+            getSharedPreferences(Constants.Settings.PREFS_NAME, MODE_PRIVATE)
+                .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
             val result = firewallManager.startFirewall(mode)
             AppLogger.d(TAG, "startFirewall result: $result")
 
-            result
-                .onSuccess {
-                    val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, MODE_PRIVATE)
-                    prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
-                }
-                .onFailure { error ->
-                    // Left untouched on purpose. The preference records what the user wants, and a
-                    // start that never happened is not evidence they want it on - writing true here
-                    // told boot restore to bring back a firewall that was never up.
-                    AppLogger.e(TAG, "Start after VPN permission failed, KEY_FIREWALL_ENABLED untouched", error)
-                }
+            result.onFailure { error ->
+                AppLogger.e(TAG, "Start after VPN permission failed", error)
+            }
 
             runOnUiThread {
                 finish()

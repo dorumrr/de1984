@@ -1042,12 +1042,14 @@ class FirewallViewModel(
             }
         }
 
+        // Recorded at the tap, as stopFirewall records OFF: a failed start then reads as DOWN, which
+        // app open, a root or Shizuku change and boot each retry.
+        saveFirewallState(true)
+
         viewModelScope.launch {
             val result = firewallManager.startFirewall(mode)
 
             result.onSuccess { _ ->
-                saveFirewallState(true)
-
                 // Request battery optimization exemption after firewall starts successfully
                 // This is important for both VPN and privileged backends to prevent services from being killed
                 requestBatteryOptimizationIfNeeded()
@@ -1055,7 +1057,6 @@ class FirewallViewModel(
                 _uiState.value = _uiState.value.copy(
                     error = error.message
                 )
-                saveFirewallState(false)
             }
         }
 

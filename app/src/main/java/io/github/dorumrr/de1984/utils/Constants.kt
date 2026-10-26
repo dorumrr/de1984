@@ -309,6 +309,7 @@ object Constants {
         const val STATE_INTERNET = "Internet"
 
         const val ACTION_TOGGLE_FIREWALL = "io.github.dorumrr.de1984.TOGGLE_FIREWALL"
+        const val ACTION_TURN_OFF_FIREWALL = "io.github.dorumrr.de1984.TURN_OFF_FIREWALL"
         const val ACTION_FIREWALL_STATE_CHANGED = "io.github.dorumrr.de1984.FIREWALL_STATE_CHANGED"
         const val ACTION_REQUEST_VPN_PERMISSION = "io.github.dorumrr.de1984.REQUEST_VPN_PERMISSION"
 

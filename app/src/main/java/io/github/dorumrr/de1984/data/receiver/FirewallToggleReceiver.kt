@@ -25,6 +25,11 @@ class FirewallToggleReceiver : BroadcastReceiver() {
         AppLogger.d(TAG, "Received intent action: ${intent?.action}")
         AppLogger.d(TAG, "Intent extras: ${intent?.extras}")
         
+        if (intent?.action == Constants.Firewall.ACTION_TURN_OFF_FIREWALL) {
+            turnOff(context)
+            return
+        }
+
         if (intent?.action != Constants.Firewall.ACTION_TOGGLE_FIREWALL) {
             AppLogger.d(TAG, "⚠️ Action mismatch, ignoring. Expected: ${Constants.Firewall.ACTION_TOGGLE_FIREWALL}")
             return
@@ -60,21 +65,17 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                         // opening the app, and SAY SO - a tile tap that silently drops all
                         // protection is exactly what the confirmation existed to prevent.
                         AppLogger.d(TAG, "🔴 Firewall is active and confirmation is off - stopping directly")
+                        // Recorded before the stop, as the in-app Stop does: written after it, a privilege
+                        // check waiting on the start/stop lock read ON in between and started the firewall again.
+                        context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                            .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
                         firewallManager.stopFirewall()
                             .onSuccess {
-                                // stopFirewallInternal never clears user intent; left true, the startup
-                                // probe, boot restore and widget would each undo or hide this stop.
-                                val prefs = context.getSharedPreferences(
-                                    Constants.Settings.PREFS_NAME,
-                                    Context.MODE_PRIVATE
-                                )
-                                prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
                                 AppLogger.d(TAG, "Firewall stopped from tile/widget, KEY_FIREWALL_ENABLED=false")
                                 firewallManager.showFirewallStoppedNotification()
                             }
                             .onFailure {
-                                // Leave the pref alone on failure, the same asymmetry the start
-                                // branch uses: the firewall is still up, so intent has not changed.
+                                // FirewallManager publishes the failure as StopFailed; intent stays OFF, as for the in-app Stop.
                                 AppLogger.e(TAG, "Failed to stop firewall: ${it.message}")
                             }
                     }
@@ -113,31 +114,42 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                         firewallManager.reportVpnPermissionRequiredFromBackground(mode)
                     } else {
                         AppLogger.d(TAG, "🚀 No VPN permission needed, starting firewall directly...")
+                        // Recorded at the tap, as the in-app Start does: a failed start then reads as
+                        // DOWN, which app open, a root or Shizuku change and boot each retry.
+                        context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                            .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
                         val startResult = firewallManager.startFirewall(mode)
                         AppLogger.d(TAG, "startFirewall() result: $startResult")
 
-                        // Only record "enabled" when the start actually succeeded. Writing it
-                        // unconditionally told boot restore the firewall had been running when it
-                        // never started, so the next reboot tried to restore a firewall that was
-                        // never up - and the widget showed ON over an unprotected device.
-                        startResult
-                            .onSuccess {
-                                val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                                prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
-                                AppLogger.d(TAG, "SharedPreferences updated: KEY_FIREWALL_ENABLED=true")
-                            }
-                            .onFailure { error ->
-                                // The widget clears its own loading state: a failed start reports
-                                // down through FirewallManager, which broadcasts the new state and
-                                // FirewallWidget.onReceive redraws from it.
-                                AppLogger.e(TAG, "❌ Start from widget/tile failed, leaving KEY_FIREWALL_ENABLED untouched", error)
-                            }
+                        startResult.onFailure { error ->
+                            // The widget clears its own loading state: a failed start reports
+                            // down through FirewallManager, which broadcasts the new state and
+                            // FirewallWidget.onReceive redraws from it.
+                            AppLogger.e(TAG, "❌ Start from widget/tile failed", error)
+                        }
                     }
                 }
             } catch (e: Exception) {
                 AppLogger.e(TAG, "❌ Error toggling firewall", e)
             } finally {
                 AppLogger.d(TAG, "Coroutine complete, calling pendingResult.finish()")
+                pendingResult.finish()
+            }
+        }
+    }
+
+    /** The DOWN notification's action: records OFF, which ends the retries, then stops whatever is left. */
+    private fun turnOff(context: Context) {
+        val firewallManager = (context.applicationContext as De1984Application).dependencies.firewallManager
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
+                firewallManager.stopFirewall()
+                    .onSuccess { AppLogger.d(TAG, "Turned off from the DOWN notification, KEY_FIREWALL_ENABLED=false") }
+                    .onFailure { AppLogger.e(TAG, "Turn off from the DOWN notification failed: ${it.message}") }
+            } finally {
                 pendingResult.finish()
             }
         }

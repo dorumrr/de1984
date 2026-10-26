@@ -308,6 +308,7 @@
     <string name="firewall_down_reason_vpn_permission">De1984 a besoin de l\'autorisation VPN pour rétablir la protection.</string>
     <string name="firewall_down_action_choose_backend">Choisir un moteur</string>
     <string name="firewall_down_action_retry">Réessayer</string>
+    <string name="firewall_down_action_turn_off">Désactiver</string>
     <string name="firewall_down_action_enable_vpn">Activer le VPN</string>
     <string name="firewall_down_action_replace_vpn">Remplacer le VPN</string>
     <string name="firewall_switched_title">Moteur changé</string>

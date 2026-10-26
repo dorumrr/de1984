@@ -311,6 +311,7 @@
     <string name="firewall_down_reason_vpn_permission">De1984 нужно разрешение VPN, чтобы восстановить защиту.</string>
     <string name="firewall_down_action_choose_backend">Выбрать бэкенд</string>
     <string name="firewall_down_action_retry">Повторить</string>
+    <string name="firewall_down_action_turn_off">Выключить</string>
     <string name="firewall_down_action_enable_vpn">Включить VPN</string>
     <string name="firewall_down_action_replace_vpn">Заменить VPN</string>
     <string name="firewall_switched_title">Бэкенд изменён</string>

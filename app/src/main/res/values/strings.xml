@@ -310,6 +310,7 @@
     <string name="firewall_down_reason_vpn_permission">De1984 needs VPN permission to restore protection.</string>
     <string name="firewall_down_action_choose_backend">Choose backend</string>
     <string name="firewall_down_action_retry">Try again</string>
+    <string name="firewall_down_action_turn_off">Turn off</string>
     <string name="firewall_down_action_enable_vpn">Enable VPN</string>
     <string name="firewall_down_action_replace_vpn">Replace VPN</string>
     <string name="firewall_switched_title">Backend switched</string>

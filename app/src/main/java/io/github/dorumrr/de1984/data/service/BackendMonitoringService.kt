@@ -154,7 +154,7 @@ class BackendMonitoringService : Service() {
             }
         }
 
-        // The state as well as the backend: a stop from the tile writes the user's wish only after it returns.
+        // The state as well as the backend: shouldContinueMonitoring reads isMeantToBeOn, which follows the state.
         backendMonitoringJob = serviceScope.launch {
             combine(firewallManager.activeBackendType, firewallManager.firewallState) { backendType, _ -> backendType }.collect { backendType ->
                 AppLogger.d(TAG, "Firewall changed: backend=$backendType")

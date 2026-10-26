@@ -6,7 +6,9 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
+import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.R
+import io.github.dorumrr.de1984.data.firewall.FirewallManager
 import io.github.dorumrr.de1984.ui.MainActivity
 import io.github.dorumrr.de1984.utils.AppLogger
 import io.github.dorumrr.de1984.utils.Constants
@@ -107,11 +109,12 @@ class FirewallWidget : AppWidgetProvider() {
         AppLogger.d(TAG, "━━━━━ updateAppWidget() ━━━━━")
         AppLogger.d(TAG, "widgetId=$appWidgetId, forcedIsEnabled=$forcedIsEnabled")
         
-        val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-        val prefsValue = prefs.getBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false)
-        val isEnabled = forcedIsEnabled ?: prefsValue
+        // The real state, not the intent preference: after a failed start intent stays ON while nothing enforces.
+        val state = (context.applicationContext as De1984Application).dependencies.firewallManager.firewallState.value
+        val stateValue = state is FirewallManager.FirewallState.Running || state is FirewallManager.FirewallState.Starting
+        val isEnabled = forcedIsEnabled ?: stateValue
         
-        AppLogger.d(TAG, "State resolution: prefs=$prefsValue, forced=$forcedIsEnabled, final=$isEnabled")
+        AppLogger.d(TAG, "State resolution: state=$state, forced=$forcedIsEnabled, final=$isEnabled")
         
         val views = RemoteViews(context.packageName, R.layout.widget_firewall)
         

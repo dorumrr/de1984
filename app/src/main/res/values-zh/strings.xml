@@ -318,6 +318,7 @@
     <string name="firewall_down_reason_vpn_permission">De1984 需要 VPN 权限才能恢复保护。</string>
     <string name="firewall_down_action_choose_backend">选择后端</string>
     <string name="firewall_down_action_retry">重试</string>
+    <string name="firewall_down_action_turn_off">关闭</string>
     <string name="firewall_down_action_enable_vpn">启用 VPN</string>
     <string name="firewall_down_action_replace_vpn">替换 VPN</string>
     <string name="firewall_switched_title">后端已切换</string>

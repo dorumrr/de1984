@@ -310,6 +310,7 @@
     <string name="firewall_down_reason_vpn_permission">De1984 are nevoie de permisiunea VPN pentru a reface protecția.</string>
     <string name="firewall_down_action_choose_backend">Alege backend</string>
     <string name="firewall_down_action_retry">Încearcă din nou</string>
+    <string name="firewall_down_action_turn_off">Oprește</string>
     <string name="firewall_down_action_enable_vpn">Activează VPN</string>
     <string name="firewall_down_action_replace_vpn">Înlocuiește VPN</string>
     <string name="firewall_switched_title">Backend schimbat</string>

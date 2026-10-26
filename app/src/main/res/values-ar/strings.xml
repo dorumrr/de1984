@@ -253,6 +253,7 @@
     <string name="firewall_down_reason_vpn_permission">يحتاج De1984 إلى إذن VPN لاستعادة الحماية.</string>
     <string name="firewall_down_action_choose_backend">اختر الواجهة الخلفية</string>
     <string name="firewall_down_action_retry">حاول مجددًا</string>
+    <string name="firewall_down_action_turn_off">إيقاف التشغيل</string>
     <string name="firewall_down_action_enable_vpn">تفعيل الـVPN</string>
     <string name="firewall_down_action_replace_vpn">استبدال الـVPN</string>
     <string name="firewall_switched_title">تم تبديل الواجهة الخلفية</string>

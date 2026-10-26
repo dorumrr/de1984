@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Foreground service for privileged firewall backends (iptables, ConnectivityManager, NetworkPolicyManager).
@@ -129,6 +130,11 @@ class PrivilegedFirewallService : Service() {
         const val ACTION_START = "io.github.dorumrr.de1984.action.START_PRIVILEGED_FIREWALL"
         const val ACTION_STOP = "io.github.dorumrr.de1984.action.STOP_PRIVILEGED_FIREWALL"
         const val EXTRA_BACKEND_TYPE = "backend_type"
+
+        private val pendingTeardowns = AtomicInteger(0)
+
+        /** True while a stop is queued or running; a start queued behind it cannot be active yet. */
+        fun hasPendingTeardown(): Boolean = pendingTeardowns.get() > 0
     }
 
     override fun onCreate() {
@@ -383,6 +389,7 @@ class PrivilegedFirewallService : Service() {
         markServiceStopped()
 
         val stopId = lastStartId
+        pendingTeardowns.incrementAndGet()
         teardownJob = enqueue {
             endSession()
 
@@ -426,6 +433,9 @@ class PrivilegedFirewallService : Service() {
 
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf(stopId)
+        }.also { job ->
+            // On completion, not in a finally: a job cancelled by onDestroy before it ran never enters its block.
+            job.invokeOnCompletion { pendingTeardowns.decrementAndGet() }
         }
     }
 

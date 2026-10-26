@@ -695,6 +695,11 @@ class MainActivity : AppCompatActivity() {
         banner.healthBannerNotifications.setTextColor(accent)
         banner.healthBannerNotifications.setOnClickListener { openNotificationSettings() }
 
+        // Down keeps the user's ON, so every app open, privilege change and boot retries; this records OFF instead.
+        banner.healthBannerTurnOff.visibility = if (health is FirewallHealth.Down) View.VISIBLE else View.GONE
+        banner.healthBannerTurnOff.setTextColor(accent)
+        banner.healthBannerTurnOff.setOnClickListener { firewallViewModel.stopFirewall() }
+
         val action = FirewallHealthPresenter.action(health)
         if (action == null) {
             banner.healthBannerAction.visibility = View.GONE

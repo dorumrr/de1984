@@ -217,7 +217,13 @@ object AppLogger {
             val exportDir = File(context.cacheDir, "logs")
             exportDir.mkdirs()
             val exportFile = File(exportDir, filename)
-            
+            // Under the write lock, so a rotation cannot move lines between the two reads. The rotated
+            // file holds the log before the current one: without it an export can start mid-event.
+            val (olderLog, currentLog) = writeLock.withLock {
+                val older = File(context.filesDir, LOG_FILE_OLD_NAME)
+                (if (older.exists()) older.readText() else "") to sourceFile.readText()
+            }
+
             exportFile.writeText(buildString {
                 appendLine("═══════════════════════════════════════════════════════════════")
                 appendLine("De1984 Debug Logs")
@@ -226,9 +232,11 @@ object AppLogger {
                 appendLine("App Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
                 appendLine("Debug Build: ${BuildConfig.DEBUG}")
                 appendLine("Log File Size: ${getFormattedFileSize()}")
+                appendLine("Older Log Included: ${if (olderLog.isEmpty()) "no" else "yes"}")
                 appendLine("═══════════════════════════════════════════════════════════════")
                 appendLine()
-                append(sourceFile.readText())
+                append(olderLog)
+                append(currentLog)
             })
             
             exportFile

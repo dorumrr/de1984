@@ -62,6 +62,14 @@ class PrivilegedFirewallService : Service() {
      */
     private var teardownJob: Job? = null
 
+    // Starts and teardowns run one at a time, in the order they were asked for.
+    private val opLock = Any()
+    private var lastOp: Job? = null
+    private var opCount = 0
+
+    // A teardown ends with stopSelf(this id), which Android ignores once a newer start arrived.
+    @Volatile private var lastStartId = 0
+
     /**
      * How long [onDestroy] will wait for the teardown. Bounded so a wedged backend cannot turn a
      * service destroy into an ANR; [serviceScope] runs on Dispatchers.IO, so the wait cannot
@@ -85,7 +93,7 @@ class PrivilegedFirewallService : Service() {
     private var currentBackend: FirewallBackend? = null
     private var currentBackendType: FirewallBackendType? = null
     private var isServiceActive = false
-    private var wasExplicitlyStopped = false
+    @Volatile private var wasExplicitlyStopped = false
 
     private var consecutiveSuccessfulHealthChecks = 0
     private var currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
@@ -146,11 +154,12 @@ class PrivilegedFirewallService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        AppLogger.d(TAG, "onStartCommand: action=${intent?.action}, wasExplicitlyStopped=$wasExplicitlyStopped")
+        AppLogger.d(TAG, "onStartCommand: action=${intent?.action}, startId=$startId, wasExplicitlyStopped=$wasExplicitlyStopped")
+        lastStartId = startId
 
         if (wasExplicitlyStopped && intent?.action != ACTION_START) {
             AppLogger.d(TAG, "Service was explicitly stopped and no START action - stopping self")
-            stopSelf()
+            stopSelf(startId)
             return START_NOT_STICKY
         }
 
@@ -163,14 +172,14 @@ class PrivilegedFirewallService : Service() {
                     "NETWORK_POLICY_MANAGER" -> FirewallBackendType.NETWORK_POLICY_MANAGER
                     else -> {
                         AppLogger.e(TAG, "Invalid backend type: $backendTypeStr")
-                        stopSelf()
+                        stopSelf(startId)
                         return START_NOT_STICKY
                     }
                 }
 
                 AppLogger.d(TAG, "ACTION_START received - starting privileged firewall with backend: $backendType")
                 wasExplicitlyStopped = false
-                startFirewall(backendType)
+                startFirewall(backendType, startId)
                 return START_STICKY
             }
             ACTION_STOP -> {
@@ -195,7 +204,7 @@ class PrivilegedFirewallService : Service() {
             }
             else -> {
                 AppLogger.w(TAG, "Unknown action or null intent - stopping self")
-                stopSelf()
+                stopSelf(startId)
                 return START_NOT_STICKY
             }
         }
@@ -262,10 +271,10 @@ class PrivilegedFirewallService : Service() {
             .build()
     }
 
-    private fun startFirewall(backendType: FirewallBackendType) {
+    private fun startFirewall(backendType: FirewallBackendType, startId: Int) {
         AppLogger.d(TAG, "startFirewall() called with backend: $backendType")
 
-        serviceScope.launch {
+        enqueue { op ->
             try {
                 val app = application as De1984Application
                 val deps = app.dependencies
@@ -280,8 +289,8 @@ class PrivilegedFirewallService : Service() {
                         val b = deps.iptablesBackend
                         b.startInternal().getOrElse { error ->
                             AppLogger.e(TAG, "Failed to start iptables backend: ${error.message}")
-                            stopSelf()
-                            return@launch
+                            stopSelf(startId)
+                            return@enqueue
                         }
                         b
                     }
@@ -293,8 +302,8 @@ class PrivilegedFirewallService : Service() {
                         )
                         b.startInternal().getOrElse { error ->
                             AppLogger.e(TAG, "Failed to start ConnectivityManager backend: ${error.message}")
-                            stopSelf()
-                            return@launch
+                            stopSelf(startId)
+                            return@enqueue
                         }
                         b
                     }
@@ -306,20 +315,28 @@ class PrivilegedFirewallService : Service() {
                         )
                         b.startInternal().getOrElse { error ->
                             AppLogger.e(TAG, "Failed to start NetworkPolicyManager backend: ${error.message}")
-                            stopSelf()
-                            return@launch
+                            stopSelf(startId)
+                            return@enqueue
                         }
                         b
                     }
                     else -> {
                         AppLogger.e(TAG, "Unsupported backend type: $backendType")
-                        stopSelf()
-                        return@launch
+                        stopSelf(startId)
+                        return@enqueue
                     }
                 }
 
                 currentBackend = backend
                 currentBackendType = backendType
+
+                // A newer start or stop is queued: it owns the backend now, so this run must not report itself running.
+                if (!isLatestOp(op)) {
+                    AppLogger.d(TAG, "startFirewall: a newer start or stop is queued - leaving $backendType to it")
+                    return@enqueue
+                }
+
+                endSession()
                 isServiceActive = true
 
                 val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -353,7 +370,7 @@ class PrivilegedFirewallService : Service() {
                 AppLogger.d(TAG, "Privileged firewall started successfully with backend: $backendType")
             } catch (e: Exception) {
                 AppLogger.e(TAG, "Error in startFirewall", e)
-                stopSelf()
+                stopSelf(startId)
             }
         }
     }
@@ -361,21 +378,14 @@ class PrivilegedFirewallService : Service() {
     private fun stopFirewall() {
         AppLogger.d(TAG, "stopFirewall() called")
 
-        isServiceActive = false
+        endSession()
+        // Cleared now, not after the teardown: a start that follows reads isActive() from these keys.
+        markServiceStopped()
 
-        monitoringJob?.cancel()
-        monitoringJob = null
-        rulesJob?.cancel()
-        rulesJob = null
-        healthMonitoringJob?.cancel()
-        healthMonitoringJob = null
-        ruleApplicationJob?.cancel()
-        ruleApplicationJob = null
+        val stopId = lastStartId
+        teardownJob = enqueue {
+            endSession()
 
-        consecutiveSuccessfulHealthChecks = 0
-        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
-
-        teardownJob = serviceScope.launch {
             val backend = currentBackend
             val backendType = currentBackendType
 
@@ -412,17 +422,46 @@ class PrivilegedFirewallService : Service() {
 
             currentBackend = null
             currentBackendType = null
-
-            val prefs = getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.edit()
-                .putBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, false)
-                .remove(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE)
-                .apply()
-            AppLogger.d(TAG, "Updated SharedPreferences: PRIVILEGED_SERVICE_RUNNING=false")
+            markServiceStopped()
 
             stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            stopSelf(stopId)
         }
+    }
+
+    private fun enqueue(block: suspend (op: Int) -> Unit): Job = synchronized(opLock) {
+        val previous = lastOp
+        val op = ++opCount
+        serviceScope.launch {
+            previous?.join()
+            block(op)
+        }.also { lastOp = it }
+    }
+
+    private fun isLatestOp(op: Int): Boolean = synchronized(opLock) { op == opCount }
+
+    private fun endSession() {
+        isServiceActive = false
+
+        monitoringJob?.cancel()
+        monitoringJob = null
+        rulesJob?.cancel()
+        rulesJob = null
+        healthMonitoringJob?.cancel()
+        healthMonitoringJob = null
+        ruleApplicationJob?.cancel()
+        ruleApplicationJob = null
+
+        consecutiveSuccessfulHealthChecks = 0
+        currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
+    }
+
+    private fun markServiceStopped() {
+        getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(Constants.Settings.KEY_PRIVILEGED_SERVICE_RUNNING, false)
+            .remove(Constants.Settings.KEY_PRIVILEGED_BACKEND_TYPE)
+            .apply()
+        AppLogger.d(TAG, "Updated SharedPreferences: PRIVILEGED_SERVICE_RUNNING=false")
     }
 
     /**
@@ -575,8 +614,13 @@ class PrivilegedFirewallService : Service() {
         // two notifications with different wording for one event, and a false alarm that stayed on
         // screen even when FirewallManager recovered onto another backend a second later.
 
-        // Notify FirewallManager immediately instead of waiting for health check
-        // This makes VPN fallback instant instead of waiting up to 15 seconds
+        // Stop BEFORE notifying: FirewallManager's fallback may start a privileged backend here, and
+        // that START must queue after this teardown, not before it.
+        wasExplicitlyStopped = true
+        AppLogger.e(TAG, "Stopping service now...")
+        stopFirewall()
+
+        // Notified at once rather than at the next health check, so the fallback is not delayed.
         try {
             val app = application as De1984Application
             val deps = app.dependencies
@@ -587,16 +631,6 @@ class PrivilegedFirewallService : Service() {
         } catch (e: Exception) {
             AppLogger.e(TAG, "Failed to notify FirewallManager of backend failure: ${e.message}")
         }
-
-        // Stop the service
-        // IMPORTANT: Set wasExplicitlyStopped = true to prevent service from restarting
-        // The FirewallManager will start VPN backend instead
-        wasExplicitlyStopped = true
-
-        AppLogger.e(TAG, "Stopping service now...")
-        stopFirewall()
-
-        AppLogger.e(TAG, "Service stopped. FirewallManager should handle VPN fallback immediately.")
     }
 
     private var ruleApplicationStartTime: Long = 0L

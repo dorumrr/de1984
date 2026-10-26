@@ -1,0 +1,5 @@
+- Firewall: a stop and a quick start can no longer leave apps unblocked; start and stop run one at a time #121
+- Firewall: if a start fails while you want it on, it is retried; the Down banner gets a "Turn off" button
+- Firewall: a mode change in Settings or a boot restore no longer undoes your OFF
+- Health checks: 3 failures in a row stop the restarts and report the firewall Down
+- Log export includes the previous log file #121

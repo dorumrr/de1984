@@ -14,6 +14,7 @@ import io.github.dorumrr.de1984.data.common.ShizukuStatus
 import io.github.dorumrr.de1984.data.firewall.FirewallManager
 import io.github.dorumrr.de1984.data.service.FirewallVpnService
 import io.github.dorumrr.de1984.domain.firewall.FirewallBackendType
+import io.github.dorumrr.de1984.domain.firewall.FirewallMode
 import io.github.dorumrr.de1984.domain.firewall.BlockingContext
 import io.github.dorumrr.de1984.domain.model.UidRuleAggregate
 import io.github.dorumrr.de1984.domain.firewall.asEnforcedBy
@@ -52,6 +53,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 class FirewallViewModel(
@@ -151,11 +153,6 @@ class FirewallViewModel(
         AppLogger.d(TAG, "loadDefaultPolicy: Loaded policy from SharedPreferences: $policy")
         _uiState.value = _uiState.value.copy(defaultFirewallPolicy = policy)
         AppLogger.d(TAG, "loadDefaultPolicy: Updated uiState.defaultFirewallPolicy to: ${_uiState.value.defaultFirewallPolicy}")
-    }
-
-    private fun saveFirewallState(enabled: Boolean) {
-        val prefs = getApplication<Application>().getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, enabled).apply()
     }
 
     /**
@@ -1009,58 +1006,81 @@ class FirewallViewModel(
         if (reconcile) loadNetworkPackages(forceRefresh = true)
     }
 
-    fun startFirewall(): Intent? {
-        val mode = firewallManager.getCurrentMode()
+    // This ViewModel's newest start; only it clears the pending flag.
+    private var startRequest = 0
+    // The user action of the start whose consent request is parked.
+    private var consentAction = 0
 
-        val planResult = runCatching {
-            kotlinx.coroutines.runBlocking {
-                firewallManager.computeStartPlan(mode)
-            }
-        }.fold(
-            onSuccess = { result ->
-                result.getOrElse { error ->
+    /** A VPN consent dialog goes out through [takeVpnConsentRequest]; the plan probes root and Shizuku, so it never runs on Main. */
+    // [action] is taken at the tap: an ON or OFF from any surface after it wins over this start.
+    fun startFirewall(action: Int = firewallManager.newUserAction()) {
+        val mode = firewallManager.getCurrentMode()
+        val request = ++startRequest
+        _uiState.value = _uiState.value.copy(isFirewallStartPending = true)
+
+        // NonCancellable: a user who taps ON and leaves the screen still gets the start.
+        viewModelScope.launch { withContext(NonCancellable) { runStart(mode, request, action) } }
+    }
+
+    private suspend fun runStart(mode: FirewallMode, request: Int, action: Int) {
+        try {
+            val planResult = try {
+                firewallManager.computeStartPlan(mode).getOrElse { error ->
                     AppLogger.e(TAG, "startFirewall: Failed to compute start plan", error)
                     null
                 }
-            },
-            onFailure = { throwable ->
-                AppLogger.e(TAG, "startFirewall: Failed to compute start plan", throwable)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e(TAG, "startFirewall: Failed to compute start plan", e)
                 null
             }
-        )
-
-        val needsVpnPermission = planResult?.selectedBackendType == FirewallBackendType.VPN
-
-        if (needsVpnPermission) {
-            // Null while another VPN is up; the start below then reports the conflict instead.
-            val prepareIntent = firewallManager.vpnConsentIntent()
-            if (prepareIntent != null) {
-                // Permission dialog must be shown by the Activity. We do NOT
-                // start the firewall here; onVpnPermissionGranted() will be
-                // called after the user responds.
-                return prepareIntent
+            if (!firewallManager.isNewestUserAction(action)) {
+                AppLogger.d(TAG, "startFirewall: a newer ON or OFF came in while planning - dropping this start")
+                return
             }
-        }
 
-        // Recorded at the tap, as stopFirewall records OFF: a failed start then reads as DOWN, which
-        // app open, a root or Shizuku change and boot each retry.
-        saveFirewallState(true)
+            if (planResult?.selectedBackendType == FirewallBackendType.VPN) {
+                // Null while another VPN is up; the start below then reports the conflict instead.
+                val prepareIntent = firewallManager.vpnConsentIntent()
+                if (prepareIntent != null) {
+                    // onVpnPermissionGranted() starts again once the user answers.
+                    consentAction = action
+                    _uiState.value = _uiState.value.copy(vpnConsentRequest = prepareIntent)
+                    return
+                }
+            }
 
-        viewModelScope.launch {
-            val result = firewallManager.startFirewall(mode)
-
+            val result = firewallManager.startFirewallForUser(mode, action)
+            if (result == null) {
+                AppLogger.d(TAG, "startFirewall: a newer ON or OFF reached the lock first - dropping this start")
+                return
+            }
             result.onSuccess { _ ->
-                // Request battery optimization exemption after firewall starts successfully
-                // This is important for both VPN and privileged backends to prevent services from being killed
+                // Without the exemption the system kills both the VPN and the privileged service.
                 requestBatteryOptimizationIfNeeded()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     error = error.message
                 )
             }
+        } finally {
+            if (request == startRequest) {
+                _uiState.value = _uiState.value.copy(isFirewallStartPending = false)
+            }
         }
+    }
 
-        return null
+    /** The parked consent dialog, or null once a newer ON or OFF, or a start elsewhere, has overtaken it. Clears it either way. */
+    fun takeVpnConsentRequest(): Intent? {
+        val state = _uiState.value
+        val prepareIntent = state.vpnConsentRequest ?: return null
+        _uiState.value = state.copy(vpnConsentRequest = null)
+        if (state.isFirewallEnabled || !firewallManager.isNewestUserAction(consentAction)) {
+            AppLogger.d(TAG, "VPN consent request overtaken by a start or stop elsewhere - not showing it")
+            return null
+        }
+        return prepareIntent
     }
 
     private fun requestBatteryOptimizationIfNeeded() {
@@ -1079,18 +1099,13 @@ class FirewallViewModel(
         )
     }
 
-    private var stopInFlight = false
-
+    /** Every OFF reaches the manager, even during a running stop: a start tapped meanwhile may be queued behind it. */
     fun stopFirewall() {
-        if (stopInFlight) {
-            AppLogger.d(TAG, "stopFirewall ignored - a stop is already running")
-            return
-        }
-        stopInFlight = true
+        startRequest++
+        val action = firewallManager.newUserAction()
+        _uiState.value = _uiState.value.copy(isFirewallStartPending = false, vpnConsentRequest = null)
         viewModelScope.launch {
-            saveFirewallState(false)
-
-            firewallManager.stopFirewall().onFailure { error ->
+            firewallManager.stopFirewall(action).onFailure { error ->
                 // The preference deliberately stays false. It records what the user wants, and they
                 // asked for the firewall off; flipping it back would make boot restore start the
                 // firewall again on the next reboot. What the teardown failure needs is to be
@@ -1098,17 +1113,26 @@ class FirewallViewModel(
                 // banner renders with a retry button.
                 AppLogger.e(TAG, "stopFirewall failed - rules may still be enforced: ${error.message}", error)
             }
-
-            stopInFlight = false
         }
     }
 
     fun onVpnPermissionGranted() {
-        startFirewall()
+        // Continues the start that asked, so an ON or OFF made elsewhere while the dialog was up still wins.
+        startFirewall(consentAction)
     }
 
     fun onVpnPermissionDenied() {
-        saveFirewallState(false)
+        // A deny means "not VPN", not OFF: the intent stays, as after the Enable-VPN and widget consent dialogs.
+        AppLogger.d(TAG, "VPN consent denied - intent unchanged")
+    }
+
+    /** The StopFailed banner's retry. The intent stays; see FirewallManager.retryStuckStop. */
+    fun retryStop() {
+        viewModelScope.launch {
+            firewallManager.retryStuckStop(firewallManager.getCurrentMode())?.onFailure { error ->
+                AppLogger.e(TAG, "retryStop failed - rules may still be enforced: ${error.message}", error)
+            }
+        }
     }
 
     fun setSearchQuery(query: String) {
@@ -1525,6 +1549,9 @@ data class FirewallUiState(
      */
     val scanFailed: Boolean = false,
     val isFirewallEnabled: Boolean = false,
+    // A tapped start not yet finished: the switch shows ON before the backend reports Starting.
+    val isFirewallStartPending: Boolean = false,
+    val vpnConsentRequest: Intent? = null,
     val defaultFirewallPolicy: String = Constants.Settings.DEFAULT_FIREWALL_POLICY,
     val shouldRequestBatteryOptimization: Boolean = false,
     val batchProgress: BatchProgress? = null,

@@ -175,16 +175,29 @@ object ShellRunner {
         label: String,
         timeoutMs: Long,
         onAbandon: () -> Unit,
+        abandonOnCancel: Boolean = true,
         work: suspend CoroutineScope.() -> T
     ): Outcome<T> {
         val job = shellScope.async { work() }
+        val startedAt = System.currentTimeMillis()
 
         val value = try {
             withTimeoutOrNull(timeoutMs) { job.await() }
         } catch (e: CancellationException) {
-            // The CALLER was cancelled, not the timeout. Free the work and let the cancel through -
-            // swallowing it would break structured concurrency for everything upstream.
-            abandon(onAbandon)
+            // The CALLER was cancelled, not the timeout. Let the cancel through - swallowing it
+            // would break structured concurrency for everything upstream.
+            if (abandonOnCancel) {
+                abandon(onAbandon)
+            } else {
+                // Still bounded: the work may be wedged, and nobody else frees it before its ceiling.
+                shellScope.launch {
+                    val left = (timeoutMs - (System.currentTimeMillis() - startedAt)).coerceAtLeast(0L)
+                    if (withTimeoutOrNull(left) { job.join() } == null) {
+                        report(warn = false, "${shortLabel(label)} timed out after ${timeoutMs}ms, its caller gone - abandoning it")
+                        runCatching { onAbandon() }
+                    }
+                }
+            }
             throw e
         } catch (e: Exception) {
             // WARN, not ERROR. The common case is `su` on a phone that has no root: the package
@@ -283,13 +296,16 @@ object ShellRunner {
      *
      * Best effort, and honestly so: if libsu will not let go, later commands time out rather than
      * hang. Bounded and failing beats unbounded and silent.
+     *
+     * A cancelled CALLER does not trigger [onAbandon] at once: the shell is shared, and closing it
+     * would cut whatever job is on it. [onAbandon] runs only if the work outlives [timeoutMs].
      */
     suspend fun <T : Any> bounded(
         label: String,
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
         onAbandon: () -> Unit = {},
         work: () -> T
-    ): T? = (attempt(label, timeoutMs, onAbandon) { work() } as? Outcome.Done)?.value
+    ): T? = (attempt(label, timeoutMs, onAbandon, abandonOnCancel = false) { work() } as? Outcome.Done)?.value
 
     /**
      * Logs off the caller's thread.

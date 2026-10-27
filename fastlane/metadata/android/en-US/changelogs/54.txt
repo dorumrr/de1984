@@ -1,0 +1,6 @@
+- Root: iptables waits for the system lock, retries rejected rules (IPv6 too) and repairs drift found by health checks #121
+- Root: a cancelled check no longer closes the shared root shell; the log lists rejected UIDs #121
+- Firewall: no freeze when turning it on; cancelling the stop dialog no longer starts it
+- Tile and widget: a tap while starting now stops it
+- "Firewall did not stop" survives app restarts and names the right backend
+- VPN permission prompt survives screen rotation

@@ -91,7 +91,7 @@ When backend availability changes (e.g., user grants Shizuku, device gets rooted
      1. Detect backend failure immediately (monitor Shizuku state, test iptables commands -  make sure here we have the most compatible check method for most android versions and privilege tools)
      2. Start VPN backend FIRST, establish VPN tunnel with all blocked apps
      3. Wait until the VPN backend reports active (`awaitBackendActive`; "Backend Health" below says what active means)
-     4. Only then clean up old backend (remove iptables rules, stop ConnectivityManager). If it will not go, its rules may stay in force under VPN and the "Firewall did not stop" notification is posted; the in-app banner then shows the switch to VPN instead
+     4. Only then clean up old backend (remove iptables rules, stop ConnectivityManager). If it will not go, its rules may stay in force under VPN: the "Firewall did not stop" notification is posted and the in-app banner shows the same warning, with "Stop again", instead of the switch to VPN
      5. If VPN fails to start, the firewall is reported down (`FALLBACK_FAILED`); there is no timed retry, but the next app open or root/Shizuku change tries the start again (see "Retry Strategy").
    - **Not this order**: a loss that `handlePrivilegeChange` handles in AUTO mode (a root or Shizuku status change) tears the old backend down first, then starts (see "Switching scenarios")
    - **Fail-safe**: If VPN cannot be established, the firewall is DOWN and the user is notified: the banner stays until protection returns or the user taps "Turn off", and the high-priority notification clears when tapped
@@ -241,7 +241,7 @@ When switching to Mobile data, Firefox becomes blocked and Telegram becomes allo
 
 **How it works:**
 
-Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app UID. Creates firewall rules that drop all IPv4 and IPv6 packets for blocked app UIDs. Apps that share a UID share one verdict (see "Shared UIDs" below).
+Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app UID. Creates firewall rules that drop all IPv4 and IPv6 packets for blocked app UIDs; IPv6 only where the ROM's ip6tables has the owner match. Every iptables command waits up to 2 s for the xtables lock (`-w 2`) when the binary accepts it, probed at the first start or stop. Apps that share a UID share one verdict (see "Shared UIDs" below).
 
 **Switch dependencies:**
 - **Roaming requires Mobile**: Same as VPN backend. If user enables Roaming block while Mobile is allowed, Mobile must also be blocked. If user disables Mobile block while Roaming is blocked, Roaming must also be allowed.
@@ -259,7 +259,7 @@ Uses Linux kernel firewall (iptables/ip6tables) to block network traffic by app 
 
 **Network changes:**
 
-When switching networks, recalculates which UIDs should be blocked based on per-network rules. Removes firewall rules for UIDs that should no longer be blocked. Adds firewall rules for UIDs that should now be blocked. The first apply after a start rewrites the whole chain; later applies are diff-based. A diff that does not match the chain arms a full rewrite for the next apply, and the current apply still reports success.
+When switching networks, recalculates which UIDs should be blocked based on per-network rules. Removes firewall rules for UIDs that should no longer be blocked. Adds firewall rules for UIDs that should now be blocked. The first apply after a start rewrites the whole chain, unless the rule list it reads is empty, which keeps the chain as it is; later applies are diff-based. A diff that does not match the chain arms a full rewrite for the next apply. A missing IPv6 rule counts once the device has held an IPv6 owner rule. While the rewrite stays armed, the firewall shows `ApplyFailed` and PrivilegedFirewallService runs a repair pass 5 s after the apply, at most 3 in a row. Past that, the next rule or network change still rewrites, and health checks that still find the chain short retry at doubling gaps (a pass or check past the cap counts toward the gap). A rejection with exit code 4 (the lock wait ran out) arms the rewrite for IPv6 too, before any IPv6 owner rule has been seen.
 
 **Shared UIDs (every backend):**
 
@@ -467,7 +467,7 @@ The firewall operates as a state machine with well-defined states and transition
 
 3. **`Running(backend)`**: Backend active and its start confirmed
    - Backend service is running and `isActive()` returns true
-   - The start applied the rules (a partial apply still counts). On ConnectivityManager and NetworkPolicyManager, a `PrivilegedFirewallService` pass (at start, and on each rule, network or screen change) that leaves rules unwritten keeps `Running` and raises `ApplyFailed`; on iptables only a pass that fails as a whole does, because a failed rule batch is logged and the pass still reports success. It shows ("Some rules not applied", with a re-apply action) until a clean pass; `Down`, `StopFailed` and `SwitchedToVpn` outrank it
+   - The start applied the rules (a partial apply still counts). On ConnectivityManager and NetworkPolicyManager, a `PrivilegedFirewallService` pass (at start, and on each rule, network or screen change) that leaves rules unwritten keeps `Running` and raises `ApplyFailed`; on iptables a pass raises it when it fails as a whole or leaves the chain short of the rules (a rejected rule, armed for a rewrite), and a repair pass follows (see "Network changes" under iptables). It shows ("Some rules not applied", with a re-apply action) until a clean pass; `Down`, `StopFailed` and `SwitchedToVpn` outrank it
    - Health monitoring is active
    - UI toggle should be ON
 
@@ -502,7 +502,7 @@ Error → Stopped: User explicitly stops firewall
 ### UI Synchronization Rules
 
 **Toggle State**:
-- ON: When state is `Running` **or** `Starting` - the switch flips immediately on tap, before the backend is confirmed
+- ON: When state is `Running` **or** `Starting`, or while a tapped start is still choosing its backend - the switch flips immediately on tap, before the backend is confirmed. Choosing runs off the main thread; a stop from any surface after the tap, even one made while another stop is still running, drops that start and leaves the stored intent OFF
 - OFF: When state is `Stopped` or `Error`
 - The toggle is never disabled and there is no loading indicator: the toolbar shows only the "Firewall Active" / "Firewall OFF" badge pair, driven by the same ON/OFF flag.
 
@@ -515,17 +515,19 @@ Error → Stopped: User explicitly stops firewall
 **User Actions**:
 - User can always toggle OFF (stop firewall)
 - User can toggle ON only from `Stopped` or `Error` states
-- Nothing blocks a tap during `Starting`: the app toggle stays enabled, and the tile treats `Starting` as running, so a tap goes down the stop path
+- Nothing blocks a tap during `Starting`: the app toggle stays enabled, and the tile, the widget and the toggle receiver treat `Starting` as running, so a tap goes down the stop path
+- One check, `FirewallManager.isShownOn()`, decides a tile, widget or notification toggle tap: `Running`, `Starting`, or a backend still enforcing (an `Error` after a failed stop, or a failed start that kept the old backend) is a stop; anything else is a start. The tile draws only the manager's state, so it shows `Stopped` while a start is still being planned, and a tap then is a start
 
 **State broadcast**: every state change is also sent as the implicit broadcast `io.github.dorumrr.de1984.FIREWALL_STATE_CHANGED`, with the state and, while running, the backend type, and no permission. Any app that registers a receiver can read it. The home-screen widget's receiver is exported for the same action with no permission, so any app can make the widget show a wrong state, and a widget drawn OFF sends its tap to the toggle receiver, which stops a running firewall without asking when the stop confirmation is off.
 
 ### State Persistence
 
 **SharedPreferences Keys**:
-- `KEY_FIREWALL_ENABLED`: User intent (should firewall be running?)
+- `KEY_FIREWALL_ENABLED`: User intent (should firewall be running?). Written only through `FirewallManager.recordUserIntent`: every user ON or OFF, from the app, widget, tile, notification or VPN consent, takes a number at the tap, and only the newest one writes. A user start runs only while it is still the newest; a stop always runs. A VPN consent deny and the StopFailed banner's "Stop again" leave the intent as it is. With the intent ON and another backend protecting, "Stop again" sweeps every backend but the running one and clears the warning once that sweep proves them all gone; otherwise it stops again and, when the intent is ON (a failed backend switch), starts the chosen backend
 - `KEY_VPN_SERVICE_RUNNING`: Is VPN service active?
 - `KEY_PRIVILEGED_SERVICE_RUNNING`: Is privileged service active?
 - `KEY_PRIVILEGED_BACKEND_TYPE`: Which privileged backend is active?
+- `KEY_STUCK_BACKEND`: Every backend whose teardown failed (`TYPE,TYPE@<boot id>`), each kept until a clean sweep proves it gone (a cold-start sweep counts only if no cleanup threw) or a start of that same backend takes it over; at startup it brings back the `StopFailed` warning and "Stop again". The warning names the one whose blocks last longest (NetworkPolicyManager, then iptables and ConnectivityManager, then VPN). A VPN entry is dropped when the app process restarts, since the tunnel dies with it, and an iptables or ConnectivityManager entry after a reboot, read from the kernel boot id or, where the app cannot read it, `BOOT_COUNT`
 
 **State Recovery on App Restart**: see "Initialization Sequence" below.
 
@@ -549,7 +551,7 @@ When the app starts (or returns from background), it must recover the correct fi
 
 2. **Check User Intent**, only when no backend was found:
    - Read `KEY_FIREWALL_ENABLED` from SharedPreferences
-   - True: restart the firewall (Case B). False: `Stopped` (Case D)
+   - True: restart the firewall (Case B), re-reading the intent under the start/stop lock so a user OFF since then holds. False: `Stopped` (Case D)
 
 3. **Synchronize State**:
    - **Case A**: Firewall should be running AND backend is active
@@ -617,6 +619,9 @@ When the app starts (or returns from background), it must recover the correct fi
   backend that wrote them, so "your apps are unblocked" is false there
 - Two cases are NOT suppressed: intent ON (orphan after a backend switch), and a start
   attempt, which has already proved nothing is enforcing
+- A teardown failure reported while nothing runs and intent is ON leaves `Down` in the banner and
+  posts only the "Firewall did not stop" notification; `StopFailed` returns once a start onto
+  another backend recovers; only a clean sweep, a start of that same backend, a reboot (iptables, ConnectivityManager) or a process restart (VPN) clears it
 
 **VPN permission needed from the widget or the tile**:
 - Both route through `FirewallToggleReceiver`, and a `BroadcastReceiver` cannot open the
@@ -651,7 +656,7 @@ Health checks ensure the firewall backend remains functional and triggers fallba
 ### Health Check Logic
 
 1. **Execute Check**:
-   - For iptables: Force re-check root status, then test `iptables --version`
+   - For iptables: Force re-check root status, then test `iptables --version`, then compare the kernel chain and its OUTPUT links with the last applied rules. A difference arms a rewrite, raises `ApplyFailed` and asks for a repair pass, within the limits under "Network changes" for iptables. It is not a health check failure: it does not count as a success, it leaves the interval and the failure streak as they are, and it never calls `handleBackendFailure()`
    - For ConnectivityManager: Test Shizuku shell command execution
    - For NetworkPolicyManager: Test Shizuku shell command execution
 
@@ -699,7 +704,7 @@ When health check fails:
 - A failed check is handled once (fallback, or a restart onto the same backend), and health monitoring resumes on whatever then runs. After 3 failed checks in a row with no passing check between them, restarts stop and the firewall is reported DOWN (`START_FAILED`)
 - User can manually retry from error state
 
-**Recovery while the user wants it on**: the user's ON is recorded at the tap, so a start that fails, or a fallback that fails, leaves `KEY_FIREWALL_ENABLED` true and the firewall DOWN. The start is tried again on app open, on a root or Shizuku status change, and at boot; the VPN permission monitor tries at most 30 times. While DOWN, the banner offers "Turn off", which records OFF and ends the retries; so does the "Firewall down — your apps are unblocked" notification, but not the VPN permission or VPN conflict notifications
+**Recovery while the user wants it on**: the user's ON is recorded once the start has chosen its backend, before it runs, so a start that fails, or a fallback that fails, leaves `KEY_FIREWALL_ENABLED` true and the firewall DOWN. The start is tried again on app open, on a root or Shizuku status change, and at boot; the VPN permission monitor tries at most 30 times. While DOWN, the banner offers "Turn off", which records OFF and ends the retries; so does the "Firewall down — your apps are unblocked" notification, but not the VPN permission or VPN conflict notifications
 
 **Automatic recovery when privileges return**:
 - Privilege monitoring detects when root/Shizuku becomes available

@@ -60,7 +60,10 @@ object FirewallHealthPresenter {
 
         is FirewallHealth.StopFailed -> {
             val backendName = health.backend?.displayName(context)
-            if (backendName != null) {
+            if (health.backend == FirewallBackendType.NETWORK_POLICY_MANAGER) {
+                // Its blocks live in netpolicy.xml and survive a reboot, so "restart the device" would mislead.
+                context.getString(R.string.firewall_stop_failed_message_npm, backendName)
+            } else if (backendName != null) {
                 context.getString(R.string.firewall_stop_failed_message, backendName)
             } else {
                 context.getString(R.string.firewall_stop_failed_message_unknown)

@@ -6,7 +6,6 @@ import android.os.Bundle
 import io.github.dorumrr.de1984.De1984Application
 import io.github.dorumrr.de1984.domain.firewall.FirewallMode
 import io.github.dorumrr.de1984.utils.AppLogger
-import io.github.dorumrr.de1984.utils.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -62,7 +61,8 @@ class VpnPermissionActivity : Activity() {
     private fun startFirewallAndFinish() {
         val app = application as De1984Application
         val firewallManager = app.dependencies.firewallManager
-        
+        val action = firewallManager.newUserAction()
+
         scope.launch(Dispatchers.IO) {
             // Every widget and tile start on a device without root lands here. It used to hard-code
             // AUTO, throwing away the mode the user picked.
@@ -70,14 +70,10 @@ class VpnPermissionActivity : Activity() {
                 ?.let { name -> FirewallMode.entries.firstOrNull { it.name == name } }
             val mode = resolved ?: firewallManager.getCurrentMode()
             AppLogger.d(TAG, "Starting firewall in mode: $mode (from caller: ${resolved != null})")
-            // Recorded once the user granted VPN, before the start: a failed start then reads as DOWN,
-            // which app open, a root or Shizuku change and boot each retry.
-            getSharedPreferences(Constants.Settings.PREFS_NAME, MODE_PRIVATE)
-                .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
-            val result = firewallManager.startFirewall(mode)
+            val result = firewallManager.startFirewallForUser(mode, action)
             AppLogger.d(TAG, "startFirewall result: $result")
 
-            result.onFailure { error ->
+            result?.onFailure { error ->
                 AppLogger.e(TAG, "Start after VPN permission failed", error)
             }
 

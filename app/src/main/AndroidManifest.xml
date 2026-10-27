@@ -108,6 +108,7 @@
         <activity
             android:name=".ui.VpnPermissionActivity"
             android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
             android:theme="@style/Theme.De1984.Transparent"
             android:excludeFromRecents="true"
             android:noHistory="true"

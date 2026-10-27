@@ -73,17 +73,9 @@ class FirewallTileService : TileService() {
         
         val firewallManager = (application as De1984Application).dependencies.firewallManager
         
-        val currentState = firewallManager.firewallState.value
-        val isActive = currentState is FirewallManager.FirewallState.Running || 
-                       currentState is FirewallManager.FirewallState.Starting
-        
-        val isActiveBackend = firewallManager.isActive()
-        
-        AppLogger.d(TAG, "Current state: $currentState")
-        AppLogger.d(TAG, "isActive from StateFlow: $isActive")
-        AppLogger.d(TAG, "isActive from backend: $isActiveBackend")
-        
-        val shouldTreatAsActive = isActive || isActiveBackend
+        AppLogger.d(TAG, "Current state: ${firewallManager.firewallState.value}")
+
+        val shouldTreatAsActive = firewallManager.isShownOn()
         AppLogger.d(TAG, "Final decision - treat as active: $shouldTreatAsActive")
         
         if (shouldTreatAsActive && !firewallManager.shouldConfirmStop()) {
@@ -114,9 +106,7 @@ class FirewallTileService : TileService() {
                 startActivityAndCollapse(intent)
             }
         } else {
-            AppLogger.d(TAG, "Firewall is OFF, showing Starting state immediately...")
-            setStartingState()
-            
+            // No local Starting draw: the manager is still Stopped while the start plans, and a tap must act on what is drawn.
             AppLogger.d(TAG, "Sending broadcast to FirewallToggleReceiver...")
             val toggleIntent = Intent(this, io.github.dorumrr.de1984.data.receiver.FirewallToggleReceiver::class.java).apply {
                 action = Constants.Firewall.ACTION_TOGGLE_FIREWALL
@@ -138,22 +128,6 @@ class FirewallTileService : TileService() {
                     AppLogger.d(TAG, "Could not collapse panels: ${e.message}")
                 }
             }
-        }
-    }
-
-    private fun setStartingState() {
-        try {
-            val tile = qsTile ?: return
-            tile.state = Tile.STATE_ACTIVE
-            tile.label = getString(R.string.tile_label_firewall)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                tile.subtitle = getString(R.string.tile_subtitle_starting)
-            }
-            tile.contentDescription = getString(R.string.tile_description_firewall_starting)
-            tile.updateTile()
-            AppLogger.d(TAG, "Tile set to STARTING state")
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "Error setting starting state", e)
         }
     }
 

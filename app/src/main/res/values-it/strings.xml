@@ -316,7 +316,8 @@
     <string name="firewall_switched_message_manual">Il backend %1$s non ha funzionato. De1984 è passato in modalità AUTO e usa la VPN.</string>
     <string name="firewall_stop_failed_title">Il firewall non si è fermato</string>
     <string name="firewall_stop_failed_message">Il backend %1$s non si è arrestato. Alcune app potrebbero essere ancora bloccate. Riprova o riavvia il dispositivo.</string>
-    <string name="firewall_stop_failed_message_unknown">Il firewall non si è arrestato. Alcune app potrebbero essere ancora bloccate. Riprova o riavvia il dispositivo.</string>
+    <string name="firewall_stop_failed_message_npm">Il backend %1$s non si è arrestato. Alcune app potrebbero essere ancora bloccate, e il riavvio non rimuove questi blocchi. Riprova.</string>
+    <string name="firewall_stop_failed_message_unknown">Il firewall non si è arrestato. Alcune app potrebbero essere ancora bloccate. Riprova.</string>
     <string name="firewall_apply_failed_title">Alcune regole non sono state applicate</string>
     <string name="firewall_apply_failed_message">Il backend %1$s non è riuscito ad applicare tutte le regole. Alcune app potrebbero non essere bloccate o consentite come indicato.</string>
     <string name="firewall_stop_failed_action_retry">Ferma di nuovo</string>

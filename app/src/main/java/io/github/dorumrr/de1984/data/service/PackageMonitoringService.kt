@@ -150,17 +150,19 @@ class PackageMonitoringService : Service() {
             return
         }
 
-        hadSecondaryProfiles = secondaryProfilesExist()
-        if (hadSecondaryProfiles) {
-            getCurrentInstalledPackages()?.let {
-                lastKnownPackages = it
-                baselineUsers = enumeratedUsers
-                hasBaseline = true
-            }
-        }
         registerEventReceiver()
 
         monitoringJob = serviceScope.launch {
+            // Off Main: onStartCommand runs there, and without the cross-user grant this read goes through the shell.
+            hadSecondaryProfiles = secondaryProfilesExist()
+            if (hadSecondaryProfiles) {
+                getCurrentInstalledPackages()?.let {
+                    lastKnownPackages = it
+                    baselineUsers = enumeratedUsers
+                    hasBaseline = true
+                }
+            }
+
             while (isActive) {
                 try {
                     if (isScreenOn()) {

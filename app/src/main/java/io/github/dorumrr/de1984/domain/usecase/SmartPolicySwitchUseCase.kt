@@ -5,6 +5,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import io.github.dorumrr.de1984.domain.repository.FirewallRepository
 import io.github.dorumrr.de1984.utils.Constants
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 class SmartPolicySwitchUseCase(
     private val firewallRepository: FirewallRepository,
@@ -12,9 +16,14 @@ class SmartPolicySwitchUseCase(
 ) {
     companion object {
         private const val TAG = "SmartPolicySwitchUseCase"
+
+        // Shared by every instance: the enumeration runs off Main, so two quick policy taps would overlap and the older bulk write could land last.
+        private val switchLock = Mutex()
     }
 
-    suspend fun switchToBlockAll() {
+    suspend fun switchToBlockAll() = switchLock.withLock { switchToBlockAllLocked() }
+
+    private suspend fun switchToBlockAllLocked() {
         AppLogger.d(TAG, "switchToBlockAll() called")
 
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -36,7 +45,7 @@ class SmartPolicySwitchUseCase(
         val allRules = firewallRepository.getAllRulesSync()
         AppLogger.d(TAG, "Found ${allRules.size} existing rules")
 
-        val criticalPackages = getCriticalPackageNames()
+        val criticalPackages = withContext(Dispatchers.IO) { getCriticalPackageNames() }
         AppLogger.d(TAG, "Critical packages: ${criticalPackages.size} (SYSTEM_WHITELIST + VPN apps)")
 
         firewallRepository.blockAllApps()
@@ -69,7 +78,9 @@ class SmartPolicySwitchUseCase(
         AppLogger.d(TAG, "Smart policy switch complete: preserved=$preservedCount, defaulted=$defaultedCount")
     }
 
-    suspend fun switchToAllowAll() {
+    suspend fun switchToAllowAll() = switchLock.withLock { switchToAllowAllLocked() }
+
+    private suspend fun switchToAllowAllLocked() {
         AppLogger.d(TAG, "switchToAllowAll() called")
 
         val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
@@ -91,7 +102,7 @@ class SmartPolicySwitchUseCase(
         val allRules = firewallRepository.getAllRulesSync()
         AppLogger.d(TAG, "Found ${allRules.size} existing rules")
 
-        val criticalPackages = getCriticalPackageNames()
+        val criticalPackages = withContext(Dispatchers.IO) { getCriticalPackageNames() }
         AppLogger.d(TAG, "Critical packages: ${criticalPackages.size} (SYSTEM_WHITELIST + VPN apps)")
 
         firewallRepository.allowAllApps()
@@ -114,6 +125,7 @@ class SmartPolicySwitchUseCase(
         AppLogger.d(TAG, "Smart policy switch complete: preserved=$preservedCount")
     }
 
+    // Blocking: without the cross-user grant it lists other profiles through the root or Shizuku shell.
     private fun getCriticalPackageNames(): Set<String> {
         val criticalPackages = mutableSetOf<String>()
 

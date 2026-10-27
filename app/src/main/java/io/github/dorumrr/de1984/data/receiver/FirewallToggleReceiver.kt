@@ -43,7 +43,7 @@ class FirewallToggleReceiver : BroadcastReceiver() {
 
         goAsyncBounded(CoroutineScope(SupervisorJob() + Dispatchers.IO), TAG) {
             try {
-                val isCurrentlyActive = firewallManager.isActive()
+                val isCurrentlyActive = firewallManager.isShownOn()
                 AppLogger.d(TAG, "Current firewall state: isActive=$isCurrentlyActive")
                 
                 if (isCurrentlyActive) {
@@ -60,10 +60,6 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                         // opening the app, and SAY SO - a tile tap that silently drops all
                         // protection is exactly what the confirmation existed to prevent.
                         AppLogger.d(TAG, "🔴 Firewall is active and confirmation is off - stopping directly")
-                        // Recorded before the stop, as the in-app Stop does: written after it, a privilege
-                        // check waiting on the start/stop lock read ON in between and started the firewall again.
-                        context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                            .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
                         firewallManager.stopFirewall()
                             .onSuccess {
                                 AppLogger.d(TAG, "Firewall stopped from tile/widget, KEY_FIREWALL_ENABLED=false")
@@ -76,6 +72,8 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                     }
                 } else {
                     AppLogger.d(TAG, "🟢 Firewall is stopped, starting directly...")
+                    // Taken before planning, so an OFF from anywhere while this plans wins.
+                    val action = firewallManager.newUserAction()
 
                     FirewallWidget.setLoadingState(context)
 
@@ -109,14 +107,10 @@ class FirewallToggleReceiver : BroadcastReceiver() {
                         firewallManager.reportVpnPermissionRequiredFromBackground(mode)
                     } else {
                         AppLogger.d(TAG, "🚀 No VPN permission needed, starting firewall directly...")
-                        // Recorded at the tap, as the in-app Start does: a failed start then reads as
-                        // DOWN, which app open, a root or Shizuku change and boot each retry.
-                        context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                            .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
-                        val startResult = firewallManager.startFirewall(mode)
+                        val startResult = firewallManager.startFirewallForUser(mode, action)
                         AppLogger.d(TAG, "startFirewall() result: $startResult")
 
-                        startResult.onFailure { error ->
+                        startResult?.onFailure { error ->
                             // The widget clears its own loading state: a failed start reports
                             // down through FirewallManager, which broadcasts the new state and
                             // FirewallWidget.onReceive redraws from it.
@@ -134,8 +128,6 @@ class FirewallToggleReceiver : BroadcastReceiver() {
     private fun turnOff(context: Context) {
         val firewallManager = (context.applicationContext as De1984Application).dependencies.firewallManager
         goAsyncBounded(CoroutineScope(SupervisorJob() + Dispatchers.IO), TAG) {
-            context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, false).apply()
             firewallManager.stopFirewall()
                 .onSuccess { AppLogger.d(TAG, "Turned off from the DOWN notification, KEY_FIREWALL_ENABLED=false") }
                 .onFailure { AppLogger.e(TAG, "Turn off from the DOWN notification failed: ${it.message}") }

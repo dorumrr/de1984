@@ -19,7 +19,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.commit
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.dorumrr.de1984.BuildConfig
@@ -28,6 +30,7 @@ import io.github.dorumrr.de1984.R
 import io.github.dorumrr.de1984.data.common.PermissionManager
 import io.github.dorumrr.de1984.data.service.PackageMonitoringService
 import io.github.dorumrr.de1984.databinding.ActivityMainViewsBinding
+import io.github.dorumrr.de1984.presentation.viewmodel.FirewallUiState
 import io.github.dorumrr.de1984.presentation.viewmodel.FirewallViewModel
 import io.github.dorumrr.de1984.presentation.viewmodel.SettingsViewModel
 import io.github.dorumrr.de1984.domain.firewall.FirewallHealth
@@ -40,6 +43,8 @@ import io.github.dorumrr.de1984.ui.permissions.PermissionSetupViewModel
 import io.github.dorumrr.de1984.ui.settings.SettingsFragmentViews
 import io.github.dorumrr.de1984.utils.Constants
 import io.github.dorumrr.de1984.utils.openAppSettings
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -210,7 +215,7 @@ class MainActivity : AppCompatActivity() {
                     // This action is only sent when firewall is ON and user wants to stop
                     // (Widget starts directly when OFF, only opens app for stop confirmation)
                     val deps = (application as De1984Application).dependencies
-                    val isActuallyActive = deps.firewallManager.isActive()
+                    val isActuallyActive = deps.firewallManager.isShownOn()
                     AppLogger.d(TAG, "Actual firewall state from manager: isActive=$isActuallyActive")
                     
                     if (isActuallyActive) {
@@ -632,13 +637,24 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             firewallViewModel.uiState.collect { state ->
-                updateSwitchAppearance(state.isFirewallEnabled)
+                showFirewallStateOnSwitch(state)
 
                 if (state.shouldRequestBatteryOptimization) {
                     firewallViewModel.clearBatteryOptimizationRequest()
                     val batteryOptIntent = permissionManager.createBatteryOptimizationIntent()
                     if (batteryOptIntent != null) {
                         batteryOptimizationLauncher.launch(batteryOptIntent)
+                    }
+                }
+            }
+        }
+
+        // STARTED only: from a stopped activity the consent dialog is a background start Android may block.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                firewallViewModel.uiState.map { it.vpnConsentRequest }.filterNotNull().collect {
+                    firewallViewModel.takeVpnConsentRequest()?.let { prepareIntent ->
+                        launchVpnConsent(prepareIntent, VpnPermissionContext.FIREWALL_START)
                     }
                 }
             }
@@ -719,15 +735,11 @@ class MainActivity : AppCompatActivity() {
             FirewallHealthAction.CHOOSE_BACKEND -> navigateToSettings()
 
             FirewallHealthAction.RETRY -> {
-                val prepareIntent = firewallViewModel.startFirewall()
-                if (prepareIntent != null) {
-                    launchVpnConsent(prepareIntent, VpnPermissionContext.FIREWALL_START)
-                }
+                firewallViewModel.startFirewall()
             }
 
-            // Straight to the stop, with no confirmation dialog: the user already confirmed the
-            // stop that failed, and asking again would be asking them to confirm a retry.
-            FirewallHealthAction.RETRY_STOP -> firewallViewModel.stopFirewall()
+            // No confirmation: this retries a stop that already ran, and keeps the user's intent.
+            FirewallHealthAction.RETRY_STOP -> firewallViewModel.retryStop()
 
             FirewallHealthAction.REAPPLY_RULES ->
                 (application as De1984Application).dependencies.firewallManager.reapplyRules()
@@ -750,6 +762,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Through updateSwitchAppearance, never isChecked: the listener would read the revert as a start tap.
+    private fun showFirewallStateOnSwitch(state: FirewallUiState = firewallViewModel.uiState.value) {
+        updateSwitchAppearance(state.isFirewallEnabled || state.isFirewallStartPending)
+    }
+
     private fun updateSwitchAppearance(isEnabled: Boolean) {
         binding.firewallToggle.setOnCheckedChangeListener(null)
         binding.firewallToggle.isChecked = isEnabled
@@ -768,10 +785,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun onFirewallToggleChanged(enabled: Boolean) {
         if (enabled) {
-            val prepareIntent = firewallViewModel.startFirewall()
-            if (prepareIntent != null) {
-                launchVpnConsent(prepareIntent, VpnPermissionContext.FIREWALL_START)
-            }
+            firewallViewModel.startFirewall()
         } else {
             showFirewallStopDialog()
         }
@@ -784,10 +798,7 @@ class MainActivity : AppCompatActivity() {
             message = getString(R.string.dialog_firewall_start_message),
             confirmButtonText = getString(R.string.dialog_firewall_start_confirm),
             onConfirm = {
-                val prepareIntent = firewallViewModel.startFirewall()
-                if (prepareIntent != null) {
-                    launchVpnConsent(prepareIntent, VpnPermissionContext.FIREWALL_START)
-                }
+                firewallViewModel.startFirewall()
             },
             cancelButtonText = getString(R.string.dialog_firewall_start_skip)
         )
@@ -809,15 +820,14 @@ class MainActivity : AppCompatActivity() {
             negativeButtonText = getString(R.string.dialog_cancel),
             onNegativeClick = {
                 AppLogger.d(TAG, "🔘 USER CANCELLED: Firewall stop cancelled - reverting toggle")
-                binding.firewallToggle.isChecked = true
+                showFirewallStateOnSwitch()
             },
             cancelable = true,
             onDismiss = {
-                // Only revert toggle if dialog was dismissed without confirmation
-                // This handles: tap outside, back button, swipe down
+                // Tap outside, back and swipe dismiss without a button.
                 if (!confirmed) {
-                    AppLogger.d(TAG, "🔘 DIALOG DISMISSED: Reverting toggle to ON")
-                    binding.firewallToggle.isChecked = true
+                    AppLogger.d(TAG, "🔘 DIALOG DISMISSED: Reverting toggle to the firewall's state")
+                    showFirewallStateOnSwitch()
                 }
             }
         )

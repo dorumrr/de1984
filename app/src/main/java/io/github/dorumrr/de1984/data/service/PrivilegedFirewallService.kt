@@ -93,6 +93,8 @@ class PrivilegedFirewallService : Service() {
     private var rulesJob: Job? = null
     private var healthMonitoringJob: Job? = null
     private var ruleApplicationJob: Job? = null
+    private var repairJob: Job? = null
+    private val consecutiveRepairs = AtomicInteger(0)
 
     private var currentBackend: FirewallBackend? = null
     private var currentBackendType: FirewallBackendType? = null
@@ -133,6 +135,13 @@ class PrivilegedFirewallService : Service() {
         const val ACTION_START = "io.github.dorumrr.de1984.action.START_PRIVILEGED_FIREWALL"
         const val ACTION_STOP = "io.github.dorumrr.de1984.action.STOP_PRIVILEGED_FIREWALL"
         const val EXTRA_BACKEND_TYPE = "backend_type"
+
+        // netd holds the xtables lock in short bursts around a network change, so a retry inside
+        // the same burst fails the same way; a few seconds later it lands.
+        private const val REPAIR_DELAY_MS = 5_000L
+        // A rule the kernel keeps rejecting must not rewrite the chain forever; the next rule or
+        // network change still tries, armed.
+        private const val MAX_CONSECUTIVE_REPAIRS = 3
 
         private val pendingTeardowns = AtomicInteger(0)
 
@@ -508,6 +517,9 @@ class PrivilegedFirewallService : Service() {
         healthMonitoringJob = null
         ruleApplicationJob?.cancel()
         ruleApplicationJob = null
+        repairJob?.cancel()
+        repairJob = null
+        consecutiveRepairs.set(0)
 
         consecutiveSuccessfulHealthChecks = 0
         currentHealthCheckInterval = Constants.HealthCheck.BACKEND_HEALTH_CHECK_INTERVAL_INITIAL_MS
@@ -628,6 +640,15 @@ class PrivilegedFirewallService : Service() {
                     // is running (circular check). The checkAvailability() above is sufficient to
                     // verify the backend can still function (root/Shizuku access, APIs available, etc.)
 
+                    // Access is not enforcement: the kernel chain can lose rules while root stays
+                    // fine. A short chain is repaired in place; it is not a backend failure.
+                    if (backend is IptablesFirewallBackend && !backend.verifyChain()) {
+                        reportApplyPass(backend, chainShortError(backend))
+                        scheduleRepairIfPending(backend, fromHealthCheck = true)
+                        AppLogger.w(TAG, "⚠️ SERVICE: $backendType has access, but its chain does not hold the rules - repairing, not counted as a pass")
+                        continue
+                    }
+
                     consecutiveSuccessfulHealthChecks++
                     AppLogger.d(TAG, "✅ SERVICE: Health check passed - $backendType is healthy (consecutive successes: $consecutiveSuccessfulHealthChecks)")
 
@@ -637,6 +658,9 @@ class PrivilegedFirewallService : Service() {
                         AppLogger.d(TAG, "⚡ SERVICE: BACKEND STABLE - INCREASING INTERVAL | Backend: $backendType | New interval: ${currentHealthCheckInterval}ms | 4x fewer ticks (15s to 60s)")
                     }
 
+                } catch (e: CancellationException) {
+                    // endSession() cancelled the loop; that is a stop, not a backend failure.
+                    throw e
                 } catch (e: Exception) {
                     AppLogger.e(TAG, "❌ SERVICE: HEALTH CHECK EXCEPTION | Backend: $backendType | Exception: ${e.message} | Action: Stopping service to trigger FirewallManager fallback")
                     AppLogger.e(TAG, "", e)
@@ -725,11 +749,14 @@ class PrivilegedFirewallService : Service() {
                 backend.applyRules(rules, currentNetworkType, isScreenOn).getOrElse { error ->
                     AppLogger.e(TAG, "🔥 [TIMING] Backend applyRules FAILED: +${System.currentTimeMillis() - ruleApplicationStartTime}ms, error=${error.message}")
                     reportApplyPass(backend, error)
+                    scheduleRepairIfPending(backend)
                     return@launch
                 }
 
                 AppLogger.d(TAG, "🔥 [TIMING] Backend applyRules SUCCESS: backend took ${System.currentTimeMillis() - applyStartTime}ms, total +${System.currentTimeMillis() - ruleApplicationStartTime}ms")
-                reportApplyPass(backend, null)
+                // An iptables pass returns success over a chain it found short; that is not a clean pass.
+                reportApplyPass(backend, chainShortError(backend))
+                scheduleRepairIfPending(backend)
             } catch (e: CancellationException) {
                 // A newer schedule superseded this pass; that one reports.
                 throw e
@@ -739,6 +766,39 @@ class PrivilegedFirewallService : Service() {
             }
         }
     }
+
+    /** One more pass a few seconds after a pass or a health check that left the iptables chain short. */
+    private fun scheduleRepairIfPending(backend: FirewallBackend, fromHealthCheck: Boolean = false) {
+        val iptables = backend as? IptablesFirewallBackend ?: return
+        if (!iptables.repairPending()) {
+            consecutiveRepairs.set(0)
+            return
+        }
+        val attempt = consecutiveRepairs.incrementAndGet()
+        // Past the cap only a health check retries, at doubling gaps: attempt 4, 8, 16... counting passes too.
+        if (attempt > MAX_CONSECUTIVE_REPAIRS && !(fromHealthCheck && attempt and (attempt - 1) == 0)) {
+            AppLogger.w(TAG, "⚠️ Chain still does not match after $MAX_CONSECUTIVE_REPAIRS repair passes - the next rule or network change retries")
+            return
+        }
+        AppLogger.w(TAG, "⚠️ Chain does not match the rules - repair pass $attempt in ${REPAIR_DELAY_MS}ms")
+        repairJob?.cancel()
+        repairJob = serviceScope.launch {
+            delay(REPAIR_DELAY_MS)
+            // A pass already running ends by calling this again, so it needs no second one.
+            if (isServiceActive && currentBackend === backend && iptables.repairPending() &&
+                ruleApplicationJob?.isActive != true
+            ) {
+                scheduleRuleApplication("repair")
+            }
+        }
+    }
+
+    private fun chainShortError(backend: FirewallBackend): Throwable? =
+        if ((backend as? IptablesFirewallBackend)?.repairPending() == true) {
+            IllegalStateException("iptables chain does not hold the rules - repairing")
+        } else {
+            null
+        }
 
     private fun reportApplyPass(backend: FirewallBackend, error: Throwable?) {
         val backendType = currentBackendType

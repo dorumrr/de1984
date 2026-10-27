@@ -107,6 +107,7 @@ object Constants {
         const val KEY_NPM_ORIGINAL_POLICIES = "npm_original_policies"  // "uid:policy" pairs: what each UID looked like before the NetworkPolicyManager backend touched it
         const val KEY_CM_BLOCKED_PACKAGES = "cm_blocked_packages"  // package names the ConnectivityManager backend has denied networking; survives the process so a fresh one can undo them
         const val KEY_CM_CHAIN3_ENABLED_BY_US = "cm_chain3_enabled_by_us"  // true only while De1984 is the one that turned FIREWALL_CHAIN_OEM_DENY_3 on
+        const val KEY_STUCK_BACKEND = "stuck_backend"  // the backends whose teardown failed, until a teardown is proven; their rules outlive the process
         const val KEY_IPTABLES_CHAINS_INSTALLED = "iptables_chains_installed"  // true from the moment the de1984 chains are created until a teardown is verified clean; iptables rules outlive the process, so this is what tells a fresh instance there is something to undo
         const val KEY_PRIVILEGED_BACKEND_TYPE = "privileged_backend_type"  // Stores which privileged backend is active (iptables/connectivity_manager/network_policy_manager)
         const val KEY_NEW_APP_NOTIFICATIONS = "new_app_notifications"

@@ -114,6 +114,9 @@ class FirewallManager(
      */
     private var switchingInsideHealthJob = false
     private val healthFailuresInARow = AtomicInteger(0)
+    // Raised at every user ON or OFF, in the order the user acted; see recordUserIntent.
+    private val userActions = AtomicInteger(0)
+    private val userIntentLock = Any()
     // Under startStopMutex: true while a health-check failure is being handled, so its restarts keep the count.
     private var startingFromHealthCheck = false
     private var privilegeMonitoringJob: Job? = null
@@ -161,6 +164,22 @@ class FirewallManager(
      */
     @Volatile
     private var stopTeardownFailed = false
+    // Backends whose teardown failed, kept apart from _firewallHealth so a Down shown over them cannot erase them; stored, as their rules outlive the process.
+    @Volatile private var stuckBackends: Set<FirewallBackendType> = readStoredStuckBackends()
+        set(value) {
+            if (field == value) return
+            field = value
+            context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE).edit()
+                .apply {
+                    if (value.isEmpty()) remove(Constants.Settings.KEY_STUCK_BACKEND)
+                    else putString(Constants.Settings.KEY_STUCK_BACKEND, "${value.joinToString(",") { it.name }}@${bootId()}")
+                }
+                .apply()
+        }
+    // The one a StopFailed names: the one whose blocks last longest.
+    private val stuckBackend: FirewallBackendType? get() = stuckBackends.maxByOrNull(::blocksLast)
+    // True once a stop was sent to the active backend and no start has replaced it: its teardown may still be running.
+    @Volatile private var stopSentToActive = false
 
     // Kept apart from _firewallHealth: a start or a health check resets that to Healthy, and this re-raises it.
     @Volatile
@@ -237,6 +256,11 @@ class FirewallManager(
         scope.launch {
             val initStartTime = System.currentTimeMillis()
             AppLogger.i(TAG, "⏱️ TIMING: initializeBackendState START at $initStartTime")
+            // Health is in memory; a stuck backend stored by an earlier process still needs its warning and "Stop again".
+            stuckBackend?.let { stuck ->
+                stopTeardownFailed = true
+                _firewallHealth.value = FirewallHealth.StopFailed(stuck)
+            }
             try {
                 delay(200)
 
@@ -291,7 +315,8 @@ class FirewallManager(
                 if (shouldBeRunning) {
                     AppLogger.w(TAG, "Firewall should be running but no backend detected - attempting restart")
                     val mode = getCurrentMode()
-                    startFirewall(mode).onFailure { error ->
+                    // Intent was read before the lock; a user OFF since then must win.
+                    startFirewallIfOnByUser(mode)?.onFailure { error ->
                         AppLogger.e(TAG, "Failed to restart firewall on initialization: ${error.message}")
                         _firewallState.value = FirewallState.Error(
                             "Firewall should be running but failed to restart: ${error.message}",
@@ -434,6 +459,25 @@ class FirewallManager(
             }
         }
 
+    /**
+     * The StopFailed banner's retry, keeping the user's intent. With a backend enforcing, the stuck one is a switch's
+     * leftover: only it is swept, so protection is never torn down to retry it. Otherwise this is [restartFirewall].
+     */
+    suspend fun retryStuckStop(mode: FirewallMode): Result<FirewallBackendType>? =
+        withContext(Dispatchers.IO + NonCancellable) {
+            val swept = startStopMutex.withLock {
+                val running = _activeBackendType.value ?: return@withLock null
+                val stuck = stuckBackend
+                // Full stop if a stuck one is the running one, the user wants it all off, or a stop is still in flight;
+                // asks the backend, not the state, since a failed later start sets Error while it still enforces.
+                if (stuck == null || running in stuckBackends || !isOnByUser() || stopSentToActive || currentBackend?.isActive() != true) return@withLock null
+                val failure = cleanupAllBackends(reportFailureFor = stuck, spare = running)
+                if (failure == null) reportFirewallHealthy() else reportOrphanedBackend(failure.backend, failure.error)
+                Result.success(running)
+            }
+            swept ?: restartFirewall(mode)
+        }
+
     /** Checks [isMeantToBeOn] under the start/stop lock, so a stop already running wins. Null when it no longer holds. */
     suspend fun startFirewallIfMeantToBeOn(): Result<FirewallBackendType>? =
         withContext(Dispatchers.IO) {
@@ -547,9 +591,8 @@ class FirewallManager(
             // checkBackendShouldSwitch) all trigger startFirewall() during startup.
             if (oldBackend != null && oldBackendType == plan.selectedBackendType && oldBackend.isActive()) {
                 AppLogger.d(TAG, "startFirewall: Backend $oldBackendType is already running and active - skipping redundant start")
-                // Still clear any stale warning. Reaching here means a backend IS enforcing, and
-                // without this a banner raised earlier would never be taken down.
-                reportFirewallHealthy()
+                // Still clear a stale warning: a backend IS enforcing. Another backend's leftover warning stays.
+                reportFirewallHealthy(afterStart = true)
                 return Result.success(oldBackendType)
             }
 
@@ -631,7 +674,7 @@ class FirewallManager(
                 _firewallState.value = FirewallState.Running(newBackendType)
                 emitStateChangeBroadcast(_firewallState.value)
                 _activeBackendType.value = newBackendType
-                reportFirewallHealthy()
+                reportFirewallHealthy(afterStart = true)
                 // As the switch path does: a restart reached from a health check ended that check's job.
                 startBackendHealthMonitoring()
                 return Result.success(oldBackendType)
@@ -742,7 +785,7 @@ class FirewallManager(
             _firewallState.value = FirewallState.Running(newBackendType)
             emitStateChangeBroadcast(_firewallState.value)
 
-            reportFirewallHealthy()
+            reportFirewallHealthy(afterStart = true)
 
             // AFTER reportFirewallHealthy, never before: it clears the health state, so an orphan
             // reported earlier would be wiped by the very switch that created it.
@@ -776,10 +819,42 @@ class FirewallManager(
         }
     }
 
-    /** Runs on Dispatchers.IO, for the same reason as [startFirewall]. */
-    suspend fun stopFirewall(): Result<Unit> =
-        withContext(Dispatchers.IO) {
+    /**
+     * A user OFF. [action] comes from [newUserAction] at the tap. Runs on Dispatchers.IO, for the same reason
+     * as [startFirewall]. The stop always runs; only the intent write is skipped when a newer action exists.
+     */
+    suspend fun stopFirewall(action: Int = newUserAction()): Result<Unit> {
+        // Before the lock: a privilege check waiting on it must already read OFF, or it starts the firewall again.
+        recordUserIntent(action, false)
+        // NonCancellable: a caller that goes away mid-stop would leave the backend up with intent OFF.
+        return withContext(Dispatchers.IO + NonCancellable) {
             startStopMutex.withLock { stopFirewallInternal() }
+        }
+    }
+
+    /** Take one at the user's tap, before any waiting: it orders this ON or OFF against every other. */
+    fun newUserAction(): Int = userActions.incrementAndGet()
+
+    fun isNewestUserAction(action: Int): Boolean = userActions.get() == action
+
+    /** Only the newest user action writes the intent, so a slower, older one never overwrites a newer choice. */
+    fun recordUserIntent(action: Int, on: Boolean): Boolean = synchronized(userIntentLock) {
+        if (userActions.get() != action) return@synchronized false
+        context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, on).apply()
+        // DOWN means "wanted on and not running"; left set after an OFF, a privilege change would restart it.
+        if (!on) _isFirewallDown.value = false
+        true
+    }
+
+    /** A user ON from any surface; null, writing nothing, when a newer user action came in since [action]. */
+    suspend fun startFirewallForUser(mode: FirewallMode, action: Int): Result<FirewallBackendType>? =
+        withContext(Dispatchers.IO) {
+            startStopMutex.withLock {
+                // Before the start: a failed start then reads as DOWN, which app open, a root or Shizuku change and boot each retry.
+                if (!recordUserIntent(action, true)) return@withLock null
+                startFirewallInternal(mode)
+            }
         }
 
     private suspend fun stopFirewallInternal(): Result<Unit> {
@@ -815,6 +890,7 @@ class FirewallManager(
                 // name the backend. The sweep would then report a failure against nobody.
                 ?: currentBackend?.getType()
             var stopFailure: Throwable? = null
+            stopSentToActive = currentBackend != null
             currentBackend?.stop()?.onFailure { error ->
                 AppLogger.e(TAG, "Failed to stop current backend ($stoppedBackendType): ${error.message}", error)
                 stopFailure = error
@@ -904,10 +980,15 @@ class FirewallManager(
         // PrivilegedFirewallService runs one backend and drops a stop for a type it no longer runs.
         val stopDropped = sweptType != FirewallBackendType.VPN &&
             runningBackendType != null && runningBackendType != FirewallBackendType.VPN
+        // A privileged stop() only sends the request, so its success is no proof: only a clean sweep clears stuckBackends.
         if (failure == null && !stopDropped) return null
 
         AppLogger.w(TAG, "Old backend ($oldBackendType) not proven gone - sweeping to confirm: ${failure?.message ?: "the privileged service now runs $runningBackendType"}")
         val sweep = cleanupAllBackends(reportFailureFor = sweptType, spare = runningBackendType)
+        // A clean sweep of every type but the running one proves any earlier stuck backend gone too.
+        if (sweep == null) stuckBackends = stuckBackends intersect setOfNotNull(runningBackendType)
+        // The sweep can prove a third backend still enforcing; that one is a leftover too.
+        if (sweep != null && sweep.backend != sweptType) reportOrphanedBackend(sweep.backend, sweep.error)
         val surviving = sweep?.takeIf { it.backend == sweptType }?.error
         if (surviving == null) {
             AppLogger.d(TAG, "Sweep confirmed $oldBackendType is gone - the switch is clean")
@@ -1050,6 +1131,8 @@ class FirewallManager(
             failures[FirewallBackendType.VPN] = e
         }
 
+        // Every backend but the spared one was swept: what failed is stuck, what passed is proven gone.
+        stuckBackends = stuckBackends.filter { it == spare }.toSet() + failures.keys
         if (failures.isEmpty()) return null
 
         // Name the backend the user was actually running when it is one of the failures - that is
@@ -1067,6 +1150,10 @@ class FirewallManager(
     fun isActive(): Boolean {
         return currentBackend?.isActive() ?: false
     }
+
+    /** A tile, widget or toggle tap stops when this holds: drawn ON (Running, Starting), or a backend still enforcing. */
+    fun isShownOn(): Boolean =
+        firewallState.value.let { it is FirewallState.Running || it is FirewallState.Starting } || isActive()
 
     /**
      * Emit a broadcast when firewall state changes.
@@ -1539,6 +1626,38 @@ class FirewallManager(
         reportStopFailed(backendType, error)
     }
 
+    /** A complete cold-start sweep left only [left] enforcing: every other stored stuck backend is disproved. */
+    fun reportCleanSweep(left: Set<FirewallBackendType>) {
+        // This sweep never touches VPN: a tunnel still up keeps its warning.
+        val vpnUp = FirewallBackendType.VPN in stuckBackends && VpnFirewallBackend(context).isActive()
+        val kept = stuckBackends.filter { it in left || (it == FirewallBackendType.VPN && vpnUp) }.toSet()
+        if (kept == stuckBackends) return
+        AppLogger.d(TAG, "Cold-start sweep disproved ${stuckBackends - kept} - stuck backends now $kept")
+        if (kept.isEmpty()) {
+            reportFirewallHealthy()
+        } else {
+            stuckBackends = kept
+            _firewallHealth.value = FirewallHealth.StopFailed(stuckBackend)
+            showStopFailedNotification(stuckBackend)
+        }
+    }
+
+    // The VPN tunnel dies with this process; iptables chains and CM's chain3 with a reboot. Only NPM's netpolicy.xml outlives both.
+    private fun readStoredStuckBackends(): Set<FirewallBackendType> {
+        val stored = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(Constants.Settings.KEY_STUCK_BACKEND, null) ?: return emptySet()
+        val sameBoot = stored.substringAfter('@', "") == bootId()
+        return stored.substringBefore('@').split(',')
+            .mapNotNull { name -> FirewallBackendType.entries.firstOrNull { it.name == name } }
+            .filter { it != FirewallBackendType.VPN && (sameBoot || it == FirewallBackendType.NETWORK_POLICY_MANAGER) }
+            .toSet()
+    }
+
+    // The kernel's boot id never moves with the clock; BOOT_COUNT stands in where the app cannot read it.
+    private fun bootId(): String =
+        runCatching { java.io.File("/proc/sys/kernel/random/boot_id").readText().trim() }.getOrNull()?.takeIf { it.isNotEmpty() }
+            ?: "c" + android.provider.Settings.Global.getInt(context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, -1)
+
     /** Runs the cold-start [sweep] under the start/stop lock; false, without running it, when the firewall is meant to be on or a backend is up. */
     suspend fun sweepWhileStopped(sweep: suspend () -> Unit): Boolean = startStopMutex.withLock {
         if (isOnByUser() || _activeBackendType.value != null) return@withLock false
@@ -1555,7 +1674,18 @@ class FirewallManager(
      */
     suspend fun handleStopFailureFromService(backendType: FirewallBackendType, error: Throwable) {
         AppLogger.e(TAG, "Service reported a failed teardown for $backendType")
-        reportStopFailed(backendType, error)
+        val active = _activeBackendType.value
+        when {
+            // A backend already switched away from: another one is protecting, so this is a leftover.
+            active != null && active != backendType -> reportOrphanedBackend(backendType, error)
+            // Not the user's stop: with intent ON, Down outranks it; the warning returns once a start onto another backend recovers.
+            active == null && isOnByUser() -> {
+                stopTeardownFailed = true
+                stuckBackends = stuckBackends + backendType
+                showStopFailedNotification(stuckBackend)
+            }
+            else -> reportStopFailed(backendType, error)
+        }
     }
 
     suspend fun handleBackendFailureFromService(failedBackendType: FirewallBackendType) {
@@ -1731,15 +1861,31 @@ class FirewallManager(
      * [clearHealthWarningIfEnforcing] instead: clearing [_isFirewallDown] is what re-enables
      * recovery, and a timer tick is not evidence that a lost firewall came back.
      */
-    private fun reportFirewallHealthy() {
-        stopTeardownFailed = false
-        _firewallHealth.value = enforcingHealth()
+    private fun reportFirewallHealthy(afterStart: Boolean = false) {
+        if (afterStart) stopSentToActive = false
+        // A started backend says nothing about another backend's leftover rules; only a sweep, or starting that same backend, clears them.
+        val named = stuckBackend
+        stuckBackends = if (afterStart) stuckBackends - setOfNotNull(_activeBackendType.value) else emptySet()
+        val stuck = stuckBackend
+        if (stuck == null) {
+            stopTeardownFailed = false
+            _firewallHealth.value = enforcingHealth()
+            dismissStopFailedNotification()
+        } else {
+            _firewallHealth.value = FirewallHealth.StopFailed(stuck)
+            if (stuck != named) showStopFailedNotification(stuck)
+        }
         _isFirewallDown.value = false
         dismissBackendFailedNotification()
         dismissVpnFallbackNotification()
-        dismissStopFailedNotification()
         // A tile/widget stop posts this after its stop returns, so a stop never cancels its own notice here.
         notificationManager.cancel(Constants.FirewallStopped.NOTIFICATION_ID)
+    }
+
+    private fun blocksLast(type: FirewallBackendType): Int = when (type) {
+        FirewallBackendType.VPN -> 0
+        FirewallBackendType.IPTABLES, FirewallBackendType.CONNECTIVITY_MANAGER -> 1
+        FirewallBackendType.NETWORK_POLICY_MANAGER -> 2
     }
 
     /**
@@ -1750,8 +1896,9 @@ class FirewallManager(
         AppLogger.e(TAG, "⚠️ ORPHANED BACKEND ($backend): its rules may still be enforced", error)
 
         stopTeardownFailed = true
-        _firewallHealth.value = FirewallHealth.StopFailed(backend)
-        showStopFailedNotification(backend)
+        stuckBackends = stuckBackends + setOfNotNull(backend)
+        _firewallHealth.value = FirewallHealth.StopFailed(stuckBackend)
+        showStopFailedNotification(stuckBackend)
     }
 
     /**
@@ -1762,8 +1909,9 @@ class FirewallManager(
         AppLogger.e(TAG, "⚠️ FIREWALL WOULD NOT STOP (backend=$backend): rules may still be enforced", error)
 
         stopTeardownFailed = true
+        stuckBackends = stuckBackends + setOfNotNull(backend)
 
-        _firewallHealth.value = FirewallHealth.StopFailed(backend)
+        _firewallHealth.value = FirewallHealth.StopFailed(stuckBackend)
         _isFirewallDown.value = false
         dismissBackendFailedNotification()
         dismissVpnFallbackNotification()
@@ -1777,7 +1925,7 @@ class FirewallManager(
         // _firewallHealth is in-memory and resets to Healthy on process death, so without this the
         // warning would live only inside an open Activity: swipe the app away, come back, and the
         // UI would say OFF with rules still enforced. The notification is the part that survives.
-        showStopFailedNotification(backend)
+        showStopFailedNotification(stuckBackend)
     }
 
     /** ON by default, since a stop opens the network to every app; defined once because the tile and the widget's receiver both ask. */
@@ -2060,7 +2208,8 @@ class FirewallManager(
             result.onSuccess { backendType ->
                 AppLogger.d(TAG, "✅ VPN fallback successful via planner: backend=$backendType")
                 // startFirewallInternal ends on Healthy; say the switch, unless VPN itself failed and was only restarted.
-                if (failedBackendType != FirewallBackendType.VPN) {
+                // A stuck old backend outranks the notice: its warning carries "Stop again" for rules that may still block.
+                if (failedBackendType != FirewallBackendType.VPN && _firewallHealth.value !is FirewallHealth.StopFailed) {
                     _firewallHealth.value = FirewallHealth.SwitchedToVpn(
                         failedBackend = failedBackendType,
                         fromManualMode = wasManualSelection
@@ -2101,7 +2250,7 @@ class FirewallManager(
      * specifically expect a direct VPN start. Internal health/privilege handling
      * should prefer planner-based [startFirewall] and [handleBackendFailure].
      */
-    private suspend fun startVpnFallback(wasManualSelection: Boolean, failedBackendType: FirewallBackendType?) {
+    private suspend fun startVpnFallback(wasManualSelection: Boolean, failedBackendType: FirewallBackendType?, action: Int) {
         try {
             stopMonitoring()
 
@@ -2145,16 +2294,15 @@ class FirewallManager(
             _firewallState.value = FirewallState.Running(FirewallBackendType.VPN)
             emitStateChangeBroadcast(_firewallState.value)
 
-            val prefs = context.getSharedPreferences(Constants.Settings.PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.edit().putBoolean(Constants.Settings.KEY_FIREWALL_ENABLED, true).apply()
+            recordUserIntent(action, true)
 
             // Protection is restored - clear the down state and both failure notifications.
-            reportFirewallHealthy()
+            reportFirewallHealthy(afterStart = true)
             dismissVpnFallbackNotification()
 
             applyRules()
 
-            if (failedBackendType != null) {
+            if (failedBackendType != null && _firewallHealth.value !is FirewallHealth.StopFailed) {
                 _firewallHealth.value = FirewallHealth.SwitchedToVpn(
                     failedBackend = failedBackendType,
                     fromManualMode = wasManualSelection
@@ -2385,8 +2533,12 @@ class FirewallManager(
     }
 
     /** Runs on Dispatchers.IO, for the same reason as [startFirewall]. */
-    suspend fun startVpnFallbackManually() = withContext(Dispatchers.IO) { startStopMutex.withLock {
+    suspend fun startVpnFallbackManually(action: Int = newUserAction()) = withContext(Dispatchers.IO) { startStopMutex.withLock {
         AppLogger.d(TAG, "Starting VPN fallback manually after permission grant")
+        if (!isNewestUserAction(action)) {
+            AppLogger.d(TAG, "VPN fallback: a newer user ON or OFF came in - not starting")
+            return@withLock
+        }
 
         val prepareIntent = try {
             VpnService.prepare(context)
@@ -2403,7 +2555,7 @@ class FirewallManager(
         // Only a privileged backend's failure is a switch; a VPN that lacked consent or lost its slot just starts.
         val failedBackend = (_firewallHealth.value as? FirewallHealth.Down)?.backend
             ?.takeIf { it != FirewallBackendType.VPN }
-        startVpnFallback(wasManualSelection = false, failedBackendType = failedBackend)
+        startVpnFallback(wasManualSelection = false, failedBackendType = failedBackend, action = action)
     } }
 
     private fun startVpnPermissionMonitoring() {
@@ -2447,7 +2599,11 @@ class FirewallManager(
                     dismissVpnFallbackNotification()
 
                     val mode = getCurrentMode()
-                    val result = startFirewall(mode)
+                    val result = startFirewallIfOnByUser(mode)
+                    if (result == null) {
+                        AppLogger.d(TAG, "VPN permission granted, but the user turned the firewall off - no recovery")
+                        break
+                    }
 
                     if (result.isSuccess) {
                         AppLogger.d(TAG, "✅ Automatic VPN fallback successful")

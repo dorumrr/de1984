@@ -318,7 +318,8 @@
     <string name="firewall_switched_message_manual">Backendul %1$s a eșuat. De1984 a trecut în modul AUTO și folosește VPN.</string>
     <string name="firewall_stop_failed_title">Firewall-ul nu s-a oprit</string>
     <string name="firewall_stop_failed_message">Backendul %1$s nu s-a oprit. Unele aplicații pot fi în continuare blocate. Încearcă din nou sau repornește dispozitivul.</string>
-    <string name="firewall_stop_failed_message_unknown">Firewall-ul nu s-a oprit. Unele aplicații pot fi în continuare blocate. Încearcă din nou sau repornește dispozitivul.</string>
+    <string name="firewall_stop_failed_message_npm">Backendul %1$s nu s-a oprit. Unele aplicații pot fi în continuare blocate, iar repornirea nu elimină aceste blocări. Încearcă din nou.</string>
+    <string name="firewall_stop_failed_message_unknown">Firewall-ul nu s-a oprit. Unele aplicații pot fi în continuare blocate. Încearcă din nou.</string>
     <string name="firewall_apply_failed_title">Unele reguli nu au fost aplicate</string>
     <string name="firewall_apply_failed_message">Backendul %1$s nu a putut aplica toate regulile. Unele aplicații pot să nu fie blocate sau permise așa cum se arată.</string>
     <string name="firewall_stop_failed_action_retry">Oprește din nou</string>

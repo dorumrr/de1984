@@ -113,6 +113,8 @@ class De1984Application : Application() {
                         // stop failed and the process died, and the health state it would have restored
                         // is in-memory only - so a device whose rules are still enforcing used to start
                         // every process reporting Healthy, with no badge, no banner and nothing to press.
+                        // A cleanup that threw proved nothing, so the sweep cannot count as clean.
+                        var sweepIncomplete = false
                         val orphans = mutableListOf<Pair<FirewallBackendType, Throwable>>()
 
                         try {
@@ -130,6 +132,7 @@ class De1984Application : Application() {
                                 .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned iptables rules") }
                                 .onFailure { orphans += FirewallBackendType.IPTABLES to it; AppLogger.w(TAG, "Orphaned iptables cleanup incomplete: ${it.message}") }
                         } catch (e: Exception) {
+                            sweepIncomplete = true
                             AppLogger.w(TAG, "Failed to clean up orphaned iptables rules: ${e.message}")
                         }
 
@@ -148,6 +151,7 @@ class De1984Application : Application() {
                                 .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned ConnectivityManager rules") }
                                 .onFailure { orphans += FirewallBackendType.CONNECTIVITY_MANAGER to it; AppLogger.w(TAG, "Orphaned ConnectivityManager denials remain: ${it.message}") }
                         } catch (e: Exception) {
+                            sweepIncomplete = true
                             AppLogger.w(TAG, "Failed to clean up orphaned ConnectivityManager rules: ${e.message}")
                         }
 
@@ -166,6 +170,7 @@ class De1984Application : Application() {
                                 .onSuccess { AppLogger.d(TAG, "Cleaned up orphaned NetworkPolicyManager policies") }
                                 .onFailure { orphans += FirewallBackendType.NETWORK_POLICY_MANAGER to it; AppLogger.w(TAG, "Orphaned NetworkPolicyManager policies remain: ${it.message}") }
                         } catch (e: Exception) {
+                            sweepIncomplete = true
                             AppLogger.w(TAG, "Failed to clean up orphaned NetworkPolicyManager policies: ${e.message}")
                         }
 
@@ -173,12 +178,10 @@ class De1984Application : Application() {
                         // publishes the same STUCK badge, banner and notification a failed stop does,
                         // because it is the same situation: apps are blocked and no control in the app
                         // touches the thing blocking them.
-                        orphans.firstOrNull()?.let { (backend, error) ->
-                            if (orphans.size > 1) {
-                                AppLogger.e(TAG, "Cold-start sweep left ${orphans.map { it.first }} enforcing - reporting $backend")
-                            }
+                        orphans.forEach { (backend, error) ->
                             dependencies.firewallManager.reportStopFailedFromSweep(backend, error)
                         }
+                        if (!sweepIncomplete) dependencies.firewallManager.reportCleanSweep(orphans.map { it.first }.toSet())
                     }
                     if (!swept) {
                         AppLogger.i(TAG, "Firewall is meant to be on or a backend is up - skipping the sweep")

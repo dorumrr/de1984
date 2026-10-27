@@ -208,9 +208,8 @@ object HiddenApiHelper {
      * cannot, and does not need to - every caller already falls back.
      *
      * **Returns immediately, always.** The grant runs on [grantScope], never on the caller's thread.
-     * This is called from `getInstalledApplicationsAsUser`, and `PackageMonitoringService.
-     * startMonitoring` reaches that synchronously from `onStartCommand` - which Android runs on the
-     * MAIN thread. A blocking `pm grant` there is an ANR on first launch.
+     * This is called from `getInstalledApplicationsAsUser`, which any caller may reach on the MAIN
+     * thread. A blocking `pm grant` there is an ANR on first launch.
      *
      * **A failure is not latched.** The first version set an "attempted" flag before trying, and
      * `Shell.getCachedShell()` is null until RootManager has actually opened a root shell - so at
@@ -912,8 +911,7 @@ object HiddenApiHelper {
      * Record packageName -> uid from a `pm list packages -U` output.
      *
      * Filled as a side effect of the package listing that already runs, so resolving a work-only
-     * app's uid costs no extra shell call. That matters: getApplicationInfoAsUser is reached on the
-     * main thread on some paths, and a second blocking command there is what this avoids.
+     * app's uid costs no extra shell call: a second blocking command per lookup is what this avoids.
      */
     @Synchronized
     private fun recordPackageUids(userId: Int, lines: List<String>) {
@@ -959,7 +957,7 @@ object HiddenApiHelper {
             }
 
             val outputList = mutableListOf<String>()
-            // Bounded: this path demonstrably runs on the main thread, so a wedged shell was an ANR.
+            // Bounded: a caller on the main thread would turn a wedged shell into an ANR.
             val result = runBlocking {
                 ShellRunner.bounded(
                     label = "root shell: $command",

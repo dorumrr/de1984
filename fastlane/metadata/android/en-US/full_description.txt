@@ -1,72 +1,54 @@
-De1984 is a powerful Firewall and Package Manager for Android devices with multiple backend support for maximum flexibility and performance.
+De1984 is a Firewall and Package Manager for Android that works with or without root.
 
-The name **De1984** is inspired by George Orwell’s novel Nineteen Eighty-Four, reflecting the app’s philosophy of resisting surveillance and reclaiming digital privacy. It symbolizes a reversal of the dystopian control described in the book, empowering users to take back control over their devices and data.
+The name <b>De1984</b> comes from George Orwell's Nineteen Eighty-Four. It stands for resisting surveillance and taking back control of your device and data.
 
 <b>FIREWALL FEATURES</b>
 
-- Multiple firewall capabilities: iptables (root, or Shizuku in root mode), ConnectivityManager (Shizuku, Android 13+), NetworkPolicyManager (Shizuku, chosen manually), and VPN fallback
-- Automatic firewall method selection based on device capabilities
-- Comprehensive iptables method for rooted devices provides kernel-level blocking with superior performance
-- ConnectivityManager for Android 13+ devices with Shizuku, no root required
-- NetworkPolicyManager with Shizuku, selectable manually. On ROMs without POLICY_REJECT_ALL it can only block metered background data, not WiFi
-- VPN backend as fallback for maximum compatibility (no root required)
-- Block apps on WiFi, Mobile Data and Roaming separately with iptables and VPN. Roaming is part of Mobile Data. ConnectivityManager and NetworkPolicyManager block an app on all networks or none
+- Four firewall methods: iptables (root, or Shizuku in root mode), ConnectivityManager (Shizuku, Android 13+), NetworkPolicyManager (Shizuku, chosen manually) and VPN (no root, works everywhere). Picked automatically for your device. iptables blocks at kernel level
+- On ROMs without POLICY_REJECT_ALL, NetworkPolicyManager only blocks metered background data, not WiFi
+- Block WiFi, Mobile Data and Roaming separately with iptables and VPN (Roaming is part of Mobile Data). ConnectivityManager and NetworkPolicyManager block an app on all networks or none
 - Block LAN access, enforced only by iptables
-- Global firewall policies: "Block All by Default" (allowlist) or "Allow All by Default" (blocklist). Switching the policy resets every app's WiFi, Mobile, Roaming and LAN rules to the new default, with no confirmation. System-recommended apps keep theirs, and critical and VPN apps keep theirs only while "Allow Firewall Critical Packages" is on
-- Captive portal detection settings (root or Shizuku). These system settings stay changed after De1984 is uninstalled
+- "Block All by Default" (allowlist) or "Allow All by Default" (blocklist). Switching resets every app's WiFi, Mobile, Roaming and LAN rules to the new default, with no confirmation. System-recommended apps keep theirs, and critical and VPN apps keep theirs only while "Allow Firewall Critical Packages" is on
+- Captive portal settings (root or Shizuku). They stay changed after De1984 is uninstalled
 - Screen-off blocking to save battery and data
-- Real-time network state monitoring and automatic rule application
+- Rules follow network changes in real time
 
-<b>PACKAGE MANAGEMENT (with Shizuku or root)</b>
+<b>PACKAGE MANAGEMENT (Shizuku or root)</b>
 
-- Enable/disable system apps
-- Force stop running apps
-- Uninstall system and user apps
-- Works with Shizuku (no root required) or traditional root access
-- Filter packages by system/user apps, enabled/disabled state
-- Search functionality for quick package lookup
+- Enable or disable system apps, force stop apps, uninstall system and user apps
+- Filter by system/user and enabled/disabled, and search
 
 <b>PRIVACY FIRST</b>
 
-- Zero tracking or analytics
-- No telemetry
+- No tracking, analytics or telemetry
 - Local-only data storage
-- No proprietary libraries
-- No Google Play Services
-- 100% open source (MIT License)
-- Buildable from source
+- No proprietary libraries, no Google Play Services
+- 100% open source (MIT License), buildable from source
 
 <b>REQUIREMENTS</b>
 
 - Android 8.0 (API 26) or higher
-- For iptables firewall: Root access OR Shizuku in root mode
-- For ConnectivityManager firewall: Shizuku + Android 13+
-- For NetworkPolicyManager firewall: Shizuku
-- For VPN firewall: VPN permission (no root required, works on all Android versions)
-- For package management: Shizuku or root access
 
 <b>PERMISSIONS</b>
 
-- ACCESS_NETWORK_STATE: Monitor network connectivity for automatic rule application
-- BIND_VPN_SERVICE: Create local VPN for VPN-based firewall backend
-- QUERY_ALL_PACKAGES: View all installed apps
-- POST_NOTIFICATIONS: Show notifications for new app installations (optional)
-- RECEIVE_BOOT_COMPLETED: Start the firewall again after a reboot, if you had turned it on
-- ACCESS_WIFI_STATE: Read the network state for per-network rules
-- FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE: Keep the firewall services running
-- REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: Ask Android not to stop the firewall to save battery (optional)
-- KILL_BACKGROUND_PROCESSES: Last fallback for force stop
-- Shizuku API permission: Talk to Shizuku or Sui
-- INTERACT_ACROSS_USERS: Read apps in other profiles. When another profile exists, De1984 grants it to itself through root or Shizuku, without asking
-- WRITE_SECURE_SETTINGS, CHANGE_COMPONENT_ENABLED_STATE: Only checked, to show the permission status
-- REQUEST_DELETE_PACKAGES, INSTALL_SHORTCUT, ACCESS_SUPERUSER: Declared, but not used
-- Shizuku or root access: For the iptables, ConnectivityManager and NetworkPolicyManager firewalls, package management, boot protection and captive portal settings (optional)
+- ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE: apply rules per network
+- BIND_VPN_SERVICE: the VPN firewall
+- QUERY_ALL_PACKAGES: list installed apps
+- POST_NOTIFICATIONS (optional): new app installs
+- RECEIVE_BOOT_COMPLETED: start the firewall after a reboot, if it was on
+- FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE: keep the firewall running
+- REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (optional): stop Android killing the firewall
+- KILL_BACKGROUND_PROCESSES: last fallback for force stop
+- Shizuku API: talk to Shizuku or Sui
+- INTERACT_ACROSS_USERS: read apps in other profiles. When one exists, De1984 grants it to itself through root or Shizuku, without asking
+- WRITE_SECURE_SETTINGS, CHANGE_COMPONENT_ENABLED_STATE: only checked, to show status
+- REQUEST_DELETE_PACKAGES, INSTALL_SHORTCUT, ACCESS_SUPERUSER: declared, not used
+- Root or Shizuku (optional): the iptables, ConnectivityManager and NetworkPolicyManager firewalls, package management, boot protection and captive portal settings
 
 <b>OPEN SOURCE</b>
 
-Source code: https://github.com/dorumrr/de1984  
-License: MIT  
-Issues: https://github.com/dorumrr/de1984/issues  
+Source code: https://github.com/dorumrr/de1984
+Issues: https://github.com/dorumrr/de1984/issues
 
-Late nights for brighter days. 
+Late nights for brighter days.
 Created by Doru Moraru

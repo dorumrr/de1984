@@ -34,7 +34,7 @@ android {
         versionCode = 54
         versionName = "2.8.4"
 
-        resourceConfigurations += listOf("en", "ro", "pt", "zh", "it", "fr", "ru", "ar")
+        resourceConfigurations += listOf("en", "ro", "pt", "zh", "it", "fr", "ru", "ar", "pl")
 
         vectorDrawables {
             useSupportLibrary = true

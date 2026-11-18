@@ -349,6 +349,7 @@
     <string name="language_french">Français (French)</string>
     <string name="language_russian">Русский (Russian)</string>
     <string name="language_arabic">العربية (Arabic)</string>
+    <string name="language_polish">Polski (Polish)</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Version %s</string>

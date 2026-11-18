@@ -700,6 +700,7 @@
     <string name="error_package_scan_failed_hint">إذا حدث هذا مرة أخرى، أغلق De1984 وأعد فتحه.</string>
     <string name="error_package_scan_failed">تعذّر قراءة قائمة التطبيقات على هذا الجهاز. إذا استمر هذا في الحدوث، أغلق De1984 وأعد فتحه.</string>
     <string name="language_arabic">العربية</string>
+    <string name="language_polish">Polski (البولندية)</string>
     <string name="filter_profile_user">مستخدمون آخرون</string>
     <string name="badge_other_user">مستخدم</string>
     <string name="firewall_apply_failed_title">لم تُطبَّق بعض القواعد</string>

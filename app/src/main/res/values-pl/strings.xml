@@ -1,9 +1,8 @@
 <resources>
     <!-- App Identity -->
-    <string name="app_name" translatable="false">De1984</string>
 
     <!-- Donate Button -->
-    <string name="donate_button">Wsparcie</string>
+    <string name="donate_button">Wesprzyj</string>
 
     <!-- Navigation -->
     <string name="nav_firewall">Zapora sieciowa</string>
@@ -45,19 +44,19 @@
 
     <!-- Quick Toggle Dialogs -->
     <string name="dialog_quick_toggle_block_title">Zablokować %1$s?</string>
-    <string name="dialog_quick_toggle_allow_title">Zezwolić na %1$s?</string>
-    <string name="dialog_quick_toggle_message_wifi">To spowoduje, że dostęp do Wi-Fi dla %2$s zostanie: %1$s</string>
-    <string name="dialog_quick_toggle_message_mobile">To spowoduje, że dostęp do danych komórkowych dla %2$s zostanie: %1$s</string>
-    <string name="dialog_quick_toggle_message_roaming">To spowoduje, że dostęp do roamingu dla %2$s zostanie: %1$s</string>
+    <string name="dialog_quick_toggle_allow_title">Odblokować %1$s?</string>
+    <string name="dialog_quick_toggle_message_wifi">Dostęp do Wi-Fi dla %2$s zostanie %1$s.</string>
+    <string name="dialog_quick_toggle_message_mobile">Dostęp do danych komórkowych dla %2$s zostanie %1$s.</string>
+    <string name="dialog_quick_toggle_message_roaming">Dostęp do sieci w roamingu dla %2$s zostanie %1$s.</string>
     <string name="dialog_quick_toggle_action_block">zablokowany</string>
-    <string name="dialog_quick_toggle_action_allow">dozwolony</string>
+    <string name="dialog_quick_toggle_action_allow">odblokowany</string>
     <string name="snackbar_wifi_blocked">Zablokowano dostęp do Wi-Fi dla aplikacji %s</string>
     <string name="snackbar_wifi_allowed">Zezwolono na dostęp do Wi-Fi dla aplikacji %s</string>
     <string name="snackbar_mobile_blocked">Zablokowano dane komórkowe dla aplikacji %s</string>
     <string name="snackbar_mobile_allowed">Zezwolono na dane komórkowe dla aplikacji %s</string>
     <string name="snackbar_roaming_blocked">Zablokowano roaming dla aplikacji %s</string>
     <string name="snackbar_roaming_allowed">Zezwolono na roaming dla aplikacji %s</string>
-    <string name="dialog_quick_toggle_message_internet">To spowoduje, że dostęp do internetu dla %2$s zostanie: %1$s</string>
+    <string name="dialog_quick_toggle_message_internet">Dostęp do internetu dla %2$s zostanie %1$s.</string>
     <string name="snackbar_internet_blocked">Zablokowano dostęp do internetu dla aplikacji %s</string>
     <string name="snackbar_internet_allowed">Zezwolono na dostęp do internetu dla aplikacji %s</string>
     <string name="snackbar_undo">Cofnij</string>
@@ -70,7 +69,6 @@
     <string name="packages_filter_user">Użytkownika</string>
     <string name="packages_filter_bloatware">Bloatware</string>
     <string name="packages_export_description">Eksportuj listę z ekranu</string>
-    <string name="packages_export_filename" translatable="false">de1984-packages.txt</string>
     <string name="packages_export_empty">Brak elementów na ekranie do wyeksportowania</string>
     <string name="packages_export_success">✅ Wyeksportowano nazwy pakietów (%d)</string>
     <string name="packages_export_failed">Eksport nie powiódł się: %s</string>
@@ -89,7 +87,7 @@
     <string name="badge_other_user">Użytkownik</string>
 
     <!-- Package Status -->
-    <string name="status_uninstalled">Odinstalowano</string>
+    <string name="status_uninstalled">Odinstalowana</string>
     <!-- Per-row status badge. Singular, unlike the plural filter chips above. -->
     <string name="packages_status_enabled">Włączona</string>
     <string name="packages_status_disabled">Wyłączona</string>
@@ -107,8 +105,8 @@
     <string name="action_sheet_package_name_label">Nazwa pakietu</string>
     <string name="action_sheet_force_stop_desc_running">Natychmiast zatrzymaj wszystkie procesy</string>
     <string name="action_sheet_force_stop_desc_not_running">Wymuś zatrzymanie (jeśli działa)</string>
-    <string name="action_sheet_disable_desc">Zapobiegaj uruchamianiu tej aplikacji</string>
-    <string name="action_sheet_enable_desc">Zezwól tej aplikacji na uruchamianie</string>
+    <string name="action_sheet_disable_desc">Uniemożliwia uruchamianie tej aplikacji</string>
+    <string name="action_sheet_enable_desc">Pozwala na uruchamianie tej aplikacji</string>
     <string name="action_sheet_uninstall_desc">Usuń tę aplikację z urządzenia</string>
     <string name="action_sheet_reinstall_desc">Przywróć tę aplikację systemową</string>
 
@@ -128,7 +126,7 @@
     <string name="permission_battery_optimization">Ignorowanie optymalizacji baterii</string>
     <string name="permission_modify_system_settings">Modyfikacja ustawień systemowych</string>
     <string name="permission_enable_disable_components">Włączanie/wyłączanie komponentów</string>
-    <string name="permission_superuser_access">Dostęp superużytkownika (Root)</string>
+    <string name="permission_superuser_access">Dostęp superużytkownika (root)</string>
     <string name="permission_vpn">Uprawnienie do VPN</string>
 
     <!-- Permission Descriptions -->
@@ -145,12 +143,12 @@
     <string name="permission_tier_basic_title">Podstawowa funkcjonalność</string>
     <string name="permission_tier_battery_title">Proces w tle</string>
     <string name="permission_tier_advanced_title">Zaawansowane operacje</string>
-    <string name="permission_tier_vpn_title">Awaryjny VPN (Fallback)</string>
+    <string name="permission_tier_vpn_title">Zapasowy VPN</string>
 
     <!-- Permission Tier Descriptions -->
     <string name="permission_tier_basic_desc">Wyświetlanie zainstalowanych pakietów i podstawowych informacji</string>
     <string name="permission_tier_battery_desc">Zapobiega zamykaniu usługi zapory przez system Android w celu oszczędzania baterii. Kluczowe dla niezawodności VPN.</string>
-    <string name="permission_tier_advanced_desc">Zarządzanie pakietami i operacje na poziomie systemowym (przez Shizuku lub Root)</string>
+    <string name="permission_tier_advanced_desc">Zarządzanie pakietami i operacje na poziomie systemowym (przez Shizuku lub root)</string>
     <string name="permission_tier_vpn_desc">Zezwala na automatyczne przełączenie na VPN, gdy uprzywilejowane backendy (iptables/ConnectivityManager) zawiodą. Gwarantuje, że zapora pozostanie aktywna.</string>
     <string name="permission_tier_vpn_desc_privileged">Niewymagane w przypadku korzystania z uprzywilejowanego backendu zapory (iptables/ConnectivityManager). Potrzebne tylko jako rozwiązanie awaryjne.</string>
 
@@ -173,7 +171,7 @@
     <string name="multiselect_toolbar_button_uninstall">Odinstaluj</string>
     <string name="multiselect_toolbar_button_reinstall">Zainstaluj ponownie</string>
 
-    <string name="multiselect_toast_limit_reached">Można wybrać maksymalnie %d pakietów jednocześnie</string>
+    <string name="multiselect_toast_limit_reached">Maksymalna liczba pakietów do wybrania naraz: %d</string>
 
     <!-- Firewall Multi-Select -->
     <string name="firewall_multiselect_toast_cannot_select_critical">Nie można wybrać pakietów krytycznych ani VPN</string>
@@ -182,8 +180,8 @@
     <string name="firewall_multiselect_toolbar_button_allow">Zezwól</string>
     <string name="firewall_multiselect_toolbar_button_rules">Zmień reguły</string>
     <string name="firewall_multiselect_dialog_title_results">Wyniki zapory</string>
-    <string name="firewall_multiselect_dialog_message_success_format">✓ Pomyślnie wykonano (%2$s): %1$d aplikacje(-acji)</string>
-    <string name="firewall_multiselect_dialog_message_failed_format">✓ Sukces: %1$d, ✗ błąd: %2$d podczas: %3$s</string>
+    <string name="firewall_multiselect_dialog_message_success_format">✓ Operacja (%2$s) zakończona pomyślnie. Liczba aplikacji: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_failed_format">✓ Sukces: %1$d, ✗ niepowodzenie: %2$d (%3$s)</string>
 
     <!-- Firewall Multi-Select Bottom Sheet -->
     <string name="firewall_multiselect_sheet_header_format">Wybrane pakiety: %d</string>
@@ -225,8 +223,6 @@
 
     <!-- Footer / Branding -->
     <string name="footer_tagline">Zarywane noce dla lepszych dni.\nAutor: Doru Moraru</string>
-    <string name="footer_author_name" translatable="false">Doru Moraru</string>
-    <string name="footer_author_url" translatable="false">https://github.com/dorumrr/de1984</string>
 
     <!-- Plurals -->
         <plurals name="package_count">
@@ -237,24 +233,24 @@
     </plurals>
 
     <!-- Root Access -->
-    <string name="root_status_denied">Dostęp Root: Odrzucono</string>
-    <string name="root_status_not_available">Dostęp Root: Niedostępny</string>
+    <string name="root_status_denied">Dostęp do roota: odmówiono</string>
+    <string name="root_status_not_available">Dostęp do roota: niedostępny</string>
 
-    <string name="root_desc_denied">Odmówiono uprawnień Root. Postępuj zgodnie z poniższymi instrukcjami, aby przyznać dostęp.</string>
+    <string name="root_desc_denied">Odmówiono uprawnień roota. Postępuj zgodnie z poniższymi instrukcjami, aby przyznać dostęp.</string>
     <string name="root_desc_not_available">Twoje urządzenie nie jest zrootowane. Dostęp Root jest wymagany do zaawansowanych operacji zarządzania pakietami.</string>
 
     <string name="root_grant_instructions_title">Aby przyznać dostęp Root:</string>
     <string name="root_grant_instructions_body">• Zainstaluj aplikację ponownie, aby ponownie wywołać okno uprawnień\n• Lub ręcznie dodaj De1984 w swojej aplikacji do zarządzania prawami superużytkownika (Magisk, KernelSU itp.)</string>
 
     <string name="root_rooting_tools_title"><![CDATA[<b>Zalecane narzędzia do rootowania:</b>]]></string>
-    <string name="root_rooting_tools_body">• Magisk – najpopularniejsze i najbardziej wspierane rozwiązanie. Działa na systemie Android 5.0+ i obsługuje moduły oferujące dodatkowe funkcje.\n• KernelSU – nowoczesne zarządzanie dostępem Root z poziomu jądra systemu. Zapewnia lepszą izolację bezpieczeństwa i nie modyfikuje partycji systemowej.\n• APatch – nowsza alternatywa wykorzystująca patchowanie jądra systemu. Dobrze sprawdza się na urządzeniach z rygorystycznymi zasadami bezpieczeństwa.</string>
+    <string name="root_rooting_tools_body">• Magisk – najpopularniejsze i najszerzej wspierane rozwiązanie. Działa na systemie Android 5.0+ i obsługuje moduły oferujące dodatkowe funkcje.\n• KernelSU – nowoczesne zarządzanie dostępem Root z poziomu jądra systemu. Zapewnia lepszą izolację bezpieczeństwa i nie modyfikuje partycji systemowej.\n• APatch – nowsza alternatywa wykorzystująca łatanie jądra systemu. Dobrze sprawdza się na urządzeniach z rygorystycznymi zasadami bezpieczeństwa.</string>
 
 
     <!-- Shizuku Access -->
     <string name="shizuku_status_denied">Shizuku: Odrzucono</string>
-    <string name="shizuku_status_not_running">Shizuku: Nie uruchomiono</string>
+    <string name="shizuku_status_not_running">Shizuku: nie działa</string>
 
-    <string name="shizuku_desc_denied">Odmówiono uprawnień dla Shizuku. Stuknij „Przyznaj uprawnienia Shizuku”, aby spróbować ponownie.</string>
+    <string name="shizuku_desc_denied">Odmówiono uprawnień dla Shizuku. Stuknij „Przyznaj uprawnienie Shizuku”, aby spróbować ponownie.</string>
     <string name="shizuku_desc_not_running">Shizuku jest zainstalowane, ale nie zostało uruchomione. Uruchom Shizuku, aby włączyć zarządzanie pakietami.</string>
 
 
@@ -278,8 +274,8 @@
 
     <string name="backend_switched_notification_title">Przełączono silnik zapory</string>
     <string name="backend_switched_notification_text">Przełączono na %1$s — inne połączenie VPN jest aktywne</string>
-    <string name="backend_switched_notification_big">Połączono z inną aplikacją VPN. De1984 automatycznie przełączyło się na %1$s, aby utrzymać ochronę. Stuknij, aby otworzyć ustawienia.</string>
-    <string name="backend_upgraded_notification_title">Zaktualizowano działanie zapory</string>
+    <string name="backend_switched_notification_big">Inna aplikacja VPN nawiązała połączenie. De1984 automatycznie przełączyło się na %1$s, aby nadal Cię chronić. Stuknij, aby otworzyć ustawienia.</string>
+    <string name="backend_upgraded_notification_title">Ulepszono ochronę zapory</string>
     <string name="backend_upgraded_notification_text">Przełączono z VPN na %1$s</string>
     <string name="backend_upgraded_notification_big">De1984 automatycznie przełączyło silnik z VPN na %1$s w celu zapewnienia lepszej ochrony.</string>
     <string name="backend_toast_success">Zapora De1984 przełączyła się na %1$s</string>
@@ -290,8 +286,8 @@
     <!-- VPN Fallback -->
 
     <string name="vpn_fallback_notification_title">Zapora De1984 nie działa</string>
-    <string name="vpn_fallback_notification_text">Uruchomienie uprzywilejowanego silnika nie powiodło się. Stuknij, aby włączyć awaryjne połączenie VPN i przywrócić ochronę zapory.</string>
-    <string name="vpn_fallback_notification_action_text">Włącz awaryjne VPN</string>
+    <string name="vpn_fallback_notification_text">Uruchomienie uprzywilejowanego silnika nie powiodło się. Stuknij, aby włączyć zapasowy VPN i przywrócić ochronę zapory.</string>
+    <string name="vpn_fallback_notification_action_text">Włącz zapasowy VPN</string>
     <!-- Widget/tile start that needs VPN permission. Distinct from the fallback strings
          above: nothing has failed here, the user just asked to turn the firewall on. -->
     <string name="vpn_permission_notification_title">Uruchom zaporę De1984</string>
@@ -302,7 +298,7 @@
     <string name="firewall_down_title">Zapora nie działa — aplikacje zostały odblokowane</string>
     <string name="firewall_down_reason_no_plan">Na tym urządzeniu nie jest dostępny żaden zdatny do użytku silnik zapory.</string>
     <string name="firewall_down_reason_fallback_failed">Zapasowy silnik nie uruchomił się. Dostęp do sieci nie jest blokowany.</string>
-    <string name="firewall_down_reason_vpn_conflict">Inna aplikacja VPN zajmuje gniazdo VPN. De1984 musi je zastąpić, aby Cię chronić.</string>
+    <string name="firewall_down_reason_vpn_conflict">Inna aplikacja VPN zajmuje miejsce VPN w systemie. De1984 musi ją zastąpić, aby Cię chronić.</string>
     <string name="firewall_down_reason_start_failed">De1984 nie mogło uruchomić zapory sieciowej. Dostęp do sieci nie jest blokowany.</string>
     <string name="firewall_down_reason_vpn_permission">De1984 wymaga uprawnień VPN do przywrócenia ochrony.</string>
     <string name="firewall_down_action_choose_backend">Wybierz silnik</string>
@@ -337,7 +333,7 @@
     <!-- Language Switcher -->
     <string name="language_title">Język aplikacji</string>
     <string name="language_description">Wybierz preferowany język aplikacji</string>
-    <string name="language_system_default">Domyślny systemu</string>
+    <string name="language_system_default">Język systemu</string>
     <string name="language_english">English (Angielski)</string>
     <string name="language_romanian">Română (Rumuński)</string>
     <string name="language_portuguese">Português (Portugalski)</string>
@@ -346,7 +342,7 @@
     <string name="language_french">Français (Francuski)</string>
     <string name="language_russian">Русский (Rosyjski)</string>
     <string name="language_arabic">العربية (Arabski)</string>
-    <string name="language_english">Polski (Polish)</string>
+    <string name="language_polish">Polski</string>
 
     <!-- Settings Screen -->
     <string name="settings_app_version">Wersja %s</string>
@@ -363,7 +359,7 @@
     <string name="settings_backend_description">Wybierz, który silnik ma być używany do blokowania aplikacji</string>
     <string name="settings_backend_active">Aktywny: %s</string>
     <string name="settings_backend_not_running">Zapora nie działa.</string>
-    <string name="settings_backend_loading">Ładowanie...</string>
+    <string name="settings_backend_loading">Ładowanie…</string>
 
     <!-- Backend Options -->
     <string name="backend_auto_name">AUTO (Zalecane)</string>
@@ -380,7 +376,7 @@
     <string name="backend_network_policy_manager_name">NetworkPolicyManager (Starsza wersja)</string>
     <string name="backend_network_policy_manager_description">Dowolna wersja Androida, wybierana ręcznie (niektóre systemy ROM nie mogą blokować Wi-Fi)</string>
     <string name="backend_network_policy_manager_requirement">Wymaga Shizuku</string>
-    <string name="backend_not_available_title">%s jest niedostępny</string>
+    <string name="backend_not_available_title">Silnik %s jest niedostępny</string>
     <string name="backend_not_available_message">Ten silnik jest niedostępny na Twoim urządzeniu.</string>
 
     <string name="settings_show_icons_title">Pokazuj ikony aplikacji</string>
@@ -426,14 +422,14 @@
     <string name="button_import_uninstalled_apps">Importuj</string>
 
     <!-- Export Messages -->
-    <string name="success_export_uninstalled">✅ Eksport zakończony sukcesem: %d pakietów</string>
+    <string name="success_export_uninstalled">✅ Eksport zakończony pomyślnie (pakiety: %d)</string>
     <string name="error_export_requires_privileges">❌ Do wyeksportowania odinstalowanych aplikacji wymagany jest Root lub Shizuku</string>
     <string name="error_export_no_uninstalled_apps">Nie znaleziono odinstalowanych pakietów systemowych</string>
     <string name="error_export_failed">Eksport nie powiódł się: %s</string>
 
     <!-- Import Messages -->
     <string name="dialog_import_preview_title">Importuj i odinstaluj aplikacje</string>
-    <string name="dialog_import_preview_message">Znaleziono %1$d pakietów do odinstalowania:\n\n%2$s\n\n⚠️ Spowoduje to odinstalowanie wszystkich wymienionych aplikacji.</string>
+    <string name="dialog_import_preview_message">Znaleziono pakiety do odinstalowania (%1$d):\n\n%2$s\n\n⚠️ Spowoduje to odinstalowanie wszystkich wymienionych aplikacji.</string>
     <string name="dialog_import_warning_title">Nie znaleziono niektórych pakietów</string>
     <string name="dialog_import_warning_message">Znaleziono %1$d z %2$d pakietów.\n\nZnalezione:\n%3$s\n\nNieznalezione:\n%4$s\n\nKontynuować dla znalezionych pakietów?</string>
     <string name="dialog_import_all_not_found">❌ Żaden z %d pakietów znajdujących się w pliku nie jest obecnie zainstalowany</string>
@@ -451,7 +447,7 @@
     <string name="settings_captive_portal_http_url">URL HTTP: %s</string>
     <string name="settings_captive_portal_https_url">URL HTTPS: %s</string>
     <string name="settings_captive_portal_preset">Profil: %s</string>
-    <string name="settings_captive_portal_loading">Ładowanie...</string>
+    <string name="settings_captive_portal_loading">Ładowanie…</string>
     <string name="settings_captive_portal_not_set">Nieustawione</string>
 
     <!-- Captive Portal Mode Options -->
@@ -487,41 +483,41 @@
     <string name="settings_contribute_title">Pytania, funkcje, błędy?</string>
     <string name="settings_contribute_description">Zaangażuj się i pomóż ulepszać De1984</string>
     <string name="settings_contribute_message">Współtwórz kod, zgłaszaj błędy lub sugeruj nowe funkcje, aby ta aplikacja była lepsza dla każdego.</string>
-    <string name="settings_contribute_button">Wspomóż na GitHubie</string>
+    <string name="settings_contribute_button">Współtwórz na GitHubie</string>
 
     <!-- Dialog Titles and Messages -->
     <string name="dialog_success">Sukces</string>
     <string name="dialog_firewall_backends_title">Silniki zapory sieciowej</string>
-    <string name="dialog_firewall_backends_message">💡 Tryb AUTO (Zalecane)\nAutomatycznie wybiera najlepszy dostępny silnik:\n1. iptables (jeśli dostępny jest Root/Shizuku)\n2. ConnectivityManager (jeśli Shizuku + Android 13+)\n3. VPN (zapasowy)\n\nDe1984 obsługuje cztery silniki zapory sieciowej:\n\n🔹 Silnik VPN\n• Zawsze dostępny (nie wymaga Roota)\n• Korzysta z systemowego API VpnService\n• Obsługuje szczegółową kontrolę (Wi-Fi/Dane mobilne/Roaming)\n• Zajmuje gniazdo VPN (brak możliwości korzystania z innych aplikacji VPN)\n• Filtrowanie pakietów w przestrzeni użytkownika\n\n🔹 Silnik iptables\n• Wymaga Roota lub Shizuku w trybie Root\n• Blokowanie na poziomie jądra systemu (najbardziej wydajne)\n• Obsługuje szczegółową kontrolę (Wi-Fi/Dane mobilne/Roaming)\n• Nie zajmuje gniazda VPN\n• Współdziała z innymi aplikacjami VPN\n\n🔹 Silnik ConnectivityManager\n• Wymaga Shizuku + Android 13+\n• Blokowanie na poziomie systemu (skutecznie blokuje wszystkie sieci)\n• Działa na zasadzie wszystko albo nic (brak szczegółowej kontroli)\n• Nie zajmuje gniazda VPN\n• Współdziała z innymi aplikacjami VPN\n\n🔹 Silnik NetworkPolicyManager (Starsza wersja)\n• Wymaga Shizuku\n• Dla systemu Android 12 i starszych\n• Na niektórych urządzeniach może nie blokować sieci Wi-Fi\n• Na Androidzie 13+ zaleca się korzystanie z ConnectivityManager\n• Nie zajmuje gniazda VPN</string>
-    <string name="dialog_privileged_access_title">Uprawniony dostęp</string>
-    <string name="dialog_privileged_access_testing">🔄 Testowanie uprawnionego dostępu...\n\nJeśli pojawi się monit, przyznaj uprawnienia w oknie podręcznym.</string>
+    <string name="dialog_firewall_backends_message">💡 Tryb AUTO (zalecany)\nAutomatycznie wybiera najlepszy dostępny silnik:\n1. iptables (jeśli dostępny jest Root/Shizuku)\n2. ConnectivityManager (jeśli Shizuku + Android 13+)\n3. VPN (zapasowy)\n\nDe1984 obsługuje cztery silniki zapory sieciowej:\n\n🔹 Silnik VPN\n• Zawsze dostępny (nie wymaga Roota)\n• Korzysta z systemowego API VpnService\n• Obsługuje szczegółową kontrolę (Wi-Fi/Dane mobilne/Roaming)\n• Zajmuje systemowe miejsce VPN (nie można używać innych aplikacji VPN)\n• Filtrowanie pakietów w przestrzeni użytkownika\n\n🔹 Silnik iptables\n• Wymaga Roota lub Shizuku w trybie Root\n• Blokowanie na poziomie jądra systemu (najbardziej wydajne)\n• Obsługuje szczegółową kontrolę (Wi-Fi/Dane mobilne/Roaming)\n• Nie zajmuje miejsca VPN\n• Współdziała z innymi aplikacjami VPN\n\n🔹 Silnik ConnectivityManager\n• Wymaga Shizuku + Android 13+\n• Blokowanie na poziomie systemu (skutecznie blokuje wszystkie sieci)\n• Działa na zasadzie wszystko albo nic (brak szczegółowej kontroli)\n• Nie zajmuje miejsca VPN\n• Współdziała z innymi aplikacjami VPN\n\n🔹 Silnik NetworkPolicyManager (starszy)\n• Wymaga Shizuku\n• Dla systemu Android 12 i starszych\n• Na niektórych urządzeniach może nie blokować sieci Wi-Fi\n• Na Androidzie 13+ zaleca się korzystanie z ConnectivityManager\n• Nie zajmuje miejsca VPN</string>
+    <string name="dialog_privileged_access_title">Dostęp uprzywilejowany</string>
+    <string name="dialog_privileged_access_testing">🔄 Testowanie dostępu uprzywilejowanego…\n\nJeśli pojawi się monit, przyznaj uprawnienia w oknie podręcznym.</string>
     <string name="dialog_privileged_access_failed">❌ Test dostępu Root nie powiódł się.\n\nBłąd: %s</string>
     <string name="dialog_restore_rules_title">Przywrócić reguły zapory?</string>
-    <string name="dialog_restore_rules_message">📦 Informacje o kopii zapasowej:\n\n• Utworzono: %1$s\n• Wersja aplikacji: %2$s\n• Liczba reguł: %3$d\n\nWybierz tryb przywracania:\n\n• Scal (Merge): Zachowaj istniejące reguły oraz dodaj/zaktualizuj te z kopii zapasowej\n• Zastąp wszystkie (Replace All): Najpierw usuń wszystkie istniejące reguły (⚠️ nieodwracalne)</string>
+    <string name="dialog_restore_rules_message">📦 Informacje o kopii zapasowej:\n\n• Utworzono: %1$s\n• Wersja aplikacji: %2$s\n• Liczba reguł: %3$d\n\nWybierz tryb przywracania:\n\n• Scal: Zachowaj istniejące reguły oraz dodaj/zaktualizuj te z kopii zapasowej\n• Zastąp wszystkie: Najpierw usuń wszystkie istniejące reguły (⚠️ nieodwracalne)</string>
     <string name="dialog_restore_rules_merge">Scal</string>
     <string name="dialog_restore_rules_replace">Zastąp wszystkie</string>
     <string name="dialog_replace_all_title">⚠️ Zastąpić wszystkie reguły?</string>
     <string name="dialog_replace_all_message">Spowoduje to USUNIĘCIE wszystkich istniejących reguł zapory i zastąpienie ich regułami z kopii zapasowej.\n\nTego działania nie można cofnąć.\n\nCzy na pewno chcesz kontynuować?</string>
     <string name="dialog_replace_all_confirm">Zastąp wszystkie</string>
     <string name="dialog_critical_uninstall_title">⚠️ Ostrzeżenie</string>
-    <string name="dialog_critical_uninstall_message">Ta opcja pozwala na odinstalowanie pakietów krytycznych dla systemu, co mmieć uszkodzić urządzenie (tzw. „brick”). Włączaj tylko wtedy, gdy dokładnie wiesz, co robisz.\n\nCzy na pewno chcesz to włączyć?</string>
+    <string name="dialog_critical_uninstall_message">Ta opcja pozwala na odinstalowanie pakietów krytycznych dla systemu, co może trwale uszkodzić urządzenie (tzw. „brick”). Włączaj tylko wtedy, gdy dokładnie wiesz, co robisz.\n\nCzy na pewno chcesz to włączyć?</string>
     <string name="dialog_critical_firewall_title">⚠️ Ostrzeżenie</string>
     <string name="dialog_critical_firewall_message">Ta opcja pozwala na blokowanie dostępu do sieci dla pakietów krytycznych dla systemu (Wi-Fi, Bluetooth, Menedżer pobierania itp.) oraz aplikacji VPN.\n\nBlokowanie tych pakietów może:\n• Przerwać łączność sieciową\n• Uniemożliwić działanie Wi-Fi/Bluetooth\n• Powodować problemy z ponownym łączeniem VPN\n• Wymagać przywrócenia ustawień fabrycznych lub naprawy przez ADB\n\nWłączaj tylko wtedy, gdy dokładnie wiesz, co robisz.\n\nCzy na pewno chcesz to włączyć?</string>
     <string name="dialog_critical_firewall_enable">Włącz</string>
     <string name="dialog_critical_uninstall_enable">Włącz</string>
-    <string name="dialog_restart_title">Wymagany ponowny uruchomienie</string>
+    <string name="dialog_restart_title">Wymagane ponowne uruchomienie</string>
     <string name="dialog_restart_message">Aplikacja musi zostać uruchomiona ponownie, aby zastosować nowy motyw kolorystyczny. Uruchomić ponownie teraz?</string>
     <string name="dialog_restart_confirm">Uruchom ponownie</string>
     <string name="dialog_captive_portal_restore_title">Przywrócić oryginalne ustawienia?</string>
-    <string name="dialog_captive_portal_restore_message">Spowoduje to przywrócenie oryginalnych ustawień captive portal Twojego urządzenia, które zostały zapisane podczas pierwszego uruchomienia tej funkcji.</string>
+    <string name="dialog_captive_portal_restore_message">Spowoduje to przywrócenie oryginalnych ustawień Captive Portal Twojego urządzenia, które zostały zapisane podczas pierwszego uruchomienia tej funkcji.</string>
     <string name="dialog_captive_portal_restore_confirm">Przywróć</string>
-    <string name="dialog_captive_portal_reset_title">Zresetować do domyślnych Google?</string>
-    <string name="dialog_captive_portal_reset_message">Spowoduje to zresetowanie ustawień captive portal do domyślnych serwerów Google. Your oryginalne ustawienia pozostaną zapisane i będzie można je przywrócić później.</string>
+    <string name="dialog_captive_portal_reset_title">Przywrócić domyślne ustawienia Google?</string>
+    <string name="dialog_captive_portal_reset_message">Spowoduje to zresetowanie ustawień Captive Portal do domyślnych serwerów Google. Twoje oryginalne ustawienia pozostaną zapisane i będzie można je przywrócić później.</string>
     <string name="dialog_captive_portal_reset_confirm">Resetuj</string>
     <string name="dialog_backup_read_error">Nie udało się odczytać pliku kopii zapasowej: %s</string>
     <string name="dialog_backup_load_error">Nie udało się załadować kopii zapasowej: %s</string>
-    <string name="dialog_loading_backup_title">Ładowanie kopii zapasowej...</string>
-    <string name="dialog_loading_backup_message">Proszę czekać...</string>
+    <string name="dialog_loading_backup_title">Ładowanie kopii zapasowej…</string>
+    <string name="dialog_loading_backup_message">Proszę czekać…</string>
     <string name="dialog_vpn_permission_error_title">Błąd uprawnień VPN</string>
     <string name="dialog_vpn_permission_error_message">Nie udało się zażądać uprawnień VPN: %s</string>
 
@@ -536,8 +532,8 @@
     <!-- Firewall Screen -->
     <string name="firewall_empty_state_title">Nie znaleziono żadnych pakietów</string>
     <string name="firewall_empty_state_subtitle">Spróbuj dostosować filtry</string>
-    <string name="firewall_vpn_info_message">Używanie zapory sieciowej opartej na VPN, ponieważ Twoje urządzenie nie ma dostępu do roota ani Shizuku. Nie możesz używać innej aplikacji VPN, gdy zapora De1984 Firewall jest aktywna.</string>
-    <string name="firewall_vpn_info_message_privileged">Używanie zapory sieciowej opartej na VPN. Nie możesz używać innej aplikacji VPN, gdy zapora De1984 Firewall jest aktywna.</string>
+    <string name="firewall_vpn_info_message">Używana jest zapora sieciowa oparta na VPN, ponieważ Twoje urządzenie nie ma dostępu do roota ani Shizuku. Nie możesz używać innej aplikacji VPN, gdy zapora De1984 jest aktywna.</string>
+    <string name="firewall_vpn_info_message_privileged">Używana jest zapora sieciowa oparta na VPN. Nie możesz używać innej aplikacji VPN, gdy zapora De1984 jest aktywna.</string>
     <string name="firewall_network_label_wifi">Wi-Fi</string>
     <string name="firewall_network_label_mobile">Dane mobilne</string>
     <string name="firewall_network_label_roaming">Roaming</string>
@@ -545,22 +541,22 @@
     <string name="firewall_lan_applies_with_iptables">Ma zastosowanie tylko wtedy, gdy zapora sieciowa używa iptables</string>
     <string name="firewall_multiselect_lan_skips_refused">Pomija aplikacje, których iptables nie może zablokować</string>
     <string name="firewall_backend_cannot_block_uid">Nie można zablokować</string>
-    <string name="firewall_system_uid_info">⚠️ Część samego systemu Android, a nie zwykła aplikacja. Shizuku nie może tego zablokować — Android odrzuca reguły zapory dla własnych komponentów. Root ma taką możliwość, ale jeśli identyfikator użytkownika (UID) jest współdzielony z chronioną aplikacją, taką jak Ustawienia, wymaga to również włączenia opcji „Zezwalaj na zaporę dla kluczowych pakietów” w Ustawieniach i wpłynie to także na te aplikacje.</string>
-    <string name="firewall_unknown_uid_info">⚠️ De1984 nie mógł określić identyfikatora użytkownika (UID) tej aplikacji w jej profilu, więc nie można zastosować dla niej żadnej reguły zapory sieciowej.</string>
+    <string name="firewall_system_uid_info">⚠️ Część samego systemu Android, a nie zwykła aplikacja. Shizuku nie może tego zablokować — Android odrzuca reguły zapory dla własnych komponentów. Root ma taką możliwość, ale jeśli identyfikator użytkownika (UID) jest współdzielony z chronioną aplikacją, taką jak Ustawienia, wymaga to również włączenia opcji „Zezwalaj na reguły zapory dla pakietów krytycznych” w Ustawieniach i wpłynie to także na te aplikacje.</string>
+    <string name="firewall_unknown_uid_info">⚠️ De1984 nie mogło określić identyfikatora użytkownika (UID) tej aplikacji w jej profilu, więc nie można zastosować dla niej żadnej reguły zapory sieciowej.</string>
     <string name="firewall_other_profile_info">⚠️ Ta aplikacja znajduje się w innym profilu lub u innego użytkownika. Bieżący tryb zapory sieciowej działa z nazwami aplikacji wewnątrz profilu, w którym uruchomione jest De1984, więc nie może dotrzeć do tej aplikacji. Dostęp do roota lub tryb NetworkPolicyManager z Shizuku blokuje po identyfikatorze użytkownika (UID) i może dotrzeć do każdego profilu i użytkownika.</string>
     <string name="firewall_other_profile_follows_info">⚠️ Ta aplikacja znajduje się w innym profilu lub u innego użytkownika. Bieżący tryb zapory sieciowej blokuje aplikację we wszystkich profilach i u wszystkich użytkowników jednocześnie, więc ta kopia naśladuje przełączniki tej samej aplikacji w profilu, w którym działa De1984. Dostęp do roota lub tryb NetworkPolicyManager z Shizuku blokuje każdą z nich niezależnie.</string>
     <string name="firewall_other_profile_follows_subtitle">Ustawiono w profilu De1984</string>
-    <string name="firewall_shared_uid_info">⚠️ Ta aplikacja współdzieli identyfikator użytkownika (UID) z chronioną aplikacją, a obecny tryb zapory blokuje po identyfikatorze UID, a nie po aplikacji. Zablokowanie jej odcięłoby również chronioną aplikację, dlatego De1984 nie modyfikuje całego identyfikatora UID. Aby mimo to ją zablokować, włącz opcję „Zezwalaj na zaporę dla kluczowych pakietów” w Ustawieniach, a następnie włącz przełącznik dla tej aplikacji.</string>
-    <string name="firewall_no_rule_protected_uid_info">⚠️ De1984 chroni identyfikator użytkownika (UID) tej aplikacji, więc domyślna reguła „Blokuj wszystko” nie jest do niej stosowana — mogłoby to odciąć chronioną aplikację systemową. Przy włączonej opcji „Zezwalaj na zaporę dla kluczowych pakietów” nadal możesz ją zablokować: włącz przełącznik dla tej aplikacji.</string>
+    <string name="firewall_shared_uid_info">⚠️ Ta aplikacja współdzieli identyfikator użytkownika (UID) z chronioną aplikacją, a obecny tryb zapory blokuje po identyfikatorze UID, a nie po aplikacji. Zablokowanie jej odcięłoby również chronioną aplikację, dlatego De1984 nie modyfikuje całego identyfikatora UID. Aby mimo to ją zablokować, włącz opcję „Zezwalaj na reguły zapory dla pakietów krytycznych” w Ustawieniach, a następnie włącz przełącznik dla tej aplikacji.</string>
+    <string name="firewall_no_rule_protected_uid_info">⚠️ De1984 chroni identyfikator użytkownika (UID) tej aplikacji, więc domyślna reguła „Blokuj wszystko” nie jest do niej stosowana — mogłoby to odciąć chronioną aplikację systemową. Przy włączonej opcji „Zezwalaj na reguły zapory dla pakietów krytycznych” nadal możesz ją zablokować: włącz przełącznik dla tej aplikacji.</string>
     <string name="firewall_sibling_rule_info">⚠️ Inna aplikacja współdzieli identyfikator użytkownika (UID) tej aplikacji i posiada własną regułę zapory. Bieżący tryb zapory sieciowej blokuje po identyfikatorze UID, więc ta reguła ma zastosowanie również do tej aplikacji, wliczając w to blokowanie przy wyłączonym ekranie. Przełączniki w tym arkuszu są własnymi ustawieniami tej aplikacji.</string>
     <string name="firewall_network_label_background_access">Zezwalaj przy wyłączonym ekranie</string>
     <string name="firewall_network_label_internet_access">Dostęp do Internetu</string>
     <string name="firewall_internet_access_subtitle">Wi-Fi, dane mobilne, roaming</string>
     <string name="firewall_connectivity_manager_info">Twoje urządzenie korzysta z zapory sieciowej na poziomie systemu, która nie obsługuje blokowania dla poszczególnych sieci. Do szczegółowej kontroli wymagany jest dostęp do roota.</string>
-    <string name="firewall_system_critical_info">⚠️ Pakiet kluczowy dla systemu — nie można modyfikować dostępu do sieci, aby zapobiec niestabilności systemu.</string>
+    <string name="firewall_system_critical_info">⚠️ Pakiet krytyczny dla systemu — nie można modyfikować dostępu do sieci, aby zapobiec niestabilności systemu.</string>
     <string name="firewall_vpn_app_info">🔒 Aplikacja VPN — zawsze dozwolona, aby zapobiec problemom z ponownym łączeniem VPN po zablokowaniu/odblokowaniu urządzenia.</string>
-    <string name="firewall_critical_allowed_info">⚠️ Ochrona kluczowych pakietów jest wyłączona w Ustawieniach. Blokowanie dostępu do sieci może spowodować niestabilność systemu lub problemy z VPN.</string>
-    <string name="firewall_badge_system_critical">Kluczowy dla systemu</string>
+    <string name="firewall_critical_allowed_info">⚠️ Ochrona pakietów krytycznych jest wyłączona w Ustawieniach. Blokowanie dostępu do sieci może spowodować niestabilność systemu lub problemy z VPN.</string>
+    <string name="firewall_badge_system_critical">Krytyczny dla systemu</string>
     <string name="firewall_badge_vpn_app">Aplikacja VPN</string>
     <string name="firewall_badge_no_internet">Brak uprawnień do Internetu</string>
     <string name="firewall_badge_frozen">Zamrożona</string>
@@ -568,10 +564,10 @@
 
     <!-- Protection Warning Banner -->
     <string name="protection_banner_title">🛡️ Chroniony pakiet</string>
-    <string name="protection_banner_message_firewall_system">Ten kluczowy dla systemu pakiet jest domyślnie chroniony, aby zapobiec niestabilności systemu. Włącz opcję „Zezwalaj na zaporę dla kluczowych pakietów” w Ustawieniach, aby zmodyfikować dostęp do sieci.</string>
-    <string name="protection_banner_message_firewall_vpn">Ta aplikacja VPN jest domyślnie chroniona, aby zapobiec problemom z ponownym łączeniem VPN. Włącz opcję „Zezwalaj na zaporę dla kluczowych pakietów” w Ustawieniach, aby zmodyfikować dostęp do sieci.</string>
-    <string name="protection_banner_message_firewall">Ten pakiet jest domyślnie chroniony. Włącz opcję „Zezwalaj na zaporę dla kluczowych pakietów” w Ustawieniach, aby zmodyfikować dostęp do sieci.</string>
-    <string name="protection_banner_message_uninstall">Ten kluczowy pakiet jest domyślnie chroniony, aby zapobiec niestabilności systemu. Włącz opcję „Zezwalaj na odinstalowywanie kluczowych pakietów” w Ustawieniach, aby go odinstalować.</string>
+    <string name="protection_banner_message_firewall_system">Ten krytyczny dla systemu pakiet jest domyślnie chroniony, aby zapobiec niestabilności systemu. Włącz opcję „Zezwalaj na reguły zapory dla pakietów krytycznych” w Ustawieniach, aby zmodyfikować dostęp do sieci.</string>
+    <string name="protection_banner_message_firewall_vpn">Ta aplikacja VPN jest domyślnie chroniona, aby zapobiec problemom z ponownym łączeniem VPN. Włącz opcję „Zezwalaj na reguły zapory dla pakietów krytycznych” w Ustawieniach, aby zmodyfikować dostęp do sieci.</string>
+    <string name="protection_banner_message_firewall">Ten pakiet jest domyślnie chroniony. Włącz opcję „Zezwalaj na reguły zapory dla pakietów krytycznych” w Ustawieniach, aby zmodyfikować dostęp do sieci.</string>
+    <string name="protection_banner_message_uninstall">Ten krytyczny pakiet jest domyślnie chroniony, aby zapobiec niestabilności systemu. Włącz opcję „Zezwalaj na odinstalowanie pakietów krytycznych” w Ustawieniach, aby go odinstalować.</string>
     <string name="protection_banner_button">Ustawienia</string>
 
     <!-- Snackbar Messages -->
@@ -596,7 +592,7 @@
     <!-- Package Action Sheet -->
     <string name="action_sheet_placeholder_app_name">Nazwa aplikacji</string>
     <string name="action_sheet_placeholder_package_name">com.example.app</string>
-    <string name="action_sheet_safety_badge_essential">Kluczowa</string>
+    <string name="action_sheet_safety_badge_essential">Niezbędna</string>
     <string name="action_sheet_safety_badge_important">Ważna</string>
     <string name="action_sheet_safety_badge_optional">Opcjonalna</string>
     <string name="action_sheet_safety_badge_bloatware">Bloatware</string>
@@ -613,20 +609,20 @@
     <string name="action_sheet_section_network_access">Kontrola dostępu do sieci</string>
     <string name="action_sheet_section_package_control">Kontrola pakietów</string>
     <string name="action_sheet_section_package_control_desc">Wymuszanie zatrzymania, wyłączanie lub odinstalowywanie</string>
-    <string name="action_sheet_status_updating">Aktualizowanie...</string>
+    <string name="action_sheet_status_updating">Aktualizowanie…</string>
 
     <!-- Clipboard -->
     <string name="clipboard_label_package_name">Nazwa pakietu</string>
 
     <!-- Uninstall Dialogs -->
     <string name="uninstall_dialog_title_critical">🚨 KRYTYCZNE OSTRZEŻENIE</string>
-    <string name="uninstall_dialog_message_essential">⚠️ KLUCZOWY PAKIET SYSTEMOWY ⚠️\n\nOdinstalowanie %1$s USZKODZI SYSTEM (BRICK)!\n\nTen pakiet jest niezbędny do działania systemu. Jego usunięcie sprawi, że urządzenie stanie się bezużyteczne i może wymagać przywrócenia ustawień fabrycznych lub ponownego wgrania oprogramowania.\n\n%2$sWpisz „ODINSTALUJ”, aby potwierdzić to niebezpieczne działanie:</string>
+    <string name="uninstall_dialog_message_essential">⚠️ NIEZBĘDNY PAKIET SYSTEMOWY ⚠️\n\nOdinstalowanie %1$s ZAMIENI TWOJE URZĄDZENIE W CEGŁĘ (BRICK)!\n\nTen pakiet jest niezbędny do działania systemu. Jego usunięcie sprawi, że urządzenie stanie się bezużyteczne i może wymagać przywrócenia ustawień fabrycznych lub ponownego wgrania oprogramowania.\n\n%2$sWpisz „ODINSTALUJ”, aby potwierdzić to niebezpieczne działanie:</string>
     <string name="uninstall_dialog_affects_prefix">Wpływa na:\n%s\n\n</string>
     <string name="uninstall_dialog_confirm_word">ODINSTALUJ</string>
     <string name="uninstall_dialog_button_uninstall">Odinstaluj</string>
 
     <string name="uninstall_dialog_title_important">⚠️ Ostrzeżenie: Ważny pakiet</string>
-    <string name="uninstall_dialog_message_important">Odinstalowanie %1$s spowoduje przestanie działania głównych funkcji systemu.\n\n%2$sPrzywrócenie funkcjonalności może wymagać resetu do ustawień fabrycznych.\n\nCzy na pewno chcesz kontynuować?</string>
+    <string name="uninstall_dialog_message_important">Odinstalowanie %1$s sprawi, że główne funkcje systemu przestaną działać.\n\n%2$sPrzywrócenie funkcjonalności może wymagać resetu do ustawień fabrycznych.\n\nCzy na pewno chcesz kontynuować?</string>
 
     <string name="uninstall_dialog_title_optional">Odinstalować %s?</string>
     <string name="uninstall_dialog_message_optional_with_affects">Może to wpłynąć na:\n%s\n\nCzy na pewno chcesz kontynuować?</string>
@@ -636,7 +632,7 @@
     <string name="uninstall_dialog_message_bloatware">✓ Bezpieczne do usunięcia\n\nTen pakiet jest uznawany za bloatware i można go bezpiecznie odinstalować.\n\nCzy na pewno chcesz kontynuować?</string>
 
     <string name="uninstall_dialog_title_unknown">Odinstalować %s?</string>
-    <string name="uninstall_dialog_message_unknown_system">⚠️ NIEBEZPIECZEŃSTWO: To jest pakiet systemowy. Jego odinstalowanie może uszkodzić system (brick) lub spowodować poważną niestabilność urządzenia.\n\nTego działania nie da się łatwo cofnąć.\n\nCzy jesteś absolutnie pewien?</string>
+    <string name="uninstall_dialog_message_unknown_system">⚠️ NIEBEZPIECZEŃSTWO: To jest pakiet systemowy. Jego odinstalowanie może uszkodzić system (brick) lub spowodować poważną niestabilność urządzenia.\n\nTego działania nie da się łatwo cofnąć.\n\nCzy na pewno chcesz kontynuować?</string>
     <string name="uninstall_dialog_message_unknown_user">Spowoduje to usunięcie aplikacji %s z Twojego urządzenia.\n\nCzy na pewno chcesz kontynuować?</string>
 
     <!-- Reinstall Dialog -->
@@ -645,7 +641,7 @@
     <string name="reinstall_dialog_button_reinstall">Zainstaluj ponownie</string>
 
     <!-- Batch Reinstall Dialog -->
-    <string name="batch_reinstall_dialog_title">Zainstalować ponownie %d wybranych aplikacji?</string>
+    <string name="batch_reinstall_dialog_title">Zainstalować ponownie wybrane aplikacje (%d)?</string>
     <plurals name="batch_reinstall_dialog_message_prefix">
         <item quantity="one">Zainstalować ponownie %d wybraną aplikację systemową?\n\nNastępujące aplikacje zostaną zainstalowane ponownie:\n\n</item>
         <item quantity="few">Zainstalować ponownie %d wybrane aplikacje systemowe?\n\nNastępujące aplikacje zostaną zainstalowane ponownie:\n\n</item>
@@ -661,21 +657,21 @@
     <string name="batch_uninstall_dialog_category_user_apps">📱 Aplikacje użytkownika (%d):</string>
     <string name="batch_uninstall_dialog_category_bloatware">✓ Bloatware (%d):</string>
     <string name="batch_uninstall_dialog_category_optional">⚠️ Opcjonalne aplikacje systemowe (%d):</string>
-    <string name="batch_uninstall_dialog_and_more">... i %d więcej</string>
-    <string name="batch_uninstall_results_and_more">... i %d więcej</string>
+    <string name="batch_uninstall_dialog_and_more">… i %d więcej</string>
+    <string name="batch_uninstall_results_and_more">… i %d więcej</string>
     <string name="batch_uninstall_results_error_prefix">  Błąd: %s</string>
     <string name="batch_uninstall_progress_title">Odinstalowywanie aplikacji</string>
     <string name="batch_uninstall_progress_message">Odinstalowywanie %1$d z %2$d aplikacji…</string>
     <string name="batch_uninstall_results_title">Wyniki odinstalowywania</string>
-    <string name="batch_uninstall_results_success">✅ Pomyślnie odinstalowano %d aplikacji:</string>
-    <string name="batch_uninstall_results_failed">❌ Nie udało się odinstalować %d aplikacji:</string>
+    <string name="batch_uninstall_results_success">✅ Pomyślnie odinstalowano aplikacje (%d):</string>
+    <string name="batch_uninstall_results_failed">❌ Nie udało się odinstalować aplikacji (%d):</string>
 
     <!-- Common Dialog Strings -->
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Anuluj</string>
     <string name="dialog_continue">Kontynuuj</string>
     <string name="dialog_error_title">Błąd</string>
-    <string name="dialog_no_access_message">❌ Brak dostępu uprzywilejowanego\n\nTwoje urządzenie prawdopodobnie nie posiada dostępu do roota. Aby włączyć zaawansowane funkcje zarządzania pakietami:\n• Zainstaluj i skonfiguruj Shizuku (zalecane – root nie jest wymagany)\n• Lub nadaj root swojemu urządzeniu za pomocą Magisk, KernelSU lub APatch</string>
+    <string name="dialog_no_access_message">❌ Brak dostępu uprzywilejowanego\n\nTwoje urządzenie prawdopodobnie nie posiada dostępu do roota. Aby włączyć zaawansowane funkcje zarządzania pakietami:\n• Zainstaluj i skonfiguruj Shizuku (zalecane – root nie jest wymagany)\n• Lub zrootuj urządzenie za pomocą Magisk, KernelSU lub APatch</string>
     <string name="dialog_root_denied_message">❌ Odmowa dostępu do roota\n\nTwoje urządzenie posiada root, ale aplikacji De1984 odmówiono uprawnień superużytkownika.\n\nAby przyznać dostęp:\n• Otwórz swoją aplikację do zarządzania rootem (Magisk, KernelSU, APatch itp.) i przyznaj uprawnienia dla De1984\n• Jeśli komunikat z prośbą o uprawnienia się nie pojawia, odinstaluj i zainstaluj aplikację ponownie, a następnie przyznaj uprawnienia przy pierwszym uruchomieniu\n• Lub ręcznie dodaj De1984 w aplikacji zarządzającej rootem (Magisk, KernelSU itp.)</string>
     <string name="dialog_type_to_confirm_hint">Wpisz „%s”, aby potwierdzić</string>
     <string name="dialog_vpn_conflict_title">Inny VPN jest aktywny</string>
@@ -687,12 +683,12 @@
     <string name="toast_copied_to_clipboard">Skopiowano do schowka</string>
 
     <!-- VPN Fallback -->
-    <string name="vpn_fallback_failed_title">Niepowodzenie awaryjnego uruchomienia VPN</string>
-    <string name="vpn_fallback_failed_message">Nie udało się uruchomić awaryjnego połączenia VPN: %s</string>
+    <string name="vpn_fallback_failed_title">Nie udało się przełączyć na VPN</string>
+    <string name="vpn_fallback_failed_message">Nie udało się przełączyć na zapasowy silnik VPN: %s</string>
 
     <!-- Privileged Access Banner -->
-    <string name="privileged_access_banner_no_access">Brak dostępu uprzywilejowanego. Zainstaluj Shizuku lub nadaj uprawnienia roota, aby włączyć zarządzanie pakietami.</string>
-    <string name="privileged_access_banner_shizuku_not_running">Shizuku jest zainstalowane, ale nie zostało uruchomione. Uruchom Shizuku lub nadaj uprawnienia roota, aby włączyć zarządzanie pakietami.</string>
+    <string name="privileged_access_banner_no_access">Brak dostępu uprzywilejowanego. Zainstaluj Shizuku lub zrootuj urządzenie, aby włączyć zarządzanie pakietami.</string>
+    <string name="privileged_access_banner_shizuku_not_running">Shizuku jest zainstalowane, ale nie zostało uruchomione. Uruchom Shizuku lub zrootuj urządzenie, aby włączyć zarządzanie pakietami.</string>
     <string name="privileged_access_banner_permission_required">Do zarządzania pakietami wymagane jest Shizuku lub dostęp do roota</string>
     <string name="privileged_access_banner_button_settings">Przejdź do Ustawień</string>
     <string name="privileged_access_banner_button_grant">Przyznaj</string>
@@ -703,11 +699,11 @@
 
     <!-- Firewall Service Notifications -->
     <string name="privileged_firewall_notification_title">Zapora De1984 jest aktywna</string>
-    <string name="privileged_firewall_notification_text">Używanie silnika %s</string>
+    <string name="privileged_firewall_notification_text">Używa silnika %s</string>
     <string name="vpn_firewall_notification_title">Zapora De1984 jest aktywna</string>
     <string name="vpn_firewall_notification_text">Chroni Twoją prywatność</string>
     <string name="vpn_failure_notification_title">Awaria zapory VPN</string>
-    <string name="vpn_failure_notification_text">Błąd interfejsu VPN. Automatyczne ponawianie próby...</string>
+    <string name="vpn_failure_notification_text">Błąd interfejsu VPN. Automatyczne ponawianie próby…</string>
     <string name="new_app_notification_title">Zapora De1984 wykryła nową aplikację</string>
     <string name="new_app_notification_text">Zainstalowano aplikację %s. Dotknij, aby skonfigurować reguły zapory.</string>
     <string name="new_app_notification_action_block">Blokuj sieć</string>
@@ -717,7 +713,7 @@
     <string name="error_firewall_restart_failed">Nie udało się zrestartować zapory z nowym silnikiem: %s</string>
     <string name="error_no_rules_to_backup">Brak reguł zapory do utworzenia kopii zapasowej</string>
     <string name="error_backup_failed">Utworzenie kopii zapasowej nie powiodło się: %s</string>
-    <string name="error_unsupported_backup_version">Niewspierana wersja kopii zapasowej: %d</string>
+    <string name="error_unsupported_backup_version">Nieobsługiwana wersja kopii zapasowej: %d</string>
     <string name="error_backup_no_rules">Plik kopii zapasowej nie zawiera żadnych reguł</string>
     <string name="error_backup_file_unreadable">Nie można otworzyć tego pliku. Jeśli został wybrany z wyników wyszukiwania, otwórz folder, w którym się znajduje, i wybierz go bezpośrednio tam.</string>
     <string name="error_invalid_backup_format">Nieprawidłowy format pliku kopii zapasowej</string>
@@ -758,9 +754,9 @@
 
     <!-- Boot Protection Dialogs -->
     <string name="boot_protection_enable_warning_title">Włączyć ochronę podczas rozruchu?</string>
-    <string name="boot_protection_enable_warning_message">⚠️ Twoje urządzenie uruchomi się natychmiast ponownie po przejściu dalej.\n\nSpowoduje to zablokowanie CAŁEGO ruchu sieciowego podczas uruchamiania urządzenia, dopóki nie włączy się De1984.\n\n⚠️ Jeśli De1984 nie uruchomi się, aplikacje nie będą miały dostępu do sieci przez maksymalnie 2 minuty po każdym rozruchu, po czym blokada zdejmie się automatycznie.\n\nOpcje ratunkowe:\n1. Otwórz De1984 → Ustawienia → Wyłącz ochronę podczas rozruchu\n2. Jeśli to nie zadziała, użyj ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
+    <string name="boot_protection_enable_warning_message">⚠️ Gdy przejdziesz dalej, urządzenie natychmiast uruchomi się ponownie.\n\nSpowoduje to zablokowanie CAŁEGO ruchu sieciowego podczas uruchamiania urządzenia, dopóki nie włączy się De1984.\n\n⚠️ Jeśli De1984 nie uruchomi się, aplikacje nie będą miały dostępu do sieci przez maksymalnie 2 minuty po każdym rozruchu, po czym blokada zostanie automatycznie zdjęta.\n\nOpcje ratunkowe:\n1. Otwórz De1984 → Ustawienia → Wyłącz ochronę podczas rozruchu\n2. Jeśli to nie zadziała, użyj ADB:\n   adb shell\n   su\n   rm %1$s\n   reboot</string>
     <string name="boot_protection_disable_warning_title">Wyłączyć ochronę podczas rozruchu?</string>
-    <string name="boot_protection_disable_warning_message">⚠️ Twoje urządzenie uruchomi się natychmiast ponownie po przejściu dalej.\n\nRuch sieciowy nie będzie już blokowany podczas rozruchu. Aplikacje mogą wyciekać dane przed uruchomieniem zapory sieciowej.</string>
+    <string name="boot_protection_disable_warning_message">⚠️ Gdy przejdziesz dalej, urządzenie natychmiast uruchomi się ponownie.\n\nRuch sieciowy nie będzie już blokowany podczas rozruchu. Przed uruchomieniem zapory sieciowej może dojść do wycieku danych z aplikacji.</string>
     <string name="boot_protection_reboot_failed">Ochrona podczas rozruchu została zmieniona, ale nie udało się automatycznie zrestartować urządzenia. Uruchom urządzenie ponownie ręcznie.</string>
     <string name="boot_protection_enable_failed">Nie udało się włączyć ochrony podczas rozruchu: %s</string>
     <string name="boot_protection_disable_failed">Nie udało się wyłączyć ochrony podczas rozruchu: %s</string>
@@ -776,8 +772,8 @@
     <string name="logs_clear_confirm_title">Wyczyścić logi?</string>
     <string name="logs_clear_confirm_message">Spowoduje to usunięcie istniejących wpisów w logach.</string>
     <string name="logs_share">Udostępnij logi</string>
-    <string name="logs_count">%d wpisów w logach</string>
-    <string name="logs_file_info">%1$d linii • %2$s</string>
+    <string name="logs_count">Wpisy w logach: %d</string>
+    <string name="logs_file_info">Linie: %1$d • %2$s</string>
     <string name="logs_empty">Brak logów. Włącz rejestrowanie i korzystaj z aplikacji, aby wygenerować logi.</string>
     <string name="logs_cleared">Logi zostały wyczyszczone</string>
     <string name="logs_share_title">Udostępnij logi De1984</string>
@@ -808,7 +804,7 @@
 
     <!-- Notification Actions -->
 
-    <string name="backend_not_supported_on_device">Niewspierane na tym urządzeniu</string>
+    <string name="backend_not_supported_on_device">Nieobsługiwane na tym urządzeniu</string>
     <string name="backend_fell_back_to_auto">Nie udało się uruchomić silnika %1$s na tym urządzeniu. Zapora działa zamiast tego w trybie automatycznym.</string>
     <string name="backend_changed_title">Zmieniono silnik</string>
     <string name="settings_confirm_firewall_stop_title">Potwierdź zatrzymanie zapory</string>

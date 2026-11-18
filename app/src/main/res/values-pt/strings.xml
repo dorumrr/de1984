@@ -115,7 +115,8 @@
     <string name="dialog_force_stop_title">Forçar Parada de %s?</string>
     <string name="dialog_force_stop_system_message">⚠️ Este é um pacote do sistema. Forçar a parada pode causar instabilidade no sistema.\n\nTem certeza que deseja continuar?</string>
     <string name="dialog_force_stop_message">Isto irá parar imediatamente todos os processos de %s.\n\nTem certeza?</string>
-    <string name="dialog_enable_disable_title">%1$s %2$s?</string>
+    <string name="dialog_enable_title">Ativar %1$s?</string>
+    <string name="dialog_disable_title">Desativar %1$s?</string>
     <string name="dialog_disable_system_message">⚠️ Este é um pacote do sistema. Desativá-lo pode causar instabilidade no sistema ou impedir outros apps de funcionar.\n\nTem certeza que deseja continuar?</string>
     <string name="dialog_enable_message">Isto permitirá que %s execute normalmente.\n\nTem certeza?</string>
     <string name="dialog_disable_message">Isto impedirá que %s execute.\n\nTem certeza?</string>
@@ -182,12 +183,12 @@
     <!-- Firewall Multi-Select -->
     <string name="firewall_multiselect_toast_cannot_select_critical">Pacotes críticos/VPN não podem ser selecionados</string>
     <string name="firewall_multiselect_toast_cannot_select_system_uid">Esta aplicação não pode ser bloqueada no modo atual da firewall</string>
-    <string name="firewall_multiselect_toolbar_button_block">Bloquear</string>
-    <string name="firewall_multiselect_toolbar_button_allow">Permitir</string>
     <string name="firewall_multiselect_toolbar_button_rules">Alterar regras</string>
     <string name="firewall_multiselect_dialog_title_results">Resultados do Firewall</string>
-    <string name="firewall_multiselect_dialog_message_success_format">✓ %2$s com sucesso: %1$d apps</string>
-    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d sucesso, ✗ %2$d falha ao %3$s</string>
+    <string name="firewall_multiselect_dialog_message_success_block">✓ Apps bloqueados: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_success_allow">✓ Apps permitidos: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_failed_block">✓ %1$d sucesso, ✗ %2$d falha ao bloquear</string>
+    <string name="firewall_multiselect_dialog_message_failed_allow">✓ %1$d sucesso, ✗ %2$d falha ao permitir</string>
 
     <!-- Firewall Multi-Select Bottom Sheet -->
     <string name="firewall_multiselect_sheet_header_format">%d pacotes selecionados</string>

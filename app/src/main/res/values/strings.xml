@@ -116,7 +116,8 @@
     <string name="dialog_force_stop_title">Force Stop %s?</string>
     <string name="dialog_force_stop_system_message">⚠️ This is a system package. Force stopping it may cause system instability.\n\nAre you sure you want to continue?</string>
     <string name="dialog_force_stop_message">This will immediately stop all processes for %s.\n\nAre you sure?</string>
-    <string name="dialog_enable_disable_title">%1$s %2$s?</string>
+    <string name="dialog_enable_title">Enable %1$s?</string>
+    <string name="dialog_disable_title">Disable %1$s?</string>
     <string name="dialog_disable_system_message">⚠️ This is a system package. Disabling it may cause system instability or prevent other apps from working.\n\nAre you sure you want to continue?</string>
     <string name="dialog_enable_message">This will allow %s to run normally.\n\nAre you sure?</string>
     <string name="dialog_disable_message">This will prevent %s from running.\n\nAre you sure?</string>
@@ -183,12 +184,12 @@
     <!-- Firewall Multi-Select -->
     <string name="firewall_multiselect_toast_cannot_select_critical">Critical/VPN packages cannot be selected</string>
     <string name="firewall_multiselect_toast_cannot_select_system_uid">This app cannot be blocked in the current firewall mode</string>
-    <string name="firewall_multiselect_toolbar_button_block">Block</string>
-    <string name="firewall_multiselect_toolbar_button_allow">Allow</string>
     <string name="firewall_multiselect_toolbar_button_rules">Change Rules</string>
     <string name="firewall_multiselect_dialog_title_results">Firewall Results</string>
-    <string name="firewall_multiselect_dialog_message_success_format">✓ Successfully %2$s: %1$d apps</string>
-    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d succeeded, ✗ %2$d failed to %3$s</string>
+    <string name="firewall_multiselect_dialog_message_success_block">✓ Apps blocked: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_success_allow">✓ Apps allowed: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_failed_block">✓ Blocked: %1$d, ✗ failed to block: %2$d</string>
+    <string name="firewall_multiselect_dialog_message_failed_allow">✓ Allowed: %1$d, ✗ failed to allow: %2$d</string>
 
     <!-- Firewall Multi-Select Bottom Sheet -->
     <string name="firewall_multiselect_sheet_header_format">%d packages selected</string>

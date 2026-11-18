@@ -114,7 +114,8 @@
     <string name="dialog_force_stop_title">Wymusić zatrzymanie %s?</string>
     <string name="dialog_force_stop_system_message">⚠️ To jest pakiet systemowy. Wymuszenie jego zatrzymania może spowodować niestabilność systemu.\n\nCzy na pewno chcesz kontynuować?</string>
     <string name="dialog_force_stop_message">To natychmiast zatrzyma wszystkie procesy aplikacji %s.\n\nCzy na pewno?</string>
-    <string name="dialog_enable_disable_title">%1$s %2$s?</string>
+    <string name="dialog_enable_title">Włączyć %1$s?</string>
+    <string name="dialog_disable_title">Wyłączyć %1$s?</string>
     <string name="dialog_disable_system_message">⚠️ To jest pakiet systemowy. Wyłączenie go może spowodować niestabilność systemu lub uniemożliwić działanie innych aplikacji.\n\nCzy na pewno chcesz kontynuować?</string>
     <string name="dialog_enable_message">To pozwoli aplikacji %s na normalne działanie.\n\nCzy na pewno?</string>
     <string name="dialog_disable_message">To uniemożliwi działanie aplikacji %s.\n\nCzy na pewno?</string>
@@ -176,12 +177,12 @@
     <!-- Firewall Multi-Select -->
     <string name="firewall_multiselect_toast_cannot_select_critical">Nie można wybrać pakietów krytycznych ani VPN</string>
     <string name="firewall_multiselect_toast_cannot_select_system_uid">Tej aplikacji nie można zablokować w bieżącym trybie zapory</string>
-    <string name="firewall_multiselect_toolbar_button_block">Zablokuj</string>
-    <string name="firewall_multiselect_toolbar_button_allow">Zezwól</string>
     <string name="firewall_multiselect_toolbar_button_rules">Zmień reguły</string>
     <string name="firewall_multiselect_dialog_title_results">Wyniki zapory</string>
-    <string name="firewall_multiselect_dialog_message_success_format">✓ Operacja (%2$s) zakończona pomyślnie. Liczba aplikacji: %1$d</string>
-    <string name="firewall_multiselect_dialog_message_failed_format">✓ Sukces: %1$d, ✗ niepowodzenie: %2$d (%3$s)</string>
+    <string name="firewall_multiselect_dialog_message_success_block">✓ Zablokowano aplikacje (%1$d)</string>
+    <string name="firewall_multiselect_dialog_message_success_allow">✓ Zezwolono aplikacjom na dostęp (%1$d)</string>
+    <string name="firewall_multiselect_dialog_message_failed_block">✓ Zablokowano: %1$d, ✗ nie udało się zablokować: %2$d</string>
+    <string name="firewall_multiselect_dialog_message_failed_allow">✓ Zezwolono: %1$d, ✗ nie udało się zezwolić: %2$d</string>
 
     <!-- Firewall Multi-Select Bottom Sheet -->
     <string name="firewall_multiselect_sheet_header_format">Wybrane pakiety: %d</string>

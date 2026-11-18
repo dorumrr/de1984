@@ -91,7 +91,8 @@
     <string name="dialog_force_stop_title">فرض إيقاف %s؟</string>
     <string name="dialog_force_stop_system_message">⚠️ هذه حزمة نظام. قد يتسبب فرض الإيقاف في عدم استقرار النظام.\n\nهل أنت متأكد أنك تريد المتابعة؟</string>
     <string name="dialog_force_stop_message">سيؤدي هذا فورًا إلى إيقاف جميع العمليات لـ %s.\n\nهل أنت متأكد؟</string>
-    <string name="dialog_enable_disable_title">%1$s %2$s؟</string>
+    <string name="dialog_enable_title">تفعيل %1$s؟</string>
+    <string name="dialog_disable_title">تعطيل %1$s؟</string>
     <string name="dialog_disable_system_message">⚠️ هذه حزمة نظام. قد يتسبب تعطيلها في عدم استقرار النظام أو منع التطبيقات الأخرى من العمل.\n\nهل أنت متأكد أنك تريد المتابعة؟</string>
     <string name="dialog_enable_message">سيسمح هذا بتشغيل %s بشكل طبيعي.\n\nهل أنت متأكد؟</string>
     <string name="dialog_disable_message">سيمنع هذا %s من التشغيل.\n\nهل أنت متأكد؟</string>
@@ -145,12 +146,12 @@
 
     <string name="firewall_multiselect_toast_cannot_select_critical">لا يمكن تحديد الحزم الحرجة/VPN</string>
 <string name="firewall_multiselect_toast_cannot_select_system_uid">لا يمكن حظر هذا التطبيق في وضع جدار الحماية الحالي</string>
-    <string name="firewall_multiselect_toolbar_button_block">حظر</string>
-    <string name="firewall_multiselect_toolbar_button_allow">سماح</string>
     <string name="firewall_multiselect_toolbar_button_rules">تغيير القواعد</string>
     <string name="firewall_multiselect_dialog_title_results">نتائج جدار الحماية</string>
-    <string name="firewall_multiselect_dialog_message_success_format">✓ بنجاح %2$s: %1$d من التطبيقات</string>
-    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d نجح، ✗ %2$d فشل لـ%3$s</string>
+    <string name="firewall_multiselect_dialog_message_success_block">✓ التطبيقات المحظورة: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_success_allow">✓ التطبيقات المسموح بها: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_failed_block">✓ %1$d نجح، ✗ %2$d فشل الحظر</string>
+    <string name="firewall_multiselect_dialog_message_failed_allow">✓ %1$d نجح، ✗ %2$d فشل السماح</string>
 
     <string name="firewall_multiselect_sheet_header_format">تم تحديد %d حزم</string>
     <string name="firewall_multiselect_sheet_section_network_rules">قواعد الشبكة</string>

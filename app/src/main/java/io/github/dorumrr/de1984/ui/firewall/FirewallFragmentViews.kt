@@ -1872,16 +1872,18 @@ class FirewallFragmentViews : BaseFragment<FragmentFirewallBinding>() {
     }
 
     private fun showBatchResultDialog(result: io.github.dorumrr.de1984.presentation.viewmodel.BatchBlockResult) {
-        val actionName = if (result.wasBlocking) {
-            getString(R.string.firewall_multiselect_toolbar_button_block).lowercase()
-        } else {
-            getString(R.string.firewall_multiselect_toolbar_button_allow).lowercase()
-        }
-
         val message = if (result.failed.isEmpty()) {
-            getString(R.string.firewall_multiselect_dialog_message_success_format, result.succeeded.size, actionName)
+            getString(
+                if (result.wasBlocking) R.string.firewall_multiselect_dialog_message_success_block
+                else R.string.firewall_multiselect_dialog_message_success_allow,
+                result.succeeded.size
+            )
         } else {
-            getString(R.string.firewall_multiselect_dialog_message_failed_format, result.succeeded.size, result.failed.size, actionName)
+            getString(
+                if (result.wasBlocking) R.string.firewall_multiselect_dialog_message_failed_block
+                else R.string.firewall_multiselect_dialog_message_failed_allow,
+                result.succeeded.size, result.failed.size
+            )
         }
 
         AlertDialog.Builder(requireContext())

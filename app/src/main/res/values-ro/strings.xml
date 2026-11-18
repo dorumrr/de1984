@@ -116,7 +116,8 @@
     <string name="dialog_force_stop_title">Oprire Forțată %s?</string>
     <string name="dialog_force_stop_system_message">⚠️ Acesta este un pachet de sistem. Oprirea forțată poate cauza instabilitate sistemului.\n\nContinui?</string>
     <string name="dialog_force_stop_message">Aceasta va opri imediat toate procesele pentru %s.\n\nConfirmi?</string>
-    <string name="dialog_enable_disable_title">%1$s %2$s?</string>
+    <string name="dialog_enable_title">Activează %1$s?</string>
+    <string name="dialog_disable_title">Dezactivează %1$s?</string>
     <string name="dialog_disable_system_message">⚠️ Acesta este un pachet de sistem. Dezactivarea lui poate cauza instabilitate sistemului sau poate împiedica alte aplicații să funcționeze.\n\nContinui?</string>
     <string name="dialog_enable_message">Aceasta va permite %s să ruleze normal.\n\nConfirmi?</string>
     <string name="dialog_disable_message">Aceasta va împiedica %s să ruleze.\n\nConfirmi?</string>
@@ -183,12 +184,12 @@
     <!-- Firewall Multi-Select -->
     <string name="firewall_multiselect_toast_cannot_select_critical">Pachetele critice/VPN nu pot fi selectate</string>
     <string name="firewall_multiselect_toast_cannot_select_system_uid">Această aplicație nu poate fi blocată în modul curent al firewall-ului</string>
-    <string name="firewall_multiselect_toolbar_button_block">Blochează</string>
-    <string name="firewall_multiselect_toolbar_button_allow">Permite</string>
     <string name="firewall_multiselect_toolbar_button_rules">Modifică regulile</string>
     <string name="firewall_multiselect_dialog_title_results">Rezultate Firewall</string>
-    <string name="firewall_multiselect_dialog_message_success_format">✓ %2$s cu succes: %1$d aplicații</string>
-    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d reușite, ✗ %2$d eșuate la %3$s</string>
+    <string name="firewall_multiselect_dialog_message_success_block">✓ Aplicații blocate: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_success_allow">✓ Aplicații permise: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_failed_block">✓ %1$d reușite, ✗ %2$d eșuate la blocare</string>
+    <string name="firewall_multiselect_dialog_message_failed_allow">✓ %1$d reușite, ✗ %2$d eșuate la permitere</string>
 
     <!-- Firewall Multi-Select Bottom Sheet -->
     <string name="firewall_multiselect_sheet_header_format">%d pachete selectate</string>

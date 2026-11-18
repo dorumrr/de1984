@@ -1047,7 +1047,11 @@ class PackagesFragmentViews : BaseFragment<FragmentPackagesBinding>() {
 
         StandardDialog.showConfirmation(
             context = requireContext(),
-            title = getString(io.github.dorumrr.de1984.R.string.dialog_enable_disable_title, action, pkg.name),
+            title = getString(
+                if (enable) io.github.dorumrr.de1984.R.string.dialog_enable_title
+                else io.github.dorumrr.de1984.R.string.dialog_disable_title,
+                pkg.name
+            ),
             message = if (isSystemPackage && !enable) {
                 getString(io.github.dorumrr.de1984.R.string.dialog_disable_system_message)
             } else if (enable) {

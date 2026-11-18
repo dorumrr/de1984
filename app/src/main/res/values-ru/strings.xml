@@ -115,7 +115,8 @@
     <string name="dialog_force_stop_title">Принудительно остановить %s?</string>
     <string name="dialog_force_stop_system_message">⚠️ Это системный пакет. Принудительная остановка может вызвать нестабильность системы.\n\nВы уверены, что хотите продолжить?</string>
     <string name="dialog_force_stop_message">Это немедленно остановит все процессы %s.\n\nВы уверены?</string>
-    <string name="dialog_enable_disable_title">%1$s %2$s?</string>
+    <string name="dialog_enable_title">Включить %1$s?</string>
+    <string name="dialog_disable_title">Отключить %1$s?</string>
     <string name="dialog_disable_system_message">⚠️ Это системный пакет. Его отключение может вызвать нестабильность системы или помешать работе других приложений.\n\nВы уверены, что хотите продолжить?</string>
     <string name="dialog_enable_message">Это разрешит запуск %s.\n\nВы уверены?</string>
     <string name="dialog_disable_message">Это запретит запуск %s.\n\nВы уверены?</string>
@@ -182,12 +183,12 @@
     <!-- Firewall Multi-Select -->
     <string name="firewall_multiselect_toast_cannot_select_critical">Критичные/VPN пакеты нельзя выбрать</string>
     <string name="firewall_multiselect_toast_cannot_select_system_uid">Это приложение нельзя заблокировать в текущем режиме брандмауэра</string>
-    <string name="firewall_multiselect_toolbar_button_block">Заблокировать</string>
-    <string name="firewall_multiselect_toolbar_button_allow">Разрешить</string>
     <string name="firewall_multiselect_toolbar_button_rules">Изменить правила</string>
     <string name="firewall_multiselect_dialog_title_results">Результаты файрволла</string>
-    <string name="firewall_multiselect_dialog_message_success_format">✓ Успешно %2$s: %1$d приложений</string>
-    <string name="firewall_multiselect_dialog_message_failed_format">✓ %1$d успешно, ✗ %2$d не удалось %3$s</string>
+    <string name="firewall_multiselect_dialog_message_success_block">✓ Заблокировано приложений: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_success_allow">✓ Разрешено приложений: %1$d</string>
+    <string name="firewall_multiselect_dialog_message_failed_block">✓ %1$d успешно, ✗ %2$d не удалось заблокировать</string>
+    <string name="firewall_multiselect_dialog_message_failed_allow">✓ %1$d успешно, ✗ %2$d не удалось разрешить</string>
 
     <!-- Firewall Multi-Select Bottom Sheet -->
     <string name="firewall_multiselect_sheet_header_format">Выбрано %d пакетов</string>

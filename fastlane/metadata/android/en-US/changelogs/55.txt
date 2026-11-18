@@ -1,0 +1,2 @@
+- Polish translation #123
+- Dialogs read correctly in every language: the enable and disable question, and the block or allow result for selected apps
